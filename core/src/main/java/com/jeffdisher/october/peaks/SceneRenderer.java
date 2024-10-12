@@ -1,7 +1,9 @@
 package com.jeffdisher.october.peaks;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 
 
@@ -34,35 +36,8 @@ public class SceneRenderer
 		
 		// Create the shader program.
 		_program = GraphicsHelpers.fullyLinkedProgram(_gl
-				, "#version 100\n"
-						+ "uniform mat4 uModelMatrix;\n"
-						+ "uniform mat4 uViewMatrix;\n"
-						+ "uniform mat4 uProjectionMatrix;\n"
-						+ "uniform vec3 uWorldLightLocation;\n"
-						+ "attribute vec3 aPosition;\n"
-						+ "attribute vec3 aNormal;\n"
-						+ "attribute vec2 aTexture0;\n"
-						+ "varying float vDiffuseStrength;\n"
-						+ "varying vec2 vTexture0;\n"
-						+ "void main()\n"
-						+ "{\n"
-						+ "	vec3 worldSpaceVertex = vec3(uModelMatrix * vec4(aPosition, 1.0));\n"
-						+ "	vec3 worldSpaceNormal = vec3(uModelMatrix * vec4(aNormal, 0.0));\n"
-						+ "	float distanceToLight = length(uWorldLightLocation - worldSpaceVertex);\n"
-						+ "	vec3 vectorToLight = normalize(uWorldLightLocation - worldSpaceVertex);\n"
-						+ "	vDiffuseStrength = max(dot(worldSpaceNormal, vectorToLight), 0.5);\n"
-						+ "	vTexture0 = aTexture0;\n"
-						+ "	gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);\n"
-						+ "}\n"
-				, "#version 100\n"
-						+ "precision mediump float;\n"
-						+ "uniform sampler2D uTexture0;\n"
-						+ "varying float vDiffuseStrength;\n"
-						+ "varying vec2 vTexture0;\n"
-						+ "void main()\n"
-						+ "{\n"
-						+ "	gl_FragColor = vDiffuseStrength * texture2D(uTexture0, vTexture0);//vec4(vDiffuseStrength * vec3(1.0, 1.0, 1.0), 1.0);\n"
-						+ "}\n"
+				, _readUtf8Asset("scene.vert")
+				, _readUtf8Asset("scene.frag")
 				, new String[] {
 						"aPosition",
 						"aNormal",
@@ -73,7 +48,7 @@ public class SceneRenderer
 		_uViewMatrix = _gl.glGetUniformLocation(_program, "uViewMatrix");
 		_uProjectionMatrix = _gl.glGetUniformLocation(_program, "uProjectionMatrix");
 		_uWorldLightLocation = _gl.glGetUniformLocation(_program, "uWorldLightLocation");
-		_image = GraphicsHelpers.loadInternalRGBA(_gl, "op_logo.png");
+		_image = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_quad = GraphicsHelpers.buildTestingScene(_gl);
 		
 		_locationX = -1.0f;
@@ -157,5 +132,10 @@ public class SceneRenderer
 		float lookZ = (float)Math.sin(_rotateY);
 		Vector looking = new Vector(lookX, lookY, lookZ).normalize();
 		_viewMatrix = Matrix.lookAt(new Vector(_locationX, _locationY, _locationZ), new Vector(_locationX + looking.x(), _locationY + looking.y(), _locationZ + looking.z()), new Vector(0.0f, 0.0f, 1.0f));
+	}
+
+	private static String _readUtf8Asset(String name)
+	{
+		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 }
