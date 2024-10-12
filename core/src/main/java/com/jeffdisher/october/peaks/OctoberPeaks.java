@@ -13,6 +13,7 @@ public class OctoberPeaks extends ApplicationAdapter
 {
 	private GL20 _gl;
 	private SceneRenderer _scene;
+	private MovementControl _movement;
 
 	@Override
 	public void create()
@@ -32,6 +33,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
+		_movement = new MovementControl();
 		Gdx.input.setInputProcessor(new InputAdapter() {
 			boolean _didInitialize = false;
 			int _x;
@@ -48,7 +50,8 @@ public class OctoberPeaks extends ApplicationAdapter
 				{
 					int deltaX = screenX - _x;
 					int deltaY = screenY - _y;
-					_scene.rotate(deltaX, deltaY);
+					_movement.rotate(deltaX, deltaY);
+					_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 				}
 				else if ((0 != screenX) && (0 != screenY))
 				{
@@ -76,36 +79,41 @@ public class OctoberPeaks extends ApplicationAdapter
 				switch (keycode)
 				{
 				case Keys.W:
-					_scene.translate(0.0f, magnitude, 0.0f);
+					_movement.walk(magnitude);
 					didCall = true;
 					break;
 				case Keys.A:
-					_scene.translate(-magnitude, 0.0f, 0.0f);
+					_movement.strafeRight(-magnitude);
 					didCall = true;
 					break;
 				case Keys.S:
-					_scene.translate(0.0f, -magnitude, 0.0f);
+					_movement.walk(-magnitude);
 					didCall = true;
 					break;
 				case Keys.D:
-					_scene.translate(magnitude, 0.0f, 0.0f);
+					_movement.strafeRight(magnitude);
 					didCall = true;
 					break;
 				case Keys.SPACE:
-					_scene.translate(0.0f, 0.0f, magnitude);
+					_movement.jump(magnitude);
 					didCall = true;
 					break;
 				case Keys.SHIFT_LEFT:
-					_scene.translate(0.0f, 0.0f, -magnitude);
+					_movement.jump(-magnitude);
 					didCall = true;
 					break;
 					default:
 						didCall = false;
 				}
+				if (didCall)
+				{
+					_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
+				}
 				return didCall;
 			}
 		});
 		Gdx.input.setCursorCatched(true);
+		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 	}
 
 	@Override

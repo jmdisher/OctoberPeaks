@@ -21,14 +21,10 @@ public class SceneRenderer
 	private final int _image;
 	private final int _quad;
 
-	private float _locationX;
-	private float _locationY;
-	private float _locationZ;
-	private float _rotateX;
-	private float _rotateY;
 	private Matrix _modelMatrix;
 	private Matrix _viewMatrix;
-	private Matrix _projectionMatrix;
+	private final Matrix _projectionMatrix;
+	private Vector _eye;
 
 	public SceneRenderer(GL20 gl) throws IOException
 	{
@@ -51,15 +47,16 @@ public class SceneRenderer
 		_image = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_quad = GraphicsHelpers.buildTestingScene(_gl);
 		
-		_locationX = -1.0f;
-		_locationY = -3.0f;
-		_locationZ =  0.0f;
-		_rotateX = 0.0f;
-		_rotateY = 0.0f;
-		
 		_modelMatrix = Matrix.translate(-0.5f, -0.5f, 0.0f);
-		_updateViewMatrix();
+		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
+		_eye = new Vector(0.0f, 0.0f, 0.0f);
+	}
+
+	public void updatePosition(Vector eye, Vector target)
+	{
+		_eye = eye;
+		_viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
 	}
 
 	public void render()
@@ -75,7 +72,7 @@ public class SceneRenderer
 		_modelMatrix.uploadAsUniform(_gl, _uModelMatrix);
 		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		_gl.glUniform3f(_uWorldLightLocation, _locationX, _locationY, _locationZ);
+		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
 		
 		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _quad);
 		int cubeCount = 4;
@@ -84,55 +81,6 @@ public class SceneRenderer
 		_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, cubeCount * quadsPerCube * verticesPerQuad);
 	}
 
-	public void translate(float deltaX, float deltaY, float deltaZ)
-	{
-		_locationX += deltaX;
-		_locationY += deltaY;
-		_locationZ += deltaZ;
-		_updateViewMatrix();
-	}
-
-	// X positive is "right"
-	// Y positive is "down"
-	public void rotate(int deltaX, int deltaY)
-	{
-		float xRadians = ((float)deltaX) / 300.0f;
-		float yRadians = ((float)deltaY) / 300.0f;
-		// Y is backward since we rotate left and consider positive sin of Y.
-		_rotateX += xRadians;
-		_rotateY -= yRadians;
-		float pi = (float)Math.PI;
-		float pi2 = 2.0f * pi;
-		float piHalf = pi / 2.0f;
-		if (_rotateX > pi2)
-		{
-			_rotateX -= pi2;
-		}
-		else if (_rotateX < -pi2)
-		{
-			_rotateX += pi2;
-		}
-		if (_rotateY > piHalf)
-		{
-			_rotateY = piHalf;
-		}
-		else if (_rotateY < -piHalf)
-		{
-			_rotateY = -piHalf;
-		}
-		_updateViewMatrix();
-	}
-
-
-	private void _updateViewMatrix()
-	{
-		// We will assume that we are looking at (0, 1, 0) when at 0 rotation.
-		float lookX = - (float)Math.sin(_rotateX);
-		float lookY = (float)Math.cos(_rotateX);
-		float lookZ = (float)Math.sin(_rotateY);
-		Vector looking = new Vector(lookX, lookY, lookZ).normalize();
-		_viewMatrix = Matrix.lookAt(new Vector(_locationX, _locationY, _locationZ), new Vector(_locationX + looking.x(), _locationY + looking.y(), _locationZ + looking.z()), new Vector(0.0f, 0.0f, 1.0f));
-	}
 
 	private static String _readUtf8Asset(String name)
 	{
