@@ -18,18 +18,48 @@ public class MovementControl
 		_locationX = -1.75f;
 		_locationY = 1.75f;
 		_locationZ =  2.50f;
-		_rotateX = -2.35f;
-		_rotateY = -1.25f;
+		_rotateX = 2.35f;
+		_rotateY = -0.66f;
 	}
 
 	public void walk(float forwardDistance)
 	{
-		_locationY += forwardDistance;
+		_Direction direction = _findFacing();
+		switch (direction)
+		{
+		case NORTH:
+			_locationY += forwardDistance;
+			break;
+		case EAST:
+			_locationX += forwardDistance;
+			break;
+		case SOUTH:
+			_locationY -= forwardDistance;
+			break;
+		case WEST:
+			_locationX -= forwardDistance;
+			break;
+		}
 	}
 
 	public void strafeRight(float rightDistance)
 	{
-		_locationX += rightDistance;
+		_Direction direction = _findFacing();
+		switch (direction)
+		{
+		case NORTH:
+			_locationX += rightDistance;
+			break;
+		case EAST:
+			_locationY -= rightDistance;
+			break;
+		case SOUTH:
+			_locationX -= rightDistance;
+			break;
+		case WEST:
+			_locationY += rightDistance;
+			break;
+		}
 	}
 
 	public void jump(float deltaZ)
@@ -41,8 +71,8 @@ public class MovementControl
 	{
 		float xRadians = ((float)distanceRight) / 300.0f;
 		float yRadians = ((float)distanceDown) / 300.0f;
-		// Y is backward since we rotate left and consider positive sin of Y.
-		_rotateX += xRadians;
+		// Note that _rotateX is counter-clockwise around the positive Z.
+		_rotateX -= xRadians;
 		_rotateY -= yRadians;
 		float pi = (float)Math.PI;
 		float pi2 = 2.0f * pi;
@@ -51,7 +81,7 @@ public class MovementControl
 		{
 			_rotateX -= pi2;
 		}
-		else if (_rotateX < -pi2)
+		else if (_rotateX < 0.0f)
 		{
 			_rotateX += pi2;
 		}
@@ -73,10 +103,33 @@ public class MovementControl
 	public Vector computeTarget()
 	{
 		// We will assume that we are looking at (0, 1, 0) when at 0 rotation.
-		float lookX = - (float)Math.sin(_rotateX);
+		float lookX = (float)Math.sin(_rotateX);
 		float lookY = (float)Math.cos(_rotateX);
 		float lookZ = (float)Math.sin(_rotateY);
-		Vector looking = new Vector(lookX, lookY, lookZ).normalize();
+		float distanceZ = (float)Math.cos(_rotateY);
+		Vector looking = new Vector(lookX * distanceZ, lookY * distanceZ, lookZ).normalize();
 		return new Vector(_locationX + looking.x(), _locationY + looking.y(), _locationZ + looking.z());
+	}
+
+
+	private _Direction _findFacing()
+	{
+		// We will take the facing direction into account but always walk in cardinal directions (since the movement mutation requires that).
+		float pi = (float)Math.PI;
+		float half = pi / 2.0f;
+		float quarter = pi / 4.0f;
+		int quadrant = (int)Math.floor((_rotateX + quarter) % (pi * 2.0f) / half);
+		_Direction direction = _Direction.values()[quadrant];
+		return direction;
+	}
+
+
+	// These are in this order since the rotation is counter-clockwise.
+	private static enum _Direction
+	{
+		NORTH,
+		WEST,
+		SOUTH,
+		EAST,
 	}
 }
