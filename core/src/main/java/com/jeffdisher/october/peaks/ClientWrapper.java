@@ -33,6 +33,7 @@ public class ClientWrapper
 	public static final int PORT = 5678;
 
 	private final Environment _environment;
+	private final ICuboidUpdateConsumer _changedCuboidConsumer;
 	private final WorldConfig _config;
 	private final ResourceLoader _loader;
 	private final MonitoringAgent _monitoringAgent;
@@ -40,11 +41,13 @@ public class ClientWrapper
 	private final ClientProcess _client;
 
 	public ClientWrapper(Environment environment
+			, ICuboidUpdateConsumer changedCuboidConsumer
 			, String clientName
 			, InetSocketAddress serverAddress
 	)
 	{
 		_environment = environment;
+		_changedCuboidConsumer = changedCuboidConsumer;
 		
 		try
 		{
@@ -184,14 +187,17 @@ public class ClientWrapper
 		@Override
 		public void cuboidDidChange(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 		{
+			_changedCuboidConsumer.updateExisting(cuboid, heightMap, changedBlocks);
 		}
 		@Override
 		public void cuboidDidLoad(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 		{
+			_changedCuboidConsumer.loadNew(cuboid, heightMap);
 		}
 		@Override
 		public void cuboidDidUnload(CuboidAddress address)
 		{
+			_changedCuboidConsumer.unload(address);
 		}
 		@Override
 		public void thisEntityDidLoad(Entity authoritativeEntity)
@@ -238,5 +244,12 @@ public class ClientWrapper
 		{
 			System.out.println("* " + senderId + "> " + message);
 		}
+	}
+
+	public static interface ICuboidUpdateConsumer
+	{
+		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
+		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks);
+		void unload(CuboidAddress address);
 	}
 }

@@ -19,6 +19,8 @@ import com.badlogic.gdx.graphics.GL20;
  */
 public class GraphicsHelpers
 {
+	public static final int FLOATS_PER_VERTEX = 3 + 3 + 2;
+
 	public static int fullyLinkedProgram(GL20 gl, String vertexSource, String fragmentSource, String[] attributesInOrder)
 	{
 		int program = gl.glCreateProgram();
@@ -77,16 +79,15 @@ public class GraphicsHelpers
 		int cubeCount = 4;
 		int quadsPerCube = 6;
 		int verticesPerQuad = 6;
-		int floatsPerVertex = 3 + 3 + 2;
-		int totalBytes = cubeCount * quadsPerCube * verticesPerQuad * floatsPerVertex * Float.BYTES;
+		int totalBytes = cubeCount * quadsPerCube * verticesPerQuad * FLOATS_PER_VERTEX * Float.BYTES;
 		ByteBuffer direct = ByteBuffer.allocateDirect(totalBytes);
 		
 		direct.order(ByteOrder.nativeOrder());
 		FloatBuffer floats = direct.asFloatBuffer();
-		drawCube(floats, new float[] {0.0f, 0.0f, 0.0f});
-		drawCube(floats, new float[] {-1.5f, 0.0f, 0.0f});
-		drawCube(floats, new float[] {0.0f, 2.0f, 0.0f});
-		drawCube(floats, new float[] {0.0f, 0.0f, 1.0f});
+		_drawCube(floats, new float[] {0.0f, 0.0f, 0.0f});
+		_drawCube(floats, new float[] {-1.5f, 0.0f, 0.0f});
+		_drawCube(floats, new float[] {0.0f, 2.0f, 0.0f});
+		_drawCube(floats, new float[] {0.0f, 0.0f, 1.0f});
 		((java.nio.Buffer) direct).position(0);
 		
 		int entityBuffer = gl.glGenBuffer();
@@ -99,6 +100,11 @@ public class GraphicsHelpers
 		gl.glEnableVertexAttribArray(2);
 		gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
 		return entityBuffer;
+	}
+
+	public static void drawCube(FloatBuffer floats, float[] base)
+	{
+		_drawCube(floats, base);
 	}
 
 
@@ -181,7 +187,7 @@ public class GraphicsHelpers
 		buffer.put(mesh);
 	}
 
-	private static void drawCube(FloatBuffer floats, float[] base)
+	private static void _drawCube(FloatBuffer floats, float[] base)
 	{
 		float[] v001 = new float[] { 0.0f, 0.0f, 1.0f };
 		float[] v101 = new float[] { 1.0f, 0.0f, 1.0f };

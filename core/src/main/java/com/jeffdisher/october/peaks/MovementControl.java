@@ -17,7 +17,7 @@ public class MovementControl
 	{
 		_locationX = -1.75f;
 		_locationY = 1.75f;
-		_locationZ =  2.50f;
+		_locationZ =  15.0f;
 		_rotateX = 4.07f;
 		_rotateY = -0.83f;
 	}

@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks;
 
 import java.io.IOException;
+import java.util.Set;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -8,6 +9,10 @@ import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.ColumnHeightMap;
+import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.CuboidAddress;
 
 
 public class OctoberPeaks extends ApplicationAdapter
@@ -79,7 +84,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			public boolean keyUp(int keycode)
 			{
 				boolean didCall;
-				float magnitude = 0.25f;
+				float magnitude = 5.0f;
 				switch (keycode)
 				{
 				case Keys.W:
@@ -120,6 +125,23 @@ public class OctoberPeaks extends ApplicationAdapter
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
 		_client = new ClientWrapper(_environment
+				, new ClientWrapper.ICuboidUpdateConsumer() {
+					@Override
+					public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
+					{
+						_scene.setCuboid(cuboid);
+					}
+					@Override
+					public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
+					{
+						_scene.setCuboid(cuboid);
+					}
+					@Override
+					public void unload(CuboidAddress address)
+					{
+						_scene.removeCuboid(address);
+					}
+				}
 				, "Peaks_test_client"
 				, null
 		);
