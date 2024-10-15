@@ -18,8 +18,8 @@ public class MovementControl
 		_locationX = -1.75f;
 		_locationY = 1.75f;
 		_locationZ =  2.50f;
-		_rotateX = 2.35f;
-		_rotateY = -0.66f;
+		_rotateX = 5.27f;
+		_rotateY = 0.77f;
 	}
 
 	public void walk(float forwardDistance)

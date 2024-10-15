@@ -27,6 +27,45 @@ public class Matrix
 		return new Matrix(rowInner);
 	}
 
+	public static Matrix rotateX(float radians)
+	{
+		float sin = (float)Math.sin(radians);
+		float cos = (float)Math.cos(radians);
+		float[] rowInner = new float[] {
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, cos, -sin, 0.0f,
+				0.0f, sin, cos, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
+	public static Matrix rotateY(float radians)
+	{
+		float sin = (float)Math.sin(radians);
+		float cos = (float)Math.cos(radians);
+		float[] rowInner = new float[] {
+				cos, 0.0f, sin, 0.0f,
+				0.0f, 1.0f, 0.0f, 0.0f,
+				-sin, 0.0f, cos, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
+	public static Matrix rotateZ(float radians)
+	{
+		float sin = (float)Math.sin(radians);
+		float cos = (float)Math.cos(radians);
+		float[] rowInner = new float[] {
+				cos, -sin, 0.0f, 0.0f,
+				sin, cos, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
 	public static Matrix frustum(float left, float right, float bottom, float top, float zNear, float zFar)
 	{
 		return _frustum(left, right, bottom, top, zNear, zFar);
@@ -45,16 +84,17 @@ public class Matrix
 	public static Matrix lookAt(Vector eye, Vector target, Vector up)
 	{
 		// Much of this logic is based on this excellent break-down:  https://songho.ca/opengl/gl_camera.html
+		// However, it keeps the "forward" vector forward (from eye to target).
 		Vector forward = Vector.delta(eye, target).normalize();
-		Vector left = Vector.cross(up, forward).normalize();
-		Vector normalUp = Vector.cross(forward, left).normalize();
-		float translateX = -(left.x() * eye.x()) - (left.y() * eye.y()) - (left.z() * eye.z());
+		Vector side = Vector.cross(forward, up).normalize();
+		Vector normalUp = Vector.cross(side, forward).normalize();
+		float translateX = -(side.x() * eye.x()) - (side.y() * eye.y()) - (side.z() * eye.z());
 		float translateY = -(normalUp.x() * eye.x()) - (normalUp.y() * eye.y()) - (normalUp.z() * eye.z());
-		float translateZ = -(forward.x() * eye.x()) - (forward.y() * eye.y()) - (forward.z() * eye.z());
+		float translateZ = -(-forward.x() * eye.x()) - (-forward.y() * eye.y()) - (-forward.z() * eye.z());
 		float[] rowInner = new float[] {
-				left.x(), left.y(), left.z(), translateX,
+				side.x(), side.y(), side.z(), translateX,
 				normalUp.x(), normalUp.y(), normalUp.z(), translateY,
-				forward.x(), forward.y(), forward.z(), translateZ,
+				-forward.x(), -forward.y(), -forward.z(), translateZ,
 				0.0f, 0.0f, 0.0f, 1.0f
 		};
 		return new Matrix(rowInner);

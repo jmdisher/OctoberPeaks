@@ -84,8 +84,8 @@ public class GraphicsHelpers
 		direct.order(ByteOrder.nativeOrder());
 		FloatBuffer floats = direct.asFloatBuffer();
 		drawCube(floats, new float[] {0.0f, 0.0f, 0.0f});
-		drawCube(floats, new float[] {-1.0f, 0.0f, 0.0f});
-		drawCube(floats, new float[] {0.0f, 1.0f, 0.0f});
+		drawCube(floats, new float[] {-1.5f, 0.0f, 0.0f});
+		drawCube(floats, new float[] {0.0f, 2.0f, 0.0f});
 		drawCube(floats, new float[] {0.0f, 0.0f, 1.0f});
 		((java.nio.Buffer) direct).position(0);
 		
