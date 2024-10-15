@@ -130,6 +130,7 @@ public class Matrix
 	{
 		// The way that this frustrum projection matrix is defined seems to subtly vary across documentation and
 		// examples but  this implementation seems to produce believable results.
+		// It is based on the description and derivation shown here:  https://songho.ca/opengl/gl_projectionmatrix.html
 		float width = right - left;
 		float height = top - bottom;
 		float depth = far - near;
@@ -138,13 +139,13 @@ public class Matrix
 		float e11 = near2 / height;
 		float a = (right + left) / width;
 		float b = (top + bottom) / height;
-		float c = -(far + near) / (near - far);
+		float c = -(far + near) / depth;
 		float d = -(near2 * far) / depth;
 		float[] rowInner = new float[] {
 				 e00, 0.0f,    a, 0.0f,
 				0.0f,  e11,    b, 0.0f,
 				0.0f, 0.0f,    c,    d,
-				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, -1.0f, 0.0f,
 		};
 		return new Matrix(rowInner);
 	}

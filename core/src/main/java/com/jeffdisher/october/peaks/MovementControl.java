@@ -18,8 +18,8 @@ public class MovementControl
 		_locationX = -1.75f;
 		_locationY = 1.75f;
 		_locationZ =  2.50f;
-		_rotateX = 5.27f;
-		_rotateY = 0.77f;
+		_rotateX = 4.07f;
+		_rotateY = -0.83f;
 	}
 
 	public void walk(float forwardDistance)
@@ -71,8 +71,9 @@ public class MovementControl
 	{
 		float xRadians = ((float)distanceRight) / 300.0f;
 		float yRadians = ((float)distanceDown) / 300.0f;
-		// Note that _rotateX is counter-clockwise around the positive Z.
+		// Note that _rotateX is counter-clockwise around the positive Z (yaw - positive X turns to the left).
 		_rotateX -= xRadians;
+		// Note that _rotateY is counter-clockwise around the positive X (pitch - positive Y looks up).
 		_rotateY -= yRadians;
 		float pi = (float)Math.PI;
 		float pi2 = 2.0f * pi;
@@ -102,12 +103,7 @@ public class MovementControl
 
 	public Vector computeTarget()
 	{
-		// We will assume that we are looking at (0, 1, 0) when at 0 rotation.
-		float lookX = (float)Math.sin(_rotateX);
-		float lookY = (float)Math.cos(_rotateX);
-		float lookZ = (float)Math.sin(_rotateY);
-		float distanceZ = (float)Math.cos(_rotateY);
-		Vector looking = new Vector(lookX * distanceZ, lookY * distanceZ, lookZ).normalize();
+		Vector looking = GeometryHelpers.computeFacingVector(_rotateX, _rotateY);
 		return new Vector(_locationX + looking.x(), _locationY + looking.y(), _locationZ + looking.z());
 	}
 

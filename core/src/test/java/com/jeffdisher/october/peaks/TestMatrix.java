@@ -45,6 +45,34 @@ public class TestMatrix
 		_vectorEquals(new float[] {1.0f, 3.0f, 2.0f, 1.0f}, view.multiplyVector(new float[] {-1.0f, 2.0f, 3.0f, 1.0f}));
 	}
 
+	@Test
+	public void lookAtMany() throws Throwable
+	{
+		Vector eye = new Vector(-2.0f, 2.0f, 2.0f);
+		Vector target = new Vector(0.0f, 0.0f, 0.0f);
+		Vector up = new Vector(0.0f, 0.0f, 1.0f);
+		Matrix view = Matrix.lookAt(eye, target, up);
+		
+		float[] v0 = view.multiplyVector(new float[] {0.0f, 0.0f, 0.0f, 1.0f});
+		float[] v1 = view.multiplyVector(new float[] {0.0f, 0.0f, 1.0f, 1.0f});
+		float[] v2 = view.multiplyVector(new float[] {-1.5f, 0.0f, 0.0f, 1.0f});
+		float[] v3 = view.multiplyVector(new float[] {0.0f, 2.0f, 0.0f, 1.0f});
+		_vectorEquals(new float[] {0.0f, 0.0f, -3.46f, 1.0f}, v0);
+		_vectorEquals(new float[] {0.0f, 0.82f, -2.89f, 1.0f}, v1);
+		_vectorEquals(new float[] {1.06f, -0.61f, -2.6f, 1.0f}, v2);
+		_vectorEquals(new float[] {-1.41f, -0.82f, -2.3f, 1.0f}, v3);
+		
+		Matrix proj = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
+		float[] p0 = proj.multiplyVector(v0);
+		float[] p1 = proj.multiplyVector(v1);
+		float[] p2 = proj.multiplyVector(v2);
+		float[] p3 = proj.multiplyVector(v3);
+		_vectorEquals(new float[] {0.0f, 0.0f, 3.27f, 3.46f}, p0);
+		_vectorEquals(new float[] {0.0f, 0.82f, 2.69f, 2.89f}, p1);
+		_vectorEquals(new float[] {1.06f, -0.61f, 2.4f, 2.6f}, p2);
+		_vectorEquals(new float[] {-1.41f, -0.82f, 2.11f, 2.31f}, p3);
+	}
+
 
 	private static void _vectorEquals(float[] expected, float[] test)
 	{
