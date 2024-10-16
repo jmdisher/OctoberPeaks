@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks;
 
+import com.jeffdisher.october.types.EntityLocation;
+
 
 public record Vector(float x, float y, float z)
 {
@@ -16,6 +18,12 @@ public record Vector(float x, float y, float z)
 	{
 		return new Vector(end.x - start.x, end.y - start.y, end.z - start.z);
 	}
+
+	public static Vector fromEntity(EntityLocation entity, float horizontalOffsets, float zOffset)
+	{
+		return new Vector(entity.x() + horizontalOffsets, entity.y() + horizontalOffsets, entity.z() + zOffset);
+	}
+
 
 	public float magnitude()
 	{

@@ -14,6 +14,9 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.EntityConstants;
+import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.EntityVolume;
 
 
 public class OctoberPeaks extends ApplicationAdapter
@@ -145,6 +148,9 @@ public class OctoberPeaks extends ApplicationAdapter
 					@Override
 					public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
 					{
+						EntityVolume volume = EntityConstants.getVolume(EntityType.PLAYER);
+						_movement.setEye(Vector.fromEntity(projectedEntity.location(), volume.width() / 2.0f, volume.height()));
+						_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 					}
 				}
 				, "Peaks_test_client"

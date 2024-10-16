@@ -96,6 +96,13 @@ public class MovementControl
 		}
 	}
 
+	public void setEye(Vector eyeLocation)
+	{
+		_locationX = eyeLocation.x();
+		_locationY = eyeLocation.y();
+		_locationZ = eyeLocation.z();
+	}
+
 	public Vector computeEye()
 	{
 		return new Vector(_locationX, _locationY, _locationZ);
