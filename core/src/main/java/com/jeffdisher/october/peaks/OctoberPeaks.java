@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
@@ -87,42 +88,42 @@ public class OctoberPeaks extends ApplicationAdapter
 			@Override
 			public boolean keyUp(int keycode)
 			{
-				boolean didCall;
-				float magnitude = 5.0f;
-				switch (keycode)
+				// See if we need to jump/swim.
+				boolean didJump = false;
+				if (Keys.SPACE == keycode)
 				{
-				case Keys.W:
-					_movement.walk(magnitude);
-					didCall = true;
-					break;
-				case Keys.A:
-					_movement.strafeRight(-magnitude);
-					didCall = true;
-					break;
-				case Keys.S:
-					_movement.walk(-magnitude);
-					didCall = true;
-					break;
-				case Keys.D:
-					_movement.strafeRight(magnitude);
-					didCall = true;
-					break;
-				case Keys.SPACE:
-					_movement.jump(magnitude);
-					didCall = true;
-					break;
-				case Keys.SHIFT_LEFT:
-					_movement.jump(-magnitude);
-					didCall = true;
-					break;
+					didJump = _client.jumpOrSwim();
+				}
+				
+				boolean didMove = didJump;
+				if (!didJump)
+				{
+					// We didn't, so see if we can move horizontally.
+					EntityChangeMove.Direction direction;
+					switch (keycode)
+					{
+					case Keys.W:
+						direction = _movement.walk(true);
+						break;
+					case Keys.A:
+						direction = _movement.strafeRight(false);
+						break;
+					case Keys.S:
+						direction = _movement.walk(false);
+						break;
+					case Keys.D:
+						direction = _movement.strafeRight(true);
+						break;
 					default:
-						didCall = false;
+						direction = null;
+					}
+					if (null != direction)
+					{
+						_client.stepHorizontal(direction);
+						didMove = true;
+					}
 				}
-				if (didCall)
-				{
-					_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
-				}
-				return didCall;
+				return didMove;
 			}
 		});
 		Gdx.input.setCursorCatched(true);

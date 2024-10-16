@@ -1,70 +1,98 @@
 package com.jeffdisher.october.peaks;
 
+import com.jeffdisher.october.mutations.EntityChangeMove;
+import com.jeffdisher.october.utils.Assert;
 
 /**
  * This helper class is meant to encapsulate the logic for how the first-person perspective is managed and updated.
- * Note that this will need to be re-worked once the system is integrated with the OctoberProject client.
+ * The location is now handled by the common client logic but the rotation of where the player is looking isn't yet part
+ * of that system so this exists to stitch in that logic.
+ * This will either be completely removed or substantially scaled-back once that "facing" information is integrated into
+ * the common system.
  */
 public class MovementControl
 {
-	private float _locationX;
-	private float _locationY;
-	private float _locationZ;
+	private Vector _eyeLocation;
 	private float _rotateX;
 	private float _rotateY;
 
 	public MovementControl()
 	{
-		_locationX = -1.75f;
-		_locationY = 1.75f;
-		_locationZ =  15.0f;
+		_eyeLocation = new Vector(0.0f, 0.0f, 0.0f);
 		_rotateX = 4.07f;
 		_rotateY = -0.83f;
 	}
 
-	public void walk(float forwardDistance)
+	public EntityChangeMove.Direction walk(boolean isForward)
 	{
+		EntityChangeMove.Direction mutationDirection;
 		_Direction direction = _findFacing();
 		switch (direction)
 		{
 		case NORTH:
-			_locationY += forwardDistance;
+			mutationDirection = isForward
+				? EntityChangeMove.Direction.NORTH
+				: EntityChangeMove.Direction.SOUTH
+			;
 			break;
 		case EAST:
-			_locationX += forwardDistance;
+			mutationDirection = isForward
+				? EntityChangeMove.Direction.EAST
+				: EntityChangeMove.Direction.WEST
+			;
 			break;
 		case SOUTH:
-			_locationY -= forwardDistance;
+			mutationDirection = isForward
+				? EntityChangeMove.Direction.SOUTH
+				: EntityChangeMove.Direction.NORTH
+			;
 			break;
 		case WEST:
-			_locationX -= forwardDistance;
+			mutationDirection = isForward
+				? EntityChangeMove.Direction.WEST
+				: EntityChangeMove.Direction.EAST
+			;
 			break;
+		default:
+			throw Assert.unreachable();
 		}
+		return mutationDirection;
 	}
 
-	public void strafeRight(float rightDistance)
+	public EntityChangeMove.Direction strafeRight(boolean isRight)
 	{
+		EntityChangeMove.Direction mutationDirection;
 		_Direction direction = _findFacing();
 		switch (direction)
 		{
 		case NORTH:
-			_locationX += rightDistance;
+			mutationDirection = isRight
+				? EntityChangeMove.Direction.EAST
+				: EntityChangeMove.Direction.WEST
+			;
 			break;
 		case EAST:
-			_locationY -= rightDistance;
+			mutationDirection = isRight
+				? EntityChangeMove.Direction.SOUTH
+				: EntityChangeMove.Direction.NORTH
+			;
 			break;
 		case SOUTH:
-			_locationX -= rightDistance;
+			mutationDirection = isRight
+				? EntityChangeMove.Direction.WEST
+				: EntityChangeMove.Direction.EAST
+			;
 			break;
 		case WEST:
-			_locationY += rightDistance;
+			mutationDirection = isRight
+				? EntityChangeMove.Direction.NORTH
+				: EntityChangeMove.Direction.SOUTH
+			;
 			break;
+		default:
+			throw Assert.unreachable();
 		}
-	}
-
-	public void jump(float deltaZ)
-	{
-		_locationZ += deltaZ;
+		return mutationDirection;
 	}
 
 	public void rotate(int distanceRight, int distanceDown)
@@ -98,20 +126,18 @@ public class MovementControl
 
 	public void setEye(Vector eyeLocation)
 	{
-		_locationX = eyeLocation.x();
-		_locationY = eyeLocation.y();
-		_locationZ = eyeLocation.z();
+		_eyeLocation = eyeLocation;
 	}
 
 	public Vector computeEye()
 	{
-		return new Vector(_locationX, _locationY, _locationZ);
+		return _eyeLocation;
 	}
 
 	public Vector computeTarget()
 	{
 		Vector looking = GeometryHelpers.computeFacingVector(_rotateX, _rotateY);
-		return new Vector(_locationX + looking.x(), _locationY + looking.y(), _locationZ + looking.z());
+		return new Vector(_eyeLocation.x() + looking.x(), _eyeLocation.y() + looking.y(), _eyeLocation.z() + looking.z());
 	}
 
 

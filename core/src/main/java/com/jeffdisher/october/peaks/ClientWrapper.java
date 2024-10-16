@@ -7,11 +7,16 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.PropagationHelpers;
+import com.jeffdisher.october.mutations.EntityChangeJump;
+import com.jeffdisher.october.mutations.EntityChangeMove;
+import com.jeffdisher.october.mutations.EntityChangeSwim;
 import com.jeffdisher.october.persistence.BasicWorldGenerator;
 import com.jeffdisher.october.persistence.FlatWorldGenerator;
 import com.jeffdisher.october.persistence.IWorldGenerator;
@@ -21,10 +26,14 @@ import com.jeffdisher.october.process.ServerProcess;
 import com.jeffdisher.october.server.MonitoringAgent;
 import com.jeffdisher.october.server.ServerRunner;
 import com.jeffdisher.october.server.TickRunner;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.IMutablePlayerEntity;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
@@ -43,7 +52,11 @@ public class ClientWrapper
 	private final ClientProcess _client;
 
 	// Data cached from the client listener.
+	private Entity _thisEntity;
 	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
+
+	// Local state information to avoid redundant events, etc.
+	private boolean _didJump;
 
 	public ClientWrapper(Environment environment
 			, IUpdateConsumer updateConsumer
@@ -144,6 +157,56 @@ public class ClientWrapper
 		_client.doNothing(currentTimeMillis);
 	}
 
+	public void stepHorizontal(EntityChangeMove.Direction direction)
+	{
+		// Make sure that there is no in-progress action, first.
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.moveHorizontalFully(direction, currentTimeMillis);
+	}
+
+	public boolean jumpOrSwim()
+	{
+		// See if we can jump or swim.
+		boolean didMove = false;
+		// Filter for redundant events.
+		if (!_didJump)
+		{
+			Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = (AbsoluteLocation location) -> {
+				IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
+				return (null != cuboid)
+						? new BlockProxy(location.getBlockAddress(), cuboid)
+						: null
+				;
+			};
+			EntityLocation location = _thisEntity.location();
+			EntityLocation vector = _thisEntity.velocity();
+			long currentTimeMillis = System.currentTimeMillis();
+			
+			if (EntityChangeJump.canJump(previousBlockLookUp
+					, location
+					, EntityConstants.getVolume(EntityType.PLAYER)
+					, vector
+			))
+			{
+				EntityChangeJump<IMutablePlayerEntity> jumpChange = new EntityChangeJump<>();
+				_client.sendAction(jumpChange, currentTimeMillis);
+				didMove = true;
+				_didJump = true;
+			}
+			else if (EntityChangeSwim.canSwim(previousBlockLookUp
+					, location
+					, vector
+			))
+			{
+				EntityChangeSwim<IMutablePlayerEntity> swimChange = new EntityChangeSwim<>();
+				_client.sendAction(swimChange, currentTimeMillis);
+				didMove = true;
+				_didJump = true;
+			}
+		}
+		return didMove;
+	}
+
 	public void disconnect()
 	{
 		_client.disconnect();
@@ -169,6 +232,13 @@ public class ClientWrapper
 				throw Assert.unexpected(e);
 			}
 		}
+	}
+
+
+	private void _setEntity(Entity thisEntity)
+	{
+		_thisEntity = thisEntity;
+		_didJump = false;
 	}
 
 
@@ -214,6 +284,8 @@ public class ClientWrapper
 		{
 			Assert.assertTrue(_assignedLocalEntityId == authoritativeEntity.id());
 			
+			// To start, we will use the authoritative data as the projection.
+			_setEntity(authoritativeEntity);
 			_updateConsumer.thisEntityUpdated(authoritativeEntity, authoritativeEntity);
 		}
 		@Override
@@ -221,6 +293,8 @@ public class ClientWrapper
 		{
 			Assert.assertTrue(_assignedLocalEntityId == authoritativeEntity.id());
 			
+			// Locally, we just use the projection.
+			_setEntity(projectedEntity);
 			_updateConsumer.thisEntityUpdated(authoritativeEntity, projectedEntity);
 		}
 		@Override
