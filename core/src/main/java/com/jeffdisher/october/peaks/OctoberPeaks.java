@@ -13,6 +13,7 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.Entity;
 
 
 public class OctoberPeaks extends ApplicationAdapter
@@ -125,7 +126,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
 		_client = new ClientWrapper(_environment
-				, new ClientWrapper.ICuboidUpdateConsumer() {
+				, new ClientWrapper.IUpdateConsumer() {
 					@Override
 					public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 					{
@@ -140,6 +141,10 @@ public class OctoberPeaks extends ApplicationAdapter
 					public void unload(CuboidAddress address)
 					{
 						_scene.removeCuboid(address);
+					}
+					@Override
+					public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
+					{
 					}
 				}
 				, "Peaks_test_client"

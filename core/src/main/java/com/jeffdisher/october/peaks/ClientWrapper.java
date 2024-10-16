@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import com.jeffdisher.october.aspects.Environment;
@@ -33,21 +35,24 @@ public class ClientWrapper
 	public static final int PORT = 5678;
 
 	private final Environment _environment;
-	private final ICuboidUpdateConsumer _changedCuboidConsumer;
+	private final IUpdateConsumer _updateConsumer;
 	private final WorldConfig _config;
 	private final ResourceLoader _loader;
 	private final MonitoringAgent _monitoringAgent;
 	private final ServerProcess _server;
 	private final ClientProcess _client;
 
+	// Data cached from the client listener.
+	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
+
 	public ClientWrapper(Environment environment
-			, ICuboidUpdateConsumer changedCuboidConsumer
+			, IUpdateConsumer updateConsumer
 			, String clientName
 			, InetSocketAddress serverAddress
 	)
 	{
 		_environment = environment;
-		_changedCuboidConsumer = changedCuboidConsumer;
+		_updateConsumer = updateConsumer;
 		
 		try
 		{
@@ -112,6 +117,8 @@ public class ClientWrapper
 			// TODO:  Handle this network start-up failure or make sure it can't happen.
 			throw Assert.unexpected(e);
 		}
+		
+		_cuboids = new HashMap<>();
 	}
 
 	public void finishStartup()
@@ -187,27 +194,34 @@ public class ClientWrapper
 		@Override
 		public void cuboidDidChange(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 		{
-			_changedCuboidConsumer.updateExisting(cuboid, heightMap, changedBlocks);
+			_cuboids.put(cuboid.getCuboidAddress(), cuboid);
+			_updateConsumer.updateExisting(cuboid, heightMap, changedBlocks);
 		}
 		@Override
 		public void cuboidDidLoad(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 		{
-			_changedCuboidConsumer.loadNew(cuboid, heightMap);
+			_cuboids.put(cuboid.getCuboidAddress(), cuboid);
+			_updateConsumer.loadNew(cuboid, heightMap);
 		}
 		@Override
 		public void cuboidDidUnload(CuboidAddress address)
 		{
-			_changedCuboidConsumer.unload(address);
+			_cuboids.remove(address);
+			_updateConsumer.unload(address);
 		}
 		@Override
 		public void thisEntityDidLoad(Entity authoritativeEntity)
 		{
 			Assert.assertTrue(_assignedLocalEntityId == authoritativeEntity.id());
+			
+			_updateConsumer.thisEntityUpdated(authoritativeEntity, authoritativeEntity);
 		}
 		@Override
 		public void thisEntityDidChange(Entity authoritativeEntity, Entity projectedEntity)
 		{
 			Assert.assertTrue(_assignedLocalEntityId == authoritativeEntity.id());
+			
+			_updateConsumer.thisEntityUpdated(authoritativeEntity, projectedEntity);
 		}
 		@Override
 		public void otherEntityDidChange(PartialEntity entity)
@@ -246,10 +260,11 @@ public class ClientWrapper
 		}
 	}
 
-	public static interface ICuboidUpdateConsumer
+	public static interface IUpdateConsumer
 	{
 		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
 		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks);
 		void unload(CuboidAddress address);
+		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
 	}
 }

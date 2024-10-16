@@ -156,8 +156,13 @@ public class SceneRenderer
 
 	public void removeCuboid(CuboidAddress address)
 	{
-		_gl.glDeleteBuffer(_cuboids.remove(address).array);
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		_CuboidData removed = _cuboids.remove(address);
+		// Note that this will be null if the cuboid was empty.
+		if (null != removed)
+		{
+			_gl.glDeleteBuffer(removed.array);
+			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		}
 	}
 
 
