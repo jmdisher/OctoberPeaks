@@ -121,20 +121,10 @@ public class SceneRenderer
 			@Override
 			public void visit(BlockAddress base, byte size, Short value)
 			{
-				// TODO:  Replace this with something which uses the size to make a single large cube.
-				for (byte z = 0; z < size; ++z)
-				{
-					for (byte y = 0; y < size; ++y)
-					{
-						for (byte x = 0; x < size; ++x)
-						{
-							float baseX = (base.x() + x);
-							float baseY = (base.y() + y);
-							float baseZ = (base.z() + z);
-							GraphicsHelpers.drawCube(_meshBuffer, new float[] { baseX, baseY, baseZ });
-						}
-					}
-				}
+				GraphicsHelpers.drawCube(_meshBuffer
+						, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
+						, size
+				);
 			}
 		}, (short)0);
 		

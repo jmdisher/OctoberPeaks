@@ -84,10 +84,10 @@ public class GraphicsHelpers
 		
 		direct.order(ByteOrder.nativeOrder());
 		FloatBuffer floats = direct.asFloatBuffer();
-		_drawCube(floats, new float[] {0.0f, 0.0f, 0.0f});
-		_drawCube(floats, new float[] {-1.5f, 0.0f, 0.0f});
-		_drawCube(floats, new float[] {0.0f, 2.0f, 0.0f});
-		_drawCube(floats, new float[] {0.0f, 0.0f, 1.0f});
+		_drawCube(floats, new float[] { 0.0f, 0.0f, 0.0f}, (byte)1);
+		_drawCube(floats, new float[] {-1.5f, 0.0f, 0.0f}, (byte)1);
+		_drawCube(floats, new float[] { 0.0f, 2.0f, 0.0f}, (byte)1);
+		_drawCube(floats, new float[] { 0.0f, 0.0f, 1.0f}, (byte)1);
 		((java.nio.Buffer) direct).position(0);
 		
 		int entityBuffer = gl.glGenBuffer();
@@ -102,9 +102,9 @@ public class GraphicsHelpers
 		return entityBuffer;
 	}
 
-	public static void drawCube(FloatBuffer floats, float[] base)
+	public static void drawCube(FloatBuffer floats, float[] base, byte scale)
 	{
-		_drawCube(floats, base);
+		_drawCube(floats, base, scale);
 	}
 
 
@@ -187,8 +187,9 @@ public class GraphicsHelpers
 		buffer.put(mesh);
 	}
 
-	private static void _drawCube(FloatBuffer floats, float[] base)
+	private static void _drawCube(FloatBuffer floats, float[] base, byte scale)
 	{
+		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		float[] v001 = new float[] { 0.0f, 0.0f, 1.0f };
 		float[] v101 = new float[] { 1.0f, 0.0f, 1.0f };
 		float[] v111 = new float[] { 1.0f, 1.0f, 1.0f };
@@ -197,23 +198,62 @@ public class GraphicsHelpers
 		float[] v100 = new float[] { 1.0f, 0.0f, 0.0f };
 		float[] v110 = new float[] { 1.0f, 1.0f, 0.0f };
 		float[] v010 = new float[] { 0.0f, 1.0f, 0.0f };
-		_populateQuad(floats, base, new float[][] {
-			v000, v100, v101, v001
-		}, new float[] {0.0f, -1.0f,0.0f});
-		_populateQuad(floats, base, new float[][] {
-			v110, v010, v011, v111
-		}, new float[] {0.0f, 1.0f, 0.0f});
-		_populateQuad(floats, base, new float[][] {
-			v001, v000, v010, v011
-		}, new float[] {-1.0f, 0.0f, 0.0f});
-		_populateQuad(floats, base, new float[][] {
-			v101, v100, v110, v111
-		}, new float[] {1.0f, 0.0f, 0.0f});
-		_populateQuad(floats, base, new float[][] {
-			v000, v010, v110, v100
-		}, new float[] {0.0f, 0.0f, -1.0f});
-		_populateQuad(floats, base, new float[][] {
-			v011, v001, v101, v111
-		}, new float[] {0.0f, 0.0f, 1.0f});
+		
+		// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
+		// We subtract one from the base scale since we would double-count the top "1.0f".
+		float baseScale = (float)scale - 1.0f;
+		
+		// X-normal plane.
+		for (byte z = 0; z < scale; ++z)
+		{
+			float zBase = base[2] + (float)z;
+			for (byte y = 0; y < scale; ++y)
+			{
+				float yBase = base[1] + (float)y;
+				float[] localBase = new float[] { base[0], yBase, zBase};
+				_populateQuad(floats, localBase, new float[][] {
+					v001, v000, v010, v011
+				}, new float[] {-1.0f, 0.0f, 0.0f});
+				localBase[0] += baseScale;
+				_populateQuad(floats, localBase, new float[][] {
+					v101, v100, v110, v111
+				}, new float[] {1.0f, 0.0f, 0.0f});
+			}
+		}
+		// Y-normal plane.
+		for (byte z = 0; z < scale; ++z)
+		{
+			float zBase = base[2] + (float)z;
+			for (byte x = 0; x < scale; ++x)
+			{
+				float xBase = base[0] + (float)x;
+				float[] localBase = new float[] { xBase, base[1], zBase};
+				_populateQuad(floats, localBase, new float[][] {
+					v000, v100, v101, v001
+				}, new float[] {0.0f, -1.0f,0.0f});
+				localBase[1] += baseScale;
+				_populateQuad(floats, localBase, new float[][] {
+					v110, v010, v011, v111
+				}, new float[] {0.0f, 1.0f, 0.0f});
+			}
+		}
+		// Z-normal plane.
+		for (byte y = 0; y < scale; ++y)
+		{
+			float yBase = base[1] + (float)y;
+			for (byte x = 0; x < scale; ++x)
+			{
+				float xBase = base[0] + (float)x;
+				float[] localBase = new float[] { xBase, yBase, base[2]};
+				_populateQuad(floats, localBase, new float[][] {
+					v000, v010, v110, v100
+				}, new float[] {0.0f, 0.0f, -1.0f});
+				localBase[2] += baseScale;
+				_populateQuad(floats, localBase, new float[][] {
+					v011, v001, v101, v111
+				}, new float[] {0.0f, 0.0f, 1.0f});
+			}
+		}
+		
 	}
 }
