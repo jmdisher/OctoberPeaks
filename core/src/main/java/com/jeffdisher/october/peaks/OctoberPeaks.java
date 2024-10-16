@@ -5,13 +5,10 @@ import java.util.Set;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
@@ -27,6 +24,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	private SceneRenderer _scene;
 	private MovementControl _movement;
 	private ClientWrapper _client;
+	private InputManager _input;
 
 	@Override
 	public void create()
@@ -48,85 +46,6 @@ public class OctoberPeaks extends ApplicationAdapter
 			throw new AssertionError("Startup scene", e);
 		}
 		_movement = new MovementControl();
-		Gdx.input.setInputProcessor(new InputAdapter() {
-			boolean _didInitialize = false;
-			int _x;
-			int _y;
-			@Override
-			public boolean touchDragged(int screenX, int screenY, int pointer)
-			{
-				return true;
-			}
-			@Override
-			public boolean mouseMoved(int screenX, int screenY)
-			{
-				if (_didInitialize)
-				{
-					int deltaX = screenX - _x;
-					int deltaY = screenY - _y;
-					_movement.rotate(deltaX, deltaY);
-					_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
-				}
-				else if ((0 != screenX) && (0 != screenY))
-				{
-					_didInitialize = true;
-				}
-				_x = screenX;
-				_y = screenY;
-				return true;
-			}
-			@Override
-			public boolean keyDown(int keycode)
-			{
-				if (Keys.ESCAPE == keycode)
-				{
-					Gdx.input.setCursorCatched(false);
-					Gdx.input.setInputProcessor(null);
-				}
-				return true;
-			}
-			@Override
-			public boolean keyUp(int keycode)
-			{
-				// See if we need to jump/swim.
-				boolean didJump = false;
-				if (Keys.SPACE == keycode)
-				{
-					didJump = _client.jumpOrSwim();
-				}
-				
-				boolean didMove = didJump;
-				if (!didJump)
-				{
-					// We didn't, so see if we can move horizontally.
-					EntityChangeMove.Direction direction;
-					switch (keycode)
-					{
-					case Keys.W:
-						direction = _movement.walk(true);
-						break;
-					case Keys.A:
-						direction = _movement.strafeRight(false);
-						break;
-					case Keys.S:
-						direction = _movement.walk(false);
-						break;
-					case Keys.D:
-						direction = _movement.strafeRight(true);
-						break;
-					default:
-						direction = null;
-					}
-					if (null != direction)
-					{
-						_client.stepHorizontal(direction);
-						didMove = true;
-					}
-				}
-				return didMove;
-			}
-		});
-		Gdx.input.setCursorCatched(true);
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
 		_client = new ClientWrapper(_environment
@@ -158,11 +77,19 @@ public class OctoberPeaks extends ApplicationAdapter
 				, null
 		);
 		_client.finishStartup();
+		_input = new InputManager(_movement, _client);
 	}
 
 	@Override
 	public void render()
 	{
+		// Handle any event processing.
+		boolean shouldUpdatePosition = _input.shouldUpdateSceneRunningEvents();
+		if (shouldUpdatePosition)
+		{
+			_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
+		}
+		
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		_gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
