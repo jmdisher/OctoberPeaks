@@ -3,6 +3,7 @@ package com.jeffdisher.october.peaks.lwjgl3;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.jeffdisher.october.peaks.OctoberPeaks;
+import com.jeffdisher.october.peaks.Options;
 
 
 /** Launches the desktop (LWJGL3) application. */
@@ -12,12 +13,12 @@ public class Lwjgl3Launcher
 	{
 		if (StartupHelper.startNewJvmIfRequired())
 			return; // This handles macOS support and helps on Windows.
-		createApplication();
+		createApplication(Options.fromCommandLine(args));
 	}
 
-	private static Lwjgl3Application createApplication()
+	private static Lwjgl3Application createApplication(Options options)
 	{
-		return new Lwjgl3Application(new OctoberPeaks(), getDefaultConfiguration());
+		return new Lwjgl3Application(new OctoberPeaks(options), getDefaultConfiguration());
 	}
 
 	private static Lwjgl3ApplicationConfiguration getDefaultConfiguration()

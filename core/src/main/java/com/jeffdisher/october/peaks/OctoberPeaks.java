@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.Set;
 
 import com.badlogic.gdx.ApplicationAdapter;
@@ -19,12 +20,21 @@ import com.jeffdisher.october.types.EntityVolume;
 
 public class OctoberPeaks extends ApplicationAdapter
 {
+	private final String _clientName;
+	private final InetSocketAddress _serverSocketAddress;
+
 	private Environment _environment;
 	private GL20 _gl;
 	private SceneRenderer _scene;
 	private MovementControl _movement;
 	private ClientWrapper _client;
 	private InputManager _input;
+
+	public OctoberPeaks(Options options)
+	{
+		_clientName = options.clientName();
+		_serverSocketAddress = options.serverAddress();
+	}
 
 	@Override
 	public void create()
@@ -73,8 +83,8 @@ public class OctoberPeaks extends ApplicationAdapter
 						_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 					}
 				}
-				, "Peaks_test_client"
-				, null
+				, _clientName
+				, _serverSocketAddress
 		);
 		_client.finishStartup();
 		_input = new InputManager(_movement, _client);
