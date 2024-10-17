@@ -20,6 +20,8 @@ import com.badlogic.gdx.graphics.GL20;
 public class GraphicsHelpers
 {
 	public static final int FLOATS_PER_VERTEX = 3 + 3 + 2;
+	// 6 sizes, each with 2 triangles, each with 3 vertices.
+	public static final int RECTANGULAR_PRISM_VERTEX_COUNT = 6 * 2 * 3;
 
 	public static int fullyLinkedProgram(GL20 gl, String vertexSource, String fragmentSource, String[] attributesInOrder)
 	{
@@ -107,6 +109,16 @@ public class GraphicsHelpers
 		_drawCube(floats, base, scale);
 	}
 
+	public static void drawRectangularPrism(FloatBuffer floats, float[] edge)
+	{
+		_drawRectangularPrism(floats
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, (byte)1
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, edge
+		);
+	}
+
 
 	private static int _compileAndAttachShader(GL20 gl, int program, int shaderType, String source)
 	{
@@ -190,14 +202,30 @@ public class GraphicsHelpers
 	private static void _drawCube(FloatBuffer floats, float[] base, byte scale)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		float[] v001 = new float[] { 0.0f, 0.0f, 1.0f };
-		float[] v101 = new float[] { 1.0f, 0.0f, 1.0f };
-		float[] v111 = new float[] { 1.0f, 1.0f, 1.0f };
-		float[] v011 = new float[] { 0.0f, 1.0f, 1.0f };
-		float[] v000 = new float[] { 0.0f, 0.0f, 0.0f };
-		float[] v100 = new float[] { 1.0f, 0.0f, 0.0f };
-		float[] v110 = new float[] { 1.0f, 1.0f, 0.0f };
-		float[] v010 = new float[] { 0.0f, 1.0f, 0.0f };
+		_drawRectangularPrism(floats
+				, base
+				, scale
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, new float[] { 1.0f, 1.0f, 1.0f }
+		);
+	}
+
+	private static void _drawRectangularPrism(FloatBuffer floats
+			, float[] base
+			, byte scale
+			, float[] prismBase
+			, float[] prismEdge
+	)
+	{
+		// Note that no matter the scale, the quad vertices are the same magnitudes.
+		float[] v001 = new float[] { prismBase[0], prismBase[1], prismEdge[2] };
+		float[] v101 = new float[] { prismEdge[0], prismBase[1], prismEdge[2] };
+		float[] v111 = new float[] { prismEdge[0], prismEdge[1], prismEdge[2] };
+		float[] v011 = new float[] { prismBase[0], prismEdge[1], prismEdge[2] };
+		float[] v000 = new float[] { prismBase[0], prismBase[1], prismBase[2] };
+		float[] v100 = new float[] { prismEdge[0], prismBase[1], prismBase[2] };
+		float[] v110 = new float[] { prismEdge[0], prismEdge[1], prismBase[2] };
+		float[] v010 = new float[] { prismBase[0], prismEdge[1], prismBase[2] };
 		
 		// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
 		// We subtract one from the base scale since we would double-count the top "1.0f".
@@ -254,6 +282,5 @@ public class GraphicsHelpers
 				}, new float[] {0.0f, 0.0f, 1.0f});
 			}
 		}
-		
 	}
 }

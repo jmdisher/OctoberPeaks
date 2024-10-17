@@ -301,15 +301,20 @@ public class ClientWrapper
 		public void otherEntityDidChange(PartialEntity entity)
 		{
 			Assert.assertTrue(_assignedLocalEntityId != entity.id());
+			
+			_updateConsumer.otherEntityUpdated(entity);
 		}
 		@Override
 		public void otherEntityDidLoad(PartialEntity entity)
 		{
 			Assert.assertTrue(_assignedLocalEntityId != entity.id());
+			
+			_updateConsumer.otherEntityUpdated(entity);
 		}
 		@Override
 		public void otherEntityDidUnload(int id)
 		{
+			_updateConsumer.otherEntityDidUnload(id);
 		}
 		@Override
 		public void tickDidComplete(long tickNumber)
@@ -339,6 +344,10 @@ public class ClientWrapper
 		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
 		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks);
 		void unload(CuboidAddress address);
+		
 		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
+		
+		void otherEntityUpdated(PartialEntity entity);
+		void otherEntityDidUnload(int id);
 	}
 }

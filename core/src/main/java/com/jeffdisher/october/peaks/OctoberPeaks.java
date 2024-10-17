@@ -16,6 +16,7 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.PartialEntity;
 
 
 public class OctoberPeaks extends ApplicationAdapter
@@ -82,6 +83,16 @@ public class OctoberPeaks extends ApplicationAdapter
 						EntityVolume volume = EntityConstants.getVolume(EntityType.PLAYER);
 						_movement.setEye(Vector.fromEntity(projectedEntity.location(), volume.width() / 2.0f, volume.height()));
 						_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
+					}
+					@Override
+					public void otherEntityUpdated(PartialEntity entity)
+					{
+						_scene.setEntity(entity);
+					}
+					@Override
+					public void otherEntityDidUnload(int id)
+					{
+						_scene.removeEntity(id);
 					}
 				}
 				, _clientName

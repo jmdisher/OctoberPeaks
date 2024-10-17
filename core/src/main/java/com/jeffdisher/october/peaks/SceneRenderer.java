@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,6 +16,11 @@ import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.EntityConstants;
+import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -35,6 +41,8 @@ public class SceneRenderer
 	private final int _image;
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
+	private final Map<Integer, PartialEntity> _entities;
+	private final Map<EntityType, Integer> _entityMeshes;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
@@ -64,6 +72,28 @@ public class SceneRenderer
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
 		_meshBuffer = direct.asFloatBuffer();
+		_entities = new HashMap<>();
+		Map<EntityType, Integer> entityMeshes = new HashMap<>();
+		for (EntityType type : EntityType.values())
+		{
+			if (EntityType.ERROR != type)
+			{
+				EntityVolume volume = EntityConstants.getVolume(type);
+				int buffer = _gl.glGenBuffer();
+				Assert.assertTrue(buffer > 0);
+				_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
+				
+				// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
+				_meshBuffer.clear();
+				GraphicsHelpers.drawRectangularPrism(_meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
+				_meshBuffer.flip();
+				_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
+				
+				Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+				entityMeshes.put(type, buffer);
+			}
+		}
+		_entityMeshes = Collections.unmodifiableMap(entityMeshes);
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -103,6 +133,22 @@ public class SceneRenderer
 			_gl.glEnableVertexAttribArray(2);
 			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
 			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, value.vertexCount);
+		}
+		
+		// Render any entities.
+		for (PartialEntity entity : _entities.values())
+		{
+			EntityLocation location = entity.location();
+			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
+			model.uploadAsUniform(_gl, _uModelMatrix);
+			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _entityMeshes.get(entity.type()));
+			_gl.glEnableVertexAttribArray(0);
+			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
+			_gl.glEnableVertexAttribArray(1);
+			_gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
+			_gl.glEnableVertexAttribArray(2);
+			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
+			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 	}
 
@@ -153,6 +199,16 @@ public class SceneRenderer
 			_gl.glDeleteBuffer(removed.array);
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
+	}
+
+	public void setEntity(PartialEntity entity)
+	{
+		_entities.put(entity.id(), entity);
+	}
+
+	public void removeEntity(int id)
+	{
+		_entities.remove(id);
 	}
 
 
