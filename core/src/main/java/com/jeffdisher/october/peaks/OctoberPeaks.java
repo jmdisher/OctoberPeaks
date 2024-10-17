@@ -46,6 +46,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		_gl.glEnable(GL20.GL_BLEND);
 		_gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
+		_gl.glEnable(GL20.GL_CULL_FACE);
 		
 		try
 		{

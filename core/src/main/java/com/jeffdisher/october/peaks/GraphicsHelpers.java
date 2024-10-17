@@ -212,11 +212,11 @@ public class GraphicsHelpers
 				float yBase = base[1] + (float)y;
 				float[] localBase = new float[] { base[0], yBase, zBase};
 				_populateQuad(floats, localBase, new float[][] {
-					v001, v000, v010, v011
+					v010, v000, v001, v011
 				}, new float[] {-1.0f, 0.0f, 0.0f});
 				localBase[0] += baseScale;
 				_populateQuad(floats, localBase, new float[][] {
-					v101, v100, v110, v111
+					v111, v101, v100, v110
 				}, new float[] {1.0f, 0.0f, 0.0f});
 			}
 		}
@@ -229,11 +229,11 @@ public class GraphicsHelpers
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, base[1], zBase};
 				_populateQuad(floats, localBase, new float[][] {
-					v000, v100, v101, v001
+					v001, v000, v100, v101
 				}, new float[] {0.0f, -1.0f,0.0f});
 				localBase[1] += baseScale;
 				_populateQuad(floats, localBase, new float[][] {
-					v110, v010, v011, v111
+					v111, v110, v010, v011
 				}, new float[] {0.0f, 1.0f, 0.0f});
 			}
 		}
@@ -246,7 +246,7 @@ public class GraphicsHelpers
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, yBase, base[2]};
 				_populateQuad(floats, localBase, new float[][] {
-					v000, v010, v110, v100
+					v110, v100, v000, v010
 				}, new float[] {0.0f, 0.0f, -1.0f});
 				localBase[2] += baseScale;
 				_populateQuad(floats, localBase, new float[][] {
