@@ -1,9 +1,14 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.PartialEntity;
 
 
 public class TestGeometryHelpers
@@ -95,6 +100,48 @@ public class TestGeometryHelpers
 			return false;
 		});
 		Assert.assertNull(result);
+	}
+
+	@Test
+	public void entityTrivial() throws Throwable
+	{
+		Vector start = new Vector(1.0f, 5.0f, 1.0f);
+		Vector end = new Vector(0.0f, -2.0f, 0.0f);
+		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(0.0f, 1.0f, 0.0f), (byte)1);
+		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertEquals(entity, closest);
+	}
+
+	@Test
+	public void entityParallelRayHit() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 5.0f, 0.0f);
+		Vector end = new Vector(0.0f, -2.0f, 0.0f);
+		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(0.0f, 1.0f, 0.0f), (byte)1);
+		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertEquals(entity, closest);
+	}
+
+	@Test
+	public void entityParallelRayMiss() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 5.0f, 0.0f);
+		Vector end = new Vector(0.0f, -2.0f, 0.0f);
+		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(1.0f, 1.0f, 0.0f), (byte)1);
+		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertNull(closest);
+	}
+
+	@Test
+	public void entityParallelRayMultipleEntities() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 5.0f, 1.0f);
+		Vector end = new Vector(0.0f, -2.0f, 0.0f);
+		PartialEntity entity0 = new PartialEntity(-1, EntityType.COW, new EntityLocation(0.0f, 1.0f, 0.0f), (byte)1);
+		PartialEntity entity1 = new PartialEntity(-2, EntityType.COW, new EntityLocation(0.0f, 2.0f, 0.5f), (byte)1);
+		PartialEntity entity2 = new PartialEntity(-3, EntityType.COW, new EntityLocation(1.0f, 3.0f, 0.5f), (byte)1);
+		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity2, entity1, entity0));
+		Assert.assertEquals(entity1, closest);
 	}
 
 

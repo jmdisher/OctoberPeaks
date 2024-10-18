@@ -1,8 +1,13 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.Collection;
 import java.util.function.Predicate;
 
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.EntityConstants;
+import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.PartialEntity;
 
 
 public class GeometryHelpers
@@ -102,6 +107,113 @@ public class GeometryHelpers
 				? new RayResult(thisStep, lastFalse)
 				: null
 		;
+	}
+
+	/**
+	 * Finds the closest entity in entities to start which is within the ray up to end.
+	 * 
+	 * @param start The starting-point of the ray.
+	 * @param end The end-point of the ray.
+	 * @param entities The collection of entities to consider.
+	 * @return The closest entity instance or null if none were within this ray.
+	 */
+	public static PartialEntity findSelectedEntity(Vector start, Vector end, Collection<PartialEntity> entities)
+	{
+		// We will check each entity for intersections with the ray and AABB using the common "Slab Method".
+		// Good summary found here:  https://en.wikipedia.org/wiki/Slab_method
+		
+		// Extract the axis-aligned components of the ray.
+		// (we will handle the axis-parallel rays as special-cases)
+		boolean isFixedX = (end.x() == start.x());
+		boolean isFixedY = (end.y() == start.y());
+		boolean isFixedZ = (end.z() == start.z());
+		float compX = isFixedX
+				? start.x()
+				: end.x() - start.x()
+		;
+		float compY = isFixedY
+				? start.y()
+				: end.y() - start.y()
+		;
+		float compZ = isFixedZ
+				? start.z()
+				: end.z() - start.z()
+		;
+		
+		PartialEntity closest = null;
+		float distance = Float.MAX_VALUE;
+		for (PartialEntity entity : entities)
+		{
+			// Extract the axis-aligned bounding-box from the entity.
+			EntityLocation base = entity.location();
+			EntityVolume volume = EntityConstants.getVolume(entity.type());
+			float baseX = base.x();
+			float edgeX = baseX + volume.width();
+			float baseY = base.y();
+			float edgeY = baseY + volume.width();
+			float baseZ = base.z();
+			float edgeZ = baseZ + volume.height();
+			
+			// We will calculate the t-values relative to the end of the vector so any match will be when all axes have t values in [0..1].
+			float closeX = Float.MIN_VALUE;
+			float farX;
+			if (isFixedX)
+			{
+				farX = ((baseX <= compX) && (compX <= edgeX))
+						? Float.MAX_VALUE
+						: Float.MIN_VALUE
+				;
+			}
+			else
+			{
+				float txLow = (baseX - start.x()) / compX;
+				float txHigh = (edgeX - start.x()) / compX;
+				closeX = Math.min(txLow, txHigh);
+				farX = Math.max(txLow, txHigh);
+			}
+			float closeY = Float.MIN_VALUE;
+			float farY;
+			if (isFixedY)
+			{
+				farY = ((baseY <= compY) && (compY <= edgeY))
+						? Float.MAX_VALUE
+						: Float.MIN_VALUE
+				;
+			}
+			else
+			{
+				float tyLow = (baseY - start.y()) / compY;
+				float tyHigh = (edgeY - start.y()) / compY;
+				closeY = Math.min(tyLow, tyHigh);
+				farY = Math.max(tyLow, tyHigh);
+			}
+			float closeZ = Float.MIN_VALUE;
+			float farZ;
+			if (isFixedZ)
+			{
+				farZ = ((baseZ <= compZ) && (compZ <= edgeZ))
+						? Float.MAX_VALUE
+						: Float.MIN_VALUE
+				;
+			}
+			else
+			{
+				float tzLow = (baseZ - start.z()) / compZ;
+				float tzHigh = (edgeZ - start.z()) / compZ;
+				closeZ = Math.min(tzLow, tzHigh);
+				farZ = Math.max(tzLow, tzHigh);
+			}
+			
+			float close = Math.max(closeX, Math.max(closeY, closeZ));
+			float far = Math.min(farX, Math.min(farY, farZ));
+			
+			if ((close <= far) && (close < distance))
+			{
+				closest = entity;
+				distance = close;
+			}
+		}
+		return closest;
 	}
 
 	public static AbsoluteLocation locationFromVector(Vector vector)
