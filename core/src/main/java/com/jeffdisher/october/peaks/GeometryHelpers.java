@@ -207,7 +207,7 @@ public class GeometryHelpers
 			float close = Math.max(closeX, Math.max(closeY, closeZ));
 			float far = Math.min(farX, Math.min(farY, farZ));
 			
-			if ((close <= far) && (close < distance))
+			if ((close <= far) && (close >= 0.0f) && (close < distance))
 			{
 				closest = entity;
 				distance = close;

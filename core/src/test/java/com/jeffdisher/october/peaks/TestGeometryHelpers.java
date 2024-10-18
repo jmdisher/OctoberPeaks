@@ -144,6 +144,16 @@ public class TestGeometryHelpers
 		Assert.assertEquals(entity1, closest);
 	}
 
+	@Test
+	public void entityBehind() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 0.0f, 0.0f);
+		Vector end = new Vector(2.0f, 2.0f, 2.0f);
+		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(-1.0f, -1.0f, -1.0f), (byte)1);
+		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertNull(closest);
+	}
+
 
 	private static void _vectorEquals(Vector expected, Vector test)
 	{
