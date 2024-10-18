@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.EntityConstants;
@@ -43,10 +44,13 @@ public class SceneRenderer
 	private final FloatBuffer _meshBuffer;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, Integer> _entityMeshes;
+	private final int _highlightTexture;
+	private final int _highlightCube;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
+	private Vector _target;
 
 	public SceneRenderer(GL20 gl) throws IOException
 	{
@@ -94,20 +98,50 @@ public class SceneRenderer
 			}
 		}
 		_entityMeshes = Collections.unmodifiableMap(entityMeshes);
+		_highlightTexture = GraphicsHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
+		
+		int buffer = _gl.glGenBuffer();
+		Assert.assertTrue(buffer > 0);
+		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
+		_meshBuffer.clear();
+		GraphicsHelpers.drawRectangularPrism(_meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
+		_meshBuffer.flip();
+		_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		_highlightCube = buffer;
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
+		_target = new Vector(0.0f, 1.0f, 0.0f);
 	}
 
 	public void updatePosition(Vector eye, Vector target)
 	{
 		_eye = eye;
+		_target = target;
 		_viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
 	}
 
 	public void render()
 	{
+		_gl.glDepthFunc(GL20.GL_LESS);
+		GeometryHelpers.RayResult selection = GeometryHelpers.findFirstCollision(_eye, _target, (AbsoluteLocation location) -> {
+			_CuboidData data = _cuboids.get(location.getCuboidAddress());
+			boolean shouldStop = true;
+			if (null != data)
+			{
+				shouldStop = false;
+				IReadOnlyCuboidData cuboid = data.data;
+				short block = cuboid.getData15(AspectRegistry.BLOCK, location.getBlockAddress());
+				// Check against the air block.
+				if (0 != block)
+				{
+					shouldStop = true;
+				}
+			}
+			return shouldStop;
+		});
 		_gl.glUseProgram(_program);
 		
 		// Make sure that the texture is active.
@@ -142,6 +176,24 @@ public class SceneRenderer
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _entityMeshes.get(entity.type()));
+			_gl.glEnableVertexAttribArray(0);
+			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
+			_gl.glEnableVertexAttribArray(1);
+			_gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
+			_gl.glEnableVertexAttribArray(2);
+			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
+			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+		}
+		
+		// Highlight the selected block.
+		if (null != selection)
+		{
+			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _highlightTexture);
+			_gl.glDepthFunc(GL20.GL_LEQUAL);
+			AbsoluteLocation solid = selection.stopBlock();
+			Matrix model = Matrix.translate(solid.x(), solid.y(), solid.z());
+			model.uploadAsUniform(_gl, _uModelMatrix);
+			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _highlightCube);
 			_gl.glEnableVertexAttribArray(0);
 			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
 			_gl.glEnableVertexAttribArray(1);
@@ -185,7 +237,7 @@ public class SceneRenderer
 			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, entityBuffer);
 			// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
 			_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
-			_cuboids.put(address, new _CuboidData(entityBuffer, vertexCount));
+			_cuboids.put(address, new _CuboidData(entityBuffer, vertexCount, cuboid));
 		}
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
@@ -219,5 +271,6 @@ public class SceneRenderer
 
 	private static record _CuboidData(int array
 			, int vertexCount
+			, IReadOnlyCuboidData data
 	) {}
 }

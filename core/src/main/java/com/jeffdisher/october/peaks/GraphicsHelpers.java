@@ -12,6 +12,7 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -64,16 +65,21 @@ public class GraphicsHelpers
 		}
 		((java.nio.Buffer) textureBufferData).flip();
 		
-		// Create the texture and upload.
-		int texture = gl.glGenTexture();
-		gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
-		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGBA, width, height, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_WRAP_S, GL20.GL_CLAMP_TO_EDGE);
-		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_WRAP_T, GL20.GL_CLAMP_TO_EDGE);
+		return _uploadNewTexture(gl, height, width, textureBufferData);
+	}
+
+	public static int loadSinglePixelImageRGBA(GL20 gl, byte[] rawPixel)
+	{
+		Assert.assertTrue(4 == rawPixel.length);
+		int bytesToAllocate = 4;
+		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(bytesToAllocate);
+		textureBufferData.order(ByteOrder.nativeOrder());
 		
-		// In this case, we just use the default mipmap behaviour.
-		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
-		return texture;
+		// We store the raw pixel data as RGBA.
+		textureBufferData.put(rawPixel);
+		((java.nio.Buffer) textureBufferData).flip();
+		
+		return _uploadNewTexture(gl, 1, 1, textureBufferData);
 	}
 
 	public static int buildTestingScene(GL20 gl)
@@ -282,5 +288,19 @@ public class GraphicsHelpers
 				}, new float[] {0.0f, 0.0f, 1.0f});
 			}
 		}
+	}
+
+	private static int _uploadNewTexture(GL20 gl, int height, int width, ByteBuffer textureBufferData)
+	{
+		// Create the texture and upload.
+		int texture = gl.glGenTexture();
+		gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
+		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGBA, width, height, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_WRAP_S, GL20.GL_CLAMP_TO_EDGE);
+		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_WRAP_T, GL20.GL_CLAMP_TO_EDGE);
+		
+		// In this case, we just use the default mipmap behaviour.
+		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
+		return texture;
 	}
 }
