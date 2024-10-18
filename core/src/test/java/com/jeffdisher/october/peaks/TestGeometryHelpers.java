@@ -3,6 +3,8 @@ package com.jeffdisher.october.peaks;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.jeffdisher.october.types.AbsoluteLocation;
+
 
 public class TestGeometryHelpers
 {
@@ -32,6 +34,67 @@ public class TestGeometryHelpers
 		pitch = 0.2f;
 		Vector backUp = GeometryHelpers.computeFacingVector(yaw, pitch);
 		_vectorEquals(new Vector(0.0f, -0.98f, 0.2f), backUp);
+	}
+
+	@Test
+	public void positiveRayNoMatch() throws Throwable
+	{
+		Vector start = new Vector(-2.0f, -3.0f, -4.0f);
+		Vector end = new Vector(2.0f, 3.0f, 4.0f);
+		AbsoluteLocation[] holder = new AbsoluteLocation[1];
+		GeometryHelpers.RayResult result = GeometryHelpers.findFirstCollision(start, end, (AbsoluteLocation l) -> {
+			if (null != holder[0])
+			{
+				Assert.assertEquals(1, Math.abs(holder[0].x() - l.x())
+						+ Math.abs(holder[0].y() - l.y())
+						+ Math.abs(holder[0].z() - l.z())
+				);
+			}
+			holder[0] = l;
+			return false;
+		});
+		Assert.assertNull(result);
+	}
+
+	@Test
+	public void negativeAlignedRayMatch() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 5.0f, 0.0f);
+		Vector end = new Vector(0.0f, -2.0f, 0.0f);
+		AbsoluteLocation[] holder = new AbsoluteLocation[1];
+		GeometryHelpers.RayResult result = GeometryHelpers.findFirstCollision(start, end, (AbsoluteLocation l) -> {
+			if (null != holder[0])
+			{
+				Assert.assertEquals(1, Math.abs(holder[0].x() - l.x())
+						+ Math.abs(holder[0].y() - l.y())
+						+ Math.abs(holder[0].z() - l.z())
+				);
+			}
+			holder[0] = l;
+			return l.equals(GeometryHelpers.locationFromVector(end));
+		});
+		Assert.assertEquals(new AbsoluteLocation(0, -2, 0), result.stopBlock());
+		Assert.assertEquals(new AbsoluteLocation(0, -1, 0), result.preStopBlock());
+	}
+
+	@Test
+	public void shortVector() throws Throwable
+	{
+		Vector start = new Vector(29.34f, -1.26f, 10.9f);
+		Vector end = new Vector(30.24f, -0.97f, 10.59f);
+		AbsoluteLocation[] holder = new AbsoluteLocation[1];
+		GeometryHelpers.RayResult result = GeometryHelpers.findFirstCollision(start, end, (AbsoluteLocation l) -> {
+			if (null != holder[0])
+			{
+				Assert.assertEquals(1, Math.abs(holder[0].x() - l.x())
+						+ Math.abs(holder[0].y() - l.y())
+						+ Math.abs(holder[0].z() - l.z())
+				);
+			}
+			holder[0] = l;
+			return false;
+		});
+		Assert.assertNull(result);
 	}
 
 
