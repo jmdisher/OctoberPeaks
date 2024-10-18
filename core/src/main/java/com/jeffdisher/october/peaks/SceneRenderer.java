@@ -127,8 +127,14 @@ public class SceneRenderer
 	{
 		_gl.glDepthFunc(GL20.GL_LESS);
 		// Find any selected entity or block.
-		PartialEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, _target, _entities.values());
-		GeometryHelpers.RayResult selection = GeometryHelpers.findFirstCollision(_eye, _target, (AbsoluteLocation location) -> {
+		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, _target, _entities.values());
+		Vector edgeLimit = _target;
+		if (null != selectedEntity)
+		{
+			Vector relative = Vector.delta(_eye, _target).scale(selectedEntity.distance());
+			edgeLimit = new Vector(_eye.x() + relative.x(), _eye.y() + relative.y(), _eye.z() + relative.z());
+		}
+		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, edgeLimit, (AbsoluteLocation location) -> {
 			_CuboidData data = _cuboids.get(location.getCuboidAddress());
 			boolean shouldStop = true;
 			if (null != data)
@@ -187,15 +193,15 @@ public class SceneRenderer
 			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 		
-		// Highlight the selected entity or block.
+		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
-		if (null != selectedEntity)
+		if (null != selectedBlock)
 		{
-			EntityLocation location = selectedEntity.location();
-			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
+			AbsoluteLocation solid = selectedBlock.stopBlock();
+			Matrix model = Matrix.translate(solid.x(), solid.y(), solid.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _entityMeshes.get(selectedEntity.type()));
+			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _highlightCube);
 			_gl.glEnableVertexAttribArray(0);
 			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
 			_gl.glEnableVertexAttribArray(1);
@@ -204,12 +210,13 @@ public class SceneRenderer
 			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
 			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
-		if (null != selection)
+		else if (null != selectedEntity)
 		{
-			AbsoluteLocation solid = selection.stopBlock();
-			Matrix model = Matrix.translate(solid.x(), solid.y(), solid.z());
+			PartialEntity entity = selectedEntity.entity();
+			EntityLocation location = entity.location();
+			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _highlightCube);
+			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _entityMeshes.get(entity.type()));
 			_gl.glEnableVertexAttribArray(0);
 			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
 			_gl.glEnableVertexAttribArray(1);

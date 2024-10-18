@@ -108,8 +108,9 @@ public class TestGeometryHelpers
 		Vector start = new Vector(1.0f, 5.0f, 1.0f);
 		Vector end = new Vector(0.0f, -2.0f, 0.0f);
 		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(0.0f, 1.0f, 0.0f), (byte)1);
-		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
-		Assert.assertEquals(entity, closest);
+		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertEquals(entity, closest.entity());
+		Assert.assertEquals(3.26f, closest.distance(), 0.01f);
 	}
 
 	@Test
@@ -118,8 +119,9 @@ public class TestGeometryHelpers
 		Vector start = new Vector(0.0f, 5.0f, 0.0f);
 		Vector end = new Vector(0.0f, -2.0f, 0.0f);
 		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(0.0f, 1.0f, 0.0f), (byte)1);
-		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
-		Assert.assertEquals(entity, closest);
+		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertEquals(entity, closest.entity());
+		Assert.assertEquals(3.22f, closest.distance(), 0.01f);
 	}
 
 	@Test
@@ -128,7 +130,7 @@ public class TestGeometryHelpers
 		Vector start = new Vector(0.0f, 5.0f, 0.0f);
 		Vector end = new Vector(0.0f, -2.0f, 0.0f);
 		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(1.0f, 1.0f, 0.0f), (byte)1);
-		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
 		Assert.assertNull(closest);
 	}
 
@@ -140,8 +142,9 @@ public class TestGeometryHelpers
 		PartialEntity entity0 = new PartialEntity(-1, EntityType.COW, new EntityLocation(0.0f, 1.0f, 0.0f), (byte)1);
 		PartialEntity entity1 = new PartialEntity(-2, EntityType.COW, new EntityLocation(0.0f, 2.0f, 0.5f), (byte)1);
 		PartialEntity entity2 = new PartialEntity(-3, EntityType.COW, new EntityLocation(1.0f, 3.0f, 0.5f), (byte)1);
-		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity2, entity1, entity0));
-		Assert.assertEquals(entity1, closest);
+		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity2, entity1, entity0));
+		Assert.assertEquals(entity1, closest.entity());
+		Assert.assertEquals(2.23f, closest.distance(), 0.01f);
 	}
 
 	@Test
@@ -150,7 +153,7 @@ public class TestGeometryHelpers
 		Vector start = new Vector(0.0f, 0.0f, 0.0f);
 		Vector end = new Vector(2.0f, 2.0f, 2.0f);
 		PartialEntity entity = new PartialEntity(-1, EntityType.COW, new EntityLocation(-1.0f, -1.0f, -1.0f), (byte)1);
-		PartialEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
 		Assert.assertNull(closest);
 	}
 

@@ -115,9 +115,9 @@ public class GeometryHelpers
 	 * @param start The starting-point of the ray.
 	 * @param end The end-point of the ray.
 	 * @param entities The collection of entities to consider.
-	 * @return The closest entity instance or null if none were within this ray.
+	 * @return The closest entity description or null if none were within this ray.
 	 */
-	public static PartialEntity findSelectedEntity(Vector start, Vector end, Collection<PartialEntity> entities)
+	public static SelectedEntity findSelectedEntity(Vector start, Vector end, Collection<PartialEntity> entities)
 	{
 		// We will check each entity for intersections with the ray and AABB using the common "Slab Method".
 		// Good summary found here:  https://en.wikipedia.org/wiki/Slab_method
@@ -213,7 +213,29 @@ public class GeometryHelpers
 				distance = close;
 			}
 		}
-		return closest;
+		
+		// If we have a closest, find the distance to it.
+		SelectedEntity selected = null;
+		if (null != closest)
+		{
+			// We will interpret the entity bounding box as a cylinder so compute the z distance first.
+			EntityVolume volume = EntityConstants.getVolume(closest.type());
+			float halfWidth = volume.width() / 2.0f;
+			EntityLocation location = closest.location();
+			EntityLocation centreFoot = new EntityLocation(location.x() + halfWidth, location.y() + halfWidth, location.z());
+			float zDistance = centreFoot.z() - start.z();
+			if (zDistance < 0.0f)
+			{
+				zDistance = Math.min(0.0f, zDistance + volume.height());
+			}
+			// Compute the distance in the XY plane.
+			float deltaX = centreFoot.x() - start.x();
+			float deltaY = centreFoot.y() - start.y();
+			float horizontalDistance = Math.max(0.0f, (float)Math.sqrt(deltaX * deltaX + deltaY * deltaY) - halfWidth);
+			float totalDistance = (float)Math.sqrt(horizontalDistance * horizontalDistance + zDistance * zDistance);
+			selected = new SelectedEntity(closest, totalDistance);
+		}
+		return selected;
 	}
 
 	public static AbsoluteLocation locationFromVector(Vector vector)
@@ -233,5 +255,9 @@ public class GeometryHelpers
 
 	public static record RayResult(AbsoluteLocation stopBlock
 			, AbsoluteLocation preStopBlock
+	) {}
+
+	public static record SelectedEntity(PartialEntity entity
+			, float distance
 	) {}
 }
