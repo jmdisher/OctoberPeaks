@@ -47,6 +47,7 @@ public class SceneRenderer
 	private final int _highlightTexture;
 	private final int _highlightCube;
 
+	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
 
@@ -89,29 +90,28 @@ public class SceneRenderer
 		_highlightTexture = GraphicsHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
 		_highlightCube = _createPrism(_gl, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
 		
+		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
-		
-		// Upload initial uniforms.
-		_gl.glUseProgram(_program);
-		_gl.glUniform1i(_uTexture0, 0);
-		Matrix.identity().uploadAsUniform(_gl, _uViewMatrix);
-		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
 	public void updatePosition(Vector eye, Vector target)
 	{
 		_eye = eye;
-		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
-		Matrix viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
-		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
+		_viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
 	}
 
 	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock)
 	{
+		// We want to use the perspective projection and depth buffer for the main scene.
+		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_gl.glUseProgram(_program);
+		_gl.glUniform1i(_uTexture0, 0);
+		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
+		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
+		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Make sure that the texture is active (texture0 enabled during start-up).
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);

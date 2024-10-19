@@ -18,6 +18,7 @@ import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.utils.Assert;
 
 
 public class OctoberPeaks extends ApplicationAdapter
@@ -49,7 +50,6 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Set common GL functionality for the view.
 		_gl.glEnable(GL20.GL_BLEND);
 		_gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glEnable(GL20.GL_CULL_FACE);
 		
 		try
@@ -111,6 +111,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		);
 		_client.finishStartup();
 		_input = new InputManager(_movement, _client);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
 	@Override
@@ -134,8 +135,10 @@ public class OctoberPeaks extends ApplicationAdapter
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		_gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		_scene.render(entity, stopBlock);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
 	@Override
