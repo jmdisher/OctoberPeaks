@@ -47,7 +47,6 @@ public class SceneRenderer
 	private final int _highlightTexture;
 	private final int _highlightCube;
 
-	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
 	private Vector _target;
@@ -83,44 +82,33 @@ public class SceneRenderer
 			if (EntityType.ERROR != type)
 			{
 				EntityVolume volume = EntityConstants.getVolume(type);
-				int buffer = _gl.glGenBuffer();
-				Assert.assertTrue(buffer > 0);
-				_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
-				
-				// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
-				_meshBuffer.clear();
-				GraphicsHelpers.drawRectangularPrism(_meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
-				_meshBuffer.flip();
-				_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
-				
-				Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+				int buffer = _createPrism(_gl, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
 				entityMeshes.put(type, buffer);
 			}
 		}
 		_entityMeshes = Collections.unmodifiableMap(entityMeshes);
 		_highlightTexture = GraphicsHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
+		_highlightCube = _createPrism(_gl, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
 		
-		int buffer = _gl.glGenBuffer();
-		Assert.assertTrue(buffer > 0);
-		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
-		_meshBuffer.clear();
-		GraphicsHelpers.drawRectangularPrism(_meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
-		_meshBuffer.flip();
-		_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
-		_highlightCube = buffer;
-		
-		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
 		_target = new Vector(0.0f, 1.0f, 0.0f);
+		
+		// Upload initial uniforms.
+		_gl.glUseProgram(_program);
+		_gl.glUniform1i(_uTexture0, 0);
+		Matrix.identity().uploadAsUniform(_gl, _uViewMatrix);
+		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
 	public void updatePosition(Vector eye, Vector target)
 	{
 		_eye = eye;
 		_target = target;
-		_viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
+		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
+		Matrix viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
+		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 	}
 
 	public void render()
@@ -152,29 +140,18 @@ public class SceneRenderer
 		});
 		_gl.glUseProgram(_program);
 		
-		// Make sure that the texture is active.
+		// Make sure that the texture is active (texture0 enabled during start-up).
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _image);
-		_gl.glUniform1i(_uTexture0, 0);
 		
-		// Set the matrices.
-		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
-		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
+		// Render the cuboids.
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
 			CuboidAddress key = elt.getKey();
 			_CuboidData value = elt.getValue();
 			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, value.array);
-			_gl.glEnableVertexAttribArray(0);
-			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
-			_gl.glEnableVertexAttribArray(1);
-			_gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
-			_gl.glEnableVertexAttribArray(2);
-			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
-			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, value.vertexCount);
+			GraphicsHelpers.renderStandardArray(_gl, value.array, value.vertexCount);
 		}
 		
 		// Render any entities.
@@ -183,14 +160,7 @@ public class SceneRenderer
 			EntityLocation location = entity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _entityMeshes.get(entity.type()));
-			_gl.glEnableVertexAttribArray(0);
-			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
-			_gl.glEnableVertexAttribArray(1);
-			_gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
-			_gl.glEnableVertexAttribArray(2);
-			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
-			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(entity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
@@ -201,14 +171,7 @@ public class SceneRenderer
 			AbsoluteLocation solid = selectedBlock.stopBlock();
 			Matrix model = Matrix.translate(solid.x(), solid.y(), solid.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _highlightCube);
-			_gl.glEnableVertexAttribArray(0);
-			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
-			_gl.glEnableVertexAttribArray(1);
-			_gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
-			_gl.glEnableVertexAttribArray(2);
-			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
-			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			GraphicsHelpers.renderStandardArray(_gl, _highlightCube, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 		else if (null != selectedEntity)
 		{
@@ -216,14 +179,7 @@ public class SceneRenderer
 			EntityLocation location = entity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _entityMeshes.get(entity.type()));
-			_gl.glEnableVertexAttribArray(0);
-			_gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
-			_gl.glEnableVertexAttribArray(1);
-			_gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
-			_gl.glEnableVertexAttribArray(2);
-			_gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
-			_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(entity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 	}
 
@@ -290,6 +246,20 @@ public class SceneRenderer
 	private static String _readUtf8Asset(String name)
 	{
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
+	}
+
+	private static int _createPrism(GL20 gl, FloatBuffer meshBuffer, float[] edgeVertices)
+	{
+		int buffer = gl.glGenBuffer();
+		Assert.assertTrue(buffer > 0);
+		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
+		meshBuffer.clear();
+		GraphicsHelpers.drawRectangularPrism(meshBuffer, edgeVertices);
+		meshBuffer.flip();
+		// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
+		gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, meshBuffer, GL20.GL_STATIC_DRAW);
+		Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
+		return buffer;
 	}
 
 	private static record _CuboidData(int array

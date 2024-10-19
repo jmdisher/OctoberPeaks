@@ -125,6 +125,18 @@ public class GraphicsHelpers
 		);
 	}
 
+	public static void renderStandardArray(GL20 gl, int bufferElement, int vertexCount)
+	{
+		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, bufferElement);
+		gl.glEnableVertexAttribArray(0);
+		gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
+		gl.glEnableVertexAttribArray(1);
+		gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
+		gl.glEnableVertexAttribArray(2);
+		gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
+		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, vertexCount);
+	}
+
 
 	private static int _compileAndAttachShader(GL20 gl, int program, int shaderType, String source)
 	{
