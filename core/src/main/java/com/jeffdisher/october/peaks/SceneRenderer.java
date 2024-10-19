@@ -49,7 +49,6 @@ public class SceneRenderer
 
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
-	private Vector _target;
 
 	public SceneRenderer(GL20 gl) throws IOException
 	{
@@ -92,7 +91,6 @@ public class SceneRenderer
 		
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
-		_target = new Vector(0.0f, 1.0f, 0.0f);
 		
 		// Upload initial uniforms.
 		_gl.glUseProgram(_program);
@@ -105,39 +103,14 @@ public class SceneRenderer
 	public void updatePosition(Vector eye, Vector target)
 	{
 		_eye = eye;
-		_target = target;
 		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
 		Matrix viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
 		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 	}
 
-	public void render()
+	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock)
 	{
 		_gl.glDepthFunc(GL20.GL_LESS);
-		// Find any selected entity or block.
-		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, _target, _entities.values());
-		Vector edgeLimit = _target;
-		if (null != selectedEntity)
-		{
-			Vector relative = Vector.delta(_eye, _target).scale(selectedEntity.distance());
-			edgeLimit = new Vector(_eye.x() + relative.x(), _eye.y() + relative.y(), _eye.z() + relative.z());
-		}
-		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, edgeLimit, (AbsoluteLocation location) -> {
-			_CuboidData data = _cuboids.get(location.getCuboidAddress());
-			boolean shouldStop = true;
-			if (null != data)
-			{
-				shouldStop = false;
-				IReadOnlyCuboidData cuboid = data.data;
-				short block = cuboid.getData15(AspectRegistry.BLOCK, location.getBlockAddress());
-				// Check against the air block.
-				if (0 != block)
-				{
-					shouldStop = true;
-				}
-			}
-			return shouldStop;
-		});
 		_gl.glUseProgram(_program);
 		
 		// Make sure that the texture is active (texture0 enabled during start-up).
@@ -168,18 +141,16 @@ public class SceneRenderer
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
 		if (null != selectedBlock)
 		{
-			AbsoluteLocation solid = selectedBlock.stopBlock();
-			Matrix model = Matrix.translate(solid.x(), solid.y(), solid.z());
+			Matrix model = Matrix.translate(selectedBlock.x(), selectedBlock.y(), selectedBlock.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			GraphicsHelpers.renderStandardArray(_gl, _highlightCube, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 		else if (null != selectedEntity)
 		{
-			PartialEntity entity = selectedEntity.entity();
-			EntityLocation location = entity.location();
+			EntityLocation location = selectedEntity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(entity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(selectedEntity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
 		}
 	}
 
@@ -216,7 +187,7 @@ public class SceneRenderer
 			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, entityBuffer);
 			// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
 			_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
-			_cuboids.put(address, new _CuboidData(entityBuffer, vertexCount, cuboid));
+			_cuboids.put(address, new _CuboidData(entityBuffer, vertexCount));
 		}
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
@@ -264,6 +235,5 @@ public class SceneRenderer
 
 	private static record _CuboidData(int array
 			, int vertexCount
-			, IReadOnlyCuboidData data
 	) {}
 }

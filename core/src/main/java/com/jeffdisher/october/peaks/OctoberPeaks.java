@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
@@ -23,6 +24,7 @@ public class OctoberPeaks extends ApplicationAdapter
 {
 	private final String _clientName;
 	private final InetSocketAddress _serverSocketAddress;
+	private final SelectionManager _selectionManager;
 
 	private Environment _environment;
 	private GL20 _gl;
@@ -35,6 +37,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	{
 		_clientName = options.clientName();
 		_serverSocketAddress = options.serverAddress();
+		_selectionManager = new SelectionManager();
 	}
 
 	@Override
@@ -66,33 +69,41 @@ public class OctoberPeaks extends ApplicationAdapter
 					public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 					{
 						_scene.setCuboid(cuboid);
+						_selectionManager.setCuboid(cuboid);
 					}
 					@Override
 					public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 					{
 						_scene.setCuboid(cuboid);
+						_selectionManager.setCuboid(cuboid);
 					}
 					@Override
 					public void unload(CuboidAddress address)
 					{
 						_scene.removeCuboid(address);
+						_selectionManager.removeCuboid(address);
 					}
 					@Override
 					public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
 					{
 						EntityVolume volume = EntityConstants.getVolume(EntityType.PLAYER);
 						_movement.setEye(Vector.fromEntity(projectedEntity.location(), volume.width() / 2.0f, volume.height()));
-						_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
+						Vector eye = _movement.computeEye();
+						Vector target = _movement.computeTarget();
+						_scene.updatePosition(eye, target);
+						_selectionManager.updatePosition(eye, target);
 					}
 					@Override
 					public void otherEntityUpdated(PartialEntity entity)
 					{
 						_scene.setEntity(entity);
+						_selectionManager.setEntity(entity);
 					}
 					@Override
 					public void otherEntityDidUnload(int id)
 					{
 						_scene.removeEntity(id);
+						_selectionManager.removeEntity(id);
 					}
 				}
 				, _clientName
@@ -106,17 +117,25 @@ public class OctoberPeaks extends ApplicationAdapter
 	public void render()
 	{
 		// Handle any event processing.
-		boolean shouldUpdatePosition = _input.shouldUpdateSceneRunningEvents();
+		SelectionManager.SelectionTuple selection = _selectionManager.findSelection();
+		PartialEntity entity = (null != selection) ? selection.entity() : null;
+		AbsoluteLocation stopBlock = (null != selection) ? selection.stopBlock() : null;
+		AbsoluteLocation preStopBlock = (null != selection) ? selection.preStopBlock() : null;
+
+		boolean shouldUpdatePosition = _input.shouldUpdateSceneRunningEvents(entity, stopBlock, preStopBlock);
 		if (shouldUpdatePosition)
 		{
-			_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
+			Vector eye = _movement.computeEye();
+			Vector target = _movement.computeTarget();
+			_scene.updatePosition(eye, target);
+			_selectionManager.updatePosition(eye, target);
 		}
 		
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		_gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		
-		_scene.render();
+		_scene.render(entity, stopBlock);
 		
 		// Handle any interactions with the client.
 		_client.doNothing();

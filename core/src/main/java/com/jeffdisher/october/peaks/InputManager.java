@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.Input.Keys;
 import com.jeffdisher.october.mutations.EntityChangeMove;
+import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.PartialEntity;
 
 
 /**
@@ -108,7 +110,7 @@ public class InputManager
 		Gdx.input.setCursorCatched(true);
 	}
 
-	public boolean shouldUpdateSceneRunningEvents()
+	public boolean shouldUpdateSceneRunningEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
 		// See if we need to jump/swim.
 		boolean didJump = false;
