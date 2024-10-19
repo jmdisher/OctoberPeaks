@@ -33,6 +33,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	private MovementControl _movement;
 	private ClientWrapper _client;
 	private InputManager _input;
+	private WindowManager _windowManager;
 
 	public OctoberPeaks(Options options)
 	{
@@ -111,6 +112,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		);
 		_client.finishStartup();
 		_input = new InputManager(_movement, _client);
+		_windowManager = new WindowManager(_gl);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
@@ -138,6 +140,10 @@ public class OctoberPeaks extends ApplicationAdapter
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		_scene.render(entity, stopBlock);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// Now, draw the common overlay windows (they are drawn in all cases, no matter the UI state).
+		_windowManager.drawCommonOverlays();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
