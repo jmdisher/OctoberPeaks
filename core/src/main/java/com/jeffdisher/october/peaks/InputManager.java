@@ -23,6 +23,11 @@ public class InputManager
 	private boolean _moveLeft;
 	private boolean _jumpSwim;
 	private boolean _rotationDidUpdate;
+	private boolean _buttonDown0;
+	private boolean _buttonDown1;
+	@SuppressWarnings("unused")
+	private boolean _didHandleButton0;
+	private boolean _didHandleButton1;
 
 	public InputManager(MovementControl movement, ClientWrapper client)
 	{
@@ -95,6 +100,36 @@ public class InputManager
 				}
 				return true;
 			}
+			@Override
+			public boolean touchDown(int screenX, int screenY, int pointer, int button)
+			{
+				switch(button)
+				{
+				case 0:
+					_buttonDown0 = true;
+					_didHandleButton0 = false;
+					break;
+				case 1:
+					_buttonDown1 = true;
+					_didHandleButton1 = false;
+					break;
+				}
+				return true;
+			}
+			@Override
+			public boolean touchUp(int screenX, int screenY, int pointer, int button)
+			{
+				switch(button)
+				{
+				case 0:
+					_buttonDown0 = false;
+					break;
+				case 1:
+					_buttonDown1 = false;
+					break;
+				}
+				return true;
+			}
 			private void _commonMouse(int screenX, int screenY)
 			{
 				if (_didInitialize)
@@ -154,6 +189,26 @@ public class InputManager
 				_client.stepHorizontal(direction);
 				didTakeAction = true;
 			}
+		}
+		
+		// See if we need to act in response to buttons.
+		if (_buttonDown0)
+		{
+			if (null != stopBlock)
+			{
+				// Returns false if the block wasn't valid.
+				didTakeAction = _client.hitBlock(stopBlock);
+			}
+			_didHandleButton0 = true;
+		}
+		else if (_buttonDown1)
+		{
+			if (null != preStopBlock)
+			{
+				_client.runRightClickAction(stopBlock, preStopBlock, !_didHandleButton1);
+				didTakeAction = true;
+			}
+			_didHandleButton1 = true;
 		}
 		
 		// If we took no action, just tell the client to pass time.

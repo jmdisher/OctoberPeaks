@@ -16,7 +16,13 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.PropagationHelpers;
 import com.jeffdisher.october.mutations.EntityChangeJump;
 import com.jeffdisher.october.mutations.EntityChangeMove;
+import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
+import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
 import com.jeffdisher.october.mutations.EntityChangeSwim;
+import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
+import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnSelf;
+import com.jeffdisher.october.mutations.IMutationEntity;
+import com.jeffdisher.october.mutations.MutationPlaceSelectedBlock;
 import com.jeffdisher.october.persistence.BasicWorldGenerator;
 import com.jeffdisher.october.persistence.FlatWorldGenerator;
 import com.jeffdisher.october.persistence.IWorldGenerator;
@@ -27,13 +33,19 @@ import com.jeffdisher.october.server.MonitoringAgent;
 import com.jeffdisher.october.server.ServerRunner;
 import com.jeffdisher.october.server.TickRunner;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
+import com.jeffdisher.october.types.Inventory;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
@@ -207,6 +219,108 @@ public class ClientWrapper
 		return didMove;
 	}
 
+	/**
+	 * Generates a hit event for the given location.  This may break the block or just damage it.
+	 * 
+	 * @param blockLocation The location of the block to hit.
+	 * @return True if the hit event was sent or false if it wasn't valid.
+	 */
+	public boolean hitBlock(AbsoluteLocation blockLocation)
+	{
+		// Make sure that this is a block we can break.
+		IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
+		BlockProxy proxy = new BlockProxy(blockLocation.getBlockAddress(), cuboid);
+		long currentTimeMillis = System.currentTimeMillis();
+		boolean didHit = false;
+		if (!_environment.blocks.canBeReplaced(proxy.getBlock()))
+		{
+			// This block is not the kind which can be replaced, meaning it can potentially be broken.
+			_client.hitBlock(blockLocation, currentTimeMillis);
+			didHit = true;
+		}
+		return didHit;
+	}
+
+	/**
+	 * Running an action is a generic "right-click on block" situation, assuming it wasn't a block with an inventory.
+	 * 
+	 * @param solidBlock The solid block the user clicked.
+	 * @param emptyBlock The block block before where the user clicked.
+	 * @param isJustClicked True if the click just happened (false if it is held down).
+	 */
+	public void runRightClickAction(AbsoluteLocation solidBlock, AbsoluteLocation emptyBlock, boolean isJustClicked)
+	{
+		// We need to check our selected item and see what "action" is associated with it.
+		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Block solidBlockType = new BlockProxy(solidBlock.getBlockAddress(), _cuboids.get(solidBlock.getCuboidAddress())).getBlock();
+		
+		// First, see if the target block has a general logic state we can change.
+		IMutationEntity<IMutablePlayerEntity> change;
+		if (isJustClicked && EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
+		{
+			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType);
+			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
+		}
+		else if (isJustClicked && _environment.items.getItemById("op.bed") == solidBlockType.item())
+		{
+			// This is a bed so we need to take a special action to set spawn and reset the day.
+			change = new EntityChangeSetDayAndSpawn(solidBlock);
+		}
+		else if (Entity.NO_SELECTION != selectedKey)
+		{
+			// Check if a special use exists for this item and block or if we are just placing.
+			change = null;
+			if (isJustClicked)
+			{
+				// All special actions are only taken when we just clicked.
+				Inventory inventory = _getEntityInventory();
+				Items stack = inventory.getStackForKey(selectedKey);
+				NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
+				Item selectedType = (null != stack) ? stack.type() : nonStack.type();
+				
+				// First, can we use this on the block.
+				if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, solidBlockType))
+				{
+					change = new EntityChangeUseSelectedItemOnBlock(solidBlock);
+				}
+				// See if this block can just be activated, directly.
+				else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
+				{
+					boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType);
+					change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
+				}
+				// Check to see if we can use it, directly.
+				else if (EntityChangeUseSelectedItemOnSelf.canBeUsedOnSelf(selectedType))
+				{
+					change = new EntityChangeUseSelectedItemOnSelf();
+				}
+				else
+				{
+					// Fall-through to try placement.
+					change = null;
+				}
+			}
+			
+			// We can place the block if we are right-clicking or holding.
+			if (null == change)
+			{
+				// The mutation will check proximity and collision.
+				change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
+			}
+		}
+		else
+		{
+			// Nothing to do.
+			change = null;
+		}
+		
+		if (null != change)
+		{
+			long currentTimeMillis = System.currentTimeMillis();
+			_client.sendAction(change, currentTimeMillis);
+		}
+	}
+
 	public void disconnect()
 	{
 		_client.disconnect();
@@ -239,6 +353,15 @@ public class ClientWrapper
 	{
 		_thisEntity = thisEntity;
 		_didJump = false;
+	}
+
+	private Inventory _getEntityInventory()
+	{
+		Inventory inventory = _thisEntity.isCreativeMode()
+				? CreativeInventory.fakeInventory()
+				: _thisEntity.inventory()
+		;
+		return inventory;
 	}
 
 
