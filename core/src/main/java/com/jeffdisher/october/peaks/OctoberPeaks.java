@@ -136,9 +136,6 @@ public class OctoberPeaks extends ApplicationAdapter
 		_gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		
 		_scene.render(entity, stopBlock);
-		
-		// Handle any interactions with the client.
-		_client.doNothing();
 	}
 
 	@Override

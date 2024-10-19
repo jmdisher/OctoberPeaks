@@ -35,24 +35,13 @@ public class InputManager
 			@Override
 			public boolean touchDragged(int screenX, int screenY, int pointer)
 			{
+				_commonMouse(screenX, screenY);
 				return true;
 			}
 			@Override
 			public boolean mouseMoved(int screenX, int screenY)
 			{
-				if (_didInitialize)
-				{
-					int deltaX = screenX - _x;
-					int deltaY = screenY - _y;
-					_movement.rotate(deltaX, deltaY);
-					_rotationDidUpdate = true;
-				}
-				else if ((0 != screenX) && (0 != screenY))
-				{
-					_didInitialize = true;
-				}
-				_x = screenX;
-				_y = screenY;
+				_commonMouse(screenX, screenY);
 				return true;
 			}
 			@Override
@@ -106,17 +95,35 @@ public class InputManager
 				}
 				return true;
 			}
+			private void _commonMouse(int screenX, int screenY)
+			{
+				if (_didInitialize)
+				{
+					int deltaX = screenX - _x;
+					int deltaY = screenY - _y;
+					_movement.rotate(deltaX, deltaY);
+					_rotationDidUpdate = true;
+				}
+				else if ((0 != screenX) && (0 != screenY))
+				{
+					_didInitialize = true;
+				}
+				_x = screenX;
+				_y = screenY;
+			}
 		});
 		Gdx.input.setCursorCatched(true);
 	}
 
 	public boolean shouldUpdateSceneRunningEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
+		boolean didTakeAction = false;
 		// See if we need to jump/swim.
 		boolean didJump = false;
 		if (_jumpSwim)
 		{
 			didJump = _client.jumpOrSwim();
+			didTakeAction = true;
 		}
 		if (!didJump)
 		{
@@ -145,8 +152,17 @@ public class InputManager
 			if (null != direction)
 			{
 				_client.stepHorizontal(direction);
+				didTakeAction = true;
 			}
 		}
+		
+		// If we took no action, just tell the client to pass time.
+		if (!didTakeAction)
+		{
+			_client.doNothing();
+		}
+		
+		// Return whether or not we changed the rotation.
 		boolean shouldUpdate = _rotationDidUpdate;
 		_rotationDidUpdate = false;
 		return shouldUpdate;
