@@ -61,7 +61,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
-		_windowManager = new WindowManager(_gl);
+		_windowManager = new WindowManager(_environment, _gl);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
@@ -72,18 +72,21 @@ public class OctoberPeaks extends ApplicationAdapter
 					{
 						_scene.setCuboid(cuboid);
 						_selectionManager.setCuboid(cuboid);
+						_windowManager.setCuboid(cuboid);
 					}
 					@Override
 					public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 					{
 						_scene.setCuboid(cuboid);
 						_selectionManager.setCuboid(cuboid);
+						_windowManager.setCuboid(cuboid);
 					}
 					@Override
 					public void unload(CuboidAddress address)
 					{
 						_scene.removeCuboid(address);
 						_selectionManager.removeCuboid(address);
+						_windowManager.removeCuboid(address);
 					}
 					@Override
 					public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
@@ -120,12 +123,13 @@ public class OctoberPeaks extends ApplicationAdapter
 	@Override
 	public void render()
 	{
-		// Handle any event processing.
+		// Find out if anything is selected under the cursor for this frame.
 		SelectionManager.SelectionTuple selection = _selectionManager.findSelection();
 		PartialEntity entity = (null != selection) ? selection.entity() : null;
 		AbsoluteLocation stopBlock = (null != selection) ? selection.stopBlock() : null;
 		AbsoluteLocation preStopBlock = (null != selection) ? selection.preStopBlock() : null;
 
+		// Handle any event processing.
 		boolean shouldUpdatePosition = _input.shouldUpdateSceneRunningEvents(entity, stopBlock, preStopBlock);
 		if (shouldUpdatePosition)
 		{
@@ -135,16 +139,18 @@ public class OctoberPeaks extends ApplicationAdapter
 			_selectionManager.updatePosition(eye, target);
 		}
 		
+		// Reset the screen so we can draw this frame.
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		_gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
+		// Draw the main scene first (since we only draw the other data on top of this).
 		_scene.render(entity, stopBlock);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// Now, draw the common overlay windows (they are drawn in all cases, no matter the UI state).
-		_windowManager.drawCommonOverlays();
+		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
+		_windowManager.drawActiveWindows(stopBlock, entity);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 

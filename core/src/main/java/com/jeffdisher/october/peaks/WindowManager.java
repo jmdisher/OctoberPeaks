@@ -3,10 +3,20 @@ package com.jeffdisher.october.peaks;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -20,13 +30,18 @@ public class WindowManager
 	public static final float HOTBAR_ITEM_SCALE = 0.1f;
 	public static final float HOTBAR_ITEM_SPACING = 0.05f;
 	public static final float HOTBAR_BOTTOM_Y = -0.95f;
+	public static final float GENERAL_TEXT_HEIGHT = 0.1f;
+	public static final float SMALL_TEXT_HEIGHT = 0.05f;
 	public static final float META_DATA_LABEL_WIDTH = 0.1f;
-	public static final float META_DATA_ROW_HEIGHT = 0.05f;
 	public static final float META_DATA_BOX_LEFT = 0.8f;
 	public static final float META_DATA_BOX_BOTTOM = -0.95f;
+	public static final float SELECTED_BOX_LEFT = 0.05f;
+	public static final float SELECTED_BOX_BOTTOM = 0.90f;
 
+	private final Environment _env;
 	private final GL20 _gl;
 	private final TextManager _textManager;
+	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
 	private final int _program;
 	private final int _uOffset;
 	private final int _uScale;
@@ -36,10 +51,12 @@ public class WindowManager
 	private final int _pixelDarkGreyAlpha;
 	private Entity _projectedEntity;
 
-	public WindowManager(GL20 gl)
+	public WindowManager(Environment env, GL20 gl)
 	{
+		_env = env;
 		_gl = gl;
 		_textManager = new TextManager(_gl);
+		_cuboids = new HashMap<>();
 		
 		// Create the program we will use for the window overlays.
 		// The overlays are all rectangular tiles representing windows, graphic tiles, or text tiles.
@@ -87,7 +104,7 @@ public class WindowManager
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
-	public void drawCommonOverlays()
+	public void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
 	{
 		// We use the orthographic projection and no depth buffer for all overlay windows.
 		_gl.glDisable(GL20.GL_DEPTH_TEST);
@@ -96,17 +113,51 @@ public class WindowManager
 		_gl.glUniform1i(_uTexture, 0);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
+		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _projectedEntity)
 		{
 			_drawHotbar();
 			_drawEntityMetaData();
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
+		
+		// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
+		if (null != selectedBlock)
+		{
+			// Draw the block information.
+			IReadOnlyCuboidData cuboid = _cuboids.get(selectedBlock.getCuboidAddress());
+			if (null != cuboid)
+			{
+				BlockProxy proxy = new BlockProxy(selectedBlock.getBlockAddress(), cuboid);
+				Block blockUnderMouse = proxy.getBlock();
+				if (_env.special.AIR != blockUnderMouse)
+				{
+					Item itemUnderMouse = blockUnderMouse.item();
+					_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, itemUnderMouse.name());
+				}
+			}
+		}
+		else if (null != selectedEntity)
+		{
+			// Draw the entity information.
+			_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, selectedEntity.type().name());
+		}
 	}
 
 	public void setThisEntity(Entity projectedEntity)
 	{
 		_projectedEntity = projectedEntity;
+	}
+
+	public void setCuboid(IReadOnlyCuboidData cuboid)
+	{
+		_cuboids.put(cuboid.getCuboidAddress(), cuboid);
+	}
+
+	public void removeCuboid(CuboidAddress address)
+	{
+		IReadOnlyCuboidData removed = _cuboids.remove(address);
+		Assert.assertTrue(null != removed);
 	}
 
 
@@ -158,29 +209,39 @@ public class WindowManager
 
 	private void _drawEntityMetaData()
 	{
-		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * META_DATA_ROW_HEIGHT);
+		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * SMALL_TEXT_HEIGHT);
 		
 		float valueMargin = META_DATA_BOX_LEFT + META_DATA_LABEL_WIDTH;
 		
 		// We will use the greater of authoritative and projected for most of these stats.
 		// That way, we get the stability of the authoritative numbers but the quick response to eating/breathing actions)
 		byte health = _projectedEntity.health();
-		float base = META_DATA_BOX_BOTTOM + 2.0f * META_DATA_ROW_HEIGHT;
-		float top = base + META_DATA_ROW_HEIGHT;
+		float base = META_DATA_BOX_BOTTOM + 2.0f * SMALL_TEXT_HEIGHT;
+		float top = base + SMALL_TEXT_HEIGHT;
 		_drawLabel(META_DATA_BOX_LEFT, base, top, "Health");
 		_drawLabel(valueMargin, base, top, Byte.toString(health));
 		
 		byte food = _projectedEntity.food();
-		base = META_DATA_BOX_BOTTOM + 1.0f * META_DATA_ROW_HEIGHT;
-		top = base + META_DATA_ROW_HEIGHT;
+		base = META_DATA_BOX_BOTTOM + 1.0f * SMALL_TEXT_HEIGHT;
+		top = base + SMALL_TEXT_HEIGHT;
 		_drawLabel(META_DATA_BOX_LEFT, base, top, "Food");
 		_drawLabel(valueMargin, base, top, Byte.toString(food));
 		
 		int breath = _projectedEntity.breath();
-		base = META_DATA_BOX_BOTTOM + 0.0f * META_DATA_ROW_HEIGHT;
-		top = base + META_DATA_ROW_HEIGHT;
+		base = META_DATA_BOX_BOTTOM + 0.0f * SMALL_TEXT_HEIGHT;
+		top = base + SMALL_TEXT_HEIGHT;
 		_drawLabel(META_DATA_BOX_LEFT, base, top, "Breath");
 		_drawLabel(valueMargin, base, top, Integer.toString(breath));
+	}
+
+	private void _drawTextInFrame(float left, float bottom, String text)
+	{
+		TextManager.Element element = _textManager.lazilyLoadStringTexture(text.toUpperCase());
+		float top = bottom + GENERAL_TEXT_HEIGHT;
+		float right = left + element.aspectRatio() * (top - bottom);
+		
+		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, left, bottom, right, top);
+		_drawTextElement(left, bottom, right, top, element.textureObject());
 	}
 
 	private float _drawLabel(float left, float bottom, float top, String label)
