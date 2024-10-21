@@ -20,8 +20,13 @@ public class WindowManager
 	public static final float HOTBAR_ITEM_SCALE = 0.1f;
 	public static final float HOTBAR_ITEM_SPACING = 0.05f;
 	public static final float HOTBAR_BOTTOM_Y = -0.95f;
+	public static final float META_DATA_LABEL_WIDTH = 0.1f;
+	public static final float META_DATA_ROW_HEIGHT = 0.05f;
+	public static final float META_DATA_BOX_LEFT = 0.8f;
+	public static final float META_DATA_BOX_BOTTOM = -0.95f;
 
 	private final GL20 _gl;
+	private final TextManager _textManager;
 	private final int _program;
 	private final int _uOffset;
 	private final int _uScale;
@@ -29,10 +34,12 @@ public class WindowManager
 	private final int _verticesUnitSquare;
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
+	private Entity _projectedEntity;
 
 	public WindowManager(GL20 gl)
 	{
 		_gl = gl;
+		_textManager = new TextManager(_gl);
 		
 		// Create the program we will use for the window overlays.
 		// The overlays are all rectangular tiles representing windows, graphic tiles, or text tiles.
@@ -89,8 +96,17 @@ public class WindowManager
 		_gl.glUniform1i(_uTexture, 0);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		_drawHotbar();
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		if (null != _projectedEntity)
+		{
+			_drawHotbar();
+			_drawEntityMetaData();
+			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		}
+	}
+
+	public void setThisEntity(Entity projectedEntity)
+	{
+		_projectedEntity = projectedEntity;
 	}
 
 
@@ -138,6 +154,49 @@ public class WindowManager
 			_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
 			nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
 		}
+	}
+
+	private void _drawEntityMetaData()
+	{
+		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * META_DATA_ROW_HEIGHT);
+		
+		float valueMargin = META_DATA_BOX_LEFT + META_DATA_LABEL_WIDTH;
+		
+		// We will use the greater of authoritative and projected for most of these stats.
+		// That way, we get the stability of the authoritative numbers but the quick response to eating/breathing actions)
+		byte health = _projectedEntity.health();
+		float base = META_DATA_BOX_BOTTOM + 2.0f * META_DATA_ROW_HEIGHT;
+		float top = base + META_DATA_ROW_HEIGHT;
+		_drawLabel(META_DATA_BOX_LEFT, base, top, "Health");
+		_drawLabel(valueMargin, base, top, Byte.toString(health));
+		
+		byte food = _projectedEntity.food();
+		base = META_DATA_BOX_BOTTOM + 1.0f * META_DATA_ROW_HEIGHT;
+		top = base + META_DATA_ROW_HEIGHT;
+		_drawLabel(META_DATA_BOX_LEFT, base, top, "Food");
+		_drawLabel(valueMargin, base, top, Byte.toString(food));
+		
+		int breath = _projectedEntity.breath();
+		base = META_DATA_BOX_BOTTOM + 0.0f * META_DATA_ROW_HEIGHT;
+		top = base + META_DATA_ROW_HEIGHT;
+		_drawLabel(META_DATA_BOX_LEFT, base, top, "Breath");
+		_drawLabel(valueMargin, base, top, Integer.toString(breath));
+	}
+
+	private float _drawLabel(float left, float bottom, float top, String label)
+	{
+		TextManager.Element element = _textManager.lazilyLoadStringTexture(label);
+		float textureAspect = element.aspectRatio();
+		float right = left + textureAspect * (top - bottom);
+		_drawTextElement(left, bottom, right, top, element.textureObject());
+		return right;
+	}
+
+	private void _drawTextElement(float left, float bottom, float right, float top, int labelTexture)
+	{
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, labelTexture);
+		_drawRect(left, bottom, right, top);
 	}
 
 	private void _drawOverlayFrame(int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)

@@ -30,10 +30,10 @@ public class OctoberPeaks extends ApplicationAdapter
 	private Environment _environment;
 	private GL20 _gl;
 	private SceneRenderer _scene;
+	private WindowManager _windowManager;
 	private MovementControl _movement;
 	private ClientWrapper _client;
 	private InputManager _input;
-	private WindowManager _windowManager;
 
 	public OctoberPeaks(Options options)
 	{
@@ -61,6 +61,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
+		_windowManager = new WindowManager(_gl);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
@@ -93,6 +94,7 @@ public class OctoberPeaks extends ApplicationAdapter
 						Vector target = _movement.computeTarget();
 						_scene.updatePosition(eye, target);
 						_selectionManager.updatePosition(eye, target);
+						_windowManager.setThisEntity(projectedEntity);
 					}
 					@Override
 					public void otherEntityUpdated(PartialEntity entity)
@@ -112,7 +114,6 @@ public class OctoberPeaks extends ApplicationAdapter
 		);
 		_client.finishStartup();
 		_input = new InputManager(_movement, _client);
-		_windowManager = new WindowManager(_gl);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
