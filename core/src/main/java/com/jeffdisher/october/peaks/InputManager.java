@@ -10,6 +10,8 @@ import com.jeffdisher.october.types.PartialEntity;
 
 /**
  * Handles input events and state.
+ * Note that this class handles the high-level UI state but this will likely change later:  The UI state will be split
+ * out.
  */
 public class InputManager
 {
@@ -28,6 +30,9 @@ public class InputManager
 	@SuppressWarnings("unused")
 	private boolean _didHandleButton0;
 	private boolean _didHandleButton1;
+
+	// Data specifically related to high-level UI state (will likely be pulled out, later).
+	private _UiState _uiState;
 
 	public InputManager(MovementControl movement, ClientWrapper client)
 	{
@@ -55,9 +60,20 @@ public class InputManager
 				switch(keycode)
 				{
 				case Keys.ESCAPE:
-					// This just disables the interface.
-					Gdx.input.setCursorCatched(false);
-					Gdx.input.setInputProcessor(null);
+					// We will just use this to toggle mode.
+					if (_UiState.PLAY ==_uiState)
+					{
+						// Release the cursor.
+						Gdx.input.setCursorCatched(false);
+						_uiState = _UiState.MENU;
+					}
+					else
+					{
+						// Capture the cursor.
+						Gdx.input.setCursorCatched(true);
+						_uiState = _UiState.PLAY;
+						_didInitialize = false;
+					}
 					break;
 				case Keys.SPACE:
 					_jumpSwim = true;
@@ -132,25 +148,51 @@ public class InputManager
 			}
 			private void _commonMouse(int screenX, int screenY)
 			{
-				if (_didInitialize)
+				// We only want to use the mouse to pan the screen if we are in play mode.
+				if (_UiState.PLAY == _uiState)
 				{
-					int deltaX = screenX - _x;
-					int deltaY = screenY - _y;
-					_movement.rotate(deltaX, deltaY);
-					_rotationDidUpdate = true;
+					if (_didInitialize)
+					{
+						int deltaX = screenX - _x;
+						int deltaY = screenY - _y;
+						_movement.rotate(deltaX, deltaY);
+						_rotationDidUpdate = true;
+					}
+					else if ((0 != screenX) && (0 != screenY))
+					{
+						_didInitialize = true;
+					}
+					_x = screenX;
+					_y = screenY;
 				}
-				else if ((0 != screenX) && (0 != screenY))
-				{
-					_didInitialize = true;
-				}
-				_x = screenX;
-				_y = screenY;
 			}
 		});
+		_uiState = _UiState.PLAY;
 		Gdx.input.setCursorCatched(true);
 	}
 
 	public boolean shouldUpdateSceneRunningEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
+	{
+		boolean didTakeAction = false;
+		if (_UiState.PLAY == _uiState)
+		{
+			didTakeAction = _handlePlayMode(stopBlock, preStopBlock);
+		}
+		
+		// If we took no action, just tell the client to pass time.
+		if (!didTakeAction)
+		{
+			_client.doNothing();
+		}
+		
+		// Return whether or not we changed the rotation.
+		boolean shouldUpdate = _rotationDidUpdate;
+		_rotationDidUpdate = false;
+		return shouldUpdate;
+	}
+
+
+	private boolean _handlePlayMode(AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
 		boolean didTakeAction = false;
 		// See if we need to jump/swim.
@@ -210,16 +252,26 @@ public class InputManager
 			}
 			_didHandleButton1 = true;
 		}
-		
-		// If we took no action, just tell the client to pass time.
-		if (!didTakeAction)
-		{
-			_client.doNothing();
-		}
-		
-		// Return whether or not we changed the rotation.
-		boolean shouldUpdate = _rotationDidUpdate;
-		_rotationDidUpdate = false;
-		return shouldUpdate;
+		return didTakeAction;
+	}
+
+
+	/**
+	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
+	 *  state, later one.
+	 */
+	private static enum _UiState
+	{
+		/**
+		 * The mode where play is normal.  Cursor is captured and there is no open window.
+		 */
+		PLAY,
+		/**
+		 * The mode where play is effectively "paused".  The cursor is released and buttons to change game setup will be
+		 * presented.
+		 * TODO:  Add a "pause" mode to the server, used here in single-player mode.
+		 * TODO:  Determine the required buttons for control and add them.
+		 */
+		MENU,
 	}
 }
