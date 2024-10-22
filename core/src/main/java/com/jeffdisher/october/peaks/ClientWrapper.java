@@ -229,14 +229,18 @@ public class ClientWrapper
 	{
 		// Make sure that this is a block we can break.
 		IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
-		BlockProxy proxy = new BlockProxy(blockLocation.getBlockAddress(), cuboid);
-		long currentTimeMillis = System.currentTimeMillis();
 		boolean didHit = false;
-		if (!_environment.blocks.canBeReplaced(proxy.getBlock()))
+		// This can be null when the action is taken due to loading issues, respawn, etc.
+		if (null != cuboid)
 		{
-			// This block is not the kind which can be replaced, meaning it can potentially be broken.
-			_client.hitBlock(blockLocation, currentTimeMillis);
-			didHit = true;
+			BlockProxy proxy = new BlockProxy(blockLocation.getBlockAddress(), cuboid);
+			long currentTimeMillis = System.currentTimeMillis();
+			if (!_environment.blocks.canBeReplaced(proxy.getBlock()))
+			{
+				// This block is not the kind which can be replaced, meaning it can potentially be broken.
+				_client.hitBlock(blockLocation, currentTimeMillis);
+				didHit = true;
+			}
 		}
 		return didHit;
 	}
@@ -252,11 +256,22 @@ public class ClientWrapper
 	{
 		// We need to check our selected item and see what "action" is associated with it.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
-		Block solidBlockType = new BlockProxy(solidBlock.getBlockAddress(), _cuboids.get(solidBlock.getCuboidAddress())).getBlock();
+		
+		IReadOnlyCuboidData cuboid = _cuboids.get(solidBlock.getCuboidAddress());
+		// This can be null when the action is taken due to loading issues, respawn, etc.
+		Block solidBlockType = (null != cuboid)
+				? new BlockProxy(solidBlock.getBlockAddress(), _cuboids.get(solidBlock.getCuboidAddress())).getBlock()
+				: null
+		;
 		
 		// First, see if the target block has a general logic state we can change.
 		IMutationEntity<IMutablePlayerEntity> change;
-		if (isJustClicked && EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
+		if (null == solidBlockType)
+		{
+			// The target isn't loaded.
+			change = null;
+		}
+		else if (isJustClicked && EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
 		{
 			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType);
 			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
