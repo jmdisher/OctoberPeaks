@@ -209,14 +209,17 @@ public class InputManager
 		else
 		{
 			// When we are not capturing, we are just interested in knowing where the mouse is and if there are any clicks.
+			float glX = _getGlX();
+			float glY = _getGlY();
+			uiManager.normalMouseMoved(glX, glY);
 			if (!_didHandleButton0)
 			{
-				uiManager.normalMouse0Clicked(_getGlX(), _getGlY());
+				uiManager.normalMouse0Clicked();
 				_didHandleButton0 = true;
 			}
 			if (!_didHandleButton1)
 			{
-				uiManager.normalMouse1Clicked(_getGlX(), _getGlY());
+				uiManager.normalMouse1Clicked();
 				_didHandleButton1 = true;
 			}
 		}

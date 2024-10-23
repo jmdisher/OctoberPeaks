@@ -167,8 +167,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
-		boolean shouldDrawWindows = _uiState.shouldDrawWindows();
-		_windowManager.drawActiveWindows(stopBlock, entity, shouldDrawWindows);
+		_uiState.drawRelevantWindows(_windowManager, stopBlock, entity);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 

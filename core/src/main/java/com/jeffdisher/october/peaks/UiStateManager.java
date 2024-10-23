@@ -37,10 +37,11 @@ public class UiStateManager
 		return _UiState.PLAY == _uiState;
 	}
 
-	// TODO:  Change this once we want to return more information about the block we should open and what inventory to show.
-	public boolean shouldDrawWindows()
+	public void drawRelevantWindows(WindowManager windowManager, AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
 	{
-		return _UiState.INVENTORY == _uiState;
+		boolean isInventoryVisible = (_UiState.INVENTORY == _uiState);
+		// TODO:  Plumb in the relevant information for crafting, etc.
+		windowManager.drawActiveWindows(selectedBlock, selectedEntity, isInventoryVisible);
 	}
 
 	public boolean didViewPerspectiveChange()
@@ -131,12 +132,17 @@ public class UiStateManager
 		_client.jumpOrSwim();
 	}
 
-	public void normalMouse0Clicked(float glX, float glY)
+	public void normalMouseMoved(float glX, float glY)
 	{
 		// TODO:  Implement (inventory/crafting mode).
 	}
 
-	public void normalMouse1Clicked(float glX, float glY)
+	public void normalMouse0Clicked()
+	{
+		// TODO:  Implement (inventory/crafting mode).
+	}
+
+	public void normalMouse1Clicked()
 	{
 		// TODO:  Implement (inventory/crafting mode).
 	}
