@@ -3,20 +3,17 @@ package com.jeffdisher.october.peaks;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.Input.Keys;
-import com.jeffdisher.october.mutations.EntityChangeMove;
-import com.jeffdisher.october.types.AbsoluteLocation;
-import com.jeffdisher.october.types.PartialEntity;
 
 
 /**
- * Handles input events and state.
- * Note that this class handles the high-level UI state but this will likely change later:  The UI state will be split
- * out.
+ * Handles input events and the corresponding state machine to make sense of these low-level events in order to
+ * synthesize the higher-level meaningful events to feed into the rest of the system.
  */
 public class InputManager
 {
-	private final MovementControl _movement;
-	private final ClientWrapper _client;
+	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
+	private boolean _shouldCaptureMouseMovements;
+	private boolean _didInitializeMouse;
 
 	// These are the key states - we capture them in events and decode them when polling for a frame.
 	private boolean _moveUp;
@@ -24,24 +21,22 @@ public class InputManager
 	private boolean _moveRight;
 	private boolean _moveLeft;
 	private boolean _jumpSwim;
-	private boolean _rotationDidUpdate;
+	private int _mouseX;
+	private int _mouseY;
 	private boolean _buttonDown0;
 	private boolean _buttonDown1;
-	@SuppressWarnings("unused")
+	
+	// These are records of whether we have handled single-action events based on keys or buttons.
+	private int _lastReportedMouseX;
+	private int _lastReportedMouseY;
 	private boolean _didHandleButton0;
 	private boolean _didHandleButton1;
+	private boolean _didHandleKeyEsc;
+	private boolean _didHandleKeyI;
 
-	// Data specifically related to high-level UI state (will likely be pulled out, later).
-	private _UiState _uiState;
-
-	public InputManager(MovementControl movement, ClientWrapper client, WindowManager windowManager)
+	public InputManager()
 	{
-		_movement = movement;
-		_client = client;
 		Gdx.input.setInputProcessor(new InputAdapter() {
-			boolean _didInitialize = false;
-			int _x;
-			int _y;
 			@Override
 			public boolean touchDragged(int screenX, int screenY, int pointer)
 			{
@@ -60,37 +55,12 @@ public class InputManager
 				switch(keycode)
 				{
 				case Keys.ESCAPE:
-					// We will just use this to toggle mode.
-					if (_UiState.PLAY ==_uiState)
-					{
-						// Release the cursor.
-						Gdx.input.setCursorCatched(false);
-						_uiState = _UiState.MENU;
-					}
-					else
-					{
-						// Capture the cursor.
-						Gdx.input.setCursorCatched(true);
-						_uiState = _UiState.PLAY;
-						_didInitialize = false;
-					}
+					// We just capture the click.
+					_didHandleKeyEsc = false;
 					break;
 				case Keys.I:
-					// We want to tell the window manager to toggle the inventory mode.
-					boolean isInventoryVisible = windowManager.toggleInventoryMode();
-					if (isInventoryVisible)
-					{
-						// Disable capture.
-						Gdx.input.setCursorCatched(false);
-						_uiState = _UiState.MENU;
-					}
-					else
-					{
-						// Enable capture.
-						Gdx.input.setCursorCatched(true);
-						_uiState = _UiState.PLAY;
-						_didInitialize = false;
-					}
+					// We just capture the click.
+					_didHandleKeyI = false;
 					break;
 				case Keys.SPACE:
 					_jumpSwim = true;
@@ -165,130 +135,126 @@ public class InputManager
 			}
 			private void _commonMouse(int screenX, int screenY)
 			{
-				// We only want to use the mouse to pan the screen if we are in play mode.
-				if (_UiState.PLAY == _uiState)
+				// We only want to handle the mouse movements if capturing them.
+				if (_shouldCaptureMouseMovements)
 				{
-					if (_didInitialize)
+					// If we just enabled the mouse movements, the first event tends to snap us jarringly.
+					if (!_didInitializeMouse)
 					{
-						int deltaX = screenX - _x;
-						int deltaY = screenY - _y;
-						_movement.rotate(deltaX, deltaY);
-						_rotationDidUpdate = true;
+						_didInitializeMouse = true;
+						_lastReportedMouseX = screenX;
+						_lastReportedMouseY = screenY;
 					}
-					else if ((0 != screenX) && (0 != screenY))
-					{
-						_didInitialize = true;
-					}
-					_x = screenX;
-					_y = screenY;
+					_mouseX = screenX;
+					_mouseY = screenY;
 				}
 			}
 		});
-		_uiState = _UiState.PLAY;
-		Gdx.input.setCursorCatched(true);
+		
+		// We are starting in the mouse capture state.
+		_enterCaptureState(true);
+		_didHandleButton0 = true;
+		_didHandleButton1 = true;
+		_didHandleKeyEsc = true;
+		_didHandleKeyI = true;
 	}
 
-	public boolean shouldUpdateSceneRunningEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
+	public void flushEventsToStateManager(UiStateManager uiManager)
 	{
-		boolean didTakeAction = false;
-		if (_UiState.PLAY == _uiState)
-		{
-			didTakeAction = _handlePlayMode(stopBlock, preStopBlock);
-		}
+		// We want to go down the list of things we might need to report and tell the UI Manager.
 		
-		// If we took no action, just tell the client to pass time.
-		if (!didTakeAction)
+		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
+		if (_shouldCaptureMouseMovements)
 		{
-			_client.doNothing();
-		}
-		
-		// Return whether or not we changed the rotation.
-		boolean shouldUpdate = _rotationDidUpdate;
-		_rotationDidUpdate = false;
-		return shouldUpdate;
-	}
-
-
-	private boolean _handlePlayMode(AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
-	{
-		boolean didTakeAction = false;
-		// See if we need to jump/swim.
-		boolean didJump = false;
-		if (_jumpSwim)
-		{
-			didJump = _client.jumpOrSwim();
-			didTakeAction = true;
-		}
-		if (!didJump)
-		{
-			// We didn't, so see if we can move horizontally.
-			EntityChangeMove.Direction direction;
+			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
+			int deltaX = _mouseX - _lastReportedMouseX;
+			int deltaY = _mouseY - _lastReportedMouseY;
+			_lastReportedMouseX = _mouseX;
+			_lastReportedMouseY = _mouseY;
+			uiManager.capturedMouseMoved(deltaX, deltaY);
+			if (_buttonDown0)
+			{
+				uiManager.captureMouse0Down(!_didHandleButton0);
+				_didHandleButton0 = true;
+			}
+			if (_buttonDown1)
+			{
+				uiManager.captureMouse1Down(!_didHandleButton1);
+				_didHandleButton1 = true;
+			}
+			
+			// We will only pass one of the movement directions, for now.
 			if (_moveUp)
 			{
-				direction = _movement.walk(true);
+				uiManager.moveForward();
 			}
 			else if (_moveDown)
 			{
-				direction = _movement.walk(false);
+				uiManager.moveBackward();
 			}
 			else if (_moveRight)
 			{
-				direction = _movement.strafeRight(true);
+				uiManager.strafeRight();
 			}
 			else if (_moveLeft)
 			{
-				direction = _movement.strafeRight(false);
+				uiManager.strafeLeft();
 			}
-			else
+			
+			if (_jumpSwim)
 			{
-				direction = null;
+				uiManager.jumpOrSwim();
 			}
-			if (null != direction)
+		}
+		else
+		{
+			// When we are not capturing, we are just interested in knowing where the mouse is and if there are any clicks.
+			if (!_didHandleButton0)
 			{
-				_client.stepHorizontal(direction);
-				didTakeAction = true;
+				uiManager.normalMouse0Clicked(_getGlX(), _getGlY());
+				_didHandleButton0 = true;
+			}
+			if (!_didHandleButton1)
+			{
+				uiManager.normalMouse1Clicked(_getGlX(), _getGlY());
+				_didHandleButton1 = true;
 			}
 		}
 		
-		// See if we need to act in response to buttons.
-		if (_buttonDown0)
+		// Now, we handle the special events related to specific keys which generally change UI state.
+		if (!_didHandleKeyEsc)
 		{
-			if (null != stopBlock)
-			{
-				// Returns false if the block wasn't valid.
-				didTakeAction = _client.hitBlock(stopBlock);
-			}
-			_didHandleButton0 = true;
+			uiManager.handleKeyEsc((boolean setCapture) -> _enterCaptureState(setCapture));
+			_didHandleKeyEsc = true;
 		}
-		else if (_buttonDown1)
+		if (!_didHandleKeyI)
 		{
-			if (null != preStopBlock)
-			{
-				_client.runRightClickAction(stopBlock, preStopBlock, !_didHandleButton1);
-				didTakeAction = true;
-			}
-			_didHandleButton1 = true;
+			uiManager.handleKeyI((boolean setCapture) -> _enterCaptureState(setCapture));
+			_didHandleKeyI = true;
 		}
-		return didTakeAction;
 	}
 
 
-	/**
-	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
-	 *  state, later one.
-	 */
-	private static enum _UiState
+	private void _enterCaptureState(boolean state)
 	{
-		/**
-		 * The mode where play is normal.  Cursor is captured and there is no open window.
-		 */
-		PLAY,
-		/**
-		 * The mode where play is effectively "paused".  The cursor is released and buttons to change game setup will be
-		 * presented.
-		 * TODO:  Add a "pause" mode to the server, used here in single-player mode.
-		 * TODO:  Determine the required buttons for control and add them.
-		 */
-		MENU,
+		_shouldCaptureMouseMovements = state;
+		_didInitializeMouse = false;
+		Gdx.input.setCursorCatched(state);
+	}
+
+	private static float _getGlX()
+	{
+		float screenWidth = Gdx.graphics.getWidth();
+		float mouseX = (float)Gdx.input.getX();
+		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
+		return (2.0f * mouseX / screenWidth) - 1.0f;
+	}
+
+	private static float _getGlY()
+	{
+		float screenHeight = Gdx.graphics.getHeight();
+		float mouseY = (float)Gdx.input.getY();
+		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
+		return (2.0f * (screenHeight - mouseY) / screenHeight) - 1.0f;
 	}
 }

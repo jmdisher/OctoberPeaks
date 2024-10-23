@@ -60,7 +60,6 @@ public class WindowManager
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
 	private Entity _projectedEntity;
-	private boolean _isInventoryVisible;
 
 	public WindowManager(Environment env, GL20 gl)
 	{
@@ -115,7 +114,7 @@ public class WindowManager
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
-	public void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
+	public void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity, boolean isInventoryVisible)
 	{
 		// We use the orthographic projection and no depth buffer for all overlay windows.
 		_gl.glDisable(GL20.GL_DEPTH_TEST);
@@ -133,7 +132,7 @@ public class WindowManager
 		}
 		
 		// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
-		if (_isInventoryVisible)
+		if (isInventoryVisible)
 		{
 			// We will flesh these out later but for now just draw the empty windows.
 			_drawWindow("Inventory", WINDOW_TOP_RIGHT);
@@ -179,12 +178,6 @@ public class WindowManager
 	{
 		IReadOnlyCuboidData removed = _cuboids.remove(address);
 		Assert.assertTrue(null != removed);
-	}
-
-	public boolean toggleInventoryMode()
-	{
-		_isInventoryVisible = !_isInventoryVisible;
-		return _isInventoryVisible;
 	}
 
 

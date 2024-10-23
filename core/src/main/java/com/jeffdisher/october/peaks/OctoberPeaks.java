@@ -33,6 +33,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	private WindowManager _windowManager;
 	private MovementControl _movement;
 	private ClientWrapper _client;
+	private UiStateManager _uiState;
 	private InputManager _input;
 
 	public OctoberPeaks(Options options)
@@ -116,28 +117,44 @@ public class OctoberPeaks extends ApplicationAdapter
 				, _serverSocketAddress
 		);
 		_client.finishStartup();
-		_input = new InputManager(_movement, _client, _windowManager);
+		_uiState = new UiStateManager(_movement, _client);
+		_input = new InputManager();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
 	@Override
 	public void render()
 	{
-		// Find out if anything is selected under the cursor for this frame.
-		SelectionManager.SelectionTuple selection = _selectionManager.findSelection();
-		PartialEntity entity = (null != selection) ? selection.entity() : null;
-		AbsoluteLocation stopBlock = (null != selection) ? selection.stopBlock() : null;
-		AbsoluteLocation preStopBlock = (null != selection) ? selection.preStopBlock() : null;
-
-		// Handle any event processing.
-		boolean shouldUpdatePosition = _input.shouldUpdateSceneRunningEvents(entity, stopBlock, preStopBlock);
-		if (shouldUpdatePosition)
+		// Flush any captured input events.
+		_input.flushEventsToStateManager(_uiState);
+		
+		// Find the selection, if the mode supports this.
+		PartialEntity entity = null;
+		AbsoluteLocation stopBlock = null;
+		AbsoluteLocation preStopBlock = null;
+		if (_uiState.canSelectInScene())
 		{
-			Vector eye = _movement.computeEye();
-			Vector target = _movement.computeTarget();
-			_scene.updatePosition(eye, target);
-			_selectionManager.updatePosition(eye, target);
+			// See if the perspective changed.
+			if (_uiState.didViewPerspectiveChange())
+			{
+				Vector eye = _movement.computeEye();
+				Vector target = _movement.computeTarget();
+				_selectionManager.updatePosition(eye, target);
+				_scene.updatePosition(eye, target);
+			}
+			
+			// Capture whatever is selected.
+			SelectionManager.SelectionTuple selection = _selectionManager.findSelection();
+			if (null != selection)
+			{
+				entity = selection.entity();
+				stopBlock = selection.stopBlock();
+				preStopBlock = selection.preStopBlock();
+			}
 		}
+		
+		// Finalize the event processing with this selection and accounting for inter-frame time.
+		_uiState.finalizeFrameEvents(entity, stopBlock, preStopBlock);
 		
 		// Reset the screen so we can draw this frame.
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -150,7 +167,8 @@ public class OctoberPeaks extends ApplicationAdapter
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
-		_windowManager.drawActiveWindows(stopBlock, entity);
+		boolean shouldDrawWindows = _uiState.shouldDrawWindows();
+		_windowManager.drawActiveWindows(stopBlock, entity, shouldDrawWindows);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
