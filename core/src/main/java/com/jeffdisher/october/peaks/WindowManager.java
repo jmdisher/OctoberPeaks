@@ -37,6 +37,16 @@ public class WindowManager
 	public static final float META_DATA_BOX_BOTTOM = -0.95f;
 	public static final float SELECTED_BOX_LEFT = 0.05f;
 	public static final float SELECTED_BOX_BOTTOM = 0.90f;
+	public static final float ARMOUR_SLOT_SCALE = 0.1f;
+	public static final float ARMOUR_SLOT_SPACING = 0.05f;
+	public static final float ARMOUR_SLOT_RIGHT_EDGE = 0.95f;
+	public static final float ARMOUR_SLOT_TOP_EDGE = 0.95f;
+	public static final float WINDOW_ITEM_SIZE = 0.1f;
+	public static final float WINDOW_MARGIN = 0.05f;
+	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
+	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
+	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE - ARMOUR_SLOT_SPACING, 0.95f);
+	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
 
 	private final Environment _env;
 	private final GL20 _gl;
@@ -50,6 +60,7 @@ public class WindowManager
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
 	private Entity _projectedEntity;
+	private boolean _isInventoryVisible;
 
 	public WindowManager(Environment env, GL20 gl)
 	{
@@ -122,7 +133,17 @@ public class WindowManager
 		}
 		
 		// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
-		if (null != selectedBlock)
+		if (_isInventoryVisible)
+		{
+			// We will flesh these out later but for now just draw the empty windows.
+			_drawWindow("Inventory", WINDOW_TOP_RIGHT);
+			_drawWindow("Crafting", WINDOW_TOP_LEFT);
+			_drawWindow("Block Inventory", WINDOW_BOTTOM);
+			
+			// Also draw the armour slots.
+			_drawArmourSlots();
+		}
+		else if (null != selectedBlock)
 		{
 			// Draw the block information.
 			IReadOnlyCuboidData cuboid = _cuboids.get(selectedBlock.getCuboidAddress());
@@ -158,6 +179,12 @@ public class WindowManager
 	{
 		IReadOnlyCuboidData removed = _cuboids.remove(address);
 		Assert.assertTrue(null != removed);
+	}
+
+	public boolean toggleInventoryMode()
+	{
+		_isInventoryVisible = !_isInventoryVisible;
+		return _isInventoryVisible;
 	}
 
 
@@ -234,6 +261,27 @@ public class WindowManager
 		_drawLabel(valueMargin, base, top, Integer.toString(breath));
 	}
 
+	private void _drawWindow(String title, _WindowDimensions dimensions)
+	{
+		// Draw the window outline.
+		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
+		
+		// Draw the title.
+		_drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, title.toUpperCase());
+	}
+
+	private void _drawArmourSlots()
+	{
+		float nextTopSlot = ARMOUR_SLOT_TOP_EDGE;
+		for (int i = 0; i < 4; ++i)
+		{
+			float left = ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE;
+			float bottom = nextTopSlot - ARMOUR_SLOT_SCALE;
+			_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, left, bottom, ARMOUR_SLOT_RIGHT_EDGE, nextTopSlot);
+			nextTopSlot -= ARMOUR_SLOT_SCALE + ARMOUR_SLOT_SPACING;
+		}
+	}
+
 	private void _drawTextInFrame(float left, float bottom, String text)
 	{
 		TextManager.Element element = _textManager.lazilyLoadStringTexture(text.toUpperCase());
@@ -285,4 +333,11 @@ public class WindowManager
 		_gl.glVertexAttribPointer(1, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 2 * Float.BYTES);
 		_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, 6);
 	}
+
+
+	private static record _WindowDimensions(float leftX
+			, float bottomY
+			, float rightX
+			, float topY
+	) {}
 }

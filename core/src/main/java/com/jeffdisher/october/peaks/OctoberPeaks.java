@@ -116,7 +116,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				, _serverSocketAddress
 		);
 		_client.finishStartup();
-		_input = new InputManager(_movement, _client);
+		_input = new InputManager(_movement, _client, _windowManager);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 

@@ -34,7 +34,7 @@ public class InputManager
 	// Data specifically related to high-level UI state (will likely be pulled out, later).
 	private _UiState _uiState;
 
-	public InputManager(MovementControl movement, ClientWrapper client)
+	public InputManager(MovementControl movement, ClientWrapper client, WindowManager windowManager)
 	{
 		_movement = movement;
 		_client = client;
@@ -70,6 +70,23 @@ public class InputManager
 					else
 					{
 						// Capture the cursor.
+						Gdx.input.setCursorCatched(true);
+						_uiState = _UiState.PLAY;
+						_didInitialize = false;
+					}
+					break;
+				case Keys.I:
+					// We want to tell the window manager to toggle the inventory mode.
+					boolean isInventoryVisible = windowManager.toggleInventoryMode();
+					if (isInventoryVisible)
+					{
+						// Disable capture.
+						Gdx.input.setCursorCatched(false);
+						_uiState = _UiState.MENU;
+					}
+					else
+					{
+						// Enable capture.
 						Gdx.input.setCursorCatched(true);
 						_uiState = _UiState.PLAY;
 						_didInitialize = false;
