@@ -1,7 +1,14 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 
 
@@ -18,6 +25,8 @@ public class UiStateManager
 	private boolean _mouseHeld0;
 	private boolean _mouseHeld1;
 	private boolean _mouseClicked1;
+	private float _normalGlX;
+	private float _normalGlY;
 
 	// Data specifically related to high-level UI state (will likely be pulled out, later).
 	private _UiState _uiState;
@@ -39,9 +48,66 @@ public class UiStateManager
 
 	public void drawRelevantWindows(WindowManager windowManager, AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
 	{
-		boolean isInventoryVisible = (_UiState.INVENTORY == _uiState);
-		// TODO:  Plumb in the relevant information for crafting, etc.
-		windowManager.drawActiveWindows(selectedBlock, selectedEntity, isInventoryVisible);
+		if (_UiState.INVENTORY == _uiState)
+		{
+			// TODO:  Plumb in the relevant information for crafting, etc.
+			// For now, we just provide some testing data.
+			Environment env = Environment.getShared();
+			Map<Integer, NonStackableItem> nonStack = new HashMap<>();
+			Map<Integer, Items> stack = new HashMap<>();
+			int count = 0;
+			for (Item item : env.items.ITEMS_BY_TYPE)
+			{
+				if (env.durability.isStackable(item))
+				{
+					if (env.encumbrance.getEncumbrance(item) > 0)
+					{
+						stack.put(count, new Items(item, 2));
+						count += 1;
+					}
+				}
+				else
+				{
+					nonStack.put(count, new NonStackableItem(item, 10));
+					count += 1;
+				}
+			}
+			
+			WindowManager.WindowData topLeft = new WindowManager.WindowData("Crafting"
+					, 0
+					, 0
+					, 0
+					, null
+					, Map.of()
+					, Map.of()
+					, null
+			);
+			WindowManager.WindowData topRight = new WindowManager.WindowData("Inventory"
+					, 4
+					, 10
+					, 0
+					, (int page) -> System.out.println("PAGE: " + page)
+					, nonStack
+					, stack
+					, (int key) -> System.out.println("KEY: " + key)
+			);
+			WindowManager.WindowData bottom = new WindowManager.WindowData("Floor"
+					, 0
+					, 20
+					, 0
+					, null
+					, Map.of()
+					, Map.of()
+					, null
+			);
+			
+			windowManager.drawActiveWindows(null, null, topLeft, topRight, bottom, _normalGlX, _normalGlY);
+		}
+		else
+		{
+			// In this case, just draw the common UI elements.
+			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, _normalGlX, _normalGlY);
+		}
 	}
 
 	public boolean didViewPerspectiveChange()
@@ -134,7 +200,8 @@ public class UiStateManager
 
 	public void normalMouseMoved(float glX, float glY)
 	{
-		// TODO:  Implement (inventory/crafting mode).
+		_normalGlX = glX;
+		_normalGlY = glY;
 	}
 
 	public void normalMouse0Clicked()

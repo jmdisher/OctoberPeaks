@@ -3,8 +3,11 @@ package com.jeffdisher.october.peaks;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -16,6 +19,8 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -44,6 +49,7 @@ public class WindowManager
 	public static final float WINDOW_ITEM_SIZE = 0.1f;
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
+	public static final float WINDOW_PAGE_BUTTON_HEIGHT = 0.05f;
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE - ARMOUR_SLOT_SPACING, 0.95f);
 	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
@@ -114,7 +120,7 @@ public class WindowManager
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
-	public void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity, boolean isInventoryVisible)
+	public void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity, WindowData topLeft, WindowData topRight, WindowData bottom, float glX, float glY)
 	{
 		// We use the orthographic projection and no depth buffer for all overlay windows.
 		_gl.glDisable(GL20.GL_DEPTH_TEST);
@@ -131,14 +137,27 @@ public class WindowManager
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
 		
-		// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
-		if (isInventoryVisible)
+		// We will disable the handling of any selection if we draw any overlay windows (they should be null in that case, anyway).
+		boolean didDrawWindows = false;
+		if (null != topLeft)
 		{
-			// We will flesh these out later but for now just draw the empty windows.
-			_drawWindow("Inventory", WINDOW_TOP_RIGHT);
-			_drawWindow("Crafting", WINDOW_TOP_LEFT);
-			_drawWindow("Block Inventory", WINDOW_BOTTOM);
-			
+			_drawWindow(topLeft, WINDOW_TOP_LEFT, glX, glY);
+			didDrawWindows = true;
+		}
+		if (null != topRight)
+		{
+			_drawWindow(topRight, WINDOW_TOP_RIGHT, glX, glY);
+			didDrawWindows = true;
+		}
+		if (null != bottom)
+		{
+			_drawWindow(bottom, WINDOW_BOTTOM, glX, glY);
+			didDrawWindows = true;
+		}
+		
+		// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
+		if (didDrawWindows)
+		{
 			// Also draw the armour slots.
 			_drawArmourSlots();
 		}
@@ -254,13 +273,143 @@ public class WindowManager
 		_drawLabel(valueMargin, base, top, Integer.toString(breath));
 	}
 
-	private void _drawWindow(String title, _WindowDimensions dimensions)
+	private void _drawWindow(WindowData data, _WindowDimensions dimensions, float glX, float glY)
 	{
 		// Draw the window outline.
 		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
 		
 		// Draw the title.
-		_drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, title.toUpperCase());
+		float labelRight = _drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
+		if (data.maxSize > 0)
+		{
+			String extraTitle = String.format("(%d/%d)", data.usedSize, data.maxSize);
+			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
+			_drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
+		}
+		
+		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
+		float xSpace = dimensions.rightX - dimensions.leftX - WINDOW_MARGIN;
+		float ySpace = dimensions.topY - dimensions.bottomY - WINDOW_MARGIN;
+		// The size of each item is the margin before the element and the element itself.
+		float spacePerElement = WINDOW_ITEM_SIZE + WINDOW_MARGIN;
+		int itemsPerRow = (int) Math.round(Math.floor(xSpace / spacePerElement));
+		int rowsPerPage = (int) Math.round(Math.floor(ySpace / spacePerElement));
+		int itemsPerPage = itemsPerRow * rowsPerPage;
+		int xElement = 0;
+		int yElement = 0;
+		
+		float leftMargin = dimensions.leftX + WINDOW_MARGIN;
+		// Leave space for top margin and title.
+		float topMargin = dimensions.topY - WINDOW_TITLE_HEIGHT - WINDOW_MARGIN;
+		int totalItems = data.nonStackable.size() + data.stackable.size();
+		int pageCount = ((totalItems - 1) / itemsPerPage) + 1;
+		// Be aware that this may have changed without the caller knowing it.
+		int currentPage = Math.min(data.currentPage, pageCount);
+		int startingIndex = currentPage * itemsPerPage;
+		int firstIndexBeyondPage = startingIndex + itemsPerPage;
+		if (firstIndexBeyondPage > totalItems)
+		{
+			firstIndexBeyondPage = totalItems;
+		}
+		
+		// We will keep the UI sorted by inventory key.
+		List<Integer> sortedKeys = new ArrayList<>();
+		sortedKeys.addAll(data.nonStackable.keySet());
+		sortedKeys.addAll(data.stackable.keySet());
+		sortedKeys.sort((Integer one, Integer two) -> two - one);
+		
+		for (Integer key : sortedKeys.subList(startingIndex, firstIndexBeyondPage))
+		{
+			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
+			float left = leftMargin + (xElement * spacePerElement);
+			float top = topMargin - (yElement * spacePerElement);
+			float bottom = top - WINDOW_ITEM_SIZE;
+			float right = left + WINDOW_ITEM_SIZE;
+			// We only handle the mouse-over if there is a handler we will notify.
+			boolean isMouseOver = (null != data.eventHoverOverItem)
+					? _isMouseOver(left, bottom, right, top, glX, glY)
+					: false
+			;
+			Item item;
+			int count;
+			float progress;
+			if (data.nonStackable.containsKey(key))
+			{
+				NonStackableItem nonStack = data.nonStackable.get(key);
+				item = nonStack.type();
+				int maxDurability = _env.durability.getDurability(item);
+				count = 0;
+				progress = (maxDurability > 0)
+						? (float)nonStack.durability() / (float)maxDurability
+						: 0.0f
+				;
+			}
+			else
+			{
+				Items stack = data.stackable.get(key);
+				item = stack.type();
+				count = stack.count();
+				progress = 0.0f;
+			}
+			_renderItem(left, bottom, right, top, item, count, progress, isMouseOver);
+			
+			// We also want to call the associated handler.
+			if (isMouseOver)
+			{
+				data.eventHoverOverItem.accept(key);
+			}
+			
+			// On to the next item.
+			xElement += 1;
+			if (xElement >= itemsPerRow)
+			{
+				xElement = 0;
+				yElement += 1;
+			}
+		}
+		
+		// Draw our pagination buttons if they make sense.
+		if (pageCount > 1)
+		{
+			boolean canPageBack = (currentPage > 0);
+			boolean canPageForward = (currentPage < (pageCount - 1));
+			float buttonTop = dimensions.topY - WINDOW_PAGE_BUTTON_HEIGHT;
+			float buttonBase = buttonTop - WINDOW_PAGE_BUTTON_HEIGHT;
+			if (canPageBack)
+			{
+				float left = dimensions.rightX - 0.25f;
+				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, "<", glX, glY);
+				if (isMouseOver)
+				{
+					data.eventHoverChangePage.accept(currentPage - 1);
+				}
+			}
+			String label = (currentPage + 1) + " / " + pageCount;
+			_drawLabel(dimensions.rightX - 0.2f, buttonBase, buttonTop, label);
+			if (canPageForward)
+			{
+				float left = dimensions.rightX - 0.1f;
+				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, ">", glX, glY);
+				if (isMouseOver)
+				{
+					data.eventHoverChangePage.accept(currentPage + 1);
+				}
+			}
+		}
+	}
+
+	private void _renderItem(float left, float bottom, float right, float top, Item item, int count, float progress, boolean isMouseOver)
+	{
+		// TODO:  Actually draw the item once we have the textures available.
+		TextManager.Element element = _textManager.lazilyLoadStringTexture("X");
+		
+		int backgroundTexture = isMouseOver
+				? _pixelLightGrey
+				: _pixelDarkGreyAlpha
+		;
+		
+		_drawOverlayFrame(backgroundTexture, _pixelLightGrey, left, bottom, right, top);
+		_drawTextElement(left, bottom, right, top, element.textureObject());
 	}
 
 	private void _drawArmourSlots()
@@ -277,12 +426,25 @@ public class WindowManager
 
 	private void _drawTextInFrame(float left, float bottom, String text)
 	{
+		float outOfRange = -2.0f;
+		_drawTextInFrameWithHoverCheck(left, bottom, text, outOfRange, outOfRange);
+	}
+
+	private boolean _drawTextInFrameWithHoverCheck(float left, float bottom, String text, float glX, float glY)
+	{
 		TextManager.Element element = _textManager.lazilyLoadStringTexture(text.toUpperCase());
 		float top = bottom + GENERAL_TEXT_HEIGHT;
 		float right = left + element.aspectRatio() * (top - bottom);
 		
-		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, left, bottom, right, top);
+		boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
+		int backgroundTexture = isMouseOver
+				? _pixelLightGrey
+				: _pixelDarkGreyAlpha
+		;
+		
+		_drawOverlayFrame(backgroundTexture, _pixelLightGrey, left, bottom, right, top);
 		_drawTextElement(left, bottom, right, top, element.textureObject());
+		return isMouseOver;
 	}
 
 	private float _drawLabel(float left, float bottom, float top, String label)
@@ -327,6 +489,21 @@ public class WindowManager
 		_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, 6);
 	}
 
+	private static boolean _isMouseOver(float left, float bottom, float right, float top, float glX, float glY)
+	{
+		return ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
+	}
+
+
+	public static record WindowData(String name
+			, int usedSize
+			, int maxSize
+			, int currentPage
+			, IntConsumer eventHoverChangePage
+			, Map<Integer, NonStackableItem> nonStackable
+			, Map<Integer, Items> stackable
+			, IntConsumer eventHoverOverItem
+	) {}
 
 	private static record _WindowDimensions(float leftX
 			, float bottomY
