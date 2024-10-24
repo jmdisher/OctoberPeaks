@@ -3,10 +3,10 @@ package com.jeffdisher.october.peaks;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.Gdx;
@@ -16,6 +16,8 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.Craft;
+import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Item;
@@ -66,6 +68,13 @@ public class WindowManager
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
 	private Entity _projectedEntity;
+
+	// We define these public rendering helpers in order to avoid adding special public interfaces or spreading rendering logic around.
+	public final ItemRenderer<Items> renderItemStack;
+	public final ItemRenderer<NonStackableItem> renderNonStackable;
+	public final ItemRenderer<CraftOperation> renderCraftOperation;
+	public final HoverRenderer<Item> hoverItem;
+	public final HoverRenderer<CraftOperation> hoverCraftOperation;
 
 	public WindowManager(Environment env, GL20 gl)
 	{
@@ -118,9 +127,71 @@ public class WindowManager
 		textureBufferData.clear();
 		
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// Set up our public rendering helpers.
+		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
+			float noProgress = 0.0f;
+			_renderItem(left, bottom, right, top, item.type(), item.count(), noProgress, isMouseOver);
+		};
+		this.renderNonStackable = (float left, float bottom, float right, float top, NonStackableItem item, boolean isMouseOver) -> {
+			Item type = item.type();
+			int maxDurability = _env.durability.getDurability(type);
+			int count = 0;
+			float progress = (maxDurability > 0)
+					? (float)item.durability() / (float)maxDurability
+					: 0.0f
+			;
+			_renderItem(left, bottom, right, top, type, count, progress, isMouseOver);
+		};
+		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftOperation item, boolean isMouseOver) -> {
+			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
+			Craft selectedCraft = item.selectedCraft();
+			long completedMillis = item.completedMillis();
+			
+			float progress = 0.0f;
+			if (completedMillis > 0L)
+			{
+				progress = (float)completedMillis / (float)selectedCraft.millisPerCraft;
+			}
+			// NOTE:  We are assuming only a single output type.
+			_renderItem(left, bottom, right, top, selectedCraft.output[0], selectedCraft.output.length, progress, isMouseOver);
+		};
+		this.hoverItem = (float glX, float glY, Item item) -> {
+			// Just draw the name.
+			String name = item.name();
+			_drawTextInFrame(glX, glY - GENERAL_TEXT_HEIGHT, name);
+		};
+		this.hoverCraftOperation = (float glX, float glY, CraftOperation item) -> {
+			Craft craft = item.selectedCraft();
+			String name = craft.output[0].name();
+			
+			// Calculate the dimensions (we have a title and then a list of input items below this).
+			float widthOfTitle = _getLabelWidth(WINDOW_TITLE_HEIGHT, name);
+			float widthOfItems = (float)craft.input.length * WINDOW_ITEM_SIZE + (float)(craft.input.length + 1) * WINDOW_MARGIN;
+			float widthOfHover = Math.max(widthOfTitle, widthOfItems);
+			float heightOfHover = WINDOW_TITLE_HEIGHT + WINDOW_ITEM_SIZE + 3 * WINDOW_MARGIN;
+			
+			// We can now draw the frame.
+			_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
+			
+			// Draw the title.
+			_drawLabel(glX, glY - WINDOW_TITLE_HEIGHT, glY, name);
+			
+			// Draw the inputs.
+			float inputLeft = glX + WINDOW_MARGIN;
+			float inputTop = glY - 2 * WINDOW_MARGIN - WINDOW_TITLE_HEIGHT;
+			float inputBottom = inputTop - WINDOW_ITEM_SIZE;
+			for (Items items : craft.input)
+			{
+				float noProgress = 0.0f;
+				boolean isMouseOver = false;
+				_renderItem(inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, items.type(), items.count(), noProgress, isMouseOver);
+				inputLeft += WINDOW_ITEM_SIZE + WINDOW_MARGIN;
+			}
+		};
 	}
 
-	public void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity, WindowData topLeft, WindowData topRight, WindowData bottom, float glX, float glY)
+	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity, WindowData<A> topLeft, WindowData<B> topRight, WindowData<C> bottom, float glX, float glY)
 	{
 		// We use the orthographic projection and no depth buffer for all overlay windows.
 		_gl.glDisable(GL20.GL_DEPTH_TEST);
@@ -273,7 +344,7 @@ public class WindowManager
 		_drawLabel(valueMargin, base, top, Integer.toString(breath));
 	}
 
-	private void _drawWindow(WindowData data, _WindowDimensions dimensions, float glX, float glY)
+	private <T> void _drawWindow(WindowData<T> data, _WindowDimensions dimensions, float glX, float glY)
 	{
 		// Draw the window outline.
 		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
@@ -301,7 +372,7 @@ public class WindowManager
 		float leftMargin = dimensions.leftX + WINDOW_MARGIN;
 		// Leave space for top margin and title.
 		float topMargin = dimensions.topY - WINDOW_TITLE_HEIGHT - WINDOW_MARGIN;
-		int totalItems = data.nonStackable.size() + data.stackable.size();
+		int totalItems = data.items.size();
 		int pageCount = ((totalItems - 1) / itemsPerPage) + 1;
 		// Be aware that this may have changed without the caller knowing it.
 		int currentPage = Math.min(data.currentPage, pageCount);
@@ -312,13 +383,8 @@ public class WindowManager
 			firstIndexBeyondPage = totalItems;
 		}
 		
-		// We will keep the UI sorted by inventory key.
-		List<Integer> sortedKeys = new ArrayList<>();
-		sortedKeys.addAll(data.nonStackable.keySet());
-		sortedKeys.addAll(data.stackable.keySet());
-		sortedKeys.sort((Integer one, Integer two) -> two - one);
-		
-		for (Integer key : sortedKeys.subList(startingIndex, firstIndexBeyondPage))
+		T hoverOver = null;
+		for (T elt : data.items.subList(startingIndex, firstIndexBeyondPage))
 		{
 			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
 			float left = leftMargin + (xElement * spacePerElement);
@@ -326,37 +392,17 @@ public class WindowManager
 			float bottom = top - WINDOW_ITEM_SIZE;
 			float right = left + WINDOW_ITEM_SIZE;
 			// We only handle the mouse-over if there is a handler we will notify.
-			boolean isMouseOver = (null != data.eventHoverOverItem)
-					? _isMouseOver(left, bottom, right, top, glX, glY)
-					: false
-			;
-			Item item;
-			int count;
-			float progress;
-			if (data.nonStackable.containsKey(key))
-			{
-				NonStackableItem nonStack = data.nonStackable.get(key);
-				item = nonStack.type();
-				int maxDurability = _env.durability.getDurability(item);
-				count = 0;
-				progress = (maxDurability > 0)
-						? (float)nonStack.durability() / (float)maxDurability
-						: 0.0f
-				;
-			}
-			else
-			{
-				Items stack = data.stackable.get(key);
-				item = stack.type();
-				count = stack.count();
-				progress = 0.0f;
-			}
-			_renderItem(left, bottom, right, top, item, count, progress, isMouseOver);
-			
-			// We also want to call the associated handler.
+			boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
+			data.renderItem.drawItem(left, bottom, right, top, elt, isMouseOver);
 			if (isMouseOver)
 			{
-				data.eventHoverOverItem.accept(key);
+				hoverOver = elt;
+			}
+			
+			// We also want to call the associated handler.
+			if (isMouseOver && (null != data.eventHoverOverItem))
+			{
+				data.eventHoverOverItem.accept(elt);
 			}
 			
 			// On to the next item.
@@ -395,6 +441,12 @@ public class WindowManager
 					data.eventHoverChangePage.accept(currentPage + 1);
 				}
 			}
+		}
+		
+		// Draw hover-over details, if applicable.
+		if (null != hoverOver)
+		{
+			data.renderHover.drawHoverAtPoint(glX, glY, hoverOver);
 		}
 	}
 
@@ -456,6 +508,13 @@ public class WindowManager
 		return right;
 	}
 
+	private float _getLabelWidth(float height, String label)
+	{
+		TextManager.Element element = _textManager.lazilyLoadStringTexture(label);
+		float textureAspect = element.aspectRatio();
+		return textureAspect * height;
+	}
+
 	private void _drawTextElement(float left, float bottom, float right, float top, int labelTexture)
 	{
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
@@ -495,14 +554,25 @@ public class WindowManager
 	}
 
 
-	public static record WindowData(String name
+	public static interface ItemRenderer<T>
+	{
+		void drawItem(float left, float bottom, float right, float top, T item, boolean isMouseOver);
+	}
+
+	public static interface HoverRenderer<T>
+	{
+		void drawHoverAtPoint(float glX, float glY, T item);
+	}
+
+	public static record WindowData<T>(String name
 			, int usedSize
 			, int maxSize
 			, int currentPage
 			, IntConsumer eventHoverChangePage
-			, Map<Integer, NonStackableItem> nonStackable
-			, Map<Integer, Items> stackable
-			, IntConsumer eventHoverOverItem
+			, List<T> items
+			, ItemRenderer<T> renderItem
+			, HoverRenderer<T> renderHover
+			, Consumer<T> eventHoverOverItem
 	) {}
 
 	private static record _WindowDimensions(float leftX

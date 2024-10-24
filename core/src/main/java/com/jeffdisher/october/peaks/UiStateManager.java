@@ -1,11 +1,12 @@
 package com.jeffdisher.october.peaks;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -53,8 +54,9 @@ public class UiStateManager
 			// TODO:  Plumb in the relevant information for crafting, etc.
 			// For now, we just provide some testing data.
 			Environment env = Environment.getShared();
-			Map<Integer, NonStackableItem> nonStack = new HashMap<>();
-			Map<Integer, Items> stack = new HashMap<>();
+			
+			List<CraftOperation> craftingItems = List.of(new CraftOperation(env.crafting.getCraftById("op.bed"), 0L), new CraftOperation(env.crafting.getCraftById("op.stone_to_stone_brick"), 500L));
+			List<_InventoryEntry> inventoryItems = new ArrayList<>();
 			int count = 0;
 			for (Item item : env.items.ITEMS_BY_TYPE)
 			{
@@ -62,42 +64,69 @@ public class UiStateManager
 				{
 					if (env.encumbrance.getEncumbrance(item) > 0)
 					{
-						stack.put(count, new Items(item, 2));
+						inventoryItems.add(new _InventoryEntry(count, new Items(item, 2), null));
 						count += 1;
 					}
 				}
 				else
 				{
-					nonStack.put(count, new NonStackableItem(item, 10));
+					inventoryItems.add(new _InventoryEntry(count, null, new NonStackableItem(item, 10)));
 					count += 1;
 				}
 			}
 			
-			WindowManager.WindowData topLeft = new WindowManager.WindowData("Crafting"
+			WindowManager.ItemRenderer<_InventoryEntry> renderer = (float left, float bottom, float right, float top, _InventoryEntry item, boolean isMouseOver) -> {
+				Items items = item.stackable;
+				if (null != items)
+				{
+					windowManager.renderItemStack.drawItem(left, bottom, right, top, items, isMouseOver);
+				}
+				else
+				{
+					windowManager.renderNonStackable.drawItem(left, bottom, right, top, item.nonStackable, isMouseOver);
+				}
+			};
+			WindowManager.HoverRenderer<_InventoryEntry> hover = (float glX, float glY, _InventoryEntry item) -> {
+				Item type;
+				if (null != item.stackable)
+				{
+					type = item.stackable.type();
+				}
+				else
+				{
+					type = item.nonStackable.type();
+				}
+				windowManager.hoverItem.drawHoverAtPoint(glX, glY, type);
+			};
+			
+			WindowManager.WindowData<CraftOperation> topLeft = new WindowManager.WindowData<>("Crafting"
 					, 0
 					, 0
 					, 0
 					, null
-					, Map.of()
-					, Map.of()
+					, craftingItems
+					, windowManager.renderCraftOperation
+					, windowManager.hoverCraftOperation
 					, null
 			);
-			WindowManager.WindowData topRight = new WindowManager.WindowData("Inventory"
+			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"
 					, 4
 					, 10
 					, 0
 					, (int page) -> System.out.println("PAGE: " + page)
-					, nonStack
-					, stack
-					, (int key) -> System.out.println("KEY: " + key)
+					, inventoryItems
+					, renderer
+					, hover
+					, (_InventoryEntry elt) -> System.out.println("KEY: " + elt.key)
 			);
-			WindowManager.WindowData bottom = new WindowManager.WindowData("Floor"
+			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
 					, 0
 					, 20
 					, 0
 					, null
-					, Map.of()
-					, Map.of()
+					, List.of()
+					, renderer
+					, hover
 					, null
 			);
 			
@@ -275,6 +304,7 @@ public class UiStateManager
 		INVENTORY,
 	}
 
+	private static record _InventoryEntry(int key, Items stackable, NonStackableItem nonStackable) {}
 
 	public static interface IInputStateChanger
 	{
