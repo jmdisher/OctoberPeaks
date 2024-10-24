@@ -6,6 +6,7 @@ import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.mutations.EntityChangeIncrementalBlockBreak;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.PartialEntity;
@@ -50,11 +51,13 @@ public class SelectionManager
 	public SelectionTuple findSelection()
 	{
 		// Find any selected entity or block.
-		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, _target, _entities.values());
-		Vector edgeLimit = _target;
+		Vector direction = Vector.delta(_eye, _target).scale(EntityChangeIncrementalBlockBreak.MAX_REACH);
+		Vector endPoint = _eye.add(direction);
+		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, endPoint, _entities.values());
+		Vector edgeLimit = endPoint;
 		if (null != selectedEntity)
 		{
-			Vector relative = Vector.delta(_eye, _target).scale(selectedEntity.distance());
+			Vector relative = Vector.delta(_eye, endPoint).normalize().scale(selectedEntity.distance());
 			edgeLimit = new Vector(_eye.x() + relative.x(), _eye.y() + relative.y(), _eye.z() + relative.z());
 		}
 		Environment env = Environment.getShared();

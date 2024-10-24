@@ -41,6 +41,11 @@ public record Vector(float x, float y, float z)
 		return new Vector(this.x * scale, this.y * scale, this.z * scale);
 	}
 
+	public Vector add(Vector other)
+	{
+		return new Vector(this.x + other.x, this.y + other.y, this.z + other.z);
+	}
+
 
 	private float _magnitude()
 	{
