@@ -14,8 +14,6 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
-import com.jeffdisher.october.types.Craft;
-import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
@@ -64,14 +62,17 @@ public class WindowManager
 	private final int _verticesUnitSquare;
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
+	private final int _pixelRed;
+	private final int _pixelGreen;
+	private final int _pixelGreenAlpha;
 	private Entity _projectedEntity;
 
 	// We define these public rendering helpers in order to avoid adding special public interfaces or spreading rendering logic around.
 	public final ItemRenderer<Items> renderItemStack;
 	public final ItemRenderer<NonStackableItem> renderNonStackable;
-	public final ItemRenderer<CraftOperation> renderCraftOperation;
+	public final ItemRenderer<CraftDescription> renderCraftOperation;
 	public final HoverRenderer<Item> hoverItem;
-	public final HoverRenderer<CraftOperation> hoverCraftOperation;
+	public final HoverRenderer<CraftDescription> hoverCraftOperation;
 
 	public WindowManager(Environment env, GL20 gl, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
@@ -106,29 +107,24 @@ public class WindowManager
 		textureBufferData.order(ByteOrder.nativeOrder());
 		
 		// We use a light grey pixel for a window "frame".
-		_pixelLightGrey = _gl.glGenTexture();
-		textureBufferData.put(new byte[] { (byte) 180, (byte)255 });
-		textureBufferData.flip();
-		gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelLightGrey);
-		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_LUMINANCE_ALPHA, 1, 1, 0, GL20.GL_LUMINANCE_ALPHA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
-		textureBufferData.clear();
+		_pixelLightGrey = _makePixelRgba(_gl, textureBufferData, (byte)180, (byte)180, (byte)180, (byte)255);
 		
 		// We use a dark grey pixel, with partial alpha, for a window "background".
-		_pixelDarkGreyAlpha = _gl.glGenTexture();
-		textureBufferData.put(new byte[] { 32, (byte)196 });
-		textureBufferData.flip();
-		gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelDarkGreyAlpha);
-		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_LUMINANCE_ALPHA, 1, 1, 0, GL20.GL_LUMINANCE_ALPHA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
-		textureBufferData.clear();
+		_pixelDarkGreyAlpha = _makePixelRgba(_gl, textureBufferData, (byte)32, (byte)32, (byte)32, (byte)196);
+		
+		// We use the Red/Green pixels for outlines of frames in a few cases.
+		_pixelRed = _makePixelRgba(_gl, textureBufferData, (byte)255, (byte)0, (byte)0, (byte)255);
+		_pixelGreen = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)255);
+		
+		// We use the semi-transparent green for "progress" overlays.
+		_pixelGreenAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)100);
 		
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Set up our public rendering helpers.
 		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
 			float noProgress = 0.0f;
-			_renderItem(left, bottom, right, top, item.type(), item.count(), noProgress, isMouseOver);
+			_renderItem(left, bottom, right, top, _pixelLightGrey, item.type(), item.count(), noProgress, isMouseOver);
 		};
 		this.renderNonStackable = (float left, float bottom, float right, float top, NonStackableItem item, boolean isMouseOver) -> {
 			Item type = item.type();
@@ -138,33 +134,37 @@ public class WindowManager
 					? (float)item.durability() / (float)maxDurability
 					: 0.0f
 			;
-			_renderItem(left, bottom, right, top, type, count, progress, isMouseOver);
+			_renderItem(left, bottom, right, top, _pixelLightGrey, type, count, progress, isMouseOver);
 		};
-		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftOperation item, boolean isMouseOver) -> {
+		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftDescription item, boolean isMouseOver) -> {
 			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
-			Craft selectedCraft = item.selectedCraft();
-			long completedMillis = item.completedMillis();
-			
-			float progress = 0.0f;
-			if (completedMillis > 0L)
-			{
-				progress = (float)completedMillis / (float)selectedCraft.millisPerCraft;
-			}
 			// NOTE:  We are assuming only a single output type.
-			_renderItem(left, bottom, right, top, selectedCraft.output[0], selectedCraft.output.length, progress, isMouseOver);
+			boolean isValid = true;
+			for (ItemRequirement input : item.input)
+			{
+				if (input.available < input.required)
+				{
+					isValid = false;
+					break;
+				}
+			}
+			int outlineTexture = isValid
+					? _pixelGreen
+					: _pixelRed
+			;
+			_renderItem(left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, isMouseOver);
 		};
 		this.hoverItem = (float glX, float glY, Item item) -> {
 			// Just draw the name.
 			String name = item.name();
 			_drawTextInFrame(glX, glY - GENERAL_TEXT_HEIGHT, name);
 		};
-		this.hoverCraftOperation = (float glX, float glY, CraftOperation item) -> {
-			Craft craft = item.selectedCraft();
-			String name = craft.output[0].name();
+		this.hoverCraftOperation = (float glX, float glY, CraftDescription item) -> {
+			String name = item.name;
 			
 			// Calculate the dimensions (we have a title and then a list of input items below this).
 			float widthOfTitle = _getLabelWidth(WINDOW_TITLE_HEIGHT, name);
-			float widthOfItems = (float)craft.input.length * WINDOW_ITEM_SIZE + (float)(craft.input.length + 1) * WINDOW_MARGIN;
+			float widthOfItems = (float)item.input.length * WINDOW_ITEM_SIZE + (float)(item.input.length + 1) * WINDOW_MARGIN;
 			float widthOfHover = Math.max(widthOfTitle, widthOfItems);
 			float heightOfHover = WINDOW_TITLE_HEIGHT + WINDOW_ITEM_SIZE + 3 * WINDOW_MARGIN;
 			
@@ -178,11 +178,15 @@ public class WindowManager
 			float inputLeft = glX + WINDOW_MARGIN;
 			float inputTop = glY - 2 * WINDOW_MARGIN - WINDOW_TITLE_HEIGHT;
 			float inputBottom = inputTop - WINDOW_ITEM_SIZE;
-			for (Items items : craft.input)
+			for (ItemRequirement items : item.input)
 			{
 				float noProgress = 0.0f;
 				boolean isMouseOver = false;
-				_renderItem(inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, items.type(), items.count(), noProgress, isMouseOver);
+				int outlineTexture = (items.available >= items.required)
+						? _pixelGreen
+						: _pixelRed
+				;
+				_renderItem(inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, outlineTexture, items.type, items.required, noProgress, isMouseOver);
 				inputLeft += WINDOW_ITEM_SIZE + WINDOW_MARGIN;
 			}
 		};
@@ -435,7 +439,7 @@ public class WindowManager
 		}
 	}
 
-	private void _renderItem(float left, float bottom, float right, float top, Item item, int count, float progress, boolean isMouseOver)
+	private void _renderItem(float left, float bottom, float right, float top, int outlineTexture, Item item, int count, float progress, boolean isMouseOver)
 	{
 		// TODO:  Actually draw the item once we have the textures available.
 		TextManager.Element element = _textManager.lazilyLoadStringTexture("X");
@@ -445,8 +449,16 @@ public class WindowManager
 				: _pixelDarkGreyAlpha
 		;
 		
-		_drawOverlayFrame(backgroundTexture, _pixelLightGrey, left, bottom, right, top);
+		_drawOverlayFrame(backgroundTexture, outlineTexture, left, bottom, right, top);
 		_drawTextElement(left, bottom, right, top, element.textureObject());
+		
+		// If there is a progress bar, draw it on top.
+		if (progress > 0.0f)
+		{
+			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelGreenAlpha);
+			float progressTop = bottom + (top - bottom) * progress;
+			_drawRect(left, bottom, right, progressTop);
+		}
 	}
 
 	private void _drawArmourSlots()
@@ -538,6 +550,17 @@ public class WindowManager
 		return ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
 	}
 
+	private static int _makePixelRgba(GL20 gl, ByteBuffer textureBufferData, byte r, byte g, byte b, byte a)
+	{
+		int texture = gl.glGenTexture();
+		textureBufferData.clear();
+		textureBufferData.put(new byte[] { r, g, b, a });
+		textureBufferData.flip();
+		gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
+		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGBA, 1, 1, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
+		return texture;
+	}
 
 	public static interface ItemRenderer<T>
 	{
@@ -558,6 +581,17 @@ public class WindowManager
 			, ItemRenderer<T> renderItem
 			, HoverRenderer<T> renderHover
 			, Consumer<T> eventHoverOverItem
+	) {}
+
+	public static record CraftDescription(String name
+			, Items output
+			, ItemRequirement[] input
+			, float progress
+	) {}
+
+	public static record ItemRequirement(Item type
+			, int required
+			, int available
 	) {}
 
 	private static record _WindowDimensions(float leftX

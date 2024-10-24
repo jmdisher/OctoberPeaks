@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -8,6 +9,7 @@ import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeMove;
+import com.jeffdisher.october.peaks.WindowManager.ItemRequirement;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
@@ -72,14 +74,28 @@ public class UiStateManager
 			// We will convert these into CraftOperation instances so we can splice in the current craft.
 			CraftOperation currentOperation = _thisEntity.localCraftOperation();
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
-			List<CraftOperation> convertedCrafts = builtInCrafts.stream()
+			List<WindowManager.CraftDescription> convertedCrafts = builtInCrafts.stream()
 					.map((Craft craft) -> {
-						long progress = 0L;
+						long progressMillis = 0L;
 						if (craft == currentCraft)
 						{
-							progress = currentOperation.completedMillis();
+							progressMillis = currentOperation.completedMillis();
 						}
-						return new CraftOperation(craft, progress);
+						float progress = (float)progressMillis / (float)craft.millisPerCraft;
+						ItemRequirement[] requirements = Arrays.stream(craft.input)
+								.map((Items input) -> {
+									Item type = input.type();
+									int available = _thisEntity.inventory().getCount(type);
+									return new ItemRequirement(type, input.count(), available);
+								})
+								.toArray((int size) -> new ItemRequirement[size])
+						;
+						// Note that we are assuming that there is only one output type.
+						return new WindowManager.CraftDescription(craft.name
+								, new Items(craft.output[0], craft.output.length)
+								, requirements
+								, progress
+						);
 					})
 					.toList()
 			;
@@ -108,7 +124,7 @@ public class UiStateManager
 				windowManager.hoverItem.drawHoverAtPoint(glX, glY, type);
 			};
 			
-			WindowManager.WindowData<CraftOperation> topLeft = new WindowManager.WindowData<>("Crafting"
+			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>("Crafting"
 					, 0
 					, 0
 					, 0
