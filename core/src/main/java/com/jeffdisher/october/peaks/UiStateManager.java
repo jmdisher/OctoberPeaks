@@ -1,15 +1,18 @@
 package com.jeffdisher.october.peaks;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
+import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -23,7 +26,9 @@ public class UiStateManager
 {
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
+	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 
+	private Entity _thisEntity;
 	private boolean _rotationDidUpdate;
 	private boolean _didAccountForTimeInFrame;
 	private boolean _mouseHeld0;
@@ -39,6 +44,7 @@ public class UiStateManager
 	{
 		_movement = movement;
 		_client = client;
+		_blockLookup = blockLookup;
 		
 		// We start up in the play state.
 		_uiState = _UiState.PLAY;
@@ -54,29 +60,29 @@ public class UiStateManager
 	{
 		if (_UiState.INVENTORY == _uiState)
 		{
-			// TODO:  Plumb in the relevant information for crafting, etc.
-			// For now, we just provide some testing data.
 			Environment env = Environment.getShared();
 			
-			List<CraftOperation> craftingItems = List.of(new CraftOperation(env.crafting.getCraftById("op.bed"), 0L), new CraftOperation(env.crafting.getCraftById("op.stone_to_stone_brick"), 500L));
-			List<_InventoryEntry> inventoryItems = new ArrayList<>();
-			int count = 0;
-			for (Item item : env.items.ITEMS_BY_TYPE)
-			{
-				if (env.durability.isStackable(item))
-				{
-					if (env.encumbrance.getEncumbrance(item) > 0)
-					{
-						inventoryItems.add(new _InventoryEntry(count, new Items(item, 2), null));
-						count += 1;
-					}
-				}
-				else
-				{
-					inventoryItems.add(new _InventoryEntry(count, null, new NonStackableItem(item, 10)));
-					count += 1;
-				}
-			}
+			// Get the inventory for this entity and the floor.
+			List<_InventoryEntry> entityInventory = _inventoryToList(_thisEntity.inventory());
+			BlockProxy thisBlock = _blockLookup.apply(GeometryHelpers.getCentreAtFeet(_thisEntity));
+			List<_InventoryEntry> floorInventory = _inventoryToList(thisBlock.getInventory());
+			
+			// We are just looking at the entity inventory so find the built-in crafting recipes.
+			List<Craft> builtInCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
+			// We will convert these into CraftOperation instances so we can splice in the current craft.
+			CraftOperation currentOperation = _thisEntity.localCraftOperation();
+			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
+			List<CraftOperation> convertedCrafts = builtInCrafts.stream()
+					.map((Craft craft) -> {
+						long progress = 0L;
+						if (craft == currentCraft)
+						{
+							progress = currentOperation.completedMillis();
+						}
+						return new CraftOperation(craft, progress);
+					})
+					.toList()
+			;
 			
 			WindowManager.ItemRenderer<_InventoryEntry> renderer = (float left, float bottom, float right, float top, _InventoryEntry item, boolean isMouseOver) -> {
 				Items items = item.stackable;
@@ -107,7 +113,7 @@ public class UiStateManager
 					, 0
 					, 0
 					, null
-					, craftingItems
+					, convertedCrafts
 					, windowManager.renderCraftOperation
 					, windowManager.hoverCraftOperation
 					, null
@@ -117,7 +123,7 @@ public class UiStateManager
 					, 10
 					, 0
 					, (int page) -> System.out.println("PAGE: " + page)
-					, inventoryItems
+					, entityInventory
 					, renderer
 					, hover
 					, (_InventoryEntry elt) -> System.out.println("KEY: " + elt.key)
@@ -126,11 +132,11 @@ public class UiStateManager
 					, 0
 					, 20
 					, 0
-					, null
-					, List.of()
+					, (int page) -> {}
+					, floorInventory
 					, renderer
 					, hover
-					, null
+					, (_InventoryEntry elt) -> {}
 			);
 			
 			windowManager.drawActiveWindows(null, null, topLeft, topRight, bottom, _normalGlX, _normalGlY);
@@ -182,7 +188,7 @@ public class UiStateManager
 
 	public void setThisEntity(Entity projectedEntity)
 	{
-		// TODO:  Implement when we look up the actual entity state.
+		_thisEntity = projectedEntity;
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
@@ -286,6 +292,28 @@ public class UiStateManager
 			captureState.shouldCaptureMouse(false);
 			break;
 		}
+	}
+
+
+	private List<_InventoryEntry> _inventoryToList(Inventory inventory)
+	{
+		return inventory.sortedKeys().stream()
+			.map((Integer key) -> {
+				Items stack = inventory.getStackForKey(key);
+				_InventoryEntry entry;
+				if (null != stack)
+				{
+					entry = new _InventoryEntry(key, stack, null);
+				}
+				else
+				{
+					NonStackableItem nonStack = inventory.getNonStackableForKey(key);
+					entry = new _InventoryEntry(key, null, nonStack);
+				}
+				return entry;
+			})
+			.toList()
+		;
 	}
 
 
