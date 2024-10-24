@@ -2,11 +2,12 @@ package com.jeffdisher.october.peaks;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
-import com.jeffdisher.october.aspects.AspectRegistry;
-import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.types.AbsoluteLocation;
-import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -18,14 +19,14 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class SelectionManager
 {
-	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
+	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final Map<Integer, PartialEntity> _entities;
 	private Vector _eye;
 	private Vector _target;
 
-	public SelectionManager()
+	public SelectionManager(Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
-		_cuboids = new HashMap<>();
+		_blockLookup = blockLookup;
 		_entities = new HashMap<>();
 	}
 
@@ -33,17 +34,6 @@ public class SelectionManager
 	{
 		_eye = eye;
 		_target = target;
-	}
-
-	public void setCuboid(IReadOnlyCuboidData cuboid)
-	{
-		_cuboids.put(cuboid.getCuboidAddress(), cuboid);
-	}
-
-	public void removeCuboid(CuboidAddress address)
-	{
-		IReadOnlyCuboidData removed = _cuboids.remove(address);
-		Assert.assertTrue(null != removed);
 	}
 
 	public void setEntity(PartialEntity entity)
@@ -67,15 +57,16 @@ public class SelectionManager
 			Vector relative = Vector.delta(_eye, _target).scale(selectedEntity.distance());
 			edgeLimit = new Vector(_eye.x() + relative.x(), _eye.y() + relative.y(), _eye.z() + relative.z());
 		}
+		Environment env = Environment.getShared();
 		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, edgeLimit, (AbsoluteLocation location) -> {
-			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
+			BlockProxy proxy = _blockLookup.apply(location);
 			boolean shouldStop = true;
-			if (null != cuboid)
+			if (null != proxy)
 			{
 				shouldStop = false;
-				short block = cuboid.getData15(AspectRegistry.BLOCK, location.getBlockAddress());
+				Block block = proxy.getBlock();
 				// Check against the air block.
-				if (0 != block)
+				if (env.special.AIR != block)
 				{
 					shouldStop = true;
 				}

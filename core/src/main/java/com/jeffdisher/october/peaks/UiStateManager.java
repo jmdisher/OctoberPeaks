@@ -2,11 +2,14 @@ package com.jeffdisher.october.peaks;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.CraftOperation;
+import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -32,7 +35,7 @@ public class UiStateManager
 	// Data specifically related to high-level UI state (will likely be pulled out, later).
 	private _UiState _uiState;
 
-	public UiStateManager(MovementControl movement, ClientWrapper client)
+	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
 		_movement = movement;
 		_client = client;
@@ -175,6 +178,11 @@ public class UiStateManager
 		_mouseHeld0 = false;
 		_mouseHeld1 = false;
 		_mouseClicked1 = false;
+	}
+
+	public void setThisEntity(Entity projectedEntity)
+	{
+		// TODO:  Implement when we look up the actual entity state.
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)

@@ -3,22 +3,19 @@ package com.jeffdisher.october.peaks;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
-import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
@@ -58,8 +55,8 @@ public class WindowManager
 
 	private final Environment _env;
 	private final GL20 _gl;
+	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final TextManager _textManager;
-	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
 	private final int _program;
 	private final int _uOffset;
 	private final int _uScale;
@@ -76,12 +73,12 @@ public class WindowManager
 	public final HoverRenderer<Item> hoverItem;
 	public final HoverRenderer<CraftOperation> hoverCraftOperation;
 
-	public WindowManager(Environment env, GL20 gl)
+	public WindowManager(Environment env, GL20 gl, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
 		_env = env;
 		_gl = gl;
+		_blockLookup = blockLookup;
 		_textManager = new TextManager(_gl);
-		_cuboids = new HashMap<>();
 		
 		// Create the program we will use for the window overlays.
 		// The overlays are all rectangular tiles representing windows, graphic tiles, or text tiles.
@@ -235,10 +232,9 @@ public class WindowManager
 		else if (null != selectedBlock)
 		{
 			// Draw the block information.
-			IReadOnlyCuboidData cuboid = _cuboids.get(selectedBlock.getCuboidAddress());
-			if (null != cuboid)
+			BlockProxy proxy = _blockLookup.apply(selectedBlock);
+			if (null != proxy)
 			{
-				BlockProxy proxy = new BlockProxy(selectedBlock.getBlockAddress(), cuboid);
 				Block blockUnderMouse = proxy.getBlock();
 				if (_env.special.AIR != blockUnderMouse)
 				{
@@ -257,17 +253,6 @@ public class WindowManager
 	public void setThisEntity(Entity projectedEntity)
 	{
 		_projectedEntity = projectedEntity;
-	}
-
-	public void setCuboid(IReadOnlyCuboidData cuboid)
-	{
-		_cuboids.put(cuboid.getCuboidAddress(), cuboid);
-	}
-
-	public void removeCuboid(CuboidAddress address)
-	{
-		IReadOnlyCuboidData removed = _cuboids.remove(address);
-		Assert.assertTrue(null != removed);
 	}
 
 

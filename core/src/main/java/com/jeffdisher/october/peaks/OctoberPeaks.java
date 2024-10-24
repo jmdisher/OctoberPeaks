@@ -2,12 +2,16 @@ package com.jeffdisher.october.peaks;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -24,6 +28,8 @@ import com.jeffdisher.october.utils.Assert;
 public class OctoberPeaks extends ApplicationAdapter
 {
 	private final String _clientName;
+	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
+	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final InetSocketAddress _serverSocketAddress;
 	private final SelectionManager _selectionManager;
 
@@ -39,8 +45,18 @@ public class OctoberPeaks extends ApplicationAdapter
 	public OctoberPeaks(Options options)
 	{
 		_clientName = options.clientName();
+		_cuboids = new HashMap<>();
+		_blockLookup = (AbsoluteLocation location) -> {
+			BlockProxy proxy = null;
+			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
+			if (null != cuboid)
+			{
+				proxy = new BlockProxy(location.getBlockAddress(), cuboid);
+			}
+			return proxy;
+		};
 		_serverSocketAddress = options.serverAddress();
-		_selectionManager = new SelectionManager();
+		_selectionManager = new SelectionManager(_blockLookup);
 	}
 
 	@Override
@@ -62,7 +78,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
-		_windowManager = new WindowManager(_environment, _gl);
+		_windowManager = new WindowManager(_environment, _gl, _blockLookup);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
@@ -71,23 +87,21 @@ public class OctoberPeaks extends ApplicationAdapter
 					@Override
 					public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 					{
+						_cuboids.put(cuboid.getCuboidAddress(), cuboid);
 						_scene.setCuboid(cuboid);
-						_selectionManager.setCuboid(cuboid);
-						_windowManager.setCuboid(cuboid);
 					}
 					@Override
 					public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 					{
+						_cuboids.put(cuboid.getCuboidAddress(), cuboid);
 						_scene.setCuboid(cuboid);
-						_selectionManager.setCuboid(cuboid);
-						_windowManager.setCuboid(cuboid);
 					}
 					@Override
 					public void unload(CuboidAddress address)
 					{
+						IReadOnlyCuboidData removed = _cuboids.remove(address);
+						Assert.assertTrue(null != removed);
 						_scene.removeCuboid(address);
-						_selectionManager.removeCuboid(address);
-						_windowManager.removeCuboid(address);
 					}
 					@Override
 					public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
@@ -99,6 +113,7 @@ public class OctoberPeaks extends ApplicationAdapter
 						_scene.updatePosition(eye, target);
 						_selectionManager.updatePosition(eye, target);
 						_windowManager.setThisEntity(projectedEntity);
+						_uiState.setThisEntity(projectedEntity);
 					}
 					@Override
 					public void otherEntityUpdated(PartialEntity entity)
@@ -116,9 +131,9 @@ public class OctoberPeaks extends ApplicationAdapter
 				, _clientName
 				, _serverSocketAddress
 		);
-		_client.finishStartup();
-		_uiState = new UiStateManager(_movement, _client);
+		_uiState = new UiStateManager(_movement, _client, _blockLookup);
 		_input = new InputManager();
+		_client.finishStartup();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
