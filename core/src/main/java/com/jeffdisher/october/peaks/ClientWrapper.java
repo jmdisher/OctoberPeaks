@@ -22,6 +22,8 @@ import com.jeffdisher.october.mutations.EntityChangeSwim;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnSelf;
 import com.jeffdisher.october.mutations.IMutationEntity;
+import com.jeffdisher.october.mutations.MutationEntityPushItems;
+import com.jeffdisher.october.mutations.MutationEntityRequestItemPickUp;
 import com.jeffdisher.october.mutations.MutationPlaceSelectedBlock;
 import com.jeffdisher.october.persistence.BasicWorldGenerator;
 import com.jeffdisher.october.persistence.FlatWorldGenerator;
@@ -41,10 +43,12 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.MutableInventory;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
@@ -334,6 +338,117 @@ public class ClientWrapper
 			long currentTimeMillis = System.currentTimeMillis();
 			_client.sendAction(change, currentTimeMillis);
 		}
+	}
+
+	/**
+	 * Submits a mutation to pull items from the inventory at location into the entity's inventory.
+	 * Note that this WILL CHECK if the request is valid and safely fail, if not.  This avoids the caller needing to
+	 * check there with a duplicated assertion here.
+	 * 
+	 * @param location The location of the block inventory.
+	 * @param blockInventoryKey The inventory key of the item in that block.
+	 * @param count The number of items to pull.
+	 * @param useFuel True if the fuel inventory should be used instead of the normal inventory.
+	 * @return True if the mutation was submitted or false if this request was invalid.
+	 */
+	public boolean pullItemsFromBlockInventory(AbsoluteLocation location, int blockInventoryKey, int count, boolean useFuel)
+	{
+		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _cuboids.get(location.getCuboidAddress()));
+		Inventory blockInventory;
+		byte inventoryAspect;
+		if (useFuel)
+		{
+			FuelState fuel = proxy.getFuel();
+			blockInventory = (null != fuel)
+					? fuel.fuelInventory()
+					: null
+			;
+			inventoryAspect = Inventory.INVENTORY_ASPECT_FUEL;
+		}
+		else
+		{
+			blockInventory = proxy.getInventory();
+			inventoryAspect = Inventory.INVENTORY_ASPECT_INVENTORY;
+		}
+		
+		boolean didSubmit = false;
+		if (null != blockInventory)
+		{
+			Items stack = blockInventory.getStackForKey(blockInventoryKey);
+			NonStackableItem nonStack = blockInventory.getNonStackableForKey(blockInventoryKey);
+			if ((null != stack) != (null != nonStack))
+			{
+				int available = (null != stack) ? stack.count() : 1;
+				if (available >= count)
+				{
+					MutationEntityRequestItemPickUp request = new MutationEntityRequestItemPickUp(location, blockInventoryKey, count, inventoryAspect);
+					long currentTimeMillis = System.currentTimeMillis();
+					_client.sendAction(request, currentTimeMillis);
+					didSubmit = true;
+				}
+			}
+		}
+		return didSubmit;
+	}
+
+	/**
+	 * Submits a mutation to push items from the entity's inventory to the inventory at location.
+	 * Note that this WILL CHECK if the request is valid and safely fail, if not.  This avoids the caller needing to
+	 * check there with a duplicated assertion here.
+	 * 
+	 * @param location The location of the block inventory.
+	 * @param entityInventoryKey The inventory key of the item in that the entity's inventory.
+	 * @param count The number of items to push.
+	 * @param useFuel True if the fuel inventory should be used instead of the normal inventory.
+	 * @return True if the mutation was submitted or false if this request was invalid.
+	 */
+	public boolean pushItemsToBlockInventory(AbsoluteLocation location, int entityInventoryKey, int count, boolean useFuel)
+	{
+		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _cuboids.get(location.getCuboidAddress()));
+		Inventory inventory = _getEntityInventory();
+		Items stack = inventory.getStackForKey(entityInventoryKey);
+		NonStackableItem nonStack = inventory.getNonStackableForKey(entityInventoryKey);
+		
+		boolean didSubmit = false;
+		if ((null != stack) != (null != nonStack))
+		{
+			Item type = (null != stack) ? stack.type() : nonStack.type();
+			// Make sure that these can fit in the tile.
+			Inventory targetInventory;
+			byte inventoryAspect;
+			if (useFuel)
+			{
+				// If we are pushing to the fuel slot, make sure that this is a valid type.
+				if (_environment.fuel.millisOfFuel(type) > 0)
+				{
+					FuelState fuel = proxy.getFuel();
+					targetInventory = fuel.fuelInventory();
+				}
+				else
+				{
+					targetInventory = null;
+				}
+				inventoryAspect = Inventory.INVENTORY_ASPECT_FUEL;
+			}
+			else
+			{
+				targetInventory = proxy.getInventory();
+				inventoryAspect = Inventory.INVENTORY_ASPECT_INVENTORY;
+			}
+			
+			if (null != targetInventory)
+			{
+				MutableInventory inv = new MutableInventory(targetInventory);
+				if (inv.maxVacancyForItem(type) >= count)
+				{
+					MutationEntityPushItems push = new MutationEntityPushItems(location, entityInventoryKey, count, inventoryAspect);
+					long currentTimeMillis = System.currentTimeMillis();
+					_client.sendAction(push, currentTimeMillis);
+					didSubmit = true;
+				}
+			}
+		}
+		return didSubmit;
 	}
 
 	public void disconnect()

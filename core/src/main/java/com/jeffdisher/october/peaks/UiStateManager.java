@@ -65,9 +65,12 @@ public class UiStateManager
 			Environment env = Environment.getShared();
 			
 			// Get the inventory for this entity and the floor.
-			List<_InventoryEntry> entityInventory = _inventoryToList(_thisEntity.inventory());
-			BlockProxy thisBlock = _blockLookup.apply(GeometryHelpers.getCentreAtFeet(_thisEntity));
-			List<_InventoryEntry> floorInventory = _inventoryToList(thisBlock.getInventory());
+			Inventory entityInventory = _thisEntity.inventory();
+			List<_InventoryEntry> entityInventoryList = _inventoryToList(entityInventory);
+			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity);
+			BlockProxy thisBlock = _blockLookup.apply(feetBlock);
+			Inventory floorInventory = thisBlock.getInventory();
+			List<_InventoryEntry> floorInventoryList = _inventoryToList(floorInventory);
 			
 			// We are just looking at the entity inventory so find the built-in crafting recipes.
 			List<Craft> builtInCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
@@ -135,24 +138,38 @@ public class UiStateManager
 					, null
 			);
 			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"
-					, 4
-					, 10
+					, entityInventory.currentEncumbrance
+					, entityInventory.maxEncumbrance
 					, 0
 					, (int page) -> System.out.println("PAGE: " + page)
-					, entityInventory
+					, entityInventoryList
 					, renderer
 					, hover
-					, (_InventoryEntry elt) -> System.out.println("KEY: " + elt.key)
+					, (_InventoryEntry elt) -> {
+						// If we right-clicked, push this from our inventory into the block.
+						if (_mouseClicked1)
+						{
+							// Note that we ignore the result since this will be reflected in the UI, if valid.
+							_client.pushItemsToBlockInventory(feetBlock, elt.key, 1, false);
+						}
+					}
 			);
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
-					, 0
-					, 20
+					, floorInventory.currentEncumbrance
+					, floorInventory.maxEncumbrance
 					, 0
 					, (int page) -> {}
-					, floorInventory
+					, floorInventoryList
 					, renderer
 					, hover
-					, (_InventoryEntry elt) -> {}
+					, (_InventoryEntry elt) -> {
+						// If we right-clicked, pull this item into our inventory.
+						if (_mouseClicked1)
+						{
+							// Note that we ignore the result since this will be reflected in the UI, if valid.
+							_client.pullItemsFromBlockInventory(feetBlock, elt.key, 1, false);
+						}
+					}
 			);
 			
 			windowManager.drawActiveWindows(null, null, topLeft, topRight, bottom, _normalGlX, _normalGlY);
@@ -270,7 +287,7 @@ public class UiStateManager
 
 	public void normalMouse1Clicked()
 	{
-		// TODO:  Implement (inventory/crafting mode).
+		_mouseClicked1 = true;
 	}
 
 	public void handleKeyEsc(IInputStateChanger captureState)

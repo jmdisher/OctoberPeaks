@@ -168,9 +168,6 @@ public class OctoberPeaks extends ApplicationAdapter
 			}
 		}
 		
-		// Finalize the event processing with this selection and accounting for inter-frame time.
-		_uiState.finalizeFrameEvents(entity, stopBlock, preStopBlock);
-		
 		// Reset the screen so we can draw this frame.
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -184,6 +181,10 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_uiState.drawRelevantWindows(_windowManager, stopBlock, entity);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// Finalize the event processing with this selection and accounting for inter-frame time.
+		// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
+		_uiState.finalizeFrameEvents(entity, stopBlock, preStopBlock);
 	}
 
 	@Override
