@@ -3,6 +3,7 @@ package com.jeffdisher.october.peaks;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.CraftAspect;
@@ -11,6 +12,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.peaks.WindowManager.ItemRequirement;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Entity;
@@ -171,13 +173,20 @@ public class UiStateManager
 						_pullFromBlockToEntityInventory(feetBlock, elt.key);
 					}
 			);
+			Consumer<BodyPart> armourEvent = (BodyPart part) -> {
+				if (_leftClick)
+				{
+					// Note that we ignore the result since this will be reflected in the UI, if valid.
+					_client.swapArmour(part);
+				}
+			};
 			
-			windowManager.drawActiveWindows(null, null, topLeft, topRight, bottom, _normalGlX, _normalGlY);
+			windowManager.drawActiveWindows(null, null, topLeft, topRight, bottom, _thisEntity.armourSlots(), armourEvent, _normalGlX, _normalGlY);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, _normalGlX, _normalGlY);
+			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, null, _normalGlX, _normalGlY);
 		}
 	}
 

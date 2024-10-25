@@ -14,6 +14,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
@@ -186,7 +187,16 @@ public class WindowManager
 		};
 	}
 
-	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock, PartialEntity selectedEntity, WindowData<A> topLeft, WindowData<B> topRight, WindowData<C> bottom, float glX, float glY)
+	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
+			, PartialEntity selectedEntity
+			, WindowData<A> topLeft
+			, WindowData<B> topRight
+			, WindowData<C> bottom
+			, NonStackableItem[] armourSlots
+			, Consumer<BodyPart> eventHoverBodyPart
+			, float glX
+			, float glY
+	)
 	{
 		// We use the orthographic projection and no depth buffer for all overlay windows.
 		_gl.glDisable(GL20.GL_DEPTH_TEST);
@@ -225,7 +235,7 @@ public class WindowManager
 		if (didDrawWindows)
 		{
 			// Also draw the armour slots.
-			_drawArmourSlots();
+			_drawArmourSlots(armourSlots, eventHoverBodyPart, glX, glY);
 		}
 		else if (null != selectedBlock)
 		{
@@ -499,14 +509,40 @@ public class WindowManager
 		}
 	}
 
-	private void _drawArmourSlots()
+	private void _drawArmourSlots(NonStackableItem[] armourSlots, Consumer<BodyPart> eventHoverBodyPart, float glX, float glY)
 	{
 		float nextTopSlot = ARMOUR_SLOT_TOP_EDGE;
 		for (int i = 0; i < 4; ++i)
 		{
 			float left = ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE;
 			float bottom = nextTopSlot - ARMOUR_SLOT_SCALE;
-			_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, left, bottom, ARMOUR_SLOT_RIGHT_EDGE, nextTopSlot);
+			float right = ARMOUR_SLOT_RIGHT_EDGE;
+			float top = nextTopSlot;
+			boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
+			
+			// See if there is an item for this slot.
+			NonStackableItem armour = armourSlots[i];
+			
+			if (null != armour)
+			{
+				// Draw this item.
+				_renderNonStackableItem(left, bottom, right, top, _pixelLightGrey, armour, isMouseOver);
+			}
+			else
+			{
+				// Just draw the background.
+				int backgroundTexture = isMouseOver
+						? _pixelLightGrey
+						: _pixelDarkGreyAlpha
+				;
+				
+				_drawOverlayFrame(backgroundTexture, _pixelLightGrey, left, bottom, right, top);
+			}
+			if (isMouseOver)
+			{
+				eventHoverBodyPart.accept(BodyPart.values()[i]);
+			}
+			
 			nextTopSlot -= ARMOUR_SLOT_SCALE + ARMOUR_SLOT_SPACING;
 		}
 	}

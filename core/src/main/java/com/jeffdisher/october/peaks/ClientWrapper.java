@@ -19,6 +19,7 @@ import com.jeffdisher.october.mutations.EntityChangeJump;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
 import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
+import com.jeffdisher.october.mutations.EntityChangeSwapArmour;
 import com.jeffdisher.october.mutations.EntityChangeSwim;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnSelf;
@@ -39,6 +40,7 @@ import com.jeffdisher.october.server.TickRunner;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
@@ -486,6 +488,15 @@ public class ClientWrapper
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.craft(craft, currentTimeMillis);
+	}
+
+	public void swapArmour(BodyPart part)
+	{
+		// In order to avoid gratuitous validation duplication, we will submit this mutation if it seems possible and rely on its own validation.
+		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.sendAction(swap, currentTimeMillis);
 	}
 
 	public void disconnect()
