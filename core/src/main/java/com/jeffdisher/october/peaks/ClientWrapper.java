@@ -347,11 +347,11 @@ public class ClientWrapper
 	 * 
 	 * @param location The location of the block inventory.
 	 * @param blockInventoryKey The inventory key of the item in that block.
-	 * @param count The number of items to pull.
+	 * @param quantity How many to transfer.
 	 * @param useFuel True if the fuel inventory should be used instead of the normal inventory.
 	 * @return True if the mutation was submitted or false if this request was invalid.
 	 */
-	public boolean pullItemsFromBlockInventory(AbsoluteLocation location, int blockInventoryKey, int count, boolean useFuel)
+	public boolean pullItemsFromBlockInventory(AbsoluteLocation location, int blockInventoryKey, TransferQuantity quantity, boolean useFuel)
 	{
 		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _cuboids.get(location.getCuboidAddress()));
 		Inventory blockInventory;
@@ -378,8 +378,13 @@ public class ClientWrapper
 			NonStackableItem nonStack = blockInventory.getNonStackableForKey(blockInventoryKey);
 			if ((null != stack) != (null != nonStack))
 			{
+				Inventory entityInventory = _getEntityInventory();
+				Item type = (null != stack) ? stack.type() : nonStack.type();
 				int available = (null != stack) ? stack.count() : 1;
-				if (available >= count)
+				int vacancy = new MutableInventory(entityInventory).maxVacancyForItem(type);
+				int count = quantity.getCount(Math.min(available, vacancy));
+				
+				if (count > 0)
 				{
 					MutationEntityRequestItemPickUp request = new MutationEntityRequestItemPickUp(location, blockInventoryKey, count, inventoryAspect);
 					long currentTimeMillis = System.currentTimeMillis();
@@ -398,16 +403,16 @@ public class ClientWrapper
 	 * 
 	 * @param location The location of the block inventory.
 	 * @param entityInventoryKey The inventory key of the item in that the entity's inventory.
-	 * @param count The number of items to push.
+	 * @param quantity How many to transfer.
 	 * @param useFuel True if the fuel inventory should be used instead of the normal inventory.
 	 * @return True if the mutation was submitted or false if this request was invalid.
 	 */
-	public boolean pushItemsToBlockInventory(AbsoluteLocation location, int entityInventoryKey, int count, boolean useFuel)
+	public boolean pushItemsToBlockInventory(AbsoluteLocation location, int entityInventoryKey, TransferQuantity quantity, boolean useFuel)
 	{
 		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _cuboids.get(location.getCuboidAddress()));
-		Inventory inventory = _getEntityInventory();
-		Items stack = inventory.getStackForKey(entityInventoryKey);
-		NonStackableItem nonStack = inventory.getNonStackableForKey(entityInventoryKey);
+		Inventory entityInventory = _getEntityInventory();
+		Items stack = entityInventory.getStackForKey(entityInventoryKey);
+		NonStackableItem nonStack = entityInventory.getNonStackableForKey(entityInventoryKey);
 		
 		boolean didSubmit = false;
 		if ((null != stack) != (null != nonStack))
@@ -439,7 +444,10 @@ public class ClientWrapper
 			if (null != targetInventory)
 			{
 				MutableInventory inv = new MutableInventory(targetInventory);
-				if (inv.maxVacancyForItem(type) >= count)
+				int available = (null != stack) ? stack.count() : 1;
+				int vacancy = inv.maxVacancyForItem(type);
+				int count = quantity.getCount(Math.min(available, vacancy));
+				if (count > 0)
 				{
 					MutationEntityPushItems push = new MutationEntityPushItems(location, entityInventoryKey, count, inventoryAspect);
 					long currentTimeMillis = System.currentTimeMillis();
@@ -602,5 +610,33 @@ public class ClientWrapper
 		
 		void otherEntityUpdated(PartialEntity entity);
 		void otherEntityDidUnload(int id);
+	}
+
+	/**
+	 * Used when requesting a transfer of items between inventories so that the caller doesn't need to calculate itself
+	 * only for the callee to do the same work to verify it.
+	 */
+	public static enum TransferQuantity
+	{
+		ONE,
+		ALL,
+		;
+		
+		public int getCount(int available)
+		{
+			int select;
+			switch (this)
+			{
+			case ALL:
+				select = available;
+				break;
+			case ONE:
+				select = (available > 0) ? 1 : 0;
+				break;
+				default:
+					throw Assert.unreachable();
+			}
+			return select;
+		}
 	}
 }

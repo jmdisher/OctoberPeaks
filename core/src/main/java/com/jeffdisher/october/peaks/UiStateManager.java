@@ -39,6 +39,12 @@ public class UiStateManager
 	private float _normalGlX;
 	private float _normalGlY;
 
+	// Variables related to the window overlay mode.
+	@SuppressWarnings("unused")
+	private boolean _leftClick;
+	private boolean _leftShiftClick;
+	private boolean _rightClick;
+
 	// Data specifically related to high-level UI state (will likely be pulled out, later).
 	private _UiState _uiState;
 
@@ -146,12 +152,7 @@ public class UiStateManager
 					, renderer
 					, hover
 					, (_InventoryEntry elt) -> {
-						// If we right-clicked, push this from our inventory into the block.
-						if (_mouseClicked1)
-						{
-							// Note that we ignore the result since this will be reflected in the UI, if valid.
-							_client.pushItemsToBlockInventory(feetBlock, elt.key, 1, false);
-						}
+						_pushFromEntityToBlockInventory(feetBlock, elt.key);
 					}
 			);
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
@@ -163,12 +164,7 @@ public class UiStateManager
 					, renderer
 					, hover
 					, (_InventoryEntry elt) -> {
-						// If we right-clicked, pull this item into our inventory.
-						if (_mouseClicked1)
-						{
-							// Note that we ignore the result since this will be reflected in the UI, if valid.
-							_client.pullItemsFromBlockInventory(feetBlock, elt.key, 1, false);
-						}
+						_pullFromBlockToEntityInventory(feetBlock, elt.key);
 					}
 			);
 			
@@ -217,6 +213,10 @@ public class UiStateManager
 		_mouseHeld0 = false;
 		_mouseHeld1 = false;
 		_mouseClicked1 = false;
+		
+		_leftClick = false;
+		_leftShiftClick = false;
+		_rightClick = false;
 	}
 
 	public void setThisEntity(Entity projectedEntity)
@@ -280,14 +280,21 @@ public class UiStateManager
 		_normalGlY = glY;
 	}
 
-	public void normalMouse0Clicked()
+	public void normalMouse0Clicked(boolean leftShiftDown)
 	{
-		// TODO:  Implement (inventory/crafting mode).
+		if (leftShiftDown)
+		{
+			_leftShiftClick = true;
+		}
+		else
+		{
+			_leftClick = true;
+		}
 	}
 
-	public void normalMouse1Clicked()
+	public void normalMouse1Clicked(boolean leftShiftDown)
 	{
-		_mouseClicked1 = true;
+		_rightClick = true;
 	}
 
 	public void handleKeyEsc(IInputStateChanger captureState)
@@ -327,6 +334,32 @@ public class UiStateManager
 		}
 	}
 
+
+	private void _pushFromEntityToBlockInventory(AbsoluteLocation targetBlock, int entityInventoryKey)
+	{
+		// Note that we ignore the result since this will be reflected in the UI, if valid.
+		if (_rightClick)
+		{
+			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, false);
+		}
+		else if (_leftShiftClick)
+		{
+			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, false);
+		}
+	}
+
+	private void _pullFromBlockToEntityInventory(AbsoluteLocation targetBlock, int entityInventoryKey)
+	{
+		// Note that we ignore the result since this will be reflected in the UI, if valid.
+		if (_rightClick)
+		{
+			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, false);
+		}
+		else if (_leftShiftClick)
+		{
+			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, false);
+		}
+	}
 
 	private List<_InventoryEntry> _inventoryToList(Inventory inventory)
 	{

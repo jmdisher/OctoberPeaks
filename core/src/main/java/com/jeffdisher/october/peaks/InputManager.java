@@ -25,6 +25,7 @@ public class InputManager
 	private int _mouseY;
 	private boolean _buttonDown0;
 	private boolean _buttonDown1;
+	private boolean _leftShiftDown;
 	
 	// These are records of whether we have handled single-action events based on keys or buttons.
 	private int _lastReportedMouseX;
@@ -65,6 +66,9 @@ public class InputManager
 				case Keys.SPACE:
 					_jumpSwim = true;
 					break;
+				case Keys.SHIFT_LEFT:
+					_leftShiftDown = true;
+					break;
 				case Keys.W:
 					_moveUp = true;
 					break;
@@ -87,6 +91,9 @@ public class InputManager
 				{
 				case Keys.SPACE:
 					_jumpSwim = false;
+					break;
+				case Keys.SHIFT_LEFT:
+					_leftShiftDown = false;
 					break;
 				case Keys.W:
 					_moveUp = false;
@@ -214,12 +221,12 @@ public class InputManager
 			uiManager.normalMouseMoved(glX, glY);
 			if (!_didHandleButton0)
 			{
-				uiManager.normalMouse0Clicked();
+				uiManager.normalMouse0Clicked(_leftShiftDown);
 				_didHandleButton0 = true;
 			}
 			if (!_didHandleButton1)
 			{
-				uiManager.normalMouse1Clicked();
+				uiManager.normalMouse1Clicked(_leftShiftDown);
 				_didHandleButton1 = true;
 			}
 		}
