@@ -25,6 +25,7 @@ import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnSelf;
 import com.jeffdisher.october.mutations.IMutationEntity;
 import com.jeffdisher.october.mutations.MutationEntityPushItems;
 import com.jeffdisher.october.mutations.MutationEntityRequestItemPickUp;
+import com.jeffdisher.october.mutations.MutationEntitySelectItem;
 import com.jeffdisher.october.mutations.MutationPlaceSelectedBlock;
 import com.jeffdisher.october.persistence.BasicWorldGenerator;
 import com.jeffdisher.october.persistence.FlatWorldGenerator;
@@ -347,6 +348,19 @@ public class ClientWrapper
 		EntityChangeChangeHotbarSlot change = new EntityChangeChangeHotbarSlot(index);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(change, currentTimeMillis);
+	}
+
+	public void setSelectedItemKeyOrClear(int itemInventoryKey)
+	{
+		int current = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		int keyToSelect = (current == itemInventoryKey)
+				? 0
+				: itemInventoryKey
+		;
+		
+		MutationEntitySelectItem select = new MutationEntitySelectItem(keyToSelect);
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.sendAction(select, currentTimeMillis);
 	}
 
 	/**

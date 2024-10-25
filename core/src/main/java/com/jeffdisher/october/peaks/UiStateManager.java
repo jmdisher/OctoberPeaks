@@ -156,7 +156,7 @@ public class UiStateManager
 					, renderer
 					, hover
 					, (_InventoryEntry elt) -> {
-						_pushFromEntityToBlockInventory(feetBlock, elt.key);
+						_handleHoverOverEntityInventoryItem(feetBlock, elt.key);
 					}
 			);
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
@@ -344,10 +344,14 @@ public class UiStateManager
 	}
 
 
-	private void _pushFromEntityToBlockInventory(AbsoluteLocation targetBlock, int entityInventoryKey)
+	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{
-		// Note that we ignore the result since this will be reflected in the UI, if valid.
-		if (_rightClick)
+		if (_leftClick)
+		{
+			// Select this in the hotbar (this will clear if already set).
+			_client.setSelectedItemKeyOrClear(entityInventoryKey);
+		}
+		else if (_rightClick)
 		{
 			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, false);
 		}

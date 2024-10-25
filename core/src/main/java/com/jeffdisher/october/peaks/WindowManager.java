@@ -16,6 +16,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -124,18 +125,10 @@ public class WindowManager
 		
 		// Set up our public rendering helpers.
 		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
-			float noProgress = 0.0f;
-			_renderItem(left, bottom, right, top, _pixelLightGrey, item.type(), item.count(), noProgress, isMouseOver);
+			_renderStackableItem(left, bottom, right, top, _pixelLightGrey, item, isMouseOver);
 		};
 		this.renderNonStackable = (float left, float bottom, float right, float top, NonStackableItem item, boolean isMouseOver) -> {
-			Item type = item.type();
-			int maxDurability = _env.durability.getDurability(type);
-			int count = 0;
-			float progress = (maxDurability > 0)
-					? (float)item.durability() / (float)maxDurability
-					: 0.0f
-			;
-			_renderItem(left, bottom, right, top, _pixelLightGrey, type, count, progress, isMouseOver);
+			_renderNonStackableItem(left, bottom, right, top, _pixelLightGrey, item, isMouseOver);
 		};
 		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftDescription item, boolean isMouseOver) -> {
 			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
@@ -300,6 +293,8 @@ public class WindowManager
 	{
 		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
 		float nextLeftButton = - hotbarWidth / 2.0f;
+		Inventory entityInventory = _projectedEntity.inventory();
+		int[] hotbarKeys = _projectedEntity.hotbarItems();
 		int activeIndex = _projectedEntity.hotbarIndex();
 		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 		{
@@ -307,7 +302,26 @@ public class WindowManager
 					? _pixelGreen
 					: _pixelLightGrey
 			;
-			_drawOverlayFrame(_pixelDarkGreyAlpha, outline, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
+			int thisKey = hotbarKeys[i];
+			if (0 == thisKey)
+			{
+				// No item so just draw the frame.
+				_drawOverlayFrame(_pixelDarkGreyAlpha, outline, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
+			}
+			else
+			{
+				// There is something here so render it.
+				Items stack = entityInventory.getStackForKey(thisKey);
+				if (null != stack)
+				{
+					_renderStackableItem(nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE, outline, stack, false);
+				}
+				else
+				{
+					NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
+					_renderNonStackableItem(nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE, outline, nonStack, false);
+				}
+			}
 			nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
 		}
 	}
@@ -443,6 +457,24 @@ public class WindowManager
 		{
 			data.renderHover.drawHoverAtPoint(glX, glY, hoverOver);
 		}
+	}
+
+	private void _renderStackableItem(float left, float bottom, float right, float top, int outlineTexture, Items item, boolean isMouseOver)
+	{
+		float noProgress = 0.0f;
+		_renderItem(left, bottom, right, top, outlineTexture, item.type(), item.count(), noProgress, isMouseOver);
+	}
+
+	private void _renderNonStackableItem(float left, float bottom, float right, float top, int outlineTexture, NonStackableItem item, boolean isMouseOver)
+	{
+		Item type = item.type();
+		int maxDurability = _env.durability.getDurability(type);
+		int count = 0;
+		float progress = (maxDurability > 0)
+				? (float)item.durability() / (float)maxDurability
+				: 0.0f
+		;
+		_renderItem(left, bottom, right, top, outlineTexture, type, count, progress, isMouseOver);
 	}
 
 	private void _renderItem(float left, float bottom, float right, float top, int outlineTexture, Item item, int count, float progress, boolean isMouseOver)
