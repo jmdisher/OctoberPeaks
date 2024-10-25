@@ -300,9 +300,14 @@ public class WindowManager
 	{
 		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
 		float nextLeftButton = - hotbarWidth / 2.0f;
+		int activeIndex = _projectedEntity.hotbarIndex();
 		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 		{
-			_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
+			int outline = (activeIndex == i)
+					? _pixelGreen
+					: _pixelLightGrey
+			;
+			_drawOverlayFrame(_pixelDarkGreyAlpha, outline, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
 			nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
 		}
 	}

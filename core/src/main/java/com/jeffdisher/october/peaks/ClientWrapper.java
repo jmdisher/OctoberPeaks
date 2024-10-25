@@ -14,6 +14,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.PropagationHelpers;
+import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
 import com.jeffdisher.october.mutations.EntityChangeJump;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
@@ -339,6 +340,13 @@ public class ClientWrapper
 			long currentTimeMillis = System.currentTimeMillis();
 			_client.sendAction(change, currentTimeMillis);
 		}
+	}
+
+	public void changeHotbarIndex(int index)
+	{
+		EntityChangeChangeHotbarSlot change = new EntityChangeChangeHotbarSlot(index);
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.sendAction(change, currentTimeMillis);
 	}
 
 	/**

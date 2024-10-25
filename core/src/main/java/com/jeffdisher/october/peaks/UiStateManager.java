@@ -320,6 +320,11 @@ public class UiStateManager
 		}
 	}
 
+	public void handleHotbarIndex(int hotbarIndex)
+	{
+		_client.changeHotbarIndex(hotbarIndex);
+	}
+
 	public void handleKeyI(IInputStateChanger captureState)
 	{
 		switch (_uiState)

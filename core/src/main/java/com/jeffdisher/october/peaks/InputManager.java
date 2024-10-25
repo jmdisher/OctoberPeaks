@@ -26,7 +26,9 @@ public class InputManager
 	private boolean _buttonDown0;
 	private boolean _buttonDown1;
 	private boolean _leftShiftDown;
-	
+	private int _lastPressedNumber;
+	private boolean _didHandlePressedNumber;
+
 	// These are records of whether we have handled single-action events based on keys or buttons.
 	private int _lastReportedMouseX;
 	private int _lastReportedMouseY;
@@ -58,6 +60,42 @@ public class InputManager
 				case Keys.ESCAPE:
 					// We just capture the click.
 					_didHandleKeyEsc = false;
+					break;
+				case Keys.NUM_1:
+					_lastPressedNumber = 1;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_2:
+					_lastPressedNumber = 2;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_3:
+					_lastPressedNumber = 3;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_4:
+					_lastPressedNumber = 4;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_5:
+					_lastPressedNumber = 5;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_6:
+					_lastPressedNumber = 6;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_7:
+					_lastPressedNumber = 7;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_8:
+					_lastPressedNumber = 8;
+					_didHandlePressedNumber = false;
+					break;
+				case Keys.NUM_9:
+					_lastPressedNumber = 9;
+					_didHandlePressedNumber = false;
 					break;
 				case Keys.I:
 					// We just capture the click.
@@ -160,6 +198,7 @@ public class InputManager
 		
 		// We are starting in the mouse capture state.
 		_enterCaptureState(true);
+		_didHandlePressedNumber = true;
 		_didHandleButton0 = true;
 		_didHandleButton1 = true;
 		_didHandleKeyEsc = true;
@@ -236,6 +275,11 @@ public class InputManager
 		{
 			uiManager.handleKeyEsc((boolean setCapture) -> _enterCaptureState(setCapture));
 			_didHandleKeyEsc = true;
+		}
+		if (!_didHandlePressedNumber)
+		{
+			uiManager.handleHotbarIndex(_lastPressedNumber - 1);
+			_didHandlePressedNumber = true;
 		}
 		if (!_didHandleKeyI)
 		{
