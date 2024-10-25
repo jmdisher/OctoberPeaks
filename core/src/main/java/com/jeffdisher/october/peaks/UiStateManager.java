@@ -40,7 +40,6 @@ public class UiStateManager
 	private float _normalGlY;
 
 	// Variables related to the window overlay mode.
-	@SuppressWarnings("unused")
 	private boolean _leftClick;
 	private boolean _leftShiftClick;
 	private boolean _rightClick;
@@ -100,7 +99,7 @@ public class UiStateManager
 								.toArray((int size) -> new ItemRequirement[size])
 						;
 						// Note that we are assuming that there is only one output type.
-						return new WindowManager.CraftDescription(craft.name
+						return new WindowManager.CraftDescription(craft
 								, new Items(craft.output[0], craft.output.length)
 								, requirements
 								, progress
@@ -141,7 +140,12 @@ public class UiStateManager
 					, convertedCrafts
 					, windowManager.renderCraftOperation
 					, windowManager.hoverCraftOperation
-					, null
+					, (WindowManager.CraftDescription elt) -> {
+						if (_leftClick)
+						{
+							_client.beginCraftInInventory(elt.craft());
+						}
+					}
 			);
 			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"
 					, entityInventory.currentEncumbrance

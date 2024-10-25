@@ -37,6 +37,7 @@ import com.jeffdisher.october.server.TickRunner;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
@@ -457,6 +458,12 @@ public class ClientWrapper
 			}
 		}
 		return didSubmit;
+	}
+
+	public void beginCraftInInventory(Craft craft)
+	{
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.craft(craft, currentTimeMillis);
 	}
 
 	public void disconnect()

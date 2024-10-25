@@ -14,6 +14,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
@@ -160,7 +161,7 @@ public class WindowManager
 			_drawTextInFrame(glX, glY - GENERAL_TEXT_HEIGHT, name);
 		};
 		this.hoverCraftOperation = (float glX, float glY, CraftDescription item) -> {
-			String name = item.name;
+			String name = item.craft.name;
 			
 			// Calculate the dimensions (we have a title and then a list of input items below this).
 			float widthOfTitle = _getLabelWidth(WINDOW_TITLE_HEIGHT, name);
@@ -583,7 +584,7 @@ public class WindowManager
 			, Consumer<T> eventHoverOverItem
 	) {}
 
-	public static record CraftDescription(String name
+	public static record CraftDescription(Craft craft
 			, Items output
 			, ItemRequirement[] input
 			, float progress
