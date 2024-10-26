@@ -10,7 +10,6 @@ import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeMove;
-import com.jeffdisher.october.peaks.WindowManager.ItemRequirement;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -84,11 +83,12 @@ public class UiStateManager
 			// We are in inventory mode but we will need to handle station/floor cases differently.
 			AbsoluteLocation relevantBlock = null;
 			Inventory relevantInventory = null;
+			Inventory inventoryToCraftFrom = null;
 			List<Craft> validCrafts = null;
 			CraftOperation currentOperation = null;
-			String craftingType = "Manual Crafting";
 			String stationName = "Floor";
 			WindowManager.FuelSlot fuelSlot = null;
+			boolean isAutomaticCrafting = false;
 			if (null != _openStationLocation)
 			{
 				// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
@@ -98,6 +98,7 @@ public class UiStateManager
 				if (env.stations.getNormalInventorySize(stationType) > 0)
 				{
 					Inventory stationInventory = stationBlock.getInventory();
+					inventoryToCraftFrom = stationInventory;
 					// If we are viewing the fuel inventory, we want to use that, instead.
 					FuelState fuel = stationBlock.getFuel();
 					if (null != fuel)
@@ -131,7 +132,7 @@ public class UiStateManager
 					currentOperation = stationBlock.getCrafting();
 					if (0 == env.stations.getManualMultiplier(stationType))
 					{
-						craftingType = "Automatic Crafting";
+						isAutomaticCrafting = true;
 					}
 					stationName = stationType.item().name();
 					if (_viewingFuelInventory)
@@ -148,6 +149,7 @@ public class UiStateManager
 				}
 			}
 			
+			Inventory entityInventory = _getEntityInventory();
 			if (null == _openStationLocation)
 			{
 				// We are just looking at the floor at our feet.
@@ -157,19 +159,20 @@ public class UiStateManager
 				
 				relevantBlock = feetBlock;
 				relevantInventory = floorInventory;
+				inventoryToCraftFrom = entityInventory;
 				// We are just looking at the entity inventory so find the built-in crafting recipes.
 				validCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
 				// We will convert these into CraftOperation instances so we can splice in the current craft.
 				currentOperation = _thisEntity.localCraftOperation();
 			}
 			
+			Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
 			List<_InventoryEntry> relevantInventoryList = _inventoryToList(relevantInventory);
-			Inventory entityInventory = _getEntityInventory();
 			List<_InventoryEntry> entityInventoryList = _inventoryToList(entityInventory);
 			final AbsoluteLocation finalRelevantBlock = relevantBlock;
 			final CraftOperation finalCraftOperation = currentOperation;
-			Inventory inventoryToCraftFrom = (null == _openStationLocation) ? entityInventory : relevantInventory;
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
+			boolean canBeManuallySelected = !isAutomaticCrafting;
 			List<WindowManager.CraftDescription> convertedCrafts = validCrafts.stream()
 					.map((Craft craft) -> {
 						long progressMillis = 0L;
@@ -178,19 +181,20 @@ public class UiStateManager
 							progressMillis = finalCraftOperation.completedMillis();
 						}
 						float progress = (float)progressMillis / (float)craft.millisPerCraft;
-						ItemRequirement[] requirements = Arrays.stream(craft.input)
+						WindowManager.ItemRequirement[] requirements = Arrays.stream(craft.input)
 								.map((Items input) -> {
 									Item type = input.type();
-									int available = inventoryToCraftFrom.getCount(type);
-									return new ItemRequirement(type, input.count(), available);
+									int available = finalInventoryToCraftFrom.getCount(type);
+									return new WindowManager.ItemRequirement(type, input.count(), available);
 								})
-								.toArray((int size) -> new ItemRequirement[size])
+								.toArray((int size) -> new WindowManager.ItemRequirement[size])
 						;
 						// Note that we are assuming that there is only one output type.
 						return new WindowManager.CraftDescription(craft
 								, new Items(craft.output[0], craft.output.length)
 								, requirements
 								, progress
+								, canBeManuallySelected
 						);
 					})
 					.toList()
@@ -220,20 +224,9 @@ public class UiStateManager
 				windowManager.hoverItem.drawHoverAtPoint(glX, glY, type);
 			};
 			
-			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>(craftingType
-					, 0
-					, 0
-					, _topLeftPage
-					, (int page) -> {
-						if (_leftClick)
-						{
-							_topLeftPage = page;
-						}
-					}
-					, convertedCrafts
-					, windowManager.renderCraftOperation
-					, windowManager.hoverCraftOperation
-					, (WindowManager.CraftDescription elt) -> {
+			// Determine if we can handle manual crafting selection callbacks.
+			Consumer<WindowManager.CraftDescription> craftHoverOverItem = canBeManuallySelected
+					? (WindowManager.CraftDescription elt) -> {
 						if (_leftClick)
 						{
 							Craft craft = elt.craft();
@@ -248,6 +241,27 @@ public class UiStateManager
 							_didAccountForTimeInFrame = true;
 						}
 					}
+					: (WindowManager.CraftDescription elt) -> {}
+			;
+			
+			String craftingType = isAutomaticCrafting
+					? "Automatic Crafting"
+					: "Manual Crafting"
+			;
+			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>(craftingType
+					, 0
+					, 0
+					, _topLeftPage
+					, (int page) -> {
+						if (_leftClick)
+						{
+							_topLeftPage = page;
+						}
+					}
+					, convertedCrafts
+					, windowManager.renderCraftOperation
+					, windowManager.hoverCraftOperation
+					, craftHoverOverItem
 					, null
 			);
 			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"

@@ -148,7 +148,7 @@ public class WindowManager
 					? _pixelGreen
 					: _pixelRed
 			;
-			_renderItem(left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, isMouseOver);
+			_renderItem(left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, item.canBeSelected ? isMouseOver : false);
 		};
 		this.hoverItem = (float glX, float glY, Item item) -> {
 			// Just draw the name.
@@ -705,6 +705,7 @@ public class WindowManager
 			, Items output
 			, ItemRequirement[] input
 			, float progress
+			, boolean canBeSelected
 	) {}
 
 	public static record ItemRequirement(Item type
