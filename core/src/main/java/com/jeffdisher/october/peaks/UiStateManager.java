@@ -16,6 +16,7 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
+import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
@@ -127,7 +128,7 @@ public class UiStateManager
 			}
 			
 			List<_InventoryEntry> relevantInventoryList = _inventoryToList(relevantInventory);
-			Inventory entityInventory = _thisEntity.inventory();
+			Inventory entityInventory = _getEntityInventory();
 			List<_InventoryEntry> entityInventoryList = _inventoryToList(entityInventory);
 			final AbsoluteLocation finalRelevantBlock = relevantBlock;
 			final CraftOperation finalCraftOperation = currentOperation;
@@ -143,7 +144,7 @@ public class UiStateManager
 						ItemRequirement[] requirements = Arrays.stream(craft.input)
 								.map((Items input) -> {
 									Item type = input.type();
-									int available = _thisEntity.inventory().getCount(type);
+									int available = entityInventory.getCount(type);
 									return new ItemRequirement(type, input.count(), available);
 								})
 								.toArray((int size) -> new ItemRequirement[size])
@@ -499,6 +500,15 @@ public class UiStateManager
 			})
 			.toList()
 		;
+	}
+
+	private Inventory _getEntityInventory()
+	{
+		Inventory inventory = _thisEntity.isCreativeMode()
+				? CreativeInventory.fakeInventory()
+				: _thisEntity.inventory()
+		;
+		return inventory;
 	}
 
 

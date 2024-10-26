@@ -16,6 +16,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
+import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
@@ -303,7 +304,7 @@ public class WindowManager
 	{
 		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
 		float nextLeftButton = - hotbarWidth / 2.0f;
-		Inventory entityInventory = _projectedEntity.inventory();
+		Inventory entityInventory = _getEntityInventory();
 		int[] hotbarKeys = _projectedEntity.hotbarItems();
 		int activeIndex = _projectedEntity.hotbarIndex();
 		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
@@ -635,6 +636,16 @@ public class WindowManager
 		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
 		return texture;
 	}
+
+	private Inventory _getEntityInventory()
+	{
+		Inventory inventory = _projectedEntity.isCreativeMode()
+				? CreativeInventory.fakeInventory()
+				: _projectedEntity.inventory()
+		;
+		return inventory;
+	}
+
 
 	public static interface ItemRenderer<T>
 	{
