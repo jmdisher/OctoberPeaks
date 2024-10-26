@@ -36,6 +36,7 @@ public class InputManager
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
 	private boolean _didHandleKeyI;
+	private boolean _didHandleKeyF;
 
 	public InputManager()
 	{
@@ -100,6 +101,10 @@ public class InputManager
 				case Keys.I:
 					// We just capture the click.
 					_didHandleKeyI = false;
+					break;
+				case Keys.F:
+					// We just capture the click.
+					_didHandleKeyF = false;
 					break;
 				case Keys.SPACE:
 					_jumpSwim = true;
@@ -203,6 +208,7 @@ public class InputManager
 		_didHandleButton1 = true;
 		_didHandleKeyEsc = true;
 		_didHandleKeyI = true;
+		_didHandleKeyF = true;
 	}
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
@@ -285,6 +291,11 @@ public class InputManager
 		{
 			uiManager.handleKeyI();
 			_didHandleKeyI = true;
+		}
+		if (!_didHandleKeyF)
+		{
+			uiManager.handleKeyF();
+			_didHandleKeyF = true;
 		}
 	}
 

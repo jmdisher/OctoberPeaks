@@ -18,6 +18,7 @@ import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
@@ -55,6 +56,7 @@ public class UiStateManager
 	private int _topLeftPage;
 	private int _topRightPage;
 	private int _bottomPage;
+	private boolean _viewingFuelInventory;
 
 	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
@@ -86,6 +88,7 @@ public class UiStateManager
 			CraftOperation currentOperation = null;
 			String craftingType = "Manual Crafting";
 			String stationName = "Floor";
+			WindowManager.FuelSlot fuelSlot = null;
 			if (null != _openStationLocation)
 			{
 				// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
@@ -95,6 +98,28 @@ public class UiStateManager
 				if (env.stations.getNormalInventorySize(stationType) > 0)
 				{
 					Inventory stationInventory = stationBlock.getInventory();
+					// If we are viewing the fuel inventory, we want to use that, instead.
+					FuelState fuel = stationBlock.getFuel();
+					if (null != fuel)
+					{
+						if (_viewingFuelInventory)
+						{
+							stationInventory = fuel.fuelInventory();
+						}
+						Item currentFuel = fuel.currentFuel();
+						if (null != currentFuel)
+						{
+							long totalFuel = env.fuel.millisOfFuel(currentFuel);
+							long remainingFuel = fuel.millisFuelled();
+							float fuelRemaining = (float)remainingFuel / (float) totalFuel;
+							fuelSlot = new WindowManager.FuelSlot(currentFuel, fuelRemaining);
+						}
+					}
+					else
+					{
+						// This is invalid so just clear it.
+						_viewingFuelInventory = false;
+					}
 					
 					// Find the crafts for this station type.
 					Set<String> classifications = env.stations.getCraftingClasses(stationType);
@@ -109,6 +134,10 @@ public class UiStateManager
 						craftingType = "Automatic Crafting";
 					}
 					stationName = stationType.item().name();
+					if (_viewingFuelInventory)
+					{
+						stationName += " Fuel";
+					}
 				}
 				else
 				{
@@ -219,6 +248,7 @@ public class UiStateManager
 							_didAccountForTimeInFrame = true;
 						}
 					}
+					, null
 			);
 			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"
 					, entityInventory.currentEncumbrance
@@ -236,6 +266,7 @@ public class UiStateManager
 					, (_InventoryEntry elt) -> {
 						_handleHoverOverEntityInventoryItem(finalRelevantBlock, elt.key);
 					}
+					, null
 			);
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>(stationName
 					, relevantInventory.currentEncumbrance
@@ -253,6 +284,7 @@ public class UiStateManager
 					, (_InventoryEntry elt) -> {
 						_pullFromBlockToEntityInventory(finalRelevantBlock, elt.key);
 					}
+					, fuelSlot
 			);
 			Consumer<BodyPart> armourEvent = (BodyPart part) -> {
 				if (_leftClick)
@@ -455,8 +487,27 @@ public class UiStateManager
 			_topLeftPage = 0;
 			_topRightPage = 0;
 			_bottomPage = 0;
+			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
 			break;
+		}
+	}
+
+	public void handleKeyF()
+	{
+		_viewingFuelInventory = !_viewingFuelInventory;
+		if (_viewingFuelInventory)
+		{
+			// Make sure that this actually has a fuel slot.
+			if (null == _openStationLocation)
+			{
+				_viewingFuelInventory = false;
+			}
+			else
+			{
+				BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
+				_viewingFuelInventory = (null != stationBlock.getFuel());
+			}
 		}
 	}
 
@@ -470,11 +521,11 @@ public class UiStateManager
 		}
 		else if (_rightClick)
 		{
-			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, false);
+			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
 		}
 		else if (_leftShiftClick)
 		{
-			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, false);
+			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
 	}
 
@@ -483,11 +534,11 @@ public class UiStateManager
 		// Note that we ignore the result since this will be reflected in the UI, if valid.
 		if (_rightClick)
 		{
-			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, false);
+			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
 		}
 		else if (_leftShiftClick)
 		{
-			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, false);
+			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
 	}
 
@@ -506,6 +557,7 @@ public class UiStateManager
 			_topLeftPage = 0;
 			_topRightPage = 0;
 			_bottomPage = 0;
+			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
 			didOpen = true;
 		}

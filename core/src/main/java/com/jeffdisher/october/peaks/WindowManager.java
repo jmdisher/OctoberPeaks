@@ -392,11 +392,21 @@ public class WindowManager
 		
 		// Draw the title.
 		float labelRight = _drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
+		float rightEdgeOfTitle = labelRight;
 		if (data.maxSize > 0)
 		{
 			String extraTitle = String.format("(%d/%d)", data.usedSize, data.maxSize);
 			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			_drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
+			rightEdgeOfTitle = _drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
+		}
+		
+		// If there is fuel, draw that item to the right of the title.
+		FuelSlot optionalFuel = data.optionalFuel;
+		if (null != optionalFuel)
+		{
+			float right = rightEdgeOfTitle + WINDOW_MARGIN;
+			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
+			_renderItem(right, bottom, right + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE, _pixelGreen, optionalFuel.fuel, 0, optionalFuel.remainingFraction, false);
 		}
 		
 		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
@@ -688,6 +698,7 @@ public class WindowManager
 			, ItemRenderer<T> renderItem
 			, HoverRenderer<T> renderHover
 			, Consumer<T> eventHoverOverItem
+			, FuelSlot optionalFuel
 	) {}
 
 	public static record CraftDescription(Craft craft
@@ -699,6 +710,10 @@ public class WindowManager
 	public static record ItemRequirement(Item type
 			, int required
 			, int available
+	) {}
+
+	public static record FuelSlot(Item fuel
+			, float remainingFraction
 	) {}
 
 	private static record _WindowDimensions(float leftX
