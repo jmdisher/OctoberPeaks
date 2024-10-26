@@ -497,6 +497,12 @@ public class ClientWrapper
 		_client.craft(craft, currentTimeMillis);
 	}
 
+	public void beginCraftInBlock(AbsoluteLocation block, Craft craft)
+	{
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.craftInBlock(block, craft, currentTimeMillis);
+	}
+
 	public void swapArmour(BodyPart part)
 	{
 		// In order to avoid gratuitous validation duplication, we will submit this mutation if it seems possible and rely on its own validation.

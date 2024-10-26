@@ -207,7 +207,16 @@ public class UiStateManager
 					, (WindowManager.CraftDescription elt) -> {
 						if (_leftClick)
 						{
-							_client.beginCraftInInventory(elt.craft());
+							Craft craft = elt.craft();
+							if (null != _openStationLocation)
+							{
+								_client.beginCraftInBlock(_openStationLocation, craft);
+							}
+							else
+							{
+								_client.beginCraftInInventory(craft);
+							}
+							_didAccountForTimeInFrame = true;
 						}
 					}
 			);
@@ -283,6 +292,7 @@ public class UiStateManager
 			if (null != stopBlock)
 			{
 				_client.hitBlock(stopBlock);
+				_didAccountForTimeInFrame = true;
 			}
 		}
 		else if (_mouseHeld1)
@@ -300,6 +310,14 @@ public class UiStateManager
 					_client.runRightClickAction(stopBlock, preStopBlock, _mouseClicked1);
 				}
 			}
+		}
+		
+		// See if we should continue any in-progress crafting operation.
+		if (!_didAccountForTimeInFrame && (null != _openStationLocation))
+		{
+			// The common code doesn't know we are looking at this block so it can't apply this for us (as it does for in-inventory crafting).
+			_client.beginCraftInBlock(_openStationLocation, null);
+			// We don't account for time here since this usually doesn't do anything.
 		}
 		
 		// If we took no action, just tell the client to pass time.
