@@ -84,6 +84,8 @@ public class UiStateManager
 			Inventory relevantInventory = null;
 			List<Craft> validCrafts = null;
 			CraftOperation currentOperation = null;
+			String craftingType = "Manual Crafting";
+			String stationName = "Floor";
 			if (null != _openStationLocation)
 			{
 				// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
@@ -102,6 +104,11 @@ public class UiStateManager
 					validCrafts = env.crafting.craftsForClassifications(classifications);
 					// We will convert these into CraftOperation instances so we can splice in the current craft.
 					currentOperation = stationBlock.getCrafting();
+					if (0 == env.stations.getManualMultiplier(stationType))
+					{
+						craftingType = "Automatic Crafting";
+					}
+					stationName = stationType.item().name();
 				}
 				else
 				{
@@ -132,6 +139,7 @@ public class UiStateManager
 			List<_InventoryEntry> entityInventoryList = _inventoryToList(entityInventory);
 			final AbsoluteLocation finalRelevantBlock = relevantBlock;
 			final CraftOperation finalCraftOperation = currentOperation;
+			Inventory inventoryToCraftFrom = (null == _openStationLocation) ? entityInventory : relevantInventory;
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
 			List<WindowManager.CraftDescription> convertedCrafts = validCrafts.stream()
 					.map((Craft craft) -> {
@@ -144,7 +152,7 @@ public class UiStateManager
 						ItemRequirement[] requirements = Arrays.stream(craft.input)
 								.map((Items input) -> {
 									Item type = input.type();
-									int available = entityInventory.getCount(type);
+									int available = inventoryToCraftFrom.getCount(type);
 									return new ItemRequirement(type, input.count(), available);
 								})
 								.toArray((int size) -> new ItemRequirement[size])
@@ -183,7 +191,7 @@ public class UiStateManager
 				windowManager.hoverItem.drawHoverAtPoint(glX, glY, type);
 			};
 			
-			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>("Crafting"
+			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>(craftingType
 					, 0
 					, 0
 					, _topLeftPage
@@ -220,7 +228,7 @@ public class UiStateManager
 						_handleHoverOverEntityInventoryItem(finalRelevantBlock, elt.key);
 					}
 			);
-			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
+			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>(stationName
 					, relevantInventory.currentEncumbrance
 					, relevantInventory.maxEncumbrance
 					, _bottomPage
@@ -245,7 +253,12 @@ public class UiStateManager
 				}
 			};
 			
-			windowManager.drawActiveWindows(null, null, topLeft, topRight, bottom, _thisEntity.armourSlots(), armourEvent, _normalGlX, _normalGlY);
+			// Determine if we even want the crafting window since it doesn't apply to all stations.
+			WindowManager.WindowData<WindowManager.CraftDescription> applicableCrafting = convertedCrafts.isEmpty()
+					? null
+					: topLeft
+			;
+			windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), armourEvent, _normalGlX, _normalGlY);
 		}
 		else
 		{
