@@ -12,6 +12,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.peaks.WindowManager.ItemRequirement;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
@@ -49,6 +50,7 @@ public class UiStateManager
 
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
+	private AbsoluteLocation _openStationLocation;
 	private int _topLeftPage;
 	private int _topRightPage;
 	private int _bottomPage;
@@ -76,25 +78,66 @@ public class UiStateManager
 		{
 			Environment env = Environment.getShared();
 			
-			// Get the inventory for this entity and the floor.
+			// We are in inventory mode but we will need to handle station/floor cases differently.
+			AbsoluteLocation relevantBlock = null;
+			Inventory relevantInventory = null;
+			List<Craft> validCrafts = null;
+			CraftOperation currentOperation = null;
+			if (null != _openStationLocation)
+			{
+				// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
+				BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
+				Block stationType = stationBlock.getBlock();
+				
+				if (env.stations.getNormalInventorySize(stationType) > 0)
+				{
+					Inventory stationInventory = stationBlock.getInventory();
+					
+					// Find the crafts for this station type.
+					Set<String> classifications = env.stations.getCraftingClasses(stationType);
+					
+					relevantBlock = _openStationLocation;
+					relevantInventory = stationInventory;
+					validCrafts = env.crafting.craftsForClassifications(classifications);
+					// We will convert these into CraftOperation instances so we can splice in the current craft.
+					currentOperation = stationBlock.getCrafting();
+				}
+				else
+				{
+					// This is no longer a station.
+					_openStationLocation = null;
+					_topLeftPage = 0;
+					_bottomPage = 0;
+				}
+			}
+			
+			if (null == _openStationLocation)
+			{
+				// We are just looking at the floor at our feet.
+				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity);
+				BlockProxy thisBlock = _blockLookup.apply(feetBlock);
+				Inventory floorInventory = thisBlock.getInventory();
+				
+				relevantBlock = feetBlock;
+				relevantInventory = floorInventory;
+				// We are just looking at the entity inventory so find the built-in crafting recipes.
+				validCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
+				// We will convert these into CraftOperation instances so we can splice in the current craft.
+				currentOperation = _thisEntity.localCraftOperation();
+			}
+			
+			List<_InventoryEntry> relevantInventoryList = _inventoryToList(relevantInventory);
 			Inventory entityInventory = _thisEntity.inventory();
 			List<_InventoryEntry> entityInventoryList = _inventoryToList(entityInventory);
-			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity);
-			BlockProxy thisBlock = _blockLookup.apply(feetBlock);
-			Inventory floorInventory = thisBlock.getInventory();
-			List<_InventoryEntry> floorInventoryList = _inventoryToList(floorInventory);
-			
-			// We are just looking at the entity inventory so find the built-in crafting recipes.
-			List<Craft> builtInCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
-			// We will convert these into CraftOperation instances so we can splice in the current craft.
-			CraftOperation currentOperation = _thisEntity.localCraftOperation();
+			final AbsoluteLocation finalRelevantBlock = relevantBlock;
+			final CraftOperation finalCraftOperation = currentOperation;
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
-			List<WindowManager.CraftDescription> convertedCrafts = builtInCrafts.stream()
+			List<WindowManager.CraftDescription> convertedCrafts = validCrafts.stream()
 					.map((Craft craft) -> {
 						long progressMillis = 0L;
 						if (craft == currentCraft)
 						{
-							progressMillis = currentOperation.completedMillis();
+							progressMillis = finalCraftOperation.completedMillis();
 						}
 						float progress = (float)progressMillis / (float)craft.millisPerCraft;
 						ItemRequirement[] requirements = Arrays.stream(craft.input)
@@ -173,12 +216,12 @@ public class UiStateManager
 					, renderer
 					, hover
 					, (_InventoryEntry elt) -> {
-						_handleHoverOverEntityInventoryItem(feetBlock, elt.key);
+						_handleHoverOverEntityInventoryItem(finalRelevantBlock, elt.key);
 					}
 			);
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
-					, floorInventory.currentEncumbrance
-					, floorInventory.maxEncumbrance
+					, relevantInventory.currentEncumbrance
+					, relevantInventory.maxEncumbrance
 					, _bottomPage
 					, (int page) -> {
 						if (_leftClick)
@@ -186,11 +229,11 @@ public class UiStateManager
 							_bottomPage = page;
 						}
 					}
-					, floorInventoryList
+					, relevantInventoryList
 					, renderer
 					, hover
 					, (_InventoryEntry elt) -> {
-						_pullFromBlockToEntityInventory(feetBlock, elt.key);
+						_pullFromBlockToEntityInventory(finalRelevantBlock, elt.key);
 					}
 			);
 			Consumer<BodyPart> armourEvent = (BodyPart part) -> {
@@ -232,7 +275,16 @@ public class UiStateManager
 		{
 			if (null != stopBlock)
 			{
-				_client.runRightClickAction(stopBlock, preStopBlock, _mouseClicked1);
+				// First, see if we need to change state if this is a station we just clicked on.
+				boolean didAct = false;
+				if (_mouseClicked1)
+				{
+					didAct = _didOpenStationInventory(stopBlock);
+				}
+				if (!didAct)
+				{
+					_client.runRightClickAction(stopBlock, preStopBlock, _mouseClicked1);
+				}
 			}
 		}
 		
@@ -367,6 +419,7 @@ public class UiStateManager
 			break;
 		case PLAY:
 			_uiState = _UiState.INVENTORY;
+			_openStationLocation = null;
 			_topLeftPage = 0;
 			_topRightPage = 0;
 			_bottomPage = 0;
@@ -404,6 +457,27 @@ public class UiStateManager
 		{
 			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, false);
 		}
+	}
+
+	private boolean _didOpenStationInventory(AbsoluteLocation blockLocation)
+	{
+		// See if there is an inventory we can open at the given block location.
+		// NOTE:  We don't use this mechanism to talk about air blocks (or other empty blocks with ad-hoc inventories), only actual blocks.
+		BlockProxy proxy = _blockLookup.apply(blockLocation);
+		boolean didOpen = false;
+		Block block = proxy.getBlock();
+		if (Environment.getShared().stations.getNormalInventorySize(block) > 0)
+		{
+			// We are at least some kind of station with an inventory.
+			_uiState = _UiState.INVENTORY;
+			_openStationLocation = blockLocation;
+			_topLeftPage = 0;
+			_topRightPage = 0;
+			_bottomPage = 0;
+			_captureState.shouldCaptureMouse(false);
+			didOpen = true;
+		}
+		return didOpen;
 	}
 
 	private List<_InventoryEntry> _inventoryToList(Inventory inventory)
