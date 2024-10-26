@@ -31,6 +31,7 @@ public class UiStateManager
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
+	private final IInputStateChanger _captureState;
 
 	private Entity _thisEntity;
 	private boolean _rotationDidUpdate;
@@ -49,11 +50,12 @@ public class UiStateManager
 	// Data specifically related to high-level UI state (will likely be pulled out, later).
 	private _UiState _uiState;
 
-	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup)
+	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
 		_movement = movement;
 		_client = client;
 		_blockLookup = blockLookup;
+		_captureState = captureState;
 		
 		// We start up in the play state.
 		_uiState = _UiState.PLAY;
@@ -310,21 +312,21 @@ public class UiStateManager
 		_rightClick = true;
 	}
 
-	public void handleKeyEsc(IInputStateChanger captureState)
+	public void handleKeyEsc()
 	{
 		switch (_uiState)
 		{
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
-			captureState.shouldCaptureMouse(true);
+			_captureState.shouldCaptureMouse(true);
 			break;
 		case MENU:
 			_uiState = _UiState.PLAY;
-			captureState.shouldCaptureMouse(true);
+			_captureState.shouldCaptureMouse(true);
 			break;
 		case PLAY:
 			_uiState = _UiState.MENU;
-			captureState.shouldCaptureMouse(false);
+			_captureState.shouldCaptureMouse(false);
 			break;
 		}
 	}
@@ -334,20 +336,20 @@ public class UiStateManager
 		_client.changeHotbarIndex(hotbarIndex);
 	}
 
-	public void handleKeyI(IInputStateChanger captureState)
+	public void handleKeyI()
 	{
 		switch (_uiState)
 		{
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
-			captureState.shouldCaptureMouse(true);
+			_captureState.shouldCaptureMouse(true);
 			break;
 		case MENU:
 			// Just ignore this.
 			break;
 		case PLAY:
 			_uiState = _UiState.INVENTORY;
-			captureState.shouldCaptureMouse(false);
+			_captureState.shouldCaptureMouse(false);
 			break;
 		}
 	}

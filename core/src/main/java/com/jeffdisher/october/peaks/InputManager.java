@@ -273,7 +273,7 @@ public class InputManager
 		// Now, we handle the special events related to specific keys which generally change UI state.
 		if (!_didHandleKeyEsc)
 		{
-			uiManager.handleKeyEsc((boolean setCapture) -> _enterCaptureState(setCapture));
+			uiManager.handleKeyEsc();
 			_didHandleKeyEsc = true;
 		}
 		if (!_didHandlePressedNumber)
@@ -283,9 +283,14 @@ public class InputManager
 		}
 		if (!_didHandleKeyI)
 		{
-			uiManager.handleKeyI((boolean setCapture) -> _enterCaptureState(setCapture));
+			uiManager.handleKeyI();
 			_didHandleKeyI = true;
 		}
+	}
+
+	public void enterCaptureState(boolean state)
+	{
+		_enterCaptureState(state);
 	}
 
 

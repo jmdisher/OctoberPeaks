@@ -131,7 +131,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				, _clientName
 				, _serverSocketAddress
 		);
-		_uiState = new UiStateManager(_movement, _client, _blockLookup);
+		_uiState = new UiStateManager(_movement, _client, _blockLookup, (boolean setCapture) -> _input.enterCaptureState(setCapture));
 		_input = new InputManager();
 		_client.finishStartup();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
