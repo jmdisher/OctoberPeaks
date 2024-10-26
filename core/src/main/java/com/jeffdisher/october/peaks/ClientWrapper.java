@@ -326,7 +326,7 @@ public class ClientWrapper
 			}
 			
 			// We can place the block if we are right-clicking or holding.
-			if (null == change)
+			if ((null == change) && (null != emptyBlock))
 			{
 				// The mutation will check proximity and collision.
 				change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);

@@ -230,7 +230,7 @@ public class UiStateManager
 		}
 		else if (_mouseHeld1)
 		{
-			if (null != preStopBlock)
+			if (null != stopBlock)
 			{
 				_client.runRightClickAction(stopBlock, preStopBlock, _mouseClicked1);
 			}
