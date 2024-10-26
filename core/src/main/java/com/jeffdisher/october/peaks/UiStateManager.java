@@ -47,8 +47,11 @@ public class UiStateManager
 	private boolean _leftShiftClick;
 	private boolean _rightClick;
 
-	// Data specifically related to high-level UI state (will likely be pulled out, later).
+	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
+	private int _topLeftPage;
+	private int _topRightPage;
+	private int _bottomPage;
 
 	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
@@ -139,8 +142,13 @@ public class UiStateManager
 			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>("Crafting"
 					, 0
 					, 0
-					, 0
-					, null
+					, _topLeftPage
+					, (int page) -> {
+						if (_leftClick)
+						{
+							_topLeftPage = page;
+						}
+					}
 					, convertedCrafts
 					, windowManager.renderCraftOperation
 					, windowManager.hoverCraftOperation
@@ -154,8 +162,13 @@ public class UiStateManager
 			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"
 					, entityInventory.currentEncumbrance
 					, entityInventory.maxEncumbrance
-					, 0
-					, (int page) -> System.out.println("PAGE: " + page)
+					, _topRightPage
+					, (int page) -> {
+						if (_leftClick)
+						{
+							_topRightPage = page;
+						}
+					}
 					, entityInventoryList
 					, renderer
 					, hover
@@ -166,8 +179,13 @@ public class UiStateManager
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>("Floor"
 					, floorInventory.currentEncumbrance
 					, floorInventory.maxEncumbrance
-					, 0
-					, (int page) -> {}
+					, _bottomPage
+					, (int page) -> {
+						if (_leftClick)
+						{
+							_bottomPage = page;
+						}
+					}
 					, floorInventoryList
 					, renderer
 					, hover
@@ -349,6 +367,9 @@ public class UiStateManager
 			break;
 		case PLAY:
 			_uiState = _UiState.INVENTORY;
+			_topLeftPage = 0;
+			_topRightPage = 0;
+			_bottomPage = 0;
 			_captureState.shouldCaptureMouse(false);
 			break;
 		}
