@@ -214,21 +214,35 @@ public class WindowManager
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
 		
+		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
+		Runnable hoverRunnable = null;
 		// We will disable the handling of any selection if we draw any overlay windows (they should be null in that case, anyway).
 		boolean didDrawWindows = false;
 		if (null != topLeft)
 		{
-			_drawWindow(topLeft, WINDOW_TOP_LEFT, glX, glY);
+			Runnable hover = _drawWindow(topLeft, WINDOW_TOP_LEFT, glX, glY);
+			if (null != hover)
+			{
+				hoverRunnable = hover;
+			}
 			didDrawWindows = true;
 		}
 		if (null != topRight)
 		{
-			_drawWindow(topRight, WINDOW_TOP_RIGHT, glX, glY);
+			Runnable hover = _drawWindow(topRight, WINDOW_TOP_RIGHT, glX, glY);
+			if (null != hover)
+			{
+				hoverRunnable = hover;
+			}
 			didDrawWindows = true;
 		}
 		if (null != bottom)
 		{
-			_drawWindow(bottom, WINDOW_BOTTOM, glX, glY);
+			Runnable hover = _drawWindow(bottom, WINDOW_BOTTOM, glX, glY);
+			if (null != hover)
+			{
+				hoverRunnable = hover;
+			}
 			didDrawWindows = true;
 		}
 		
@@ -256,6 +270,12 @@ public class WindowManager
 		{
 			// Draw the entity information.
 			_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, selectedEntity.type().name());
+		}
+		
+		// If we should be rendering a hover, do it here.
+		if (null != hoverRunnable)
+		{
+			hoverRunnable.run();
 		}
 	}
 
@@ -364,7 +384,8 @@ public class WindowManager
 		_drawLabel(valueMargin, base, top, Integer.toString(breath));
 	}
 
-	private <T> void _drawWindow(WindowData<T> data, _WindowDimensions dimensions, float glX, float glY)
+	// Returns a Runnable to draw the hover, if it was detected here.
+	private <T> Runnable _drawWindow(WindowData<T> data, _WindowDimensions dimensions, float glX, float glY)
 	{
 		// Draw the window outline.
 		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
@@ -463,11 +484,12 @@ public class WindowManager
 			}
 		}
 		
-		// Draw hover-over details, if applicable.
-		if (null != hoverOver)
-		{
-			data.renderHover.drawHoverAtPoint(glX, glY, hoverOver);
-		}
+		// Capture the hover render operation, if applicable.
+		final T finalHoverOver = hoverOver;
+		return (null != finalHoverOver)
+				? () -> data.renderHover.drawHoverAtPoint(glX, glY, finalHoverOver)
+				: null
+		;
 	}
 
 	private void _renderStackableItem(float left, float bottom, float right, float top, int outlineTexture, Items item, boolean isMouseOver)
