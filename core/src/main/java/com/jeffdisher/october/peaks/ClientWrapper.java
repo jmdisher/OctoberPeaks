@@ -71,6 +71,7 @@ public class ClientWrapper
 	private final MonitoringAgent _monitoringAgent;
 	private final ServerProcess _server;
 	private final ClientProcess _client;
+	private final ConsoleRunner _console;
 
 	// Data cached from the client listener.
 	private Entity _thisEntity;
@@ -135,6 +136,11 @@ public class ClientWrapper
 						, _config
 				);
 				_client = new ClientProcess(new _ClientListener(), InetAddress.getLocalHost(), PORT, clientName);
+				_console = ConsoleRunner.runInBackground(System.in
+						, System.out
+						, _monitoringAgent
+						, _config
+				);
 			}
 			else
 			{
@@ -144,6 +150,7 @@ public class ClientWrapper
 				_monitoringAgent = null;
 				_server = null;
 				_client = new ClientProcess(new _ClientListener(), serverAddress.getAddress(), serverAddress.getPort(), clientName);
+				_console = null;
 			}
 		}
 		catch (IOException e)
@@ -521,6 +528,15 @@ public class ClientWrapper
 			catch (IOException e)
 			{
 				// This shouldn't happen since we already loaded it at the beginning so this would be a serious, and odd, problem.
+				throw Assert.unexpected(e);
+			}
+			try
+			{
+				_console.stop();
+			}
+			catch (InterruptedException e)
+			{
+				// We are just shutting down so we don't expect anything here.
 				throw Assert.unexpected(e);
 			}
 		}
