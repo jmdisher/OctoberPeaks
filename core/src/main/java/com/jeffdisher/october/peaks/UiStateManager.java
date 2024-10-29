@@ -343,18 +343,37 @@ public class UiStateManager
 		}
 		else if (_mouseHeld1)
 		{
+			boolean didAct = false;
 			if (null != stopBlock)
 			{
-				// First, see if we need to change state if this is a station we just clicked on.
-				boolean didAct = false;
+				// First, see if we need to change the UI state if this is a station we just clicked on.
 				if (_mouseClicked1)
 				{
 					didAct = _didOpenStationInventory(stopBlock);
 				}
-				if (!didAct)
+			}
+			else if (null != entity)
+			{
+				if (_mouseClicked1)
 				{
-					_client.runRightClickAction(stopBlock, preStopBlock, _mouseClicked1);
+					// Try to apply the selected item to the inventory (we consider this an action even if it did nothing).
+					_client.applyToEntity(entity);
+					didAct = true;
 				}
+			}
+			
+			// If we still didn't do anything, try clicks on the block or self.
+			if (!didAct && _mouseClicked1 && (null != stopBlock) && (null != preStopBlock))
+			{
+				didAct = _client.runRightClickOnBlock(stopBlock, preStopBlock);
+			}
+			if (!didAct && _mouseClicked1)
+			{
+				didAct = _client.runRightClickOnSelf();
+			}
+			if (!didAct && (null != stopBlock) && (null != preStopBlock))
+			{
+				didAct = _client.runPlaceBlock(stopBlock, preStopBlock);
 			}
 		}
 		

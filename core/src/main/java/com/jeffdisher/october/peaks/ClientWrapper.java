@@ -22,6 +22,7 @@ import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
 import com.jeffdisher.october.mutations.EntityChangeSwapArmour;
 import com.jeffdisher.october.mutations.EntityChangeSwim;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
+import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnEntity;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnSelf;
 import com.jeffdisher.october.mutations.IMutationEntity;
 import com.jeffdisher.october.mutations.MutationEntityPushItems;
@@ -262,81 +263,67 @@ public class ClientWrapper
 	}
 
 	/**
-	 * Running an action is a generic "right-click on block" situation, assuming it wasn't a block with an inventory.
+	 * Runs any right-click actions on the given block, returning true if it was able to take any action.  Note that
+	 * this includes any right-click action related to the block, potentially using the currently-selected inventory
+	 * item.
+	 * Note that this is only used in the cases where there is a solid block selected and it is a single click, not just
+	 * held down.
 	 * 
-	 * @param solidBlock The solid block the user clicked.
-	 * @param emptyBlock The block block before where the user clicked.
-	 * @param isJustClicked True if the click just happened (false if it is held down).
+	 * @param solidBlock The solid block the user clicked (cannot be null).
+	 * @param emptyBlock The block block before where the user clicked (cannot be null).
+	 * @return True if an action was taken, false if no action was available.
 	 */
-	public void runRightClickAction(AbsoluteLocation solidBlock, AbsoluteLocation emptyBlock, boolean isJustClicked)
+	public boolean runRightClickOnBlock(AbsoluteLocation solidBlock, AbsoluteLocation emptyBlock)
 	{
+		Assert.assertTrue(null != solidBlock);
+		Assert.assertTrue(null != emptyBlock);
+		
 		// We need to check our selected item and see what "action" is associated with it.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		
-		IReadOnlyCuboidData cuboid = _cuboids.get(solidBlock.getCuboidAddress());
-		// This can be null when the action is taken due to loading issues, respawn, etc.
-		Block solidBlockType = (null != cuboid)
-				? new BlockProxy(solidBlock.getBlockAddress(), _cuboids.get(solidBlock.getCuboidAddress())).getBlock()
-				: null
-		;
+		Block solidBlockType = _getBlockType(solidBlock);
+		Block emptyBlockType = _getBlockType(emptyBlock);
 		
 		// First, see if the target block has a general logic state we can change.
 		IMutationEntity<IMutablePlayerEntity> change;
-		if (null == solidBlockType)
+		if ((null == solidBlockType) || (null == emptyBlockType))
 		{
 			// The target isn't loaded.
 			change = null;
 		}
-		else if (isJustClicked && EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
+		else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
 		{
 			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType);
 			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
 		}
-		else if (isJustClicked && _environment.items.getItemById("op.bed") == solidBlockType.item())
+		else if (_environment.items.getItemById("op.bed") == solidBlockType.item())
 		{
 			// This is a bed so we need to take a special action to set spawn and reset the day.
 			change = new EntityChangeSetDayAndSpawn(solidBlock);
 		}
 		else if (Entity.NO_SELECTION != selectedKey)
 		{
+			// We have something selected so see if it can be applied to this block (bucket, fertilizer, etc).
 			// Check if a special use exists for this item and block or if we are just placing.
-			change = null;
-			if (isJustClicked)
-			{
-				// All special actions are only taken when we just clicked.
-				Inventory inventory = _getEntityInventory();
-				Items stack = inventory.getStackForKey(selectedKey);
-				NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
-				Item selectedType = (null != stack) ? stack.type() : nonStack.type();
-				
-				// First, can we use this on the block.
-				if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, solidBlockType))
-				{
-					change = new EntityChangeUseSelectedItemOnBlock(solidBlock);
-				}
-				// See if this block can just be activated, directly.
-				else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
-				{
-					boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType);
-					change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
-				}
-				// Check to see if we can use it, directly.
-				else if (EntityChangeUseSelectedItemOnSelf.canBeUsedOnSelf(selectedType))
-				{
-					change = new EntityChangeUseSelectedItemOnSelf();
-				}
-				else
-				{
-					// Fall-through to try placement.
-					change = null;
-				}
-			}
+			Inventory inventory = _getEntityInventory();
+			Items stack = inventory.getStackForKey(selectedKey);
+			NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
+			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
 			
-			// We can place the block if we are right-clicking or holding.
-			if ((null == change) && (null != emptyBlock))
+			// First, can we use this on the block.
+			if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, solidBlockType))
 			{
-				// The mutation will check proximity and collision.
-				change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
+				change = new EntityChangeUseSelectedItemOnBlock(solidBlock);
+			}
+			// See if we can use it on the emppty block
+			else if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, emptyBlockType))
+			{
+				change = new EntityChangeUseSelectedItemOnBlock(emptyBlock);
+			}
+			else
+			{
+				// Fall-through to try placement.
+				change = null;
 			}
 		}
 		else
@@ -349,6 +336,97 @@ public class ClientWrapper
 		{
 			long currentTimeMillis = System.currentTimeMillis();
 			_client.sendAction(change, currentTimeMillis);
+		}
+		return (null != change);
+	}
+
+	/**
+	 * Attempts to run an action on the current entity, using whatever is selected in the inventory, returning true if
+	 * an action was run (false if not).
+	 * 
+	 * @return True if an action was taken.
+	 */
+	public boolean runRightClickOnSelf()
+	{
+		// We need to check our selected item and see what "action" is associated with it.
+		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		
+		IMutationEntity<IMutablePlayerEntity> change;
+		if (Entity.NO_SELECTION != selectedKey)
+		{
+			// Check if a special use exists for this item and block or if we are just placing.
+			Inventory inventory = _getEntityInventory();
+			Items stack = inventory.getStackForKey(selectedKey);
+			NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
+			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
+			if (EntityChangeUseSelectedItemOnSelf.canBeUsedOnSelf(selectedType))
+			{
+				change = new EntityChangeUseSelectedItemOnSelf();
+			}
+			else
+			{
+				// No valid action.
+				change = null;
+			}
+		}
+		else
+		{
+			// Nothing to do.
+			change = null;
+		}
+		
+		if (null != change)
+		{
+			long currentTimeMillis = System.currentTimeMillis();
+			_client.sendAction(change, currentTimeMillis);
+		}
+		return (null != change);
+	}
+
+	/**
+	 * Just tries placing the currently selected block, returning true successful.
+	 * Note that this requires that there be a solid and empty block, but can be called if there is no selection.
+	 * 
+	 * @param solidBlock The solid block the user clicked (cannot be null).
+	 * @param emptyBlock The block block before where the user clicked (cannot be null).
+	 * @return True if a block was placed, false if not.
+	 */
+	public boolean runPlaceBlock(AbsoluteLocation solidBlock, AbsoluteLocation emptyBlock)
+	{
+		Assert.assertTrue(null != solidBlock);
+		Assert.assertTrue(null != emptyBlock);
+		
+		// We need to check our selected item and see what "action" is associated with it.
+		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		
+		boolean didAttemptPlace = false;
+		if (Entity.NO_SELECTION != selectedKey)
+		{
+			long currentTimeMillis = System.currentTimeMillis();
+			IMutationEntity<IMutablePlayerEntity> change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
+			_client.sendAction(change, currentTimeMillis);
+			didAttemptPlace = true;
+		}
+		return didAttemptPlace;
+	}
+
+	public void applyToEntity(PartialEntity selectedEntity)
+	{
+		// We need to check our selected item and see if there is some interaction it has with this entity.
+		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		if (Entity.NO_SELECTION != selectedKey)
+		{
+			Inventory inventory = _getEntityInventory();
+			Items stack = inventory.getStackForKey(selectedKey);
+			NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
+			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
+			
+			if (EntityChangeUseSelectedItemOnEntity.canUseOnEntity(selectedType, selectedEntity.type()))
+			{
+				EntityChangeUseSelectedItemOnEntity change = new EntityChangeUseSelectedItemOnEntity(selectedEntity.id());
+				long currentTimeMillis = System.currentTimeMillis();
+				_client.sendAction(change, currentTimeMillis);
+			}
 		}
 	}
 
@@ -562,6 +640,18 @@ public class ClientWrapper
 				: _thisEntity.inventory()
 		;
 		return inventory;
+	}
+
+	private Block _getBlockType(AbsoluteLocation block)
+	{
+		CuboidAddress address = block.getCuboidAddress();
+		IReadOnlyCuboidData cuboid = _cuboids.get(address);
+		// This can be null when the action is taken due to loading issues, respawn, etc.
+		Block blockType = (null != cuboid)
+				? new BlockProxy(block.getBlockAddress(), _cuboids.get(address)).getBlock()
+				: null
+		;
+		return blockType;
 	}
 
 
