@@ -14,13 +14,13 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
-import com.jeffdisher.october.types.EntityConstants;
-import com.jeffdisher.october.types.EntityType;
-import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.MutableEntity;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -106,8 +106,8 @@ public class OctoberPeaks extends ApplicationAdapter
 					@Override
 					public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
 					{
-						EntityVolume volume = EntityConstants.getVolume(EntityType.PLAYER);
-						_movement.setEye(Vector.fromEntity(projectedEntity.location(), volume.width() / 2.0f, volume.height()));
+						EntityLocation eyeLocation = SpatialHelpers.getEyeLocation(MutableEntity.existing(projectedEntity));
+						_movement.setEye(Vector.fromEntityLocation(eyeLocation));
 						Vector eye = _movement.computeEye();
 						Vector target = _movement.computeTarget();
 						_scene.updatePosition(eye, target);

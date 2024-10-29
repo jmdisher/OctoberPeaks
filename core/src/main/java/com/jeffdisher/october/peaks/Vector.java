@@ -19,9 +19,16 @@ public record Vector(float x, float y, float z)
 		return new Vector(end.x - start.x, end.y - start.y, end.z - start.z);
 	}
 
-	public static Vector fromEntity(EntityLocation entity, float horizontalOffsets, float zOffset)
+	/**
+	 * These types are meant for different purposes but contain the same data and sometimes one needs to be converted
+	 * into another for use elsewhere so this helper does the direct conversion.
+	 * 
+	 * @param entity The entity location to convert into a Vector object.
+	 * @return The new Vector object.
+	 */
+	public static Vector fromEntityLocation(EntityLocation entity)
 	{
-		return new Vector(entity.x() + horizontalOffsets, entity.y() + horizontalOffsets, entity.z() + zOffset);
+		return new Vector(entity.x(), entity.y(), entity.z());
 	}
 
 
