@@ -40,6 +40,7 @@ public class UiStateManager
 	private boolean _didAccountForTimeInFrame;
 	private boolean _mouseHeld0;
 	private boolean _mouseHeld1;
+	private boolean _mouseClicked0;
 	private boolean _mouseClicked1;
 	private float _normalGlX;
 	private float _normalGlY;
@@ -340,6 +341,13 @@ public class UiStateManager
 				_client.hitBlock(stopBlock);
 				_didAccountForTimeInFrame = true;
 			}
+			else if (null != entity)
+			{
+				if (_mouseClicked0)
+				{
+					_client.hitEntity(entity);
+				}
+			}
 		}
 		else if (_mouseHeld1)
 		{
@@ -394,6 +402,7 @@ public class UiStateManager
 		_didAccountForTimeInFrame = false;
 		_mouseHeld0 = false;
 		_mouseHeld1 = false;
+		_mouseClicked0 = false;
 		_mouseClicked1 = false;
 		
 		_leftClick = false;
@@ -415,6 +424,7 @@ public class UiStateManager
 	public void captureMouse0Down(boolean justClicked)
 	{
 		_mouseHeld0 = true;
+		_mouseClicked0 = justClicked;
 	}
 
 	public void captureMouse1Down(boolean justClicked)

@@ -14,6 +14,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.PropagationHelpers;
+import com.jeffdisher.october.mutations.EntityChangeAttackEntity;
 import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
 import com.jeffdisher.october.mutations.EntityChangeJump;
 import com.jeffdisher.october.mutations.EntityChangeMove;
@@ -588,6 +589,13 @@ public class ClientWrapper
 		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(swap, currentTimeMillis);
+	}
+
+	public void hitEntity(PartialEntity selectedEntity)
+	{
+		EntityChangeAttackEntity attack = new EntityChangeAttackEntity(selectedEntity.id());
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.sendAction(attack, currentTimeMillis);
 	}
 
 	public void disconnect()
