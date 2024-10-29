@@ -426,7 +426,7 @@ public class WindowManager
 		int totalItems = data.items.size();
 		int pageCount = ((totalItems - 1) / itemsPerPage) + 1;
 		// Be aware that this may have changed without the caller knowing it.
-		int currentPage = Math.min(data.currentPage, pageCount);
+		int currentPage = Math.min(data.currentPage, pageCount - 1);
 		int startingIndex = currentPage * itemsPerPage;
 		int firstIndexBeyondPage = startingIndex + itemsPerPage;
 		if (firstIndexBeyondPage > totalItems)
