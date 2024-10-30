@@ -82,18 +82,25 @@ public class GraphicsHelpers
 		return _uploadNewTexture(gl, 1, 1, textureBufferData);
 	}
 
-	public static void drawCube(FloatBuffer floats, float[] base, byte scale)
+	public static void drawCube(FloatBuffer floats, float[] base, byte scale, float[] uvBase, float textureSize)
 	{
-		_drawCube(floats, base, scale);
+		_drawCube(floats
+				, base
+				, scale
+				, uvBase
+				, textureSize
+		);
 	}
 
-	public static void drawRectangularPrism(FloatBuffer floats, float[] edge)
+	public static void drawRectangularPrism(FloatBuffer floats, float[] edge, float[] uvBase, float textureSize)
 	{
 		_drawRectangularPrism(floats
 				, new float[] { 0.0f, 0.0f, 0.0f }
 				, (byte)1
 				, new float[] { 0.0f, 0.0f, 0.0f }
 				, edge
+				, uvBase
+				, textureSize
 		);
 	}
 
@@ -130,7 +137,7 @@ public class GraphicsHelpers
 		return shader;
 	}
 
-	private static void _populateQuad(FloatBuffer buffer, float[] base, float[][] vertices, float[] normal)
+	private static void _populateQuad(FloatBuffer buffer, float[] base, float[][] vertices, float[] normal, float[] uvBase, float textureSize)
 	{
 		float[] bottomLeft = new float[] {
 				base[0] + vertices[0][0],
@@ -152,6 +159,10 @@ public class GraphicsHelpers
 				base[1] + vertices[3][1],
 				base[2] + vertices[3][2],
 		};
+		float u = uvBase[0];
+		float v = uvBase[1];
+		float uEdge = u + textureSize;
+		float vEdge = v + textureSize;
 		
 		// Each element is:
 		// vx, vy, vz
@@ -162,34 +173,34 @@ public class GraphicsHelpers
 				// Left Bottom.
 				bottomLeft[0], bottomLeft[1], bottomLeft[2],
 				normal[0], normal[1], normal[2],
-				0.0f, 1.0f,
+				u, vEdge,
 				// Right Bottom.
 				bottomRight[0], bottomRight[1], bottomRight[2],
 				normal[0], normal[1], normal[2],
-				1.0f, 1.0f,
+				uEdge, vEdge,
 				// Right Top.
 				topRight[0], topRight[1], topRight[2],
 				normal[0], normal[1], normal[2],
-				1.0f, 0.0f,
+				uEdge, v,
 				
 				// Left Bottom.
 				bottomLeft[0], bottomLeft[1], bottomLeft[2],
 				normal[0], normal[1], normal[2],
-				0.0f, 1.0f,
+				u, vEdge,
 				// Right Top.
 				topRight[0], topRight[1], topRight[2],
 				normal[0], normal[1], normal[2],
-				1.0f, 0.0f,
+				uEdge, v,
 				// Left Top.
 				topLeft[0], topLeft[1], topLeft[2],
 				normal[0], normal[1], normal[2],
-				0.0f, 0.0f,
+				u, v,
 		};
 		
 		buffer.put(mesh);
 	}
 
-	private static void _drawCube(FloatBuffer floats, float[] base, byte scale)
+	private static void _drawCube(FloatBuffer floats, float[] base, byte scale, float[] uvBase, float textureSize)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		_drawRectangularPrism(floats
@@ -197,6 +208,8 @@ public class GraphicsHelpers
 				, scale
 				, new float[] { 0.0f, 0.0f, 0.0f }
 				, new float[] { 1.0f, 1.0f, 1.0f }
+				, uvBase
+				, textureSize
 		);
 	}
 
@@ -205,6 +218,8 @@ public class GraphicsHelpers
 			, byte scale
 			, float[] prismBase
 			, float[] prismEdge
+			, float[] uvBase
+			, float textureSize
 	)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
@@ -231,11 +246,11 @@ public class GraphicsHelpers
 				float[] localBase = new float[] { base[0], yBase, zBase};
 				_populateQuad(floats, localBase, new float[][] {
 					v010, v000, v001, v011
-				}, new float[] {-1.0f, 0.0f, 0.0f});
+				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase, textureSize);
 				localBase[0] += baseScale;
 				_populateQuad(floats, localBase, new float[][] {
 					v111, v101, v100, v110
-				}, new float[] {1.0f, 0.0f, 0.0f});
+				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase, textureSize);
 			}
 		}
 		// Y-normal plane.
@@ -248,11 +263,11 @@ public class GraphicsHelpers
 				float[] localBase = new float[] { xBase, base[1], zBase};
 				_populateQuad(floats, localBase, new float[][] {
 					v001, v000, v100, v101
-				}, new float[] {0.0f, -1.0f,0.0f});
+				}, new float[] {0.0f, -1.0f,0.0f}, uvBase, textureSize);
 				localBase[1] += baseScale;
 				_populateQuad(floats, localBase, new float[][] {
 					v111, v110, v010, v011
-				}, new float[] {0.0f, 1.0f, 0.0f});
+				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase, textureSize);
 			}
 		}
 		// Z-normal plane.
@@ -265,11 +280,11 @@ public class GraphicsHelpers
 				float[] localBase = new float[] { xBase, yBase, base[2]};
 				_populateQuad(floats, localBase, new float[][] {
 					v110, v100, v000, v010
-				}, new float[] {0.0f, 0.0f, -1.0f});
+				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase, textureSize);
 				localBase[2] += baseScale;
 				_populateQuad(floats, localBase, new float[][] {
 					v011, v001, v101, v111
-				}, new float[] {0.0f, 0.0f, 1.0f});
+				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase, textureSize);
 			}
 		}
 	}

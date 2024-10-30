@@ -172,9 +172,15 @@ public class SceneRenderer
 			@Override
 			public void visit(BlockAddress base, byte size, Short value)
 			{
+				// TODO:  Base this on block type once we add the texture atlas.
+				float[] uvBase = new float[] { 0.0f, 0.0f };
+				float textureSize = 1.0f;
+				
 				GraphicsHelpers.drawCube(_meshBuffer
 						, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 						, size
+						, uvBase
+						, textureSize
 				);
 			}
 		}, (short)0);
@@ -224,11 +230,15 @@ public class SceneRenderer
 
 	private static int _createPrism(GL20 gl, FloatBuffer meshBuffer, float[] edgeVertices)
 	{
+		// This is currently how we render entities so we can use the hard-coded coordinates.
+		float[] uvBase = new float[] { 0.0f, 0.0f };
+		float textureSize = 1.0f;
+		
 		int buffer = gl.glGenBuffer();
 		Assert.assertTrue(buffer > 0);
 		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
 		meshBuffer.clear();
-		GraphicsHelpers.drawRectangularPrism(meshBuffer, edgeVertices);
+		GraphicsHelpers.drawRectangularPrism(meshBuffer, edgeVertices, uvBase, textureSize);
 		meshBuffer.flip();
 		// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
 		gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, meshBuffer, GL20.GL_STATIC_DRAW);
