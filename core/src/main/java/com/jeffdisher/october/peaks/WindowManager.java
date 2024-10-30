@@ -57,13 +57,16 @@ public class WindowManager
 
 	private final Environment _env;
 	private final GL20 _gl;
+	private final TextureAtlas _itemAtlas;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final TextManager _textManager;
 	private final int _program;
 	private final int _uOffset;
 	private final int _uScale;
 	private final int _uTexture;
+	private final int _uTextureBaseOffset;
 	private final int _verticesUnitSquare;
+	private final int _verticesItemSquare;
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
 	private final int _pixelRed;
@@ -78,10 +81,11 @@ public class WindowManager
 	public final HoverRenderer<Item> hoverItem;
 	public final HoverRenderer<CraftDescription> hoverCraftOperation;
 
-	public WindowManager(Environment env, GL20 gl, Function<AbsoluteLocation, BlockProxy> blockLookup)
+	public WindowManager(Environment env, GL20 gl, TextureAtlas itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
 		_env = env;
 		_gl = gl;
+		_itemAtlas = itemAtlas;
 		_blockLookup = blockLookup;
 		_textManager = new TextManager(_gl);
 		
@@ -102,9 +106,12 @@ public class WindowManager
 		_uOffset = _gl.glGetUniformLocation(_program, "uOffset");
 		_uScale = _gl.glGetUniformLocation(_program, "uScale");
 		_uTexture = _gl.glGetUniformLocation(_program, "uTexture");
+		_uTextureBaseOffset = _gl.glGetUniformLocation(_program, "uTextureBaseOffset");
 		
-		// Create the unit square we will use for vertices.
-		_verticesUnitSquare = _defineCommonVertices(_gl);
+		// Create the unit square we will use for common vertices.
+		_verticesUnitSquare = _defineCommonVertices(_gl, 1.0f);
+		// Create the unit square we can configure for item drawing
+		_verticesItemSquare = _defineCommonVertices(_gl, _itemAtlas.coordinateSize);
 		
 		// Build the initial pixel textures.
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(4);
@@ -277,6 +284,9 @@ public class WindowManager
 		{
 			hoverRunnable.run();
 		}
+		
+		// Allow any periodic cleanup.
+		_textManager.allowTexturePurge();
 	}
 
 	public void setThisEntity(Entity projectedEntity)
@@ -290,13 +300,12 @@ public class WindowManager
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
-	private static int _defineCommonVertices(GL20 gl)
+	private static int _defineCommonVertices(GL20 gl, float textureSize)
 	{
 		float height = 1.0f;
 		float width = 1.0f;
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
-		float textureSize = 1.0f;
 		float[] vertices = new float[] {
 				0.0f, 0.0f, textureBaseU, textureBaseV + textureSize,
 				width, height, textureBaseU + textureSize, textureBaseV,
@@ -522,23 +531,32 @@ public class WindowManager
 
 	private void _renderItem(float left, float bottom, float right, float top, int outlineTexture, Item item, int count, float progress, boolean isMouseOver)
 	{
-		// TODO:  Actually draw the item once we have the textures available.
-		TextManager.Element element = _textManager.lazilyLoadStringTexture("X");
-		
+		// Draw the background.
 		int backgroundTexture = isMouseOver
 				? _pixelLightGrey
 				: _pixelDarkGreyAlpha
 		;
-		
 		_drawOverlayFrame(backgroundTexture, outlineTexture, left, bottom, right, top);
-		_drawTextElement(left, bottom, right, top, element.textureObject());
+		
+		// Draw the item.
+		_drawItemRect(left, bottom, right, top, item);
+		
+		// Draw the number in the corner (only if it is non-zero).
+		if (count > 0)
+		{
+			TextManager.Element element = _textManager.lazilyLoadStringTexture(Integer.toString(count));
+			// We want to draw the text in the bottom-left of the box, at half-height.
+			float vDelta = (top - bottom) / 2.0f;
+			float hDelta = vDelta * element.aspectRatio();
+			_drawTextElement(left, bottom, left + hDelta, bottom + vDelta, element.textureObject());
+		}
 		
 		// If there is a progress bar, draw it on top.
 		if (progress > 0.0f)
 		{
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelGreenAlpha);
 			float progressTop = bottom + (top - bottom) * progress;
-			_drawRect(left, bottom, right, progressTop);
+			_drawCommonRect(left, bottom, right, progressTop);
 		}
 	}
 
@@ -623,7 +641,7 @@ public class WindowManager
 	{
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, labelTexture);
-		_drawRect(left, bottom, right, top);
+		_drawCommonRect(left, bottom, right, top);
 	}
 
 	private void _drawOverlayFrame(int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
@@ -631,12 +649,12 @@ public class WindowManager
 		// We want draw the frame and then the space on top of that.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, outlineTexture);
-		_drawRect(left - OUTLINE_SIZE, bottom - OUTLINE_SIZE, right + OUTLINE_SIZE, top + OUTLINE_SIZE);
+		_drawCommonRect(left - OUTLINE_SIZE, bottom - OUTLINE_SIZE, right + OUTLINE_SIZE, top + OUTLINE_SIZE);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, backgroundTexture);
-		_drawRect(left, bottom, right, top);
+		_drawCommonRect(left, bottom, right, top);
 	}
 
-	private void _drawRect(float left, float bottom, float right, float top)
+	private void _drawCommonRect(float left, float bottom, float right, float top)
 	{
 		// NOTE:  This assumes that texture unit 0 is already bound to the appropriate texture.
 		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
@@ -644,7 +662,27 @@ public class WindowManager
 		float yScale = (top - bottom);
 		_gl.glUniform2f(_uOffset, left, bottom);
 		_gl.glUniform2f(_uScale, xScale, yScale);
+		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
 		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _verticesUnitSquare);
+		_gl.glEnableVertexAttribArray(0);
+		_gl.glVertexAttribPointer(0, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 0);
+		_gl.glEnableVertexAttribArray(1);
+		_gl.glVertexAttribPointer(1, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 2 * Float.BYTES);
+		_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, 6);
+	}
+
+	private void _drawItemRect(float left, float bottom, float right, float top, Item item)
+	{
+		// Unlike _drawCommonRect, this will bind the texture for the item.
+		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
+		float xScale = (right - left);
+		float yScale = (top - bottom);
+		float[] itemTextureBase = _itemAtlas.baseOfTexture(item.number());
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
+		_gl.glUniform2f(_uOffset, left, bottom);
+		_gl.glUniform2f(_uScale, xScale, yScale);
+		_gl.glUniform2f(_uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
+		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _verticesItemSquare);
 		_gl.glEnableVertexAttribArray(0);
 		_gl.glVertexAttribPointer(0, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 0);
 		_gl.glEnableVertexAttribArray(1);

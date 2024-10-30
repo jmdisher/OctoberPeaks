@@ -84,7 +84,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
-		_windowManager = new WindowManager(_environment, _gl, _blockLookup);
+		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
 		
