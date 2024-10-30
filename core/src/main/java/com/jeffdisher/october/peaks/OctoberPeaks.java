@@ -78,7 +78,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					, "missing_texture.png"
 			);
 			
-			_scene = new SceneRenderer(_gl, _itemAtlas);
+			_scene = new SceneRenderer(_environment, _gl, _itemAtlas);
 		}
 		catch (IOException e)
 		{

@@ -106,6 +106,32 @@ public class GraphicsHelpers
 		);
 	}
 
+	public static void drawUpFacingSquare(FloatBuffer buffer, float[] base, float edgeSize, float[] uvBase, float textureSize)
+	{
+		float[] bottomLeft = new float[] {
+				0.0f,
+				0.0f,
+				0.0f,
+		};
+		float[] bottomRight = new float[] {
+				edgeSize,
+				0.0f,
+				0.0f,
+		};
+		float[] topRight = new float[] {
+				edgeSize,
+				edgeSize,
+				0.0f,
+		};
+		float[] topLeft = new float[] {
+				0.0f,
+				edgeSize,
+				0.0f,
+		};
+		
+		_populateQuad(buffer, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
+	}
+
 	public static void renderStandardArray(GL20 gl, int bufferElement, int vertexCount)
 	{
 		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, bufferElement);

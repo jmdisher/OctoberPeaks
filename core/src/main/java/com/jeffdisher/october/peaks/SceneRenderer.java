@@ -7,20 +7,27 @@ import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
+import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.Inventory;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -31,7 +38,14 @@ import com.jeffdisher.october.utils.Assert;
 public class SceneRenderer
 {
 	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
+	public static final float DEBRIS_ELEMENT_SIZE = 0.5f;
+	public static final float[][] DEBRIS_BASES = new float[][] {
+		new float[] { 0.1f, 0.1f, 0.05f }
+		, new float[] { 0.4f, 0.4f, 0.1f }
+		, new float[] { 0.2f, 0.3f, 0.15f }
+	};
 
+	private final Environment _environment;
 	private final GL20 _gl;
 	private final TextureAtlas _itemAtlas;
 	private final int _program;
@@ -52,8 +66,9 @@ public class SceneRenderer
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
 
-	public SceneRenderer(GL20 gl, TextureAtlas itemAtlas) throws IOException
+	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas itemAtlas) throws IOException
 	{
+		_environment = environment;
 		_gl = gl;
 		_itemAtlas = itemAtlas;
 		
@@ -223,7 +238,7 @@ public class SceneRenderer
 	private int[] _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{
 		_meshBuffer.clear();
-		int vertexCount = _populateMeshBufferForCuboid(_meshBuffer, _itemAtlas, cuboid, renderOpaque);
+		int vertexCount = _populateMeshBufferForCuboid(_environment, _meshBuffer, _itemAtlas, cuboid, renderOpaque);
 		_meshBuffer.flip();
 		// We only bother building a buffer is it will have some contents.
 		int vertices = 0;
@@ -262,12 +277,14 @@ public class SceneRenderer
 		return buffer;
 	}
 
-	private static int _populateMeshBufferForCuboid(FloatBuffer meshBuffer
+	private static int _populateMeshBufferForCuboid(Environment env
+			, FloatBuffer meshBuffer
 			, TextureAtlas blockAtlas
 			, IReadOnlyCuboidData cuboid
 			, boolean opaqueVertices
 	)
 	{
+		float textureSize = blockAtlas.coordinateSize;
 		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
 			@Override
 			public void visit(BlockAddress base, byte size, Short value)
@@ -275,7 +292,6 @@ public class SceneRenderer
 				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(value))
 				{
 					float[] uvBase = blockAtlas.baseOfTexture(value);
-					float textureSize = blockAtlas.coordinateSize;
 					GraphicsHelpers.drawCube(meshBuffer
 							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 							, size
@@ -285,6 +301,40 @@ public class SceneRenderer
 				}
 			}
 		}, (short)0);
+		
+		// See if there are any inventories in empty blocks in this cuboid.
+		if (opaqueVertices)
+		{
+			cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
+				@Override
+				public void visit(BlockAddress base, byte size, Inventory blockInventory)
+				{
+					Assert.assertTrue((byte)1 == size);
+					BlockProxy proxy = new BlockProxy(base, cuboid);
+					Block blockType = proxy.getBlock();
+					boolean blockPermitsEntityMovement = !env.blocks.isSolid(blockType);
+					if (blockPermitsEntityMovement)
+					{
+						float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
+						Iterator<Integer> sortedKeys = blockInventory.sortedKeys().iterator();
+						for (int i = 0; (i < DEBRIS_BASES.length) && sortedKeys.hasNext(); ++i)
+						{
+							int key = sortedKeys.next();
+							Items stack = blockInventory.getStackForKey(key);
+							Item type = (null != stack)
+									? stack.type()
+									: blockInventory.getNonStackableForKey(key).type()
+							;
+							
+							float[] uvBase = blockAtlas.baseOfTexture(type.number());
+							float[] offset = DEBRIS_BASES[i];
+							float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
+							GraphicsHelpers.drawUpFacingSquare(meshBuffer, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
+						}
+					}
+				}
+			}, null);
+		}
 		
 		// Note that the position() in a FloatBuffer is in units of floats.
 		int vertexCount = meshBuffer.position() / GraphicsHelpers.FLOATS_PER_VERTEX;
