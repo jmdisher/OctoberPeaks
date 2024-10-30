@@ -35,6 +35,7 @@ public class OctoberPeaks extends ApplicationAdapter
 
 	private Environment _environment;
 	private GL20 _gl;
+	private TextureAtlas _itemAtlas;
 	private SceneRenderer _scene;
 	private WindowManager _windowManager;
 	private MovementControl _movement;
@@ -72,7 +73,12 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		try
 		{
-			_scene = new SceneRenderer(_gl, _environment.items.ITEMS_BY_TYPE);
+			_itemAtlas = GraphicsHelpers.loadAtlasForItems(_gl
+					, _environment.items.ITEMS_BY_TYPE
+					, "missing_texture.png"
+			);
+			
+			_scene = new SceneRenderer(_gl, _itemAtlas);
 		}
 		catch (IOException e)
 		{

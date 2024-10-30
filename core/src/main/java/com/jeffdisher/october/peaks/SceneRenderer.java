@@ -21,7 +21,6 @@ import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
-import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -34,13 +33,13 @@ public class SceneRenderer
 	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
 
 	private final GL20 _gl;
+	private final TextureAtlas _itemAtlas;
 	private final int _program;
 	private final int _uModelMatrix;
 	private final int _uViewMatrix;
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
-	private final TextureAtlas _itemAtlas;
 	private final int _entityTexture;
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
@@ -53,9 +52,10 @@ public class SceneRenderer
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
 
-	public SceneRenderer(GL20 gl, Item[] items) throws IOException
+	public SceneRenderer(GL20 gl, TextureAtlas itemAtlas) throws IOException
 	{
 		_gl = gl;
+		_itemAtlas = itemAtlas;
 		
 		// Create the shader program.
 		_program = GraphicsHelpers.fullyLinkedProgram(_gl
@@ -73,10 +73,6 @@ public class SceneRenderer
 		_uWorldLightLocation = _gl.glGetUniformLocation(_program, "uWorldLightLocation");
 		_uTexture0 = _gl.glGetUniformLocation(_program, "uTexture0");
 		
-		_itemAtlas = GraphicsHelpers.loadAtlasForItems(_gl
-				, items
-				, "missing_texture.png"
-		);
 		_entityTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_cuboids = new HashMap<>();
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
