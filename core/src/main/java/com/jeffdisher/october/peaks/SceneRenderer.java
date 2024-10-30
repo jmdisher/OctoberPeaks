@@ -39,7 +39,8 @@ public class SceneRenderer
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
-	private final int _image;
+	private final int _itemTexture;
+	private final int _entityTexture;
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
 	private final Map<Integer, PartialEntity> _entities;
@@ -70,7 +71,8 @@ public class SceneRenderer
 		_uProjectionMatrix = _gl.glGetUniformLocation(_program, "uProjectionMatrix");
 		_uWorldLightLocation = _gl.glGetUniformLocation(_program, "uWorldLightLocation");
 		_uTexture0 = _gl.glGetUniformLocation(_program, "uTexture0");
-		_image = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
+		_itemTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
+		_entityTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_cuboids = new HashMap<>();
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
@@ -113,11 +115,11 @@ public class SceneRenderer
 		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// Make sure that the texture is active (texture0 enabled during start-up).
+		// We currently only use texture0.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _image);
 		
 		// Render the cuboids.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemTexture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
 			CuboidAddress key = elt.getKey();
@@ -128,6 +130,7 @@ public class SceneRenderer
 		}
 		
 		// Render any entities.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _entityTexture);
 		for (PartialEntity entity : _entities.values())
 		{
 			EntityLocation location = entity.location();
