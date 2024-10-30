@@ -123,7 +123,7 @@ public class SceneRenderer
 		// We currently only use texture0.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		
-		// Render the cuboids.
+		// Render the opaque cuboid vertices.
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
@@ -131,7 +131,7 @@ public class SceneRenderer
 			_CuboidData value = elt.getValue();
 			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, value.array, value.vertexCount);
+			GraphicsHelpers.renderStandardArray(_gl, value.opaqueArray, value.opaqueVertexCount);
 		}
 		
 		// Render any entities.
@@ -142,6 +142,22 @@ public class SceneRenderer
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(entity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+		}
+		
+		// Render the transparent cuboid vertices.
+		// Note that we may want to consider rendering this with _gl.glDepthMask(false) but there doesn't seem to be an
+		// ideal blending function to make this look right.  Leaving it read-write seems to produce better results, for
+		// now.  In the future, more of the non-opaque blocks will be replaced by complex models.
+		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
+		// this may not work for complex models.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
+		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
+		{
+			CuboidAddress key = elt.getKey();
+			_CuboidData value = elt.getValue();
+			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+			model.uploadAsUniform(_gl, _uModelMatrix);
+			GraphicsHelpers.renderStandardArray(_gl, value.transparentArray, value.transparentVertexCount);
 		}
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
@@ -169,39 +185,20 @@ public class SceneRenderer
 		_CuboidData previous = _cuboids.remove(address);
 		if (null != previous)
 		{
-			_gl.glDeleteBuffer(previous.array);
+			_gl.glDeleteBuffer(previous.opaqueArray);
+			_gl.glDeleteBuffer(previous.transparentArray);
 		}
 		
-		_meshBuffer.clear();
-		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
-			@Override
-			public void visit(BlockAddress base, byte size, Short value)
-			{
-				float[] uvBase = _itemAtlas.baseOfTexture(value);
-				float textureSize = _itemAtlas.coordinateSize;
-				GraphicsHelpers.drawCube(_meshBuffer
-						, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
-						, size
-						, uvBase
-						, textureSize
-				);
-			}
-		}, (short)0);
+		// Create the opaque cuboid vertices.
+		int[] opaqueData = _buildVertexArray(cuboid, true);
 		
-		// Note that the position() in a FloatBuffer is in units of floats.
-		int vertexCount = _meshBuffer.position() / GraphicsHelpers.FLOATS_PER_VERTEX;
-		_meshBuffer.flip();
-		// We only bother building a buffer is it will have some contents.
-		if (_meshBuffer.hasRemaining())
+		// Create the transparent cuboid vertices.
+		int[] transparentData = _buildVertexArray(cuboid, false);
+		
+		if ((opaqueData[0] > 0) || (transparentData[0] > 0))
 		{
-			int entityBuffer = _gl.glGenBuffer();
-			Assert.assertTrue(entityBuffer > 0);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, entityBuffer);
-			// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
-			_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
-			_cuboids.put(address, new _CuboidData(entityBuffer, vertexCount));
+			_cuboids.put(address, new _CuboidData(opaqueData[0], opaqueData[1], transparentData[0], transparentData[1]));
 		}
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
 	public void removeCuboid(CuboidAddress address)
@@ -210,7 +207,8 @@ public class SceneRenderer
 		// Note that this will be null if the cuboid was empty.
 		if (null != removed)
 		{
-			_gl.glDeleteBuffer(removed.array);
+			_gl.glDeleteBuffer(removed.opaqueArray);
+			_gl.glDeleteBuffer(removed.transparentArray);
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
 	}
@@ -225,6 +223,25 @@ public class SceneRenderer
 		_entities.remove(id);
 	}
 
+
+	private int[] _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
+	{
+		_meshBuffer.clear();
+		int vertexCount = _populateMeshBufferForCuboid(_meshBuffer, _itemAtlas, cuboid, renderOpaque);
+		_meshBuffer.flip();
+		// We only bother building a buffer is it will have some contents.
+		int vertices = 0;
+		if (_meshBuffer.hasRemaining())
+		{
+			vertices = _gl.glGenBuffer();
+			Assert.assertTrue(vertices > 0);
+			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, vertices);
+			// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
+			_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
+		}
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		return new int[] { vertices, vertexCount };
+	}
 
 	private static String _readUtf8Asset(String name)
 	{
@@ -249,7 +266,38 @@ public class SceneRenderer
 		return buffer;
 	}
 
-	private static record _CuboidData(int array
-			, int vertexCount
+	private static int _populateMeshBufferForCuboid(FloatBuffer meshBuffer
+			, TextureAtlas blockAtlas
+			, IReadOnlyCuboidData cuboid
+			, boolean opaqueVertices
+	)
+	{
+		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
+			@Override
+			public void visit(BlockAddress base, byte size, Short value)
+			{
+				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(value))
+				{
+					float[] uvBase = blockAtlas.baseOfTexture(value);
+					float textureSize = blockAtlas.coordinateSize;
+					GraphicsHelpers.drawCube(meshBuffer
+							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
+							, size
+							, uvBase
+							, textureSize
+					);
+				}
+			}
+		}, (short)0);
+		
+		// Note that the position() in a FloatBuffer is in units of floats.
+		int vertexCount = meshBuffer.position() / GraphicsHelpers.FLOATS_PER_VERTEX;
+		return vertexCount;
+	}
+
+	private static record _CuboidData(int opaqueArray
+			, int opaqueVertexCount
+			, int transparentArray
+			, int transparentVertexCount
 	) {}
 }

@@ -27,9 +27,10 @@ public class TextureAtlas
 		int eachTextureEdge = 32;
 		
 		int tileTexturesPerRow = _texturesPerRow(fileNames.length);
-		int tileTexture = _createTextureAtlas(gl, fileNames, missingTextureName, tileTexturesPerRow, eachTextureEdge);
+		int tileTexture = gl.glGenTexture();
+		boolean[] nonOpaqueVector = _createTextureAtlas(gl, tileTexture, fileNames, missingTextureName, tileTexturesPerRow, eachTextureEdge);
 		
-		return new TextureAtlas(tileTexture, tileTexturesPerRow);
+		return new TextureAtlas(tileTexture, tileTexturesPerRow, nonOpaqueVector);
 	}
 
 
@@ -58,7 +59,7 @@ public class TextureAtlas
 		return texturesPerRow;
 	}
 
-	private static int _createTextureAtlas(GL20 gl, String[] imageNames, String missingTextureName, int texturesPerRow, int eachTextureEdge) throws IOException
+	private static boolean[] _createTextureAtlas(GL20 gl, int texture, String[] imageNames, String missingTextureName, int texturesPerRow, int eachTextureEdge) throws IOException
 	{
 		int width = texturesPerRow * eachTextureEdge;
 		int height = texturesPerRow * eachTextureEdge;
@@ -96,6 +97,7 @@ public class TextureAtlas
 			loadedTextures[i] = loadedTexture;
 		}
 		
+		boolean[] nonOpaqueVector = new boolean[loadedTextures.length];
 		for (int y = 0; y < height; ++y)
 		{
 			for (int x = 0; x < width; ++x)
@@ -114,6 +116,10 @@ public class TextureAtlas
 					byte g = (byte)((0x0000FF00 & pixel) >> 8);
 					byte b = (byte) (0x000000FF & pixel);
 					textureBufferData.put(new byte[] { r, g, b, a });
+					if (Byte.toUnsignedInt(a) < 255)
+					{
+						nonOpaqueVector[textureIndex] = true;
+					}
 				}
 				else
 				{
@@ -123,8 +129,7 @@ public class TextureAtlas
 		}
 		((java.nio.Buffer) textureBufferData).flip();
 		
-		// Create the texture and upload.
-		int texture = gl.glGenTexture();
+		// Upload the texture.
 		gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
 		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGBA, width, height, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
 		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_WRAP_S, GL20.GL_CLAMP_TO_EDGE);
@@ -139,24 +144,27 @@ public class TextureAtlas
 		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_MIN_FILTER, GL20.GL_NEAREST_MIPMAP_LINEAR);
 		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_MAG_FILTER, GL20.GL_NEAREST);
 		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
-		return texture;
+		return nonOpaqueVector;
 	}
 
 
 	public final int texture;
 	public final float coordinateSize;
 	private final int _texturesPerRow;
+	private final boolean[] _nonOpaqueVector;
 
-	private TextureAtlas(int tileTextures, int tileTexturesPerRow)
+	private TextureAtlas(int tileTextures, int tileTexturesPerRow, boolean[] nonOpaqueVector)
 	{
 		this.texture = tileTextures;
 		this.coordinateSize = 1.0f / (float)tileTexturesPerRow;
 		_texturesPerRow = tileTexturesPerRow;
+		_nonOpaqueVector = nonOpaqueVector;
 	}
 
 	/**
 	 * Returns the UV base coordinates of the texture with the given index.
 	 * 
+	 * @param index The texture index.
 	 * @return {u, v} of texture base coordinates.
 	 */
 	public float[] baseOfTexture(short index)
@@ -166,5 +174,16 @@ public class TextureAtlas
 		float u = this.coordinateSize * (float)column;
 		float v = this.coordinateSize * (float)row;
 		return new float[] {u, v};
+	}
+
+	/**
+	 * Returns true if the texture at index contains any pixels which are not fully-opaque.
+	 * 
+	 * @param index The texture index.
+	 * @return True if there are any pixels in this texture which are not fully-opaque.
+	 */
+	public boolean textureHasNonOpaquePixels(short index)
+	{
+		return _nonOpaqueVector[index];
 	}
 }
