@@ -82,34 +82,6 @@ public class GraphicsHelpers
 		return _uploadNewTexture(gl, 1, 1, textureBufferData);
 	}
 
-	public static int buildTestingScene(GL20 gl)
-	{
-		int cubeCount = 4;
-		int quadsPerCube = 6;
-		int verticesPerQuad = 6;
-		int totalBytes = cubeCount * quadsPerCube * verticesPerQuad * FLOATS_PER_VERTEX * Float.BYTES;
-		ByteBuffer direct = ByteBuffer.allocateDirect(totalBytes);
-		
-		direct.order(ByteOrder.nativeOrder());
-		FloatBuffer floats = direct.asFloatBuffer();
-		_drawCube(floats, new float[] { 0.0f, 0.0f, 0.0f}, (byte)1);
-		_drawCube(floats, new float[] {-1.5f, 0.0f, 0.0f}, (byte)1);
-		_drawCube(floats, new float[] { 0.0f, 2.0f, 0.0f}, (byte)1);
-		_drawCube(floats, new float[] { 0.0f, 0.0f, 1.0f}, (byte)1);
-		((java.nio.Buffer) direct).position(0);
-		
-		int entityBuffer = gl.glGenBuffer();
-		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, entityBuffer);
-		gl.glBufferData(GL20.GL_ARRAY_BUFFER, totalBytes, direct.asFloatBuffer(), GL20.GL_STATIC_DRAW);
-		gl.glEnableVertexAttribArray(0);
-		gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
-		gl.glEnableVertexAttribArray(1);
-		gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
-		gl.glEnableVertexAttribArray(2);
-		gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
-		return entityBuffer;
-	}
-
 	public static void drawCube(FloatBuffer floats, float[] base, byte scale)
 	{
 		_drawCube(floats, base, scale);
