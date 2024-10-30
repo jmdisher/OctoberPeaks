@@ -21,6 +21,7 @@ import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -39,7 +40,7 @@ public class SceneRenderer
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
-	private final int _itemTexture;
+	private final TextureAtlas _itemAtlas;
 	private final int _entityTexture;
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
@@ -52,7 +53,7 @@ public class SceneRenderer
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
 
-	public SceneRenderer(GL20 gl) throws IOException
+	public SceneRenderer(GL20 gl, Item[] items) throws IOException
 	{
 		_gl = gl;
 		
@@ -71,7 +72,11 @@ public class SceneRenderer
 		_uProjectionMatrix = _gl.glGetUniformLocation(_program, "uProjectionMatrix");
 		_uWorldLightLocation = _gl.glGetUniformLocation(_program, "uWorldLightLocation");
 		_uTexture0 = _gl.glGetUniformLocation(_program, "uTexture0");
-		_itemTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
+		
+		_itemAtlas = GraphicsHelpers.loadAtlasForItems(_gl
+				, items
+				, "missing_texture.png"
+		);
 		_entityTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_cuboids = new HashMap<>();
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
@@ -119,7 +124,7 @@ public class SceneRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		
 		// Render the cuboids.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemTexture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
 			CuboidAddress key = elt.getKey();
@@ -172,10 +177,8 @@ public class SceneRenderer
 			@Override
 			public void visit(BlockAddress base, byte size, Short value)
 			{
-				// TODO:  Base this on block type once we add the texture atlas.
-				float[] uvBase = new float[] { 0.0f, 0.0f };
-				float textureSize = 1.0f;
-				
+				float[] uvBase = _itemAtlas.baseOfTexture(value);
+				float textureSize = _itemAtlas.coordinateSize;
 				GraphicsHelpers.drawCube(_meshBuffer
 						, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 						, size

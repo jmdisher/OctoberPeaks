@@ -6,12 +6,14 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -114,6 +116,21 @@ public class GraphicsHelpers
 		gl.glEnableVertexAttribArray(2);
 		gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
 		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, vertexCount);
+	}
+
+	public static TextureAtlas loadAtlasForItems(GL20 gl
+			, Item[] tileItems
+			, String missingTextureName
+	) throws IOException
+	{
+		// Just grab the names of the items, assuming they are all PNGs.
+		// We prefix "item_" to them in order to distinguish them from other block textures.
+		String[] primaryNames = Arrays.stream(tileItems).map(
+				(Item item) -> ("item_" + item.id() + ".png")
+		).toArray(
+				(int size) -> new String[size]
+		);
+		return TextureAtlas.loadAtlas(gl, primaryNames, missingTextureName);
 	}
 
 

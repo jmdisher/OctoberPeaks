@@ -72,7 +72,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		try
 		{
-			_scene = new SceneRenderer(_gl);
+			_scene = new SceneRenderer(_gl, _environment.items.ITEMS_BY_TYPE);
 		}
 		catch (IOException e)
 		{
