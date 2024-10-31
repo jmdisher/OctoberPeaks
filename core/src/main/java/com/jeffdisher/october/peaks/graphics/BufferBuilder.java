@@ -13,14 +13,14 @@ import com.jeffdisher.october.utils.Assert;
 public class BufferBuilder
 {
 	private final FloatBuffer _sharedBackingStore;
-	private final int[] _floatsPerAttribute;
+	private final Attribute[] _attributes;
 	private int _nextAttribute;
 	private int _verticesWritten;
 
-	public BufferBuilder(FloatBuffer sharedBackingStore, int[] floatsPerAttribute)
+	public BufferBuilder(FloatBuffer sharedBackingStore, Attribute[] attributes)
 	{
 		_sharedBackingStore = sharedBackingStore;
-		_floatsPerAttribute = floatsPerAttribute;
+		_attributes = attributes;
 		_nextAttribute = 0;
 		_verticesWritten = 0;
 		
@@ -78,12 +78,12 @@ public class BufferBuilder
 	private void _append(int attribute, float[] data)
 	{
 		Assert.assertTrue(_nextAttribute == attribute);
-		Assert.assertTrue(_floatsPerAttribute[attribute] == data.length);
+		Assert.assertTrue(_attributes[attribute].floats() == data.length);
 		
 		_sharedBackingStore.put(data);
 		
 		_nextAttribute = attribute + 1;
-		if (_nextAttribute == _floatsPerAttribute.length)
+		if (_nextAttribute == _attributes.length)
 		{
 			_nextAttribute = 0;
 			_verticesWritten += 1;

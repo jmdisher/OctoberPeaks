@@ -5,6 +5,7 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.utils.Assert;
 
 /**
  * A high-level representation of an OpenGL shader program.
@@ -31,7 +32,35 @@ public class Program
 			gl.glBindAttribLocation(program, index, attributesInOrder[index]);
 		}
 		gl.glLinkProgram(program);
-		return new Program(gl, program);
+		
+		// We now want to extract the attribute data.
+		IntBuffer outSize = _allocOutParam();
+		IntBuffer outType = _allocOutParam();
+		Attribute[] attributes = new Attribute[attributesInOrder.length];
+		for (int index = 0; index < attributesInOrder.length; ++index)
+		{
+			gl.glEnableVertexAttribArray(index);
+			String name = gl.glGetActiveAttrib(program, index, outSize, outType);
+			Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
+			// NOTE:  These IntBuffer out-params are directly written so we don't clear/flip like a normal Buffer type.
+			int floatsInType;
+			switch (outType.get(0))
+			{
+			case GL20.GL_FLOAT_VEC2:
+				floatsInType = 2;
+				break;
+			case GL20.GL_FLOAT_VEC3:
+				floatsInType = 3;
+				break;
+				default:
+					// We need to add handling for this.
+					throw Assert.unreachable();
+			}
+			int floatsInAttribute = outSize.get(0) * floatsInType;
+			attributes[index] = new Attribute(name, floatsInAttribute);
+		}
+		Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
+		return new Program(gl, program, attributes);
 	}
 
 	private static int _compileAndAttachShader(GL20 gl, int program, int shaderType, String source)
@@ -39,11 +68,7 @@ public class Program
 		int shader = gl.glCreateShader(shaderType);
 		gl.glShaderSource(shader, source);
 		gl.glCompileShader(shader);
-		ByteBuffer direct = ByteBuffer.allocateDirect(Integer.BYTES);
-		direct.order(ByteOrder.nativeOrder());
-		IntBuffer buffer = direct.asIntBuffer();
-		buffer.put(-1);
-		((java.nio.Buffer) buffer).flip();
+		IntBuffer buffer = _allocOutParam();
 		gl.glGetShaderiv(shader, GL20.GL_COMPILE_STATUS, buffer);
 		if (1 != buffer.get())
 		{
@@ -54,14 +79,23 @@ public class Program
 		return shader;
 	}
 
+	private static IntBuffer _allocOutParam()
+	{
+		ByteBuffer buf = ByteBuffer.allocateDirect(Integer.BYTES);
+		buf.order(ByteOrder.nativeOrder());
+		return buf.asIntBuffer();
+	}
+
 
 	private final GL20 _gl;
 	private final int _program;
+	public final Attribute[] attributes;
 
-	private Program(GL20 gl, int program)
+	private Program(GL20 gl, int program, Attribute[] attributes)
 	{
 		_gl = gl;
 		_program = program;
+		this.attributes = attributes;
 	}
 
 	public void useProgram()

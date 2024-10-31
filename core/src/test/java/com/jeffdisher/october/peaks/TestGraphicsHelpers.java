@@ -6,6 +6,7 @@ import java.nio.FloatBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 
 
@@ -21,7 +22,7 @@ public class TestGraphicsHelpers
 		float[] base = new float[] {0.0f, 0.0f, 0.0f};
 		float[] uvBase = new float[] { 0.0f, 0.0f };
 		float textureSize = 1.0f;
-		GraphicsHelpers.drawCube(new BufferBuilder(floats, new int[] {3, 3, 2}), base, (byte)1, uvBase, textureSize);
+		GraphicsHelpers.drawCube(new BufferBuilder(floats, _testingAttributes()), base, (byte)1, uvBase, textureSize);
 		floats.flip();
 		// We should see the 6 cube faces, each composed of a single quad (2 triangles or 6 vertices).
 		Assert.assertEquals(6 * 2 * 3 * GraphicsHelpers.FLOATS_PER_VERTEX, floats.remaining());
@@ -35,7 +36,7 @@ public class TestGraphicsHelpers
 		float[] base = new float[] {0.0f, 0.0f, 0.0f};
 		float[] uvBase = new float[] { 0.0f, 0.0f };
 		float textureSize = 1.0f;
-		GraphicsHelpers.drawCube(new BufferBuilder(floats, new int[] {3, 3, 2}), base, (byte)2, uvBase, textureSize);
+		GraphicsHelpers.drawCube(new BufferBuilder(floats, _testingAttributes()), base, (byte)2, uvBase, textureSize);
 		floats.flip();
 		// We should see the 6 cube faces, each composed of 4 quad tiles (2 triangles or 6 vertices).
 		Assert.assertEquals(6 * 4 * 2 * 3 * GraphicsHelpers.FLOATS_PER_VERTEX, floats.remaining());
@@ -49,9 +50,19 @@ public class TestGraphicsHelpers
 		float[] base = new float[] {0.0f, 0.0f, 0.0f};
 		float[] uvBase = new float[] { 0.0f, 0.0f };
 		float textureSize = 1.0f;
-		GraphicsHelpers.drawCube(new BufferBuilder(floats, new int[] {3, 3, 2}), base, (byte)4, uvBase, textureSize);
+		GraphicsHelpers.drawCube(new BufferBuilder(floats, _testingAttributes()), base, (byte)4, uvBase, textureSize);
 		floats.flip();
 		// We should see the 6 cube faces, each composed of 16 quad tiles (2 triangles or 6 vertices).
 		Assert.assertEquals(6 * 16 * 2 * 3 * GraphicsHelpers.FLOATS_PER_VERTEX, floats.remaining());
+	}
+
+
+	private static Attribute[] _testingAttributes()
+	{
+		return new Attribute[] {
+				new Attribute("", 3),
+				new Attribute("", 3),
+				new Attribute("", 2),
+		};
 	}
 }

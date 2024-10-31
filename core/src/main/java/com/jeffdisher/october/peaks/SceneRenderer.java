@@ -17,6 +17,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -102,13 +103,13 @@ public class SceneRenderer
 			if (EntityType.ERROR != type)
 			{
 				EntityVolume volume = EntityConstants.getVolume(type);
-				int buffer = _createPrism(_gl, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
+				int buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
 				entityMeshes.put(type, buffer);
 			}
 		}
 		_entityMeshes = Collections.unmodifiableMap(entityMeshes);
 		_highlightTexture = GraphicsHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-		_highlightCube = _createPrism(_gl, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
+		_highlightCube = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -239,7 +240,7 @@ public class SceneRenderer
 
 	private int[] _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{
-		BufferBuilder builder = new BufferBuilder(_meshBuffer, new int[] {3, 3, 2});
+		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
 		_populateMeshBufferForCuboid(_environment, builder, _itemAtlas, cuboid, renderOpaque);
 		int vertexCount = builder.getVertexCount();
 		int vertices = builder.flush(_gl);
@@ -252,13 +253,13 @@ public class SceneRenderer
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
-	private static int _createPrism(GL20 gl, FloatBuffer meshBuffer, float[] edgeVertices)
+	private static int _createPrism(GL20 gl, Attribute[] attributes, FloatBuffer meshBuffer, float[] edgeVertices)
 	{
 		// This is currently how we render entities so we can use the hard-coded coordinates.
 		float[] uvBase = new float[] { 0.0f, 0.0f };
 		float textureSize = 1.0f;
 		
-		BufferBuilder builder = new BufferBuilder(meshBuffer, new int[] {3, 3, 2});
+		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
 		GraphicsHelpers.drawRectangularPrism(builder, edgeVertices, uvBase, textureSize);
 		return builder.flush(gl);
 	}
