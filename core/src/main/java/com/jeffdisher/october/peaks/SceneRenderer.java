@@ -58,11 +58,10 @@ public class SceneRenderer
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
-	private final int _entityTexture;
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
 	private final Map<Integer, PartialEntity> _entities;
-	private final Map<EntityType, VertexArray> _entityMeshes;
+	private final Map<EntityType, _EntityData> _entityData;
 	private final int _highlightTexture;
 	private final VertexArray _highlightCube;
 
@@ -92,23 +91,23 @@ public class SceneRenderer
 		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
 		
-		_entityTexture = TextureHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_cuboids = new HashMap<>();
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
 		_meshBuffer = direct.asFloatBuffer();
 		_entities = new HashMap<>();
-		Map<EntityType, VertexArray> entityMeshes = new HashMap<>();
+		Map<EntityType, _EntityData> entityData = new HashMap<>();
 		for (EntityType type : EntityType.values())
 		{
 			if (EntityType.ERROR != type)
 			{
 				EntityVolume volume = EntityConstants.getVolume(type);
 				VertexArray buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
-				entityMeshes.put(type, buffer);
+				int texture = TextureHelpers.loadInternalRGBA(_gl, "missing_texture.png");
+				entityData.put(type, new _EntityData(buffer, texture));
 			}
 		}
-		_entityMeshes = Collections.unmodifiableMap(entityMeshes);
+		_entityData = Collections.unmodifiableMap(entityData);
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
 		_highlightCube = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
 		
@@ -150,13 +149,15 @@ public class SceneRenderer
 		}
 		
 		// Render any entities.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _entityTexture);
 		for (PartialEntity entity : _entities.values())
 		{
 			EntityLocation location = entity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_entityMeshes.get(entity.type()).drawAllTriangles(_gl);
+			// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
+			_EntityData data = _entityData.get(entity.type());
+			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
+			data.vertices.drawAllTriangles(_gl);
 		}
 		
 		// Render the transparent cuboid vertices.
@@ -189,7 +190,7 @@ public class SceneRenderer
 			EntityLocation location = selectedEntity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_entityMeshes.get(selectedEntity.type()).drawAllTriangles(_gl);
+			_entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 		}
 	}
 
@@ -516,5 +517,9 @@ public class SceneRenderer
 
 	private static record _CuboidData(VertexArray opaqueArray
 			, VertexArray transparentArray
+	) {}
+
+	private static record _EntityData(VertexArray vertices
+			, int texture
 	) {}
 }
