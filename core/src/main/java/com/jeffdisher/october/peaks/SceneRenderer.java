@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
@@ -21,6 +22,7 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -101,10 +103,8 @@ public class SceneRenderer
 		{
 			if (EntityType.ERROR != type)
 			{
-				EntityVolume volume = EntityConstants.getVolume(type);
-				VertexArray buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
-				int texture = TextureHelpers.loadInternalRGBA(_gl, "missing_texture.png");
-				entityData.put(type, new _EntityData(buffer, texture));
+				_EntityData data = _loadEntityResources(gl, type);
+				entityData.put(type, data);
 			}
 		}
 		_entityData = Collections.unmodifiableMap(entityData);
@@ -239,6 +239,43 @@ public class SceneRenderer
 		_entities.remove(id);
 	}
 
+
+	private _EntityData _loadEntityResources(GL20 gl, EntityType type) throws IOException
+	{
+		EntityVolume volume = EntityConstants.getVolume(type);
+		String name = type.name();
+		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
+		VertexArray buffer;
+		if (meshFile.exists())
+		{
+			String rawMesh = meshFile.readString();
+			BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
+			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
+				builder.appendVertex(position
+						, normal
+						, texture
+				);
+			}, rawMesh);
+			buffer = builder.flush(gl);
+		}
+		else
+		{
+			buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
+		}
+		
+		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
+		int texture;
+		if (textureFile.exists())
+		{
+			texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
+		}
+		else
+		{
+			texture = TextureHelpers.loadInternalRGBA(_gl, "missing_texture.png");
+		}
+		_EntityData data = new _EntityData(buffer, texture);
+		return data;
+	}
 
 	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{

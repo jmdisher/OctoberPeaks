@@ -23,32 +23,13 @@ public class TextureHelpers
 	public static int loadInternalRGBA(GL20 gl, String imageName) throws IOException
 	{
 		FileHandle textureFile = Gdx.files.internal(imageName);
-		BufferedImage loadedTexture = ImageIO.read(textureFile.read());
-		
-		int height = loadedTexture.getHeight();
-		int width = loadedTexture.getWidth();
-		
-		// 4 bytes per pixel since we are storing pixels as RGBA.
-		int bytesToAllocate = width * height * 4;
-		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(bytesToAllocate);
-		textureBufferData.order(ByteOrder.nativeOrder());
-		
-		for (int y = 0; y < height; ++y)
-		{
-			for (int x = 0; x < width; ++x)
-			{
-				int pixel = loadedTexture.getRGB(x, y);
-				// This data is pulled out as ARGB but we need to upload it as RGBA.
-				byte a = (byte)((0xFF000000 & pixel) >> 24);
-				byte r = (byte)((0x00FF0000 & pixel) >> 16);
-				byte g = (byte)((0x0000FF00 & pixel) >> 8);
-				byte b = (byte) (0x000000FF & pixel);
-				textureBufferData.put(new byte[] { r, g, b, a });
-			}
-		}
-		((java.nio.Buffer) textureBufferData).flip();
-		
-		return _uploadNewTexture(gl, height, width, textureBufferData);
+		return _loadHandleRGBA(gl, textureFile);
+	}
+
+	public static int loadHandleRGBA(GL20 gl, FileHandle textureFile) throws IOException
+	{
+		Assert.assertTrue(textureFile.exists());
+		return _loadHandleRGBA(gl, textureFile);
 	}
 
 	public static int loadSinglePixelImageRGBA(GL20 gl, byte[] rawPixel)
@@ -80,6 +61,36 @@ public class TextureHelpers
 		return TextureAtlas.loadAtlas(gl, primaryNames, missingTextureName);
 	}
 
+
+	private static int _loadHandleRGBA(GL20 gl, FileHandle textureFile) throws IOException
+	{
+		BufferedImage loadedTexture = ImageIO.read(textureFile.read());
+		
+		int height = loadedTexture.getHeight();
+		int width = loadedTexture.getWidth();
+		
+		// 4 bytes per pixel since we are storing pixels as RGBA.
+		int bytesToAllocate = width * height * 4;
+		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(bytesToAllocate);
+		textureBufferData.order(ByteOrder.nativeOrder());
+		
+		for (int y = 0; y < height; ++y)
+		{
+			for (int x = 0; x < width; ++x)
+			{
+				int pixel = loadedTexture.getRGB(x, y);
+				// This data is pulled out as ARGB but we need to upload it as RGBA.
+				byte a = (byte)((0xFF000000 & pixel) >> 24);
+				byte r = (byte)((0x00FF0000 & pixel) >> 16);
+				byte g = (byte)((0x0000FF00 & pixel) >> 8);
+				byte b = (byte) (0x000000FF & pixel);
+				textureBufferData.put(new byte[] { r, g, b, a });
+			}
+		}
+		((java.nio.Buffer) textureBufferData).flip();
+		
+		return _uploadNewTexture(gl, height, width, textureBufferData);
+	}
 
 	private static int _uploadNewTexture(GL20 gl, int height, int width, ByteBuffer textureBufferData)
 	{
