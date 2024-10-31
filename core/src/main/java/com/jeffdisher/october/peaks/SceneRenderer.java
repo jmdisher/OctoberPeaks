@@ -20,6 +20,7 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -61,9 +62,9 @@ public class SceneRenderer
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
 	private final Map<Integer, PartialEntity> _entities;
-	private final Map<EntityType, Integer> _entityMeshes;
+	private final Map<EntityType, VertexArray> _entityMeshes;
 	private final int _highlightTexture;
-	private final int _highlightCube;
+	private final VertexArray _highlightCube;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
@@ -97,13 +98,13 @@ public class SceneRenderer
 		direct.order(ByteOrder.nativeOrder());
 		_meshBuffer = direct.asFloatBuffer();
 		_entities = new HashMap<>();
-		Map<EntityType, Integer> entityMeshes = new HashMap<>();
+		Map<EntityType, VertexArray> entityMeshes = new HashMap<>();
 		for (EntityType type : EntityType.values())
 		{
 			if (EntityType.ERROR != type)
 			{
 				EntityVolume volume = EntityConstants.getVolume(type);
-				int buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
+				VertexArray buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
 				entityMeshes.put(type, buffer);
 			}
 		}
@@ -145,7 +146,7 @@ public class SceneRenderer
 			_CuboidData value = elt.getValue();
 			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, value.opaqueArray, value.opaqueVertexCount);
+			value.opaqueArray.drawAllTriangles(_gl);
 		}
 		
 		// Render any entities.
@@ -155,7 +156,7 @@ public class SceneRenderer
 			EntityLocation location = entity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(entity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			_entityMeshes.get(entity.type()).drawAllTriangles(_gl);
 		}
 		
 		// Render the transparent cuboid vertices.
@@ -171,7 +172,7 @@ public class SceneRenderer
 			_CuboidData value = elt.getValue();
 			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, value.transparentArray, value.transparentVertexCount);
+			value.transparentArray.drawAllTriangles(_gl);
 		}
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
@@ -181,14 +182,14 @@ public class SceneRenderer
 		{
 			Matrix model = Matrix.translate(selectedBlock.x(), selectedBlock.y(), selectedBlock.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, _highlightCube, GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			_highlightCube.drawAllTriangles(_gl);
 		}
 		else if (null != selectedEntity)
 		{
 			EntityLocation location = selectedEntity.location();
 			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			GraphicsHelpers.renderStandardArray(_gl, _entityMeshes.get(selectedEntity.type()), GraphicsHelpers.RECTANGULAR_PRISM_VERTEX_COUNT);
+			_entityMeshes.get(selectedEntity.type()).drawAllTriangles(_gl);
 		}
 	}
 
@@ -199,19 +200,19 @@ public class SceneRenderer
 		_CuboidData previous = _cuboids.remove(address);
 		if (null != previous)
 		{
-			_gl.glDeleteBuffer(previous.opaqueArray);
-			_gl.glDeleteBuffer(previous.transparentArray);
+			previous.opaqueArray.delete(_gl);
+			previous.transparentArray.delete(_gl);
 		}
 		
 		// Create the opaque cuboid vertices.
-		int[] opaqueData = _buildVertexArray(cuboid, true);
+		VertexArray opaqueData = _buildVertexArray(cuboid, true);
 		
 		// Create the transparent cuboid vertices.
-		int[] transparentData = _buildVertexArray(cuboid, false);
+		VertexArray transparentData = _buildVertexArray(cuboid, false);
 		
-		if ((opaqueData[0] > 0) || (transparentData[0] > 0))
+		if ((null != opaqueData) || (null != transparentData))
 		{
-			_cuboids.put(address, new _CuboidData(opaqueData[0], opaqueData[1], transparentData[0], transparentData[1]));
+			_cuboids.put(address, new _CuboidData(opaqueData, transparentData));
 		}
 	}
 
@@ -221,8 +222,8 @@ public class SceneRenderer
 		// Note that this will be null if the cuboid was empty.
 		if (null != removed)
 		{
-			_gl.glDeleteBuffer(removed.opaqueArray);
-			_gl.glDeleteBuffer(removed.transparentArray);
+			removed.opaqueArray.delete(_gl);
+			removed.transparentArray.delete(_gl);
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
 	}
@@ -238,14 +239,11 @@ public class SceneRenderer
 	}
 
 
-	private int[] _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
+	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{
 		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
 		_populateMeshBufferForCuboid(_environment, builder, _itemAtlas, cuboid, renderOpaque);
-		int vertexCount = builder.getVertexCount();
-		int vertices = builder.flush(_gl);
-		// Note that vertices will be 0 if there was no buffer produced.
-		return new int[] { vertices, vertexCount };
+		return builder.flush(_gl);
 	}
 
 	private static String _readUtf8Asset(String name)
@@ -253,7 +251,7 @@ public class SceneRenderer
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
-	private static int _createPrism(GL20 gl, Attribute[] attributes, FloatBuffer meshBuffer, float[] edgeVertices)
+	private static VertexArray _createPrism(GL20 gl, Attribute[] attributes, FloatBuffer meshBuffer, float[] edgeVertices)
 	{
 		// This is currently how we render entities so we can use the hard-coded coordinates.
 		float[] uvBase = new float[] { 0.0f, 0.0f };
@@ -324,9 +322,7 @@ public class SceneRenderer
 		}
 	}
 
-	private static record _CuboidData(int opaqueArray
-			, int opaqueVertexCount
-			, int transparentArray
-			, int transparentVertexCount
+	private static record _CuboidData(VertexArray opaqueArray
+			, VertexArray transparentArray
 	) {}
 }

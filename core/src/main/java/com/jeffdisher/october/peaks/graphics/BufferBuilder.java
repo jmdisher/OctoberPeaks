@@ -51,9 +51,9 @@ public class BufferBuilder
 	 * Flushes the accumulated vertex data to a new buffer in GL.
 	 * 
 	 * @param gl The GL interface.
-	 * @return The new buffer number (0 if no buffer was produces).
+	 * @return The new VertexArray object (null if there were no vertices written).
 	 */
-	public int flush(GL20 gl)
+	public VertexArray flush(GL20 gl)
 	{
 		// We are done writing so flip the buffer.
 		_sharedBackingStore.flip();
@@ -71,7 +71,10 @@ public class BufferBuilder
 			Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
 		}
 		
-		return buffer;
+		return (0 != buffer)
+				? new VertexArray(buffer, _verticesWritten, _attributes)
+				: null
+		;
 	}
 
 

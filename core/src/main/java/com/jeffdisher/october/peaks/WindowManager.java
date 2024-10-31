@@ -18,6 +18,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -71,8 +72,8 @@ public class WindowManager
 	private final int _uScale;
 	private final int _uTexture;
 	private final int _uTextureBaseOffset;
-	private final int _verticesUnitSquare;
-	private final int _verticesItemSquare;
+	private final VertexArray _verticesUnitSquare;
+	private final VertexArray _verticesItemSquare;
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
 	private final int _pixelRed;
@@ -315,7 +316,7 @@ public class WindowManager
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
-	private static int _defineCommonVertices(GL20 gl, Program program, FloatBuffer meshBuffer, float textureSize)
+	private static VertexArray _defineCommonVertices(GL20 gl, Program program, FloatBuffer meshBuffer, float textureSize)
 	{
 		float height = 1.0f;
 		float width = 1.0f;
@@ -677,12 +678,7 @@ public class WindowManager
 		_gl.glUniform2f(_uOffset, left, bottom);
 		_gl.glUniform2f(_uScale, xScale, yScale);
 		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
-		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _verticesUnitSquare);
-		_gl.glEnableVertexAttribArray(0);
-		_gl.glVertexAttribPointer(0, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 0);
-		_gl.glEnableVertexAttribArray(1);
-		_gl.glVertexAttribPointer(1, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 2 * Float.BYTES);
-		_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, 6);
+		_verticesUnitSquare.drawAllTriangles(_gl);
 	}
 
 	private void _drawItemRect(float left, float bottom, float right, float top, Item item)
@@ -696,12 +692,7 @@ public class WindowManager
 		_gl.glUniform2f(_uOffset, left, bottom);
 		_gl.glUniform2f(_uScale, xScale, yScale);
 		_gl.glUniform2f(_uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
-		_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _verticesItemSquare);
-		_gl.glEnableVertexAttribArray(0);
-		_gl.glVertexAttribPointer(0, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 0);
-		_gl.glEnableVertexAttribArray(1);
-		_gl.glVertexAttribPointer(1, 2, GL20.GL_FLOAT, false, 4 * Float.BYTES, 2 * Float.BYTES);
-		_gl.glDrawArrays(GL20.GL_TRIANGLES, 0, 6);
+		_verticesItemSquare.drawAllTriangles(_gl);
 	}
 
 	private static boolean _isMouseOver(float left, float bottom, float right, float top, float glX, float glY)

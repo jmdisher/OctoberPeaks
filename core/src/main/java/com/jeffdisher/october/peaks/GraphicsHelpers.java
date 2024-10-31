@@ -22,8 +22,6 @@ import com.jeffdisher.october.utils.Assert;
 public class GraphicsHelpers
 {
 	public static final int FLOATS_PER_VERTEX = 3 + 3 + 2;
-	// 6 sizes, each with 2 triangles, each with 3 vertices.
-	public static final int RECTANGULAR_PRISM_VERTEX_COUNT = 6 * 2 * 3;
 
 	public static int loadInternalRGBA(GL20 gl, String imageName) throws IOException
 	{
@@ -116,18 +114,6 @@ public class GraphicsHelpers
 		};
 		
 		_populateQuad(builder, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
-	}
-
-	public static void renderStandardArray(GL20 gl, int bufferElement, int vertexCount)
-	{
-		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, bufferElement);
-		gl.glEnableVertexAttribArray(0);
-		gl.glVertexAttribPointer(0, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 0);
-		gl.glEnableVertexAttribArray(1);
-		gl.glVertexAttribPointer(1, 3, GL20.GL_FLOAT, false, 8 * Float.BYTES, 3 * Float.BYTES);
-		gl.glEnableVertexAttribArray(2);
-		gl.glVertexAttribPointer(2, 2, GL20.GL_FLOAT, false, 8 * Float.BYTES, 6 * Float.BYTES);
-		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, vertexCount);
 	}
 
 	public static TextureAtlas loadAtlasForItems(GL20 gl
