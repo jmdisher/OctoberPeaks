@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.util.Arrays;
 
 import javax.imageio.ImageIO;
@@ -12,6 +11,7 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 
@@ -70,9 +70,9 @@ public class GraphicsHelpers
 		return _uploadNewTexture(gl, 1, 1, textureBufferData);
 	}
 
-	public static void drawCube(FloatBuffer floats, float[] base, byte scale, float[] uvBase, float textureSize)
+	public static void drawCube(BufferBuilder builder, float[] base, byte scale, float[] uvBase, float textureSize)
 	{
-		_drawCube(floats
+		_drawCube(builder
 				, base
 				, scale
 				, uvBase
@@ -80,9 +80,9 @@ public class GraphicsHelpers
 		);
 	}
 
-	public static void drawRectangularPrism(FloatBuffer floats, float[] edge, float[] uvBase, float textureSize)
+	public static void drawRectangularPrism(BufferBuilder builder, float[] edge, float[] uvBase, float textureSize)
 	{
-		_drawRectangularPrism(floats
+		_drawRectangularPrism(builder
 				, new float[] { 0.0f, 0.0f, 0.0f }
 				, (byte)1
 				, new float[] { 0.0f, 0.0f, 0.0f }
@@ -92,7 +92,7 @@ public class GraphicsHelpers
 		);
 	}
 
-	public static void drawUpFacingSquare(FloatBuffer buffer, float[] base, float edgeSize, float[] uvBase, float textureSize)
+	public static void drawUpFacingSquare(BufferBuilder builder, float[] base, float edgeSize, float[] uvBase, float textureSize)
 	{
 		float[] bottomLeft = new float[] {
 				0.0f,
@@ -115,7 +115,7 @@ public class GraphicsHelpers
 				0.0f,
 		};
 		
-		_populateQuad(buffer, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
+		_populateQuad(builder, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
 	}
 
 	public static void renderStandardArray(GL20 gl, int bufferElement, int vertexCount)
@@ -146,7 +146,7 @@ public class GraphicsHelpers
 	}
 
 
-	private static void _populateQuad(FloatBuffer buffer, float[] base, float[][] vertices, float[] normal, float[] uvBase, float textureSize)
+	private static void _populateQuad(BufferBuilder builder, float[] base, float[][] vertices, float[] normal, float[] uvBase, float textureSize)
 	{
 		float[] bottomLeft = new float[] {
 				base[0] + vertices[0][0],
@@ -178,41 +178,43 @@ public class GraphicsHelpers
 		// nx, ny, nz
 		// u, v
 		// NOTE:  We invert the textures coordinates here (probably not ideal).
-		float[] mesh = new float[] {
-				// Left Bottom.
-				bottomLeft[0], bottomLeft[1], bottomLeft[2],
-				normal[0], normal[1], normal[2],
-				u, vEdge,
-				// Right Bottom.
-				bottomRight[0], bottomRight[1], bottomRight[2],
-				normal[0], normal[1], normal[2],
-				uEdge, vEdge,
-				// Right Top.
-				topRight[0], topRight[1], topRight[2],
-				normal[0], normal[1], normal[2],
-				uEdge, v,
-				
-				// Left Bottom.
-				bottomLeft[0], bottomLeft[1], bottomLeft[2],
-				normal[0], normal[1], normal[2],
-				u, vEdge,
-				// Right Top.
-				topRight[0], topRight[1], topRight[2],
-				normal[0], normal[1], normal[2],
-				uEdge, v,
-				// Left Top.
-				topLeft[0], topLeft[1], topLeft[2],
-				normal[0], normal[1], normal[2],
-				u, v,
-		};
 		
-		buffer.put(mesh);
+		// Left Bottom.
+		builder.appendVertex(bottomLeft
+				, normal
+				, new float[] {u, vEdge}
+		);
+		// Right Bottom.
+		builder.appendVertex(bottomRight
+				, normal
+				, new float[] {uEdge, vEdge}
+		);
+		// Right Top.
+		builder.appendVertex(topRight
+				, normal
+				, new float[] {uEdge, v}
+		);
+		// Left Bottom.
+		builder.appendVertex(bottomLeft
+				, normal
+				, new float[] {u, vEdge}
+		);
+		// Right Top.
+		builder.appendVertex(topRight
+				, normal
+				, new float[] {uEdge, v}
+		);
+		// Left Top.
+		builder.appendVertex(topLeft
+				, normal
+				, new float[] {u, v}
+		);
 	}
 
-	private static void _drawCube(FloatBuffer floats, float[] base, byte scale, float[] uvBase, float textureSize)
+	private static void _drawCube(BufferBuilder builder, float[] base, byte scale, float[] uvBase, float textureSize)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		_drawRectangularPrism(floats
+		_drawRectangularPrism(builder
 				, base
 				, scale
 				, new float[] { 0.0f, 0.0f, 0.0f }
@@ -222,7 +224,7 @@ public class GraphicsHelpers
 		);
 	}
 
-	private static void _drawRectangularPrism(FloatBuffer floats
+	private static void _drawRectangularPrism(BufferBuilder builder
 			, float[] base
 			, byte scale
 			, float[] prismBase
@@ -253,11 +255,11 @@ public class GraphicsHelpers
 			{
 				float yBase = base[1] + (float)y;
 				float[] localBase = new float[] { base[0], yBase, zBase};
-				_populateQuad(floats, localBase, new float[][] {
+				_populateQuad(builder, localBase, new float[][] {
 					v010, v000, v001, v011
 				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase, textureSize);
 				localBase[0] += baseScale;
-				_populateQuad(floats, localBase, new float[][] {
+				_populateQuad(builder, localBase, new float[][] {
 					v111, v101, v100, v110
 				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase, textureSize);
 			}
@@ -270,11 +272,11 @@ public class GraphicsHelpers
 			{
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, base[1], zBase};
-				_populateQuad(floats, localBase, new float[][] {
+				_populateQuad(builder, localBase, new float[][] {
 					v001, v000, v100, v101
 				}, new float[] {0.0f, -1.0f,0.0f}, uvBase, textureSize);
 				localBase[1] += baseScale;
-				_populateQuad(floats, localBase, new float[][] {
+				_populateQuad(builder, localBase, new float[][] {
 					v111, v110, v010, v011
 				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase, textureSize);
 			}
@@ -287,11 +289,11 @@ public class GraphicsHelpers
 			{
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, yBase, base[2]};
-				_populateQuad(floats, localBase, new float[][] {
+				_populateQuad(builder, localBase, new float[][] {
 					v110, v100, v000, v010
 				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase, textureSize);
 				localBase[2] += baseScale;
-				_populateQuad(floats, localBase, new float[][] {
+				_populateQuad(builder, localBase, new float[][] {
 					v011, v001, v101, v111
 				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase, textureSize);
 			}

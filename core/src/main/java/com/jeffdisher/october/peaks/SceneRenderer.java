@@ -17,6 +17,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -238,20 +239,11 @@ public class SceneRenderer
 
 	private int[] _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{
-		_meshBuffer.clear();
-		int vertexCount = _populateMeshBufferForCuboid(_environment, _meshBuffer, _itemAtlas, cuboid, renderOpaque);
-		_meshBuffer.flip();
-		// We only bother building a buffer is it will have some contents.
-		int vertices = 0;
-		if (_meshBuffer.hasRemaining())
-		{
-			vertices = _gl.glGenBuffer();
-			Assert.assertTrue(vertices > 0);
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, vertices);
-			// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
-			_gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, _meshBuffer, GL20.GL_STATIC_DRAW);
-		}
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		BufferBuilder builder = new BufferBuilder(_meshBuffer, new int[] {3, 3, 2});
+		_populateMeshBufferForCuboid(_environment, builder, _itemAtlas, cuboid, renderOpaque);
+		int vertexCount = builder.getVertexCount();
+		int vertices = builder.flush(_gl);
+		// Note that vertices will be 0 if there was no buffer produced.
 		return new int[] { vertices, vertexCount };
 	}
 
@@ -266,20 +258,13 @@ public class SceneRenderer
 		float[] uvBase = new float[] { 0.0f, 0.0f };
 		float textureSize = 1.0f;
 		
-		int buffer = gl.glGenBuffer();
-		Assert.assertTrue(buffer > 0);
-		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, buffer);
-		meshBuffer.clear();
-		GraphicsHelpers.drawRectangularPrism(meshBuffer, edgeVertices, uvBase, textureSize);
-		meshBuffer.flip();
-		// WARNING:  Since we are using a FloatBuffer in glBufferData, the size is ignored and only remaining is considered.
-		gl.glBufferData(GL20.GL_ARRAY_BUFFER, 0, meshBuffer, GL20.GL_STATIC_DRAW);
-		Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
-		return buffer;
+		BufferBuilder builder = new BufferBuilder(meshBuffer, new int[] {3, 3, 2});
+		GraphicsHelpers.drawRectangularPrism(builder, edgeVertices, uvBase, textureSize);
+		return builder.flush(gl);
 	}
 
-	private static int _populateMeshBufferForCuboid(Environment env
-			, FloatBuffer meshBuffer
+	private static void _populateMeshBufferForCuboid(Environment env
+			, BufferBuilder builder
 			, TextureAtlas blockAtlas
 			, IReadOnlyCuboidData cuboid
 			, boolean opaqueVertices
@@ -293,7 +278,7 @@ public class SceneRenderer
 				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(value))
 				{
 					float[] uvBase = blockAtlas.baseOfTexture(value);
-					GraphicsHelpers.drawCube(meshBuffer
+					GraphicsHelpers.drawCube(builder
 							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 							, size
 							, uvBase
@@ -330,16 +315,12 @@ public class SceneRenderer
 							float[] uvBase = blockAtlas.baseOfTexture(type.number());
 							float[] offset = DEBRIS_BASES[i];
 							float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
-							GraphicsHelpers.drawUpFacingSquare(meshBuffer, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
+							GraphicsHelpers.drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
 						}
 					}
 				}
 			}, null);
 		}
-		
-		// Note that the position() in a FloatBuffer is in units of floats.
-		int vertexCount = meshBuffer.position() / GraphicsHelpers.FLOATS_PER_VERTEX;
-		return vertexCount;
 	}
 
 	private static record _CuboidData(int opaqueArray
