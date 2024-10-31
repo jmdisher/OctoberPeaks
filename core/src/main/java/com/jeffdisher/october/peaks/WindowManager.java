@@ -12,6 +12,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -60,7 +61,7 @@ public class WindowManager
 	private final TextureAtlas _itemAtlas;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final TextManager _textManager;
-	private final int _program;
+	private final Program _program;
 	private final int _uOffset;
 	private final int _uScale;
 	private final int _uTexture;
@@ -95,7 +96,7 @@ public class WindowManager
 		// location to place and size it correctly.
 		// In order to simplify the usage, we will assume that all colour data originates in textures (but some of the
 		// textures may just be single-pixel colour data).
-		_program = GraphicsHelpers.fullyLinkedProgram(_gl
+		_program = Program.fullyLinkedProgram(_gl
 				, _readUtf8Asset("windows.vert")
 				, _readUtf8Asset("windows.frag")
 				, new String[] {
@@ -103,10 +104,10 @@ public class WindowManager
 						"aTexture",
 				}
 		);
-		_uOffset = _gl.glGetUniformLocation(_program, "uOffset");
-		_uScale = _gl.glGetUniformLocation(_program, "uScale");
-		_uTexture = _gl.glGetUniformLocation(_program, "uTexture");
-		_uTextureBaseOffset = _gl.glGetUniformLocation(_program, "uTextureBaseOffset");
+		_uOffset = _program.getUniformLocation("uOffset");
+		_uScale = _program.getUniformLocation("uScale");
+		_uTexture = _program.getUniformLocation("uTexture");
+		_uTextureBaseOffset = _program.getUniformLocation("uTextureBaseOffset");
 		
 		// Create the unit square we will use for common vertices.
 		_verticesUnitSquare = _defineCommonVertices(_gl, 1.0f);
@@ -209,7 +210,7 @@ public class WindowManager
 		// We use the orthographic projection and no depth buffer for all overlay windows.
 		_gl.glDisable(GL20.GL_DEPTH_TEST);
 		_gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
-		_gl.glUseProgram(_program);
+		_program.useProgram();
 		_gl.glUniform1i(_uTexture, 0);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		

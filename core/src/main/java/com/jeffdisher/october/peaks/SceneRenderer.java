@@ -17,6 +17,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -48,7 +49,7 @@ public class SceneRenderer
 	private final Environment _environment;
 	private final GL20 _gl;
 	private final TextureAtlas _itemAtlas;
-	private final int _program;
+	private final Program _program;
 	private final int _uModelMatrix;
 	private final int _uViewMatrix;
 	private final int _uProjectionMatrix;
@@ -73,7 +74,7 @@ public class SceneRenderer
 		_itemAtlas = itemAtlas;
 		
 		// Create the shader program.
-		_program = GraphicsHelpers.fullyLinkedProgram(_gl
+		_program = Program.fullyLinkedProgram(_gl
 				, _readUtf8Asset("scene.vert")
 				, _readUtf8Asset("scene.frag")
 				, new String[] {
@@ -82,11 +83,11 @@ public class SceneRenderer
 						"aTexture0",
 				}
 		);
-		_uModelMatrix = _gl.glGetUniformLocation(_program, "uModelMatrix");
-		_uViewMatrix = _gl.glGetUniformLocation(_program, "uViewMatrix");
-		_uProjectionMatrix = _gl.glGetUniformLocation(_program, "uProjectionMatrix");
-		_uWorldLightLocation = _gl.glGetUniformLocation(_program, "uWorldLightLocation");
-		_uTexture0 = _gl.glGetUniformLocation(_program, "uTexture0");
+		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
+		_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
+		_uTexture0 = _program.getUniformLocation("uTexture0");
 		
 		_entityTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_cuboids = new HashMap<>();
@@ -124,7 +125,7 @@ public class SceneRenderer
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
-		_gl.glUseProgram(_program);
+		_program.useProgram();
 		_gl.glUniform1i(_uTexture0, 0);
 		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
 		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);

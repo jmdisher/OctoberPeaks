@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.Arrays;
 
 import javax.imageio.ImageIO;
@@ -25,19 +24,6 @@ public class GraphicsHelpers
 	public static final int FLOATS_PER_VERTEX = 3 + 3 + 2;
 	// 6 sizes, each with 2 triangles, each with 3 vertices.
 	public static final int RECTANGULAR_PRISM_VERTEX_COUNT = 6 * 2 * 3;
-
-	public static int fullyLinkedProgram(GL20 gl, String vertexSource, String fragmentSource, String[] attributesInOrder)
-	{
-		int program = gl.glCreateProgram();
-		_compileAndAttachShader(gl, program, GL20.GL_VERTEX_SHADER, vertexSource);
-		_compileAndAttachShader(gl, program, GL20.GL_FRAGMENT_SHADER, fragmentSource);
-		for (int index = 0; index < attributesInOrder.length; ++index)
-		{
-			gl.glBindAttribLocation(program, index, attributesInOrder[index]);
-		}
-		gl.glLinkProgram(program);
-		return program;
-	}
 
 	public static int loadInternalRGBA(GL20 gl, String imageName) throws IOException
 	{
@@ -159,26 +145,6 @@ public class GraphicsHelpers
 		return TextureAtlas.loadAtlas(gl, primaryNames, missingTextureName);
 	}
 
-
-	private static int _compileAndAttachShader(GL20 gl, int program, int shaderType, String source)
-	{
-		int shader = gl.glCreateShader(shaderType);
-		gl.glShaderSource(shader, source);
-		gl.glCompileShader(shader);
-		ByteBuffer direct = ByteBuffer.allocateDirect(Integer.BYTES);
-		direct.order(ByteOrder.nativeOrder());
-		IntBuffer buffer = direct.asIntBuffer();
-		buffer.put(-1);
-		((java.nio.Buffer) buffer).flip();
-		gl.glGetShaderiv(shader, GL20.GL_COMPILE_STATUS, buffer);
-		if (1 != buffer.get())
-		{
-			String log = gl.glGetShaderInfoLog(shader);
-			throw new AssertionError("Failed to compile: " + log);
-		}
-		gl.glAttachShader(program, shader);
-		return shader;
-	}
 
 	private static void _populateQuad(FloatBuffer buffer, float[] base, float[][] vertices, float[] normal, float[] uvBase, float textureSize)
 	{
