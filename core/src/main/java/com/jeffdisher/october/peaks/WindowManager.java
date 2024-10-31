@@ -2,16 +2,21 @@ package com.jeffdisher.october.peaks;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.stream.Collectors;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.peaks.graphics.Attribute;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -109,10 +114,19 @@ public class WindowManager
 		_uTexture = _program.getUniformLocation("uTexture");
 		_uTextureBaseOffset = _program.getUniformLocation("uTextureBaseOffset");
 		
+		// Create the scratch buffer we will use for out graphics data (short-lived).
+		int floatsPerVertex = Arrays.stream(_program.attributes)
+				.map((Attribute attribute) -> attribute.floats())
+				.collect(Collectors.summingInt((Integer i) -> i))
+		;
+		int vertexCount = 6;
+		ByteBuffer buffer = ByteBuffer.allocateDirect(vertexCount * floatsPerVertex * Float.BYTES);
+		buffer.order(ByteOrder.nativeOrder());
+		FloatBuffer meshBuffer = buffer.asFloatBuffer();
 		// Create the unit square we will use for common vertices.
-		_verticesUnitSquare = _defineCommonVertices(_gl, 1.0f);
+		_verticesUnitSquare = _defineCommonVertices(_gl, _program, meshBuffer, 1.0f);
 		// Create the unit square we can configure for item drawing
-		_verticesItemSquare = _defineCommonVertices(_gl, _itemAtlas.coordinateSize);
+		_verticesItemSquare = _defineCommonVertices(_gl, _program, meshBuffer, _itemAtlas.coordinateSize);
 		
 		// Build the initial pixel textures.
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(4);
@@ -301,33 +315,32 @@ public class WindowManager
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
-	private static int _defineCommonVertices(GL20 gl, float textureSize)
+	private static int _defineCommonVertices(GL20 gl, Program program, FloatBuffer meshBuffer, float textureSize)
 	{
 		float height = 1.0f;
 		float width = 1.0f;
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
-		float[] vertices = new float[] {
-				0.0f, 0.0f, textureBaseU, textureBaseV + textureSize,
-				width, height, textureBaseU + textureSize, textureBaseV,
-				0.0f, height, textureBaseU, textureBaseV,
-				
-				0.0f, 0.0f, textureBaseU, textureBaseV + textureSize,
-				width, 0.0f, textureBaseU + textureSize, textureBaseV + textureSize,
-				width, height, textureBaseU + textureSize, textureBaseV,
-		};
-		ByteBuffer direct = ByteBuffer.allocateDirect(vertices.length * Float.BYTES);
-		direct.order(ByteOrder.nativeOrder());
-		for (float f : vertices)
-		{
-			direct.putFloat(f);
-		}
-		direct.flip();
-		
-		int entityBuffer = gl.glGenBuffer();
-		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, entityBuffer);
-		gl.glBufferData(GL20.GL_ARRAY_BUFFER, vertices.length * Float.BYTES, direct.asFloatBuffer(), GL20.GL_STATIC_DRAW);
-		return entityBuffer;
+		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+		builder.appendVertex(new float[] {0.0f, 0.0f}
+				, new float[] {textureBaseU, textureBaseV + textureSize}
+		);
+		builder.appendVertex(new float[] {width, height}
+				, new float[] {textureBaseU + textureSize, textureBaseV}
+		);
+		builder.appendVertex(new float[] {0.0f, height}
+				, new float[] {textureBaseU, textureBaseV}
+		);
+		builder.appendVertex(new float[] {0.0f, 0.0f}
+				, new float[] {textureBaseU, textureBaseV + textureSize}
+		);
+		builder.appendVertex(new float[] {width, 0.0f}
+				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
+		);
+		builder.appendVertex(new float[] {width, height}
+				, new float[] {textureBaseU + textureSize, textureBaseV}
+		);
+		return builder.flush(gl);
 	}
 
 	private void _drawHotbar()
