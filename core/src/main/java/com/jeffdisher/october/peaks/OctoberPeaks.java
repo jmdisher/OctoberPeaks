@@ -73,7 +73,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		try
 		{
-			_itemAtlas = GraphicsHelpers.loadAtlasForItems(_gl
+			_itemAtlas = TextureHelpers.loadAtlasForItems(_gl
 					, _environment.items.ITEMS_BY_TYPE
 					, "missing_texture.png"
 			);

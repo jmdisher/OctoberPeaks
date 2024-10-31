@@ -92,7 +92,7 @@ public class SceneRenderer
 		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
 		
-		_entityTexture = GraphicsHelpers.loadInternalRGBA(_gl, "missing_texture.png");
+		_entityTexture = TextureHelpers.loadInternalRGBA(_gl, "missing_texture.png");
 		_cuboids = new HashMap<>();
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
@@ -109,7 +109,7 @@ public class SceneRenderer
 			}
 		}
 		_entityMeshes = Collections.unmodifiableMap(entityMeshes);
-		_highlightTexture = GraphicsHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
+		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
 		_highlightCube = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
 		
 		_viewMatrix = Matrix.identity();
@@ -258,7 +258,7 @@ public class SceneRenderer
 		float textureSize = 1.0f;
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
-		GraphicsHelpers.drawRectangularPrism(builder, edgeVertices, uvBase, textureSize);
+		_drawRectangularPrism(builder, edgeVertices, uvBase, textureSize);
 		return builder.flush(gl);
 	}
 
@@ -277,7 +277,7 @@ public class SceneRenderer
 				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(value))
 				{
 					float[] uvBase = blockAtlas.baseOfTexture(value);
-					GraphicsHelpers.drawCube(builder
+					_drawCube(builder
 							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 							, size
 							, uvBase
@@ -314,12 +314,204 @@ public class SceneRenderer
 							float[] uvBase = blockAtlas.baseOfTexture(type.number());
 							float[] offset = DEBRIS_BASES[i];
 							float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
-							GraphicsHelpers.drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
+							_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
 						}
 					}
 				}
 			}, null);
 		}
+	}
+
+	private static void _drawRectangularPrism(BufferBuilder builder, float[] edge, float[] uvBase, float textureSize)
+	{
+		_drawRectangularPrism(builder
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, (byte)1
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, edge
+				, uvBase
+				, textureSize
+		);
+	}
+
+	private static void _drawUpFacingSquare(BufferBuilder builder, float[] base, float edgeSize, float[] uvBase, float textureSize)
+	{
+		float[] bottomLeft = new float[] {
+				0.0f,
+				0.0f,
+				0.0f,
+		};
+		float[] bottomRight = new float[] {
+				edgeSize,
+				0.0f,
+				0.0f,
+		};
+		float[] topRight = new float[] {
+				edgeSize,
+				edgeSize,
+				0.0f,
+		};
+		float[] topLeft = new float[] {
+				0.0f,
+				edgeSize,
+				0.0f,
+		};
+		
+		_populateQuad(builder, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
+	}
+
+	private static void _drawCube(BufferBuilder builder, float[] base, byte scale, float[] uvBase, float textureSize)
+	{
+		// Note that no matter the scale, the quad vertices are the same magnitudes.
+		_drawRectangularPrism(builder
+				, base
+				, scale
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, new float[] { 1.0f, 1.0f, 1.0f }
+				, uvBase
+				, textureSize
+		);
+	}
+
+	private static void _drawRectangularPrism(BufferBuilder builder
+			, float[] base
+			, byte scale
+			, float[] prismBase
+			, float[] prismEdge
+			, float[] uvBase
+			, float textureSize
+	)
+	{
+		// Note that no matter the scale, the quad vertices are the same magnitudes.
+		float[] v001 = new float[] { prismBase[0], prismBase[1], prismEdge[2] };
+		float[] v101 = new float[] { prismEdge[0], prismBase[1], prismEdge[2] };
+		float[] v111 = new float[] { prismEdge[0], prismEdge[1], prismEdge[2] };
+		float[] v011 = new float[] { prismBase[0], prismEdge[1], prismEdge[2] };
+		float[] v000 = new float[] { prismBase[0], prismBase[1], prismBase[2] };
+		float[] v100 = new float[] { prismEdge[0], prismBase[1], prismBase[2] };
+		float[] v110 = new float[] { prismEdge[0], prismEdge[1], prismBase[2] };
+		float[] v010 = new float[] { prismBase[0], prismEdge[1], prismBase[2] };
+		
+		// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
+		// We subtract one from the base scale since we would double-count the top "1.0f".
+		float baseScale = (float)scale - 1.0f;
+		
+		// X-normal plane.
+		for (byte z = 0; z < scale; ++z)
+		{
+			float zBase = base[2] + (float)z;
+			for (byte y = 0; y < scale; ++y)
+			{
+				float yBase = base[1] + (float)y;
+				float[] localBase = new float[] { base[0], yBase, zBase};
+				_populateQuad(builder, localBase, new float[][] {
+					v010, v000, v001, v011
+				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase, textureSize);
+				localBase[0] += baseScale;
+				_populateQuad(builder, localBase, new float[][] {
+					v111, v101, v100, v110
+				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase, textureSize);
+			}
+		}
+		// Y-normal plane.
+		for (byte z = 0; z < scale; ++z)
+		{
+			float zBase = base[2] + (float)z;
+			for (byte x = 0; x < scale; ++x)
+			{
+				float xBase = base[0] + (float)x;
+				float[] localBase = new float[] { xBase, base[1], zBase};
+				_populateQuad(builder, localBase, new float[][] {
+					v001, v000, v100, v101
+				}, new float[] {0.0f, -1.0f,0.0f}, uvBase, textureSize);
+				localBase[1] += baseScale;
+				_populateQuad(builder, localBase, new float[][] {
+					v111, v110, v010, v011
+				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase, textureSize);
+			}
+		}
+		// Z-normal plane.
+		for (byte y = 0; y < scale; ++y)
+		{
+			float yBase = base[1] + (float)y;
+			for (byte x = 0; x < scale; ++x)
+			{
+				float xBase = base[0] + (float)x;
+				float[] localBase = new float[] { xBase, yBase, base[2]};
+				_populateQuad(builder, localBase, new float[][] {
+					v110, v100, v000, v010
+				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase, textureSize);
+				localBase[2] += baseScale;
+				_populateQuad(builder, localBase, new float[][] {
+					v011, v001, v101, v111
+				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase, textureSize);
+			}
+		}
+	}
+
+	private static void _populateQuad(BufferBuilder builder, float[] base, float[][] vertices, float[] normal, float[] uvBase, float textureSize)
+	{
+		float[] bottomLeft = new float[] {
+				base[0] + vertices[0][0],
+				base[1] + vertices[0][1],
+				base[2] + vertices[0][2],
+		};
+		float[] bottomRight = new float[] {
+				base[0] + vertices[1][0],
+				base[1] + vertices[1][1],
+				base[2] + vertices[1][2],
+		};
+		float[] topRight = new float[] {
+				base[0] + vertices[2][0],
+				base[1] + vertices[2][1],
+				base[2] + vertices[2][2],
+		};
+		float[] topLeft = new float[] {
+				base[0] + vertices[3][0],
+				base[1] + vertices[3][1],
+				base[2] + vertices[3][2],
+		};
+		float u = uvBase[0];
+		float v = uvBase[1];
+		float uEdge = u + textureSize;
+		float vEdge = v + textureSize;
+		
+		// Each element is:
+		// vx, vy, vz
+		// nx, ny, nz
+		// u, v
+		// NOTE:  We invert the textures coordinates here (probably not ideal).
+		
+		// Left Bottom.
+		builder.appendVertex(bottomLeft
+				, normal
+				, new float[] {u, vEdge}
+		);
+		// Right Bottom.
+		builder.appendVertex(bottomRight
+				, normal
+				, new float[] {uEdge, vEdge}
+		);
+		// Right Top.
+		builder.appendVertex(topRight
+				, normal
+				, new float[] {uEdge, v}
+		);
+		// Left Bottom.
+		builder.appendVertex(bottomLeft
+				, normal
+				, new float[] {u, vEdge}
+		);
+		// Right Top.
+		builder.appendVertex(topRight
+				, normal
+				, new float[] {uEdge, v}
+		);
+		// Left Top.
+		builder.appendVertex(topLeft
+				, normal
+				, new float[] {u, v}
+		);
 	}
 
 	private static record _CuboidData(VertexArray opaqueArray
