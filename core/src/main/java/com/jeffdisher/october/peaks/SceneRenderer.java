@@ -143,9 +143,12 @@ public class SceneRenderer
 		{
 			CuboidAddress key = elt.getKey();
 			_CuboidData value = elt.getValue();
-			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-			model.uploadAsUniform(_gl, _uModelMatrix);
-			value.opaqueArray.drawAllTriangles(_gl);
+			if (null != value.opaqueArray)
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _uModelMatrix);
+				value.opaqueArray.drawAllTriangles(_gl);
+			}
 		}
 		
 		// Render any entities.
@@ -171,9 +174,12 @@ public class SceneRenderer
 		{
 			CuboidAddress key = elt.getKey();
 			_CuboidData value = elt.getValue();
-			Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-			model.uploadAsUniform(_gl, _uModelMatrix);
-			value.transparentArray.drawAllTriangles(_gl);
+			if (null != value.transparentArray)
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _uModelMatrix);
+				value.transparentArray.drawAllTriangles(_gl);
+			}
 		}
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
@@ -201,8 +207,14 @@ public class SceneRenderer
 		_CuboidData previous = _cuboids.remove(address);
 		if (null != previous)
 		{
-			previous.opaqueArray.delete(_gl);
-			previous.transparentArray.delete(_gl);
+			if (null != previous.opaqueArray)
+			{
+				previous.opaqueArray.delete(_gl);
+			}
+			if (null != previous.transparentArray)
+			{
+				previous.transparentArray.delete(_gl);
+			}
 		}
 		
 		// Create the opaque cuboid vertices.
@@ -223,8 +235,14 @@ public class SceneRenderer
 		// Note that this will be null if the cuboid was empty.
 		if (null != removed)
 		{
-			removed.opaqueArray.delete(_gl);
-			removed.transparentArray.delete(_gl);
+			if (null != removed.opaqueArray)
+			{
+				removed.opaqueArray.delete(_gl);
+			}
+			if (null != removed.transparentArray)
+			{
+				removed.transparentArray.delete(_gl);
+			}
 			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		}
 	}
