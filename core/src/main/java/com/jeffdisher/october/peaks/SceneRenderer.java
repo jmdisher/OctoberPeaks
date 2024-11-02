@@ -536,37 +536,36 @@ public class SceneRenderer
 		// vx, vy, vz
 		// nx, ny, nz
 		// u, v
-		// NOTE:  We invert the textures coordinates here (probably not ideal).
 		
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
-				, new float[] {u, vEdge}
+				, new float[] {u, v}
 		);
 		// Right Bottom.
 		builder.appendVertex(bottomRight
 				, normal
-				, new float[] {uEdge, vEdge}
+				, new float[] {uEdge, v}
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
-				, new float[] {uEdge, v}
+				, new float[] {uEdge, vEdge}
 		);
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
-				, new float[] {u, vEdge}
+				, new float[] {u, v}
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
-				, new float[] {uEdge, v}
+				, new float[] {uEdge, vEdge}
 		);
 		// Left Top.
 		builder.appendVertex(topLeft
 				, normal
-				, new float[] {u, v}
+				, new float[] {u, vEdge}
 		);
 	}
 

@@ -74,7 +74,8 @@ public class TextureHelpers
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(bytesToAllocate);
 		textureBufferData.order(ByteOrder.nativeOrder());
 		
-		for (int y = 0; y < height; ++y)
+		// We need to flip the height when loading textures since BufferedImage defines 0,0 as top-left while OpenGL defines it as bottom-left.
+		for (int y = height - 1; y >= 0; --y)
 		{
 			for (int x = 0; x < width; ++x)
 			{

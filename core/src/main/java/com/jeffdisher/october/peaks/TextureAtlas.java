@@ -98,12 +98,14 @@ public class TextureAtlas
 		}
 		
 		boolean[] nonOpaqueVector = new boolean[loadedTextures.length];
-		for (int y = 0; y < height; ++y)
+		// We need to flip the height when loading textures since BufferedImage defines 0,0 as top-left while OpenGL defines it as bottom-left.
+		for (int y = height - 1; y >= 0; --y)
 		{
+			int yIndex = height - 1 - y;
 			for (int x = 0; x < width; ++x)
 			{
 				// Figure out which texture to pull from.
-				int textureIndex = (y / eachTextureEdge * texturesPerRow) + (x / eachTextureEdge);
+				int textureIndex = (yIndex / eachTextureEdge * texturesPerRow) + (x / eachTextureEdge);
 				if (textureIndex < loadedTextures.length)
 				{
 					BufferedImage loadedTexture = loadedTextures[textureIndex];

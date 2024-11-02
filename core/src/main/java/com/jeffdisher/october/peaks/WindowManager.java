@@ -324,22 +324,22 @@ public class WindowManager
 		float textureBaseV = 0.0f;
 		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
 		builder.appendVertex(new float[] {0.0f, 0.0f}
-				, new float[] {textureBaseU, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV}
-		);
-		builder.appendVertex(new float[] {0.0f, height}
 				, new float[] {textureBaseU, textureBaseV}
 		);
-		builder.appendVertex(new float[] {0.0f, 0.0f}
-				, new float[] {textureBaseU, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {width, 0.0f}
+		builder.appendVertex(new float[] {width, height}
 				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
 		);
-		builder.appendVertex(new float[] {width, height}
+		builder.appendVertex(new float[] {0.0f, height}
+				, new float[] {textureBaseU, textureBaseV + textureSize}
+		);
+		builder.appendVertex(new float[] {0.0f, 0.0f}
+				, new float[] {textureBaseU, textureBaseV}
+		);
+		builder.appendVertex(new float[] {width, 0.0f}
 				, new float[] {textureBaseU + textureSize, textureBaseV}
+		);
+		builder.appendVertex(new float[] {width, height}
+				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
 		);
 		return builder.flush(gl);
 	}

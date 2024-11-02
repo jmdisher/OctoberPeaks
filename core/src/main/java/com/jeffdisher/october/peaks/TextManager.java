@@ -140,15 +140,19 @@ public class TextManager
 		int channelsPerPixel = 2;
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(width * height * channelsPerPixel);
 		textureBufferData.order(ByteOrder.nativeOrder());
-		int[] rawData = new int[width * height];
-		image.getRGB(0, 0, width, height, rawData, 0, width);
-		for (int pixel : rawData)
+		// We will load the data from the image into the GL buffer one line at a time, since we need to invert it (BufferedImage starts at top-left while OpenGL starts at bottom-left).
+		int[] rawData = new int[width];
+		for (int y = height - 1; y >= 0; --y)
 		{
-			// This data is pulled out as ARGB but we need to upload it as LA.
-			// We draw white so just get any channel and the alpha.
-			byte a = (byte)((0xFF000000 & pixel) >> 24);
-			byte b = (byte) (0x000000FF & pixel);
-			textureBufferData.put(new byte[] { b, a });
+			image.getRGB(0, y, width, 1, rawData, 0, width);
+			for (int pixel : rawData)
+			{
+				// This data is pulled out as ARGB but we need to upload it as LA.
+				// We draw white so just get any channel and the alpha.
+				byte a = (byte)((0xFF000000 & pixel) >> 24);
+				byte b = (byte) (0x000000FF & pixel);
+				textureBufferData.put(new byte[] { b, a });
+			}
 		}
 		((java.nio.Buffer) textureBufferData).flip();
 		
