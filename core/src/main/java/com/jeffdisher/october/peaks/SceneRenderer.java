@@ -54,8 +54,8 @@ public class SceneRenderer
 
 	private final Environment _environment;
 	private final GL20 _gl;
-	private final TextureAtlas _itemAtlas;
-	private final TextureAtlas _blockTextures;
+	private final TextureAtlas<ItemVariant> _itemAtlas;
+	private final TextureAtlas<BlockVariant> _blockTextures;
 	private final short[] _itemToBlockIndexMapper;
 	private final Program _program;
 	private final int _uModelMatrix;
@@ -74,7 +74,7 @@ public class SceneRenderer
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
 
-	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas itemAtlas) throws IOException
+	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas<ItemVariant> itemAtlas) throws IOException
 	{
 		_environment = environment;
 		_gl = gl;
@@ -377,13 +377,20 @@ public class SceneRenderer
 		float textureSize = 1.0f;
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
-		_drawRectangularPrism(builder, edgeVertices, uvBase, textureSize);
+		_drawRectangularPrism(builder
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, (byte)1
+				, new float[] { 0.0f, 0.0f, 0.0f }
+				, edgeVertices
+				, new float[][] { uvBase, uvBase, uvBase }
+				, textureSize
+		);
 		return builder.flush(gl);
 	}
 
 	private static void _populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
-			, TextureAtlas blockAtlas
+			, TextureAtlas<BlockVariant> blockAtlas
 			, short[] blockIndexMapper
 			, IReadOnlyCuboidData cuboid
 			, boolean opaqueVertices
@@ -398,11 +405,13 @@ public class SceneRenderer
 				Assert.assertTrue(index >= 0);
 				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index))
 				{
-					float[] uvBase = blockAtlas.baseOfTexture(index);
+					float[] uvBaseTop = blockAtlas.baseOfTexture(index, BlockVariant.TOP);
+					float[] uvBaseBottom = blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
+					float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
 					_drawCube(builder
 							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 							, size
-							, uvBase
+							, new float[][] { uvBaseTop, uvBaseBottom, uvBaseSide }
 							, textureSize
 					);
 				}
@@ -412,7 +421,7 @@ public class SceneRenderer
 
 	private static void _populateMeshForDroppedItems(Environment env
 			, BufferBuilder builder
-			, TextureAtlas itemAtlas
+			, TextureAtlas<ItemVariant> itemAtlas
 			, IReadOnlyCuboidData cuboid
 	)
 	{
@@ -440,7 +449,7 @@ public class SceneRenderer
 								: blockInventory.getNonStackableForKey(key).type()
 						;
 						
-						float[] uvBase = itemAtlas.baseOfTexture(type.number());
+						float[] uvBase = itemAtlas.baseOfTexture(type.number(), ItemVariant.NONE);
 						float[] offset = DEBRIS_BASES[i];
 						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
 						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
@@ -448,18 +457,6 @@ public class SceneRenderer
 				}
 			}
 		}, null);
-	}
-
-	private static void _drawRectangularPrism(BufferBuilder builder, float[] edge, float[] uvBase, float textureSize)
-	{
-		_drawRectangularPrism(builder
-				, new float[] { 0.0f, 0.0f, 0.0f }
-				, (byte)1
-				, new float[] { 0.0f, 0.0f, 0.0f }
-				, edge
-				, uvBase
-				, textureSize
-		);
 	}
 
 	private static void _drawUpFacingSquare(BufferBuilder builder, float[] base, float edgeSize, float[] uvBase, float textureSize)
@@ -488,7 +485,8 @@ public class SceneRenderer
 		_populateQuad(builder, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
 	}
 
-	private static void _drawCube(BufferBuilder builder, float[] base, byte scale, float[] uvBase, float textureSize)
+	// uvBase is 3 pairs:  top, bottom, side.
+	private static void _drawCube(BufferBuilder builder, float[] base, byte scale, float[][] uvBase, float textureSize)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		_drawRectangularPrism(builder
@@ -506,7 +504,8 @@ public class SceneRenderer
 			, byte scale
 			, float[] prismBase
 			, float[] prismEdge
-			, float[] uvBase
+			// There are 3 texture base pairs:  top, bottom, side.
+			, float[][] uvBase
 			, float textureSize
 	)
 	{
@@ -534,11 +533,11 @@ public class SceneRenderer
 				float[] localBase = new float[] { base[0], yBase, zBase};
 				_populateQuad(builder, localBase, new float[][] {
 					v010, v000, v001, v011
-				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase, textureSize);
+				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase[2], textureSize);
 				localBase[0] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
 					v111, v101, v100, v110
-				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase, textureSize);
+				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase[2], textureSize);
 			}
 		}
 		// Y-normal plane.
@@ -551,11 +550,11 @@ public class SceneRenderer
 				float[] localBase = new float[] { xBase, base[1], zBase};
 				_populateQuad(builder, localBase, new float[][] {
 					v001, v000, v100, v101
-				}, new float[] {0.0f, -1.0f,0.0f}, uvBase, textureSize);
+				}, new float[] {0.0f, -1.0f,0.0f}, uvBase[2], textureSize);
 				localBase[1] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
 					v111, v110, v010, v011
-				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase, textureSize);
+				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase[2], textureSize);
 			}
 		}
 		// Z-normal plane.
@@ -568,11 +567,11 @@ public class SceneRenderer
 				float[] localBase = new float[] { xBase, yBase, base[2]};
 				_populateQuad(builder, localBase, new float[][] {
 					v110, v100, v000, v010
-				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase, textureSize);
+				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase[1], textureSize);
 				localBase[2] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
 					v011, v001, v101, v111
-				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase, textureSize);
+				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase[0], textureSize);
 			}
 		}
 	}

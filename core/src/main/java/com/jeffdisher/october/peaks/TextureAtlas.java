@@ -12,13 +12,14 @@ import com.jeffdisher.october.utils.Assert;
 /**
  * Maintains the high-level representation of a texture atlas.
  */
-public class TextureAtlas
+public class TextureAtlas<T extends Enum<?>>
 {
 	// We will assume a fixed texture size of 32-square.
 	public static int TEXTURE_EDGE_PIXELS = 32;
 
-	public static TextureAtlas loadAtlas(GL20 gl
+	public static <T extends Enum<?>> TextureAtlas<T> loadAtlas(GL20 gl
 			, BufferedImage images[]
+			, Class<T> variants
 	) throws IOException
 	{
 		// Verify our size assumptions.
@@ -29,9 +30,10 @@ public class TextureAtlas
 		}
 		int tileTexturesPerRow = _texturesPerRow(images.length);
 		int tileTexture = gl.glGenTexture();
-		boolean[] nonOpaqueVector = _createTextureAtlas(gl, tileTexture, images, tileTexturesPerRow);
+		int variantsPerIndex = variants.getEnumConstants().length;
+		boolean[] nonOpaqueVector = _createTextureAtlas(gl, tileTexture, images, tileTexturesPerRow, variantsPerIndex);
 		
-		return new TextureAtlas(tileTexture, tileTexturesPerRow, nonOpaqueVector);
+		return new TextureAtlas<T>(tileTexture, tileTexturesPerRow, nonOpaqueVector, variantsPerIndex);
 	}
 
 
@@ -60,7 +62,7 @@ public class TextureAtlas
 		return texturesPerRow;
 	}
 
-	private static boolean[] _createTextureAtlas(GL20 gl, int texture, BufferedImage loadedTextures[], int texturesPerRow) throws IOException
+	private static boolean[] _createTextureAtlas(GL20 gl, int texture, BufferedImage loadedTextures[], int texturesPerRow, int variantsPerIndex) throws IOException
 	{
 		int width = texturesPerRow * TEXTURE_EDGE_PIXELS;
 		int height = texturesPerRow * TEXTURE_EDGE_PIXELS;
@@ -70,7 +72,7 @@ public class TextureAtlas
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(bytesToAllocate);
 		textureBufferData.order(ByteOrder.nativeOrder());
 		
-		boolean[] nonOpaqueVector = new boolean[loadedTextures.length];
+		boolean[] nonOpaqueVector = new boolean[loadedTextures.length / variantsPerIndex];
 		// We need to flip the height when loading textures since BufferedImage defines 0,0 as top-left while OpenGL defines it as bottom-left.
 		for (int y = height - 1; y >= 0; --y)
 		{
@@ -93,7 +95,7 @@ public class TextureAtlas
 					textureBufferData.put(new byte[] { r, g, b, a });
 					if (Byte.toUnsignedInt(a) < 255)
 					{
-						nonOpaqueVector[textureIndex] = true;
+						nonOpaqueVector[textureIndex / variantsPerIndex] = true;
 					}
 				}
 				else
@@ -127,25 +129,29 @@ public class TextureAtlas
 	public final float coordinateSize;
 	private final int _texturesPerRow;
 	private final boolean[] _nonOpaqueVector;
+	private final int _variantsPerIndex;
 
-	private TextureAtlas(int tileTextures, int tileTexturesPerRow, boolean[] nonOpaqueVector)
+	private TextureAtlas(int tileTextures, int tileTexturesPerRow, boolean[] nonOpaqueVector, int variantsPerIndex)
 	{
 		this.texture = tileTextures;
 		this.coordinateSize = 1.0f / (float)tileTexturesPerRow;
 		_texturesPerRow = tileTexturesPerRow;
 		_nonOpaqueVector = nonOpaqueVector;
+		_variantsPerIndex = variantsPerIndex;
 	}
 
 	/**
 	 * Returns the UV base coordinates of the texture with the given index.
 	 * 
 	 * @param index The texture index.
+	 * @param variant The texture variant to look up.
 	 * @return {u, v} of texture base coordinates.
 	 */
-	public float[] baseOfTexture(short index)
+	public float[] baseOfTexture(short index, T variant)
 	{
-		int row = index / _texturesPerRow;
-		int column = index % _texturesPerRow;
+		int localIndex = (index * _variantsPerIndex) + variant.ordinal();
+		int row = localIndex / _texturesPerRow;
+		int column = localIndex % _texturesPerRow;
 		float u = this.coordinateSize * (float)column;
 		float v = this.coordinateSize * (float)row;
 		return new float[] {u, v};

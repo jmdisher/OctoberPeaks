@@ -35,7 +35,7 @@ public class OctoberPeaks extends ApplicationAdapter
 
 	private Environment _environment;
 	private GL20 _gl;
-	private TextureAtlas _itemAtlas;
+	private TextureAtlas<ItemVariant> _itemAtlas;
 	private SceneRenderer _scene;
 	private WindowManager _windowManager;
 	private MovementControl _movement;

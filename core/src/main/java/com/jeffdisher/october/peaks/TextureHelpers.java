@@ -47,7 +47,7 @@ public class TextureHelpers
 		return _uploadNewTexture(gl, 1, 1, textureBufferData);
 	}
 
-	public static TextureAtlas loadAtlasForItems(GL20 gl
+	public static TextureAtlas<ItemVariant> loadAtlasForItems(GL20 gl
 			, Item[] tileItems
 			, String missingTextureName
 	) throws IOException
@@ -60,23 +60,31 @@ public class TextureHelpers
 				(int size) -> new String[size]
 		);
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName);
-		return TextureAtlas.loadAtlas(gl, images);
+		return TextureAtlas.loadAtlas(gl, images, ItemVariant.class);
 	}
 
-	public static TextureAtlas loadAtlasForBlocks(GL20 gl
+	public static TextureAtlas<BlockVariant> loadAtlasForBlocks(GL20 gl
 			, Block[] blockItems
 			, String missingTextureName
 	) throws IOException
 	{
 		// Just grab the names of the items, assuming they are all PNGs.
 		// TODO:  Change this once we create the multi-sided textures.
-		String[] primaryNames = Arrays.stream(blockItems).map(
-				(Block block) -> ("item_" + block.item().id() + ".png")
-		).toArray(
-				(int size) -> new String[size]
-		);
+		// (for now, we are just redundantly loading the item for every variant).
+		int variants = BlockVariant.values().length;
+		// This loader assumes it knows what the variants are.
+		Assert.assertTrue(3 == variants);
+		String[] primaryNames = new String[blockItems.length * variants];
+		for (int i = 0; i < blockItems.length; ++i)
+		{
+			Block block = blockItems[i];
+			String name = "item_" + block.item().id() + ".png";
+			primaryNames[i * variants + 0] = name;
+			primaryNames[i * variants + 1] = name;
+			primaryNames[i * variants + 2] = name;
+		}
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName);
-		return TextureAtlas.loadAtlas(gl, images);
+		return TextureAtlas.loadAtlas(gl, images, BlockVariant.class);
 	}
 
 

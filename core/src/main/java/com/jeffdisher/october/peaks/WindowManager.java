@@ -64,7 +64,7 @@ public class WindowManager
 
 	private final Environment _env;
 	private final GL20 _gl;
-	private final TextureAtlas _itemAtlas;
+	private final TextureAtlas<ItemVariant> _itemAtlas;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final TextManager _textManager;
 	private final Program _program;
@@ -88,7 +88,7 @@ public class WindowManager
 	public final HoverRenderer<Item> hoverItem;
 	public final HoverRenderer<CraftDescription> hoverCraftOperation;
 
-	public WindowManager(Environment env, GL20 gl, TextureAtlas itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
+	public WindowManager(Environment env, GL20 gl, TextureAtlas<ItemVariant> itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
 		_env = env;
 		_gl = gl;
@@ -687,7 +687,7 @@ public class WindowManager
 		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
 		float xScale = (right - left);
 		float yScale = (top - bottom);
-		float[] itemTextureBase = _itemAtlas.baseOfTexture(item.number());
+		float[] itemTextureBase = _itemAtlas.baseOfTexture(item.number(), ItemVariant.NONE);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
 		_gl.glUniform2f(_uOffset, left, bottom);
 		_gl.glUniform2f(_uScale, xScale, yScale);
