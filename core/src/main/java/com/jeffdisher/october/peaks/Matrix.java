@@ -27,6 +27,17 @@ public class Matrix
 		return new Matrix(rowInner);
 	}
 
+	public static Matrix scale(float x, float y, float z)
+	{
+		float[] rowInner = new float[] {
+				x, 0.0f, 0.0f, 0.0f,
+				0.0f, y, 0.0f, 0.0f,
+				0.0f, 0.0f, z, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
 	public static Matrix rotateX(float radians)
 	{
 		float sin = (float)Math.sin(radians);

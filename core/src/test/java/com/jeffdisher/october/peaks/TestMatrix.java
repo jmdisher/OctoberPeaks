@@ -73,6 +73,26 @@ public class TestMatrix
 		_vectorEquals(new float[] {-1.41f, -0.82f, 2.11f, 2.31f}, p3);
 	}
 
+	@Test
+	public void scale() throws Throwable
+	{
+		Matrix scale = Matrix.scale(2.0f,  3.0f, 4.0f);
+		float[] vec4 = new float[] {-1.0f, 1.0f, 0.5f, 1.0f};
+		float[] scaled = scale.multiplyVector(vec4);
+		_vectorEquals(new float[] {-2.0f, 3.0f, 2.0f, 1.0f}, scaled);
+	}
+
+	@Test
+	public void scaleAndTranslate() throws Throwable
+	{
+		Matrix translate = Matrix.translate(10.0f, -20.0f, 0.1f);
+		Matrix scale = Matrix.scale(2.0f,  3.0f, 4.0f);
+		Matrix combine = Matrix.mutliply(translate, scale);
+		float[] vec4 = new float[] {-1.0f, 1.0f, 0.5f, 1.0f};
+		float[] combined = combine.multiplyVector(vec4);
+		_vectorEquals(new float[] {8.0f, -17.0f, 2.1f, 1.0f}, combined);
+	}
+
 
 	private static void _vectorEquals(float[] expected, float[] test)
 	{

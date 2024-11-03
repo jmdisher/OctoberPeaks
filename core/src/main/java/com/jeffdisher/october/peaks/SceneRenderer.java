@@ -200,10 +200,14 @@ public class SceneRenderer
 		for (PartialEntity entity : _entities.values())
 		{
 			EntityLocation location = entity.location();
-			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
+			EntityType type = entity.type();
+			EntityVolume volume = EntityConstants.getVolume(type);
+			Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
+			Matrix scale = Matrix.scale(volume.width(), volume.width(), volume.height());
+			Matrix model = Matrix.mutliply(translate, scale);
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
-			_EntityData data = _entityData.get(entity.type());
+			_EntityData data = _entityData.get(type);
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
 			data.vertices.drawAllTriangles(_gl);
 		}
@@ -239,7 +243,11 @@ public class SceneRenderer
 		else if (null != selectedEntity)
 		{
 			EntityLocation location = selectedEntity.location();
-			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
+			EntityType type = selectedEntity.type();
+			EntityVolume volume = EntityConstants.getVolume(type);
+			Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
+			Matrix scale = Matrix.scale(volume.width(), volume.width(), volume.height());
+			Matrix model = Matrix.mutliply(translate, scale);
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			_entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 		}
