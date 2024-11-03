@@ -151,6 +151,19 @@ public class SceneRenderer
 			}
 		}
 		
+		// Render any dropped items.
+		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
+		{
+			CuboidAddress key = elt.getKey();
+			_CuboidData value = elt.getValue();
+			if (null != value.itemsOnGroundArray)
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _uModelMatrix);
+				value.itemsOnGroundArray.drawAllTriangles(_gl);
+			}
+		}
+		
 		// Render any entities.
 		for (PartialEntity entity : _entities.values())
 		{
@@ -211,6 +224,10 @@ public class SceneRenderer
 			{
 				previous.opaqueArray.delete(_gl);
 			}
+			if (null != previous.itemsOnGroundArray)
+			{
+				previous.itemsOnGroundArray.delete(_gl);
+			}
 			if (null != previous.transparentArray)
 			{
 				previous.transparentArray.delete(_gl);
@@ -220,12 +237,15 @@ public class SceneRenderer
 		// Create the opaque cuboid vertices.
 		VertexArray opaqueData = _buildVertexArray(cuboid, true);
 		
+		// Create the vertex array for any items dropped on the ground.
+		VertexArray itemsOnGroundArray = _buildDroppedItemVertexArray(cuboid);
+		
 		// Create the transparent cuboid vertices.
 		VertexArray transparentData = _buildVertexArray(cuboid, false);
 		
-		if ((null != opaqueData) || (null != transparentData))
+		if ((null != opaqueData) || (null != itemsOnGroundArray) || (null != transparentData))
 		{
-			_cuboids.put(address, new _CuboidData(opaqueData, transparentData));
+			_cuboids.put(address, new _CuboidData(opaqueData, itemsOnGroundArray, transparentData));
 		}
 	}
 
@@ -238,6 +258,10 @@ public class SceneRenderer
 			if (null != removed.opaqueArray)
 			{
 				removed.opaqueArray.delete(_gl);
+			}
+			if (null != removed.itemsOnGroundArray)
+			{
+				removed.itemsOnGroundArray.delete(_gl);
 			}
 			if (null != removed.transparentArray)
 			{
@@ -302,6 +326,13 @@ public class SceneRenderer
 		return builder.flush(_gl);
 	}
 
+	private VertexArray _buildDroppedItemVertexArray(IReadOnlyCuboidData cuboid)
+	{
+		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
+		_populateMeshForDroppedItems(_environment, builder, _itemAtlas, cuboid);
+		return builder.flush(_gl);
+	}
+
 	private static String _readUtf8Asset(String name)
 	{
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
@@ -342,40 +373,46 @@ public class SceneRenderer
 				}
 			}
 		}, (short)0);
+	}
+
+	private static void _populateMeshForDroppedItems(Environment env
+			, BufferBuilder builder
+			, TextureAtlas blockAtlas
+			, IReadOnlyCuboidData cuboid
+	)
+	{
+		float textureSize = blockAtlas.coordinateSize;
 		
 		// See if there are any inventories in empty blocks in this cuboid.
-		if (opaqueVertices)
-		{
-			cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
-				@Override
-				public void visit(BlockAddress base, byte size, Inventory blockInventory)
+		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
+			@Override
+			public void visit(BlockAddress base, byte size, Inventory blockInventory)
+			{
+				Assert.assertTrue((byte)1 == size);
+				BlockProxy proxy = new BlockProxy(base, cuboid);
+				Block blockType = proxy.getBlock();
+				boolean blockPermitsEntityMovement = !env.blocks.isSolid(blockType);
+				if (blockPermitsEntityMovement)
 				{
-					Assert.assertTrue((byte)1 == size);
-					BlockProxy proxy = new BlockProxy(base, cuboid);
-					Block blockType = proxy.getBlock();
-					boolean blockPermitsEntityMovement = !env.blocks.isSolid(blockType);
-					if (blockPermitsEntityMovement)
+					float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
+					Iterator<Integer> sortedKeys = blockInventory.sortedKeys().iterator();
+					for (int i = 0; (i < DEBRIS_BASES.length) && sortedKeys.hasNext(); ++i)
 					{
-						float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
-						Iterator<Integer> sortedKeys = blockInventory.sortedKeys().iterator();
-						for (int i = 0; (i < DEBRIS_BASES.length) && sortedKeys.hasNext(); ++i)
-						{
-							int key = sortedKeys.next();
-							Items stack = blockInventory.getStackForKey(key);
-							Item type = (null != stack)
-									? stack.type()
-									: blockInventory.getNonStackableForKey(key).type()
-							;
-							
-							float[] uvBase = blockAtlas.baseOfTexture(type.number());
-							float[] offset = DEBRIS_BASES[i];
-							float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
-							_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
-						}
+						int key = sortedKeys.next();
+						Items stack = blockInventory.getStackForKey(key);
+						Item type = (null != stack)
+								? stack.type()
+								: blockInventory.getNonStackableForKey(key).type()
+						;
+						
+						float[] uvBase = blockAtlas.baseOfTexture(type.number());
+						float[] offset = DEBRIS_BASES[i];
+						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
+						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
 					}
 				}
-			}, null);
-		}
+			}
+		}, null);
 	}
 
 	private static void _drawRectangularPrism(BufferBuilder builder, float[] edge, float[] uvBase, float textureSize)
@@ -570,6 +607,7 @@ public class SceneRenderer
 	}
 
 	private static record _CuboidData(VertexArray opaqueArray
+			, VertexArray itemsOnGroundArray
 			, VertexArray transparentArray
 	) {}
 
