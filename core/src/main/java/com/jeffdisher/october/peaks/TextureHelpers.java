@@ -59,7 +59,8 @@ public class TextureHelpers
 		).toArray(
 				(int size) -> new String[size]
 		);
-		return TextureAtlas.loadAtlas(gl, primaryNames, missingTextureName);
+		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName);
+		return TextureAtlas.loadAtlas(gl, images);
 	}
 
 	public static TextureAtlas loadAtlasForBlocks(GL20 gl
@@ -74,7 +75,8 @@ public class TextureHelpers
 		).toArray(
 				(int size) -> new String[size]
 		);
-		return TextureAtlas.loadAtlas(gl, primaryNames, missingTextureName);
+		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName);
+		return TextureAtlas.loadAtlas(gl, images);
 	}
 
 
@@ -121,5 +123,36 @@ public class TextureHelpers
 		// In this case, we just use the default mipmap behaviour.
 		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
 		return texture;
+	}
+
+	private static BufferedImage[] _loadAllImages(String[] imageNames, String missingTextureName) throws IOException
+	{
+		BufferedImage loadedTextures[] = new BufferedImage[imageNames.length];
+		for (int i = 0; i < imageNames.length; ++i)
+		{
+			String name = imageNames[i];
+			
+			// If this is missing, load the missing texture, instead.
+			FileHandle unknownTextureFile;
+			if (null != name)
+			{
+				unknownTextureFile = Gdx.files.internal(name);
+				// If this is missing, load the missing texture, instead.
+				if (!unknownTextureFile.exists())
+				{
+					unknownTextureFile = Gdx.files.internal(missingTextureName);
+				}
+			}
+			else
+			{
+				unknownTextureFile = Gdx.files.internal(missingTextureName);
+			}
+			BufferedImage loadedTexture = ImageIO.read(unknownTextureFile.read());
+			// We require all textures to be of fixed square size.
+			Assert.assertTrue(loadedTexture.getWidth() == TextureAtlas.TEXTURE_EDGE_PIXELS);
+			Assert.assertTrue(loadedTexture.getHeight() == TextureAtlas.TEXTURE_EDGE_PIXELS);
+			loadedTextures[i] = loadedTexture;
+		}
+		return loadedTextures;
 	}
 }

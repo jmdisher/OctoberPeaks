@@ -5,10 +5,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import javax.imageio.ImageIO;
-
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.utils.Assert;
 
@@ -18,17 +14,22 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class TextureAtlas
 {
+	// We will assume a fixed texture size of 32-square.
+	public static int TEXTURE_EDGE_PIXELS = 32;
+
 	public static TextureAtlas loadAtlas(GL20 gl
-			, String[] fileNames
-			, String missingTextureName
+			, BufferedImage images[]
 	) throws IOException
 	{
-		// We will assume a fixed texture size of 32-square.
-		int eachTextureEdge = 32;
-		
-		int tileTexturesPerRow = _texturesPerRow(fileNames.length);
+		// Verify our size assumptions.
+		for (BufferedImage image : images)
+		{
+			Assert.assertTrue(TEXTURE_EDGE_PIXELS == image.getWidth());
+			Assert.assertTrue(TEXTURE_EDGE_PIXELS == image.getHeight());
+		}
+		int tileTexturesPerRow = _texturesPerRow(images.length);
 		int tileTexture = gl.glGenTexture();
-		boolean[] nonOpaqueVector = _createTextureAtlas(gl, tileTexture, fileNames, missingTextureName, tileTexturesPerRow, eachTextureEdge);
+		boolean[] nonOpaqueVector = _createTextureAtlas(gl, tileTexture, images, tileTexturesPerRow);
 		
 		return new TextureAtlas(tileTexture, tileTexturesPerRow, nonOpaqueVector);
 	}
@@ -59,43 +60,15 @@ public class TextureAtlas
 		return texturesPerRow;
 	}
 
-	private static boolean[] _createTextureAtlas(GL20 gl, int texture, String[] imageNames, String missingTextureName, int texturesPerRow, int eachTextureEdge) throws IOException
+	private static boolean[] _createTextureAtlas(GL20 gl, int texture, BufferedImage loadedTextures[], int texturesPerRow) throws IOException
 	{
-		int width = texturesPerRow * eachTextureEdge;
-		int height = texturesPerRow * eachTextureEdge;
+		int width = texturesPerRow * TEXTURE_EDGE_PIXELS;
+		int height = texturesPerRow * TEXTURE_EDGE_PIXELS;
 		
 		// 4 bytes per pixel since we are storing pixels as RGBA.
 		int bytesToAllocate = width * height * 4;
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(bytesToAllocate);
 		textureBufferData.order(ByteOrder.nativeOrder());
-		
-		// Load all the images and walk across them to fill the buffer.
-		BufferedImage loadedTextures[] = new BufferedImage[imageNames.length];
-		for (int i = 0; i < imageNames.length; ++i)
-		{
-			String name = imageNames[i];
-			
-			// If this is missing, load the missing texture, instead.
-			FileHandle unknownTextureFile;
-			if (null != name)
-			{
-				unknownTextureFile = Gdx.files.internal(name);
-				// If this is missing, load the missing texture, instead.
-				if (!unknownTextureFile.exists())
-				{
-					unknownTextureFile = Gdx.files.internal(missingTextureName);
-				}
-			}
-			else
-			{
-				unknownTextureFile = Gdx.files.internal(missingTextureName);
-			}
-			BufferedImage loadedTexture = ImageIO.read(unknownTextureFile.read());
-			// We require all textures to be of fixed square size.
-			Assert.assertTrue(loadedTexture.getWidth() == eachTextureEdge);
-			Assert.assertTrue(loadedTexture.getHeight() == eachTextureEdge);
-			loadedTextures[i] = loadedTexture;
-		}
 		
 		boolean[] nonOpaqueVector = new boolean[loadedTextures.length];
 		// We need to flip the height when loading textures since BufferedImage defines 0,0 as top-left while OpenGL defines it as bottom-left.
@@ -105,12 +78,12 @@ public class TextureAtlas
 			for (int x = 0; x < width; ++x)
 			{
 				// Figure out which texture to pull from.
-				int textureIndex = (yIndex / eachTextureEdge * texturesPerRow) + (x / eachTextureEdge);
+				int textureIndex = (yIndex / TEXTURE_EDGE_PIXELS * texturesPerRow) + (x / TEXTURE_EDGE_PIXELS);
 				if (textureIndex < loadedTextures.length)
 				{
 					BufferedImage loadedTexture = loadedTextures[textureIndex];
-					int localX = x % eachTextureEdge;
-					int localY = y % eachTextureEdge;
+					int localX = x % TEXTURE_EDGE_PIXELS;
+					int localY = y % TEXTURE_EDGE_PIXELS;
 					int pixel = loadedTexture.getRGB(localX, localY);
 					// This data is pulled out as ARGB but we need to upload it as RGBA.
 					byte a = (byte)((0xFF000000 & pixel) >> 24);
