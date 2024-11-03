@@ -63,12 +63,14 @@ public class SceneRenderer
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
+	private final int _uTexture1;
 	private final Map<CuboidAddress, _CuboidData> _cuboids;
 	private final FloatBuffer _meshBuffer;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, _EntityData> _entityData;
 	private final int _highlightTexture;
 	private final VertexArray _highlightCube;
+	private final int _tempEmptyPixel;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
@@ -116,6 +118,7 @@ public class SceneRenderer
 						"aPosition",
 						"aNormal",
 						"aTexture0",
+						"aTexture1",
 				}
 		);
 		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
@@ -123,6 +126,7 @@ public class SceneRenderer
 		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
 		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
+		_uTexture1 = _program.getUniformLocation("uTexture1");
 		
 		_cuboids = new HashMap<>();
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
@@ -141,6 +145,7 @@ public class SceneRenderer
 		_entityData = Collections.unmodifiableMap(entityData);
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
 		_highlightCube = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
+		_tempEmptyPixel = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0x0, (byte)0x0, (byte)0x0, 0x0});
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -159,16 +164,22 @@ public class SceneRenderer
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_program.useProgram();
-		_gl.glUniform1i(_uTexture0, 0);
 		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
 		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// We currently only use texture0.
+		// This shader uses 2 textures.
+		_gl.glUniform1i(_uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glUniform1i(_uTexture1, 1);
+		_gl.glActiveTexture(GL20.GL_TEXTURE1);
+		
+		// TODO:  Move this once we start connecting actual data through texture1.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _tempEmptyPixel);
 		
 		// Render the opaque cuboid vertices.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
@@ -183,6 +194,7 @@ public class SceneRenderer
 		}
 		
 		// Render any dropped items.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
@@ -208,6 +220,7 @@ public class SceneRenderer
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
 			_EntityData data = _entityData.get(type);
+			_gl.glActiveTexture(GL20.GL_TEXTURE0);
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
 			data.vertices.drawAllTriangles(_gl);
 		}
@@ -218,6 +231,7 @@ public class SceneRenderer
 		// now.  In the future, more of the non-opaque blocks will be replaced by complex models.
 		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
 		// this may not work for complex models.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
@@ -232,6 +246,7 @@ public class SceneRenderer
 		}
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
 		if (null != selectedBlock)
@@ -328,6 +343,7 @@ public class SceneRenderer
 		String name = type.name();
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 		VertexArray buffer;
+		float[] ignoredOtherTexture = new float[] { 0.0f, 0.0f };
 		if (meshFile.exists())
 		{
 			String rawMesh = meshFile.readString();
@@ -336,6 +352,7 @@ public class SceneRenderer
 				builder.appendVertex(position
 						, normal
 						, texture
+						, ignoredOtherTexture
 				);
 			}, rawMesh);
 			buffer = builder.flush(gl);
@@ -612,40 +629,53 @@ public class SceneRenderer
 		float uEdge = u + textureSize;
 		float vEdge = v + textureSize;
 		
+		// TODO:  Plumb in these "other" values.
+		float otherU = 0.0f;
+		float otherV = 0.0f;
+		float otherUEdge = otherU + 1.0f;
+		float otherVEdge = otherV + 1.0f;
+		
 		// Each element is:
 		// vx, vy, vz
 		// nx, ny, nz
 		// u, v
+		// otherU, otherV
 		
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
 				, new float[] {u, v}
+				, new float[] {otherU, otherV}
 		);
 		// Right Bottom.
 		builder.appendVertex(bottomRight
 				, normal
 				, new float[] {uEdge, v}
+				, new float[] {otherUEdge, otherV}
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
 				, new float[] {uEdge, vEdge}
+				, new float[] {otherUEdge, otherVEdge}
 		);
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
 				, new float[] {u, v}
+				, new float[] {otherU, otherV}
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
 				, new float[] {uEdge, vEdge}
+				, new float[] {otherUEdge, otherVEdge}
 		);
 		// Left Top.
 		builder.appendVertex(topLeft
 				, normal
 				, new float[] {u, vEdge}
+				, new float[] {otherU, otherVEdge}
 		);
 	}
 

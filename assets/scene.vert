@@ -8,9 +8,11 @@ uniform vec3 uWorldLightLocation;
 attribute vec3 aPosition;
 attribute vec3 aNormal;
 attribute vec2 aTexture0;
+attribute vec2 aTexture1;
 
 varying float vDiffuseStrength;
 varying vec2 vTexture0;
+varying vec2 vTexture1;
 
 void main()
 {
@@ -20,5 +22,6 @@ void main()
 	vec3 vectorToLight = normalize(uWorldLightLocation - worldSpaceVertex);
 	vDiffuseStrength = max(dot(worldSpaceNormal, vectorToLight), 0.5);
 	vTexture0 = aTexture0;
+	vTexture1 = aTexture1;
 	gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
 }
