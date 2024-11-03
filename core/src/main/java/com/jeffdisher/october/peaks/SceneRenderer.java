@@ -536,7 +536,7 @@ public class SceneRenderer
 				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase[2], textureSize);
 				localBase[0] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
-					v111, v101, v100, v110
+					v100, v110, v111, v101
 				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase[2], textureSize);
 			}
 		}
@@ -549,15 +549,16 @@ public class SceneRenderer
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, base[1], zBase};
 				_populateQuad(builder, localBase, new float[][] {
-					v001, v000, v100, v101
+					v000, v100, v101, v001
 				}, new float[] {0.0f, -1.0f,0.0f}, uvBase[2], textureSize);
 				localBase[1] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
-					v111, v110, v010, v011
+					v110, v010, v011, v111
 				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase[2], textureSize);
 			}
 		}
 		// Z-normal plane.
+		// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
 		for (byte y = 0; y < scale; ++y)
 		{
 			float yBase = base[1] + (float)y;
@@ -566,11 +567,11 @@ public class SceneRenderer
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, yBase, base[2]};
 				_populateQuad(builder, localBase, new float[][] {
-					v110, v100, v000, v010
+					v100, v000, v010, v110
 				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase[1], textureSize);
 				localBase[2] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
-					v011, v001, v101, v111
+					v001, v101, v111, v011
 				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase[0], textureSize);
 			}
 		}

@@ -72,16 +72,20 @@ public class TextureHelpers
 		// TODO:  Change this once we create the multi-sided textures.
 		// (for now, we are just redundantly loading the item for every variant).
 		int variants = BlockVariant.values().length;
-		// This loader assumes it knows what the variants are.
-		Assert.assertTrue(3 == variants);
 		String[] primaryNames = new String[blockItems.length * variants];
 		for (int i = 0; i < blockItems.length; ++i)
 		{
 			Block block = blockItems[i];
-			String name = "item_" + block.item().id() + ".png";
-			primaryNames[i * variants + 0] = name;
-			primaryNames[i * variants + 1] = name;
-			primaryNames[i * variants + 2] = name;
+			String itemName = "item_" + block.item().id() + ".png";
+			for (BlockVariant variant : BlockVariant.values())
+			{
+				String name = "block_" + block.item().id() + "_" + variant.name() + ".png";
+				if (!Gdx.files.internal(name).exists())
+				{
+					name = itemName;
+				}
+				primaryNames[i * variants + variant.ordinal()] = name;
+			}
 		}
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName);
 		return TextureAtlas.loadAtlas(gl, images, BlockVariant.class);
