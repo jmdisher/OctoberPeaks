@@ -91,6 +91,23 @@ public class TextureHelpers
 		return TextureAtlas.loadAtlas(gl, images, BlockVariant.class);
 	}
 
+	public static <T extends Enum<?>> TextureAtlas<T> loadAtlasForVariants(GL20 gl
+			, String baseName
+			, Class<T> clazz
+			, String missingTextureName
+	) throws IOException
+	{
+		// We will assume everything is a PNG and just load the variant name on the baseName.
+		T[] variants = clazz.getEnumConstants();
+		String[] primaryNames = new String[variants.length];
+		for (int i = 0; i < variants.length; ++i)
+		{
+			primaryNames[i] = baseName + variants[i].name() + ".png";
+		}
+		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName);
+		return TextureAtlas.loadAtlas(gl, images, clazz);
+	}
+
 
 	private static int _loadHandleRGBA(GL20 gl, FileHandle textureFile) throws IOException
 	{

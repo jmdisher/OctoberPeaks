@@ -56,6 +56,7 @@ public class SceneRenderer
 	private final GL20 _gl;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
 	private final TextureAtlas<BlockVariant> _blockTextures;
+	private final TextureAtlas<_AuxVariant> _auxBlockTextures;
 	private final short[] _itemToBlockIndexMapper;
 	private final Program _program;
 	private final int _uModelMatrix;
@@ -70,7 +71,6 @@ public class SceneRenderer
 	private final Map<EntityType, _EntityData> _entityData;
 	private final int _highlightTexture;
 	private final VertexArray _highlightCube;
-	private final int _tempEmptyPixel;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
@@ -110,6 +110,13 @@ public class SceneRenderer
 				, "missing_texture.png"
 		);
 		
+		// Load the secondary atlas for secondary textures.
+		_auxBlockTextures = TextureHelpers.loadAtlasForVariants(_gl
+				, "aux_"
+				, _AuxVariant.class
+				, "missing_texture.png"
+		);
+		
 		// Create the shader program.
 		_program = Program.fullyLinkedProgram(_gl
 				, _readUtf8Asset("scene.vert")
@@ -144,8 +151,7 @@ public class SceneRenderer
 		}
 		_entityData = Collections.unmodifiableMap(entityData);
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-		_highlightCube = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f});
-		_tempEmptyPixel = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0x0, (byte)0x0, (byte)0x0, 0x0});
+		_highlightCube = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f}, _auxBlockTextures);
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -175,8 +181,8 @@ public class SceneRenderer
 		_gl.glUniform1i(_uTexture1, 1);
 		_gl.glActiveTexture(GL20.GL_TEXTURE1);
 		
-		// TODO:  Move this once we start connecting actual data through texture1.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _tempEmptyPixel);
+		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _auxBlockTextures.texture);
 		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
@@ -359,7 +365,7 @@ public class SceneRenderer
 		}
 		else
 		{
-			buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()});
+			buffer = _createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()}, _auxBlockTextures);
 		}
 		
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
@@ -379,14 +385,14 @@ public class SceneRenderer
 	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{
 		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, _itemToBlockIndexMapper, cuboid, renderOpaque);
+		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, renderOpaque);
 		return builder.flush(_gl);
 	}
 
 	private VertexArray _buildDroppedItemVertexArray(IReadOnlyCuboidData cuboid)
 	{
 		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		_populateMeshForDroppedItems(_environment, builder, _itemAtlas, cuboid);
+		_populateMeshForDroppedItems(_environment, builder, _itemAtlas, _auxBlockTextures, cuboid);
 		return builder.flush(_gl);
 	}
 
@@ -395,11 +401,20 @@ public class SceneRenderer
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
-	private static VertexArray _createPrism(GL20 gl, Attribute[] attributes, FloatBuffer meshBuffer, float[] edgeVertices)
+	private static VertexArray _createPrism(GL20 gl
+			, Attribute[] attributes
+			, FloatBuffer meshBuffer
+			, float[] edgeVertices
+			, TextureAtlas<_AuxVariant> auxAtlas
+	)
 	{
 		// This is currently how we render entities so we can use the hard-coded coordinates.
 		float[] uvBase = new float[] { 0.0f, 0.0f };
 		float textureSize = 1.0f;
+		
+		// We will use no AUX texture.
+		float[] auxUv = auxAtlas.baseOfTexture((short)0, _AuxVariant.NONE);
+		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
 		_drawRectangularPrism(builder
@@ -409,6 +424,8 @@ public class SceneRenderer
 				, edgeVertices
 				, new float[][] { uvBase, uvBase, uvBase }
 				, textureSize
+				, auxUv
+				, auxTextureSize
 		);
 		return builder.flush(gl);
 	}
@@ -416,12 +433,18 @@ public class SceneRenderer
 	private static void _populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, TextureAtlas<BlockVariant> blockAtlas
+			, TextureAtlas<_AuxVariant> auxAtlas
 			, short[] blockIndexMapper
 			, IReadOnlyCuboidData cuboid
 			, boolean opaqueVertices
 	)
 	{
 		float textureSize = blockAtlas.coordinateSize;
+		
+		// TODO:  Check the damage values for the blocks and coose the appropriate variant.
+		float[] auxUv = auxAtlas.baseOfTexture((short)0, _AuxVariant.NONE);
+		float auxTextureSize = auxAtlas.coordinateSize;
+		
 		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
 			@Override
 			public void visit(BlockAddress base, byte size, Short value)
@@ -438,6 +461,8 @@ public class SceneRenderer
 							, size
 							, new float[][] { uvBaseTop, uvBaseBottom, uvBaseSide }
 							, textureSize
+							, auxUv
+							, auxTextureSize
 					);
 				}
 			}
@@ -447,10 +472,15 @@ public class SceneRenderer
 	private static void _populateMeshForDroppedItems(Environment env
 			, BufferBuilder builder
 			, TextureAtlas<ItemVariant> itemAtlas
+			, TextureAtlas<_AuxVariant> auxAtlas
 			, IReadOnlyCuboidData cuboid
 	)
 	{
 		float textureSize = itemAtlas.coordinateSize;
+		
+		// Dropped items will never have an aux texture.
+		float[] auxUv = auxAtlas.baseOfTexture((short)0, _AuxVariant.NONE);
+		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		// See if there are any inventories in empty blocks in this cuboid.
 		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
@@ -477,14 +507,24 @@ public class SceneRenderer
 						float[] uvBase = itemAtlas.baseOfTexture(type.number(), ItemVariant.NONE);
 						float[] offset = DEBRIS_BASES[i];
 						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
-						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);
+						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE
+								, uvBase, textureSize
+								, auxUv, auxTextureSize
+						);
 					}
 				}
 			}
 		}, null);
 	}
 
-	private static void _drawUpFacingSquare(BufferBuilder builder, float[] base, float edgeSize, float[] uvBase, float textureSize)
+	private static void _drawUpFacingSquare(BufferBuilder builder
+			, float[] base
+			, float edgeSize
+			, float[] uvBase
+			, float textureSize
+			, float[] otherUvBase
+			, float otherTextureSize
+	)
 	{
 		float[] bottomLeft = new float[] {
 				0.0f,
@@ -507,11 +547,23 @@ public class SceneRenderer
 				0.0f,
 		};
 		
-		_populateQuad(builder, base, new float[][] {bottomLeft, bottomRight, topRight, topLeft }, new float[] { 0.0f, 0.0f, 1.0f }, uvBase, textureSize);
+		_populateQuad(builder, base
+				, new float[][] {bottomLeft, bottomRight, topRight, topLeft }
+				, new float[] { 0.0f, 0.0f, 1.0f }
+				, uvBase, textureSize
+				, otherUvBase, otherTextureSize
+		);
 	}
 
 	// uvBase is 3 pairs:  top, bottom, side.
-	private static void _drawCube(BufferBuilder builder, float[] base, byte scale, float[][] uvBase, float textureSize)
+	private static void _drawCube(BufferBuilder builder
+			, float[] base
+			, byte scale
+			, float[][] uvBase
+			, float textureSize
+			, float[] otherUvBase
+			, float otherTextureSize
+	)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		_drawRectangularPrism(builder
@@ -521,6 +573,8 @@ public class SceneRenderer
 				, new float[] { 1.0f, 1.0f, 1.0f }
 				, uvBase
 				, textureSize
+				, otherUvBase
+				, otherTextureSize
 		);
 	}
 
@@ -532,6 +586,8 @@ public class SceneRenderer
 			// There are 3 texture base pairs:  top, bottom, side.
 			, float[][] uvBase
 			, float textureSize
+			, float[] otherUvBase
+			, float otherTextureSize
 	)
 	{
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
@@ -557,12 +613,18 @@ public class SceneRenderer
 				float yBase = base[1] + (float)y;
 				float[] localBase = new float[] { base[0], yBase, zBase};
 				_populateQuad(builder, localBase, new float[][] {
-					v010, v000, v001, v011
-				}, new float[] {-1.0f, 0.0f, 0.0f}, uvBase[2], textureSize);
+						v010, v000, v001, v011
+					}, new float[] {-1.0f, 0.0f, 0.0f}
+					, uvBase[2], textureSize
+					, otherUvBase, otherTextureSize
+				);
 				localBase[0] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
-					v100, v110, v111, v101
-				}, new float[] {1.0f, 0.0f, 0.0f}, uvBase[2], textureSize);
+						v100, v110, v111, v101
+					}, new float[] {1.0f, 0.0f, 0.0f}
+					, uvBase[2], textureSize
+					, otherUvBase, otherTextureSize
+				);
 			}
 		}
 		// Y-normal plane.
@@ -574,12 +636,18 @@ public class SceneRenderer
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, base[1], zBase};
 				_populateQuad(builder, localBase, new float[][] {
-					v000, v100, v101, v001
-				}, new float[] {0.0f, -1.0f,0.0f}, uvBase[2], textureSize);
+						v000, v100, v101, v001
+					}, new float[] {0.0f, -1.0f,0.0f}
+					, uvBase[2], textureSize
+					, otherUvBase, otherTextureSize
+				);
 				localBase[1] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
-					v110, v010, v011, v111
-				}, new float[] {0.0f, 1.0f, 0.0f}, uvBase[2], textureSize);
+						v110, v010, v011, v111
+					}, new float[] {0.0f, 1.0f, 0.0f}
+					, uvBase[2], textureSize
+					, otherUvBase, otherTextureSize
+				);
 			}
 		}
 		// Z-normal plane.
@@ -592,17 +660,31 @@ public class SceneRenderer
 				float xBase = base[0] + (float)x;
 				float[] localBase = new float[] { xBase, yBase, base[2]};
 				_populateQuad(builder, localBase, new float[][] {
-					v100, v000, v010, v110
-				}, new float[] {0.0f, 0.0f, -1.0f}, uvBase[1], textureSize);
+						v100, v000, v010, v110
+					}, new float[] {0.0f, 0.0f, -1.0f}
+					, uvBase[1], textureSize
+					, otherUvBase, otherTextureSize
+				);
 				localBase[2] += baseScale;
 				_populateQuad(builder, localBase, new float[][] {
-					v001, v101, v111, v011
-				}, new float[] {0.0f, 0.0f, 1.0f}, uvBase[0], textureSize);
+						v001, v101, v111, v011
+					}, new float[] {0.0f, 0.0f, 1.0f}
+					, uvBase[0], textureSize
+					, otherUvBase, otherTextureSize
+				);
 			}
 		}
 	}
 
-	private static void _populateQuad(BufferBuilder builder, float[] base, float[][] vertices, float[] normal, float[] uvBase, float textureSize)
+	private static void _populateQuad(BufferBuilder builder
+			, float[] base
+			, float[][] vertices
+			, float[] normal
+			, float[] uvBase
+			, float textureSize
+			, float[] otherUvBase
+			, float otherTextureSize
+	)
 	{
 		float[] bottomLeft = new float[] {
 				base[0] + vertices[0][0],
@@ -629,11 +711,10 @@ public class SceneRenderer
 		float uEdge = u + textureSize;
 		float vEdge = v + textureSize;
 		
-		// TODO:  Plumb in these "other" values.
-		float otherU = 0.0f;
-		float otherV = 0.0f;
-		float otherUEdge = otherU + 1.0f;
-		float otherVEdge = otherV + 1.0f;
+		float otherU = otherUvBase[0];
+		float otherV = otherUvBase[1];
+		float otherUEdge = otherU + otherTextureSize;
+		float otherVEdge = otherV + otherTextureSize;
 		
 		// Each element is:
 		// vx, vy, vz
@@ -687,4 +768,9 @@ public class SceneRenderer
 	private static record _EntityData(VertexArray vertices
 			, int texture
 	) {}
+
+	private static enum _AuxVariant
+	{
+		NONE,
+	}
 }
