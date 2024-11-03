@@ -295,14 +295,37 @@ public class SceneRenderer
 			}
 		}
 		
+		// Collect information about the cuboid.
+		SparseShortProjection<_AuxVariant> variantProjection = SparseShortProjection.fromAspect(cuboid, AspectRegistry.DAMAGE, (short)0, _AuxVariant.NONE, (BlockAddress blockAddress, Short value) -> {
+			short damage = value;
+			// We will favour showing cracks at a low damage, so the feedback is obvious
+			Block block = new BlockProxy(blockAddress, cuboid).getBlock();
+			float damaged = (float) damage / (float)_environment.damage.getToughness(block);
+			
+			_AuxVariant aux;
+			if (damaged > 0.6f)
+			{
+				aux = _AuxVariant.BREAK_HIGH;
+			}
+			else if (damaged > 0.3f)
+			{
+				aux = _AuxVariant.BREAK_MEDIUM;
+			}
+			else
+			{
+				aux = _AuxVariant.BREAK_LOW;
+			}
+			return aux;
+		});
+		
 		// Create the opaque cuboid vertices.
-		VertexArray opaqueData = _buildVertexArray(cuboid, true);
+		VertexArray opaqueData = _buildVertexArray(cuboid,variantProjection, true);
 		
 		// Create the vertex array for any items dropped on the ground.
 		VertexArray itemsOnGroundArray = _buildDroppedItemVertexArray(cuboid);
 		
 		// Create the transparent cuboid vertices.
-		VertexArray transparentData = _buildVertexArray(cuboid, false);
+		VertexArray transparentData = _buildVertexArray(cuboid, variantProjection, false);
 		
 		if ((null != opaqueData) || (null != itemsOnGroundArray) || (null != transparentData))
 		{
@@ -382,10 +405,10 @@ public class SceneRenderer
 		return data;
 	}
 
-	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
+	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, SparseShortProjection<_AuxVariant> variantProjection, boolean renderOpaque)
 	{
 		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, renderOpaque);
+		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, renderOpaque);
 		return builder.flush(_gl);
 	}
 
@@ -471,6 +494,7 @@ public class SceneRenderer
 	private static void _populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, TextureAtlas<BlockVariant> blockAtlas
+			, SparseShortProjection<_AuxVariant> projection
 			, TextureAtlas<_AuxVariant> auxAtlas
 			, short[] blockIndexMapper
 			, IReadOnlyCuboidData cuboid
@@ -478,9 +502,6 @@ public class SceneRenderer
 	)
 	{
 		float textureSize = blockAtlas.coordinateSize;
-		
-		// TODO:  Check the damage values for the blocks and coose the appropriate variant.
-		float[] auxUv = auxAtlas.baseOfTexture((short)0, _AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
@@ -501,7 +522,8 @@ public class SceneRenderer
 					
 					// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
 					// We subtract one from the base scale since we would double-count the top "1.0f".
-					float baseScale = (float)size - 1.0f;
+					byte oppositeBase = (byte)(size - 1);
+					float baseScale = (float)oppositeBase;
 					
 					// X-normal plane.
 					for (byte z = 0; z < size; ++z)
@@ -511,6 +533,7 @@ public class SceneRenderer
 						{
 							float yBase = baseCoord[1] + (float)y;
 							float[] localBase = new float[] { baseCoord[0], yBase, zBase};
+							float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x()), (byte)(base.y() + y), (byte)(base.z() + z))));
 							_populateQuad(builder, localBase, new float[][] {
 									v.v010, v.v000, v.v001, v.v011
 								}, new float[] {-1.0f, 0.0f, 0.0f}
@@ -518,6 +541,7 @@ public class SceneRenderer
 								, auxUv, auxTextureSize
 							);
 							localBase[0] += baseScale;
+							auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + oppositeBase), (byte)(base.y() + y), (byte)(base.z() + z))));
 							_populateQuad(builder, localBase, new float[][] {
 									v.v100, v.v110, v.v111, v.v101
 								}, new float[] {1.0f, 0.0f, 0.0f}
@@ -534,6 +558,7 @@ public class SceneRenderer
 						{
 							float xBase = baseCoord[0] + (float)x;
 							float[] localBase = new float[] { xBase, baseCoord[1], zBase};
+							float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y()), (byte)(base.z() + z))));
 							_populateQuad(builder, localBase, new float[][] {
 									v.v000, v.v100, v.v101, v.v001
 								}, new float[] {0.0f, -1.0f,0.0f}
@@ -541,6 +566,7 @@ public class SceneRenderer
 								, auxUv, auxTextureSize
 							);
 							localBase[1] += baseScale;
+							auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y() + oppositeBase), (byte)(base.z() + z))));
 							_populateQuad(builder, localBase, new float[][] {
 									v.v110, v.v010, v.v011, v.v111
 								}, new float[] {0.0f, 1.0f, 0.0f}
@@ -558,6 +584,7 @@ public class SceneRenderer
 						{
 							float xBase = baseCoord[0] + (float)x;
 							float[] localBase = new float[] { xBase, yBase, baseCoord[2]};
+							float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y() + y), (byte)(base.z()))));
 							_populateQuad(builder, localBase, new float[][] {
 									v.v100, v.v000, v.v010, v.v110
 								}, new float[] {0.0f, 0.0f, -1.0f}
@@ -565,6 +592,7 @@ public class SceneRenderer
 								, auxUv, auxTextureSize
 							);
 							localBase[2] += baseScale;
+							auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y() + y), (byte)(base.z() + oppositeBase))));
 							_populateQuad(builder, localBase, new float[][] {
 									v.v001, v.v101, v.v111, v.v011
 								}, new float[] {0.0f, 0.0f, 1.0f}
@@ -760,6 +788,9 @@ public class SceneRenderer
 	private static enum _AuxVariant
 	{
 		NONE,
+		BREAK_LOW,
+		BREAK_MEDIUM,
+		BREAK_HIGH,
 	}
 
 	private static record _PrismVertices(float[] v001
