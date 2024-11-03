@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,6 +55,8 @@ public class SceneRenderer
 	private final Environment _environment;
 	private final GL20 _gl;
 	private final TextureAtlas _itemAtlas;
+	private final TextureAtlas _blockTextures;
+	private final short[] _itemToBlockIndexMapper;
 	private final Program _program;
 	private final int _uModelMatrix;
 	private final int _uViewMatrix;
@@ -76,6 +79,34 @@ public class SceneRenderer
 		_environment = environment;
 		_gl = gl;
 		_itemAtlas = itemAtlas;
+		
+		// Extract the items which are blocks and create the index mapping function so we can pack the block atlas.
+		short[] itemToBlockMap = new short[_environment.items.ITEMS_BY_TYPE.length];
+		short nextIndex = 0;
+		for (int i = 0; i < _environment.items.ITEMS_BY_TYPE.length; ++ i)
+		{
+			Item item = _environment.items.ITEMS_BY_TYPE[i];
+			if (null != _environment.blocks.fromItem(item))
+			{
+				itemToBlockMap[i] = nextIndex;
+				nextIndex += 1;
+			}
+			else
+			{
+				itemToBlockMap[i] = -1;
+			}
+		}
+		_itemToBlockIndexMapper = itemToBlockMap;
+		
+		Block[] blocks = Arrays.stream(_environment.items.ITEMS_BY_TYPE)
+				.map((Item item) -> _environment.blocks.fromItem(item))
+				.filter((Block block) -> null != block)
+				.toArray((int size) -> new Block[size])
+		;
+		_blockTextures = TextureHelpers.loadAtlasForBlocks(_gl
+				, blocks
+				, "missing_texture.png"
+		);
 		
 		// Create the shader program.
 		_program = Program.fullyLinkedProgram(_gl
@@ -138,7 +169,7 @@ public class SceneRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		
 		// Render the opaque cuboid vertices.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
 			CuboidAddress key = elt.getKey();
@@ -152,6 +183,7 @@ public class SceneRenderer
 		}
 		
 		// Render any dropped items.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
 			CuboidAddress key = elt.getKey();
@@ -182,7 +214,7 @@ public class SceneRenderer
 		// now.  In the future, more of the non-opaque blocks will be replaced by complex models.
 		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
 		// this may not work for complex models.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
 		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
 		{
 			CuboidAddress key = elt.getKey();
@@ -322,7 +354,7 @@ public class SceneRenderer
 	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, boolean renderOpaque)
 	{
 		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		_populateMeshBufferForCuboid(_environment, builder, _itemAtlas, cuboid, renderOpaque);
+		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, _itemToBlockIndexMapper, cuboid, renderOpaque);
 		return builder.flush(_gl);
 	}
 
@@ -352,6 +384,7 @@ public class SceneRenderer
 	private static void _populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, TextureAtlas blockAtlas
+			, short[] blockIndexMapper
 			, IReadOnlyCuboidData cuboid
 			, boolean opaqueVertices
 	)
@@ -361,9 +394,11 @@ public class SceneRenderer
 			@Override
 			public void visit(BlockAddress base, byte size, Short value)
 			{
-				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(value))
+				short index = blockIndexMapper[value];
+				Assert.assertTrue(index >= 0);
+				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index))
 				{
-					float[] uvBase = blockAtlas.baseOfTexture(value);
+					float[] uvBase = blockAtlas.baseOfTexture(index);
 					_drawCube(builder
 							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
 							, size
@@ -377,11 +412,11 @@ public class SceneRenderer
 
 	private static void _populateMeshForDroppedItems(Environment env
 			, BufferBuilder builder
-			, TextureAtlas blockAtlas
+			, TextureAtlas itemAtlas
 			, IReadOnlyCuboidData cuboid
 	)
 	{
-		float textureSize = blockAtlas.coordinateSize;
+		float textureSize = itemAtlas.coordinateSize;
 		
 		// See if there are any inventories in empty blocks in this cuboid.
 		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
@@ -405,7 +440,7 @@ public class SceneRenderer
 								: blockInventory.getNonStackableForKey(key).type()
 						;
 						
-						float[] uvBase = blockAtlas.baseOfTexture(type.number());
+						float[] uvBase = itemAtlas.baseOfTexture(type.number());
 						float[] offset = DEBRIS_BASES[i];
 						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
 						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE, uvBase, textureSize);

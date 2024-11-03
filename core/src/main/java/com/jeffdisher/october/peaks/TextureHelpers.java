@@ -11,6 +11,7 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 
@@ -55,6 +56,21 @@ public class TextureHelpers
 		// We prefix "item_" to them in order to distinguish them from other block textures.
 		String[] primaryNames = Arrays.stream(tileItems).map(
 				(Item item) -> ("item_" + item.id() + ".png")
+		).toArray(
+				(int size) -> new String[size]
+		);
+		return TextureAtlas.loadAtlas(gl, primaryNames, missingTextureName);
+	}
+
+	public static TextureAtlas loadAtlasForBlocks(GL20 gl
+			, Block[] blockItems
+			, String missingTextureName
+	) throws IOException
+	{
+		// Just grab the names of the items, assuming they are all PNGs.
+		// TODO:  Change this once we create the multi-sided textures.
+		String[] primaryNames = Arrays.stream(blockItems).map(
+				(Block block) -> ("item_" + block.item().id() + ".png")
 		).toArray(
 				(int size) -> new String[size]
 		);
