@@ -417,16 +417,54 @@ public class SceneRenderer
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
-		_drawRectangularPrism(builder
-				, new float[] { 0.0f, 0.0f, 0.0f }
-				, (byte)1
-				, new float[] { 0.0f, 0.0f, 0.0f }
-				, edgeVertices
-				, new float[][] { uvBase, uvBase, uvBase }
-				, textureSize
-				, auxUv
-				, auxTextureSize
+		float[] base = new float[] { 0.0f, 0.0f, 0.0f };
+		
+		// Note that no matter the scale, the quad vertices are the same magnitudes.
+		_PrismVertices v = _PrismVertices.from(base, edgeVertices);
+		
+		// X-normal plane.
+		_populateQuad(builder, base, new float[][] {
+				v.v010, v.v000, v.v001, v.v011
+			}, new float[] {-1.0f, 0.0f, 0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
 		);
+		_populateQuad(builder, base, new float[][] {
+				v.v100, v.v110, v.v111, v.v101
+			}, new float[] {1.0f, 0.0f, 0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+		);
+		
+		// Y-normal plane.
+		_populateQuad(builder, base, new float[][] {
+				v.v000, v.v100, v.v101, v.v001
+			}, new float[] {0.0f, -1.0f,0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+		);
+		_populateQuad(builder, base, new float[][] {
+				v.v110, v.v010, v.v011, v.v111
+			}, new float[] {0.0f, 1.0f, 0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+		);
+		
+		// Z-normal plane.
+		// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+		_populateQuad(builder, base, new float[][] {
+				v.v100, v.v000, v.v010, v.v110
+			}, new float[] {0.0f, 0.0f, -1.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+		);
+		_populateQuad(builder, base, new float[][] {
+				v.v001, v.v101, v.v111, v.v011
+			}, new float[] {0.0f, 0.0f, 1.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+		);
+		
 		return builder.flush(gl);
 	}
 
@@ -456,14 +494,85 @@ public class SceneRenderer
 					float[] uvBaseTop = blockAtlas.baseOfTexture(index, BlockVariant.TOP);
 					float[] uvBaseBottom = blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
 					float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
-					_drawCube(builder
-							, new float[] { (float)base.x(), (float)base.y(), (float)base.z()}
-							, size
-							, new float[][] { uvBaseTop, uvBaseBottom, uvBaseSide }
-							, textureSize
-							, auxUv
-							, auxTextureSize
-					);
+					float[] baseCoord = new float[] { (float)base.x(), (float)base.y(), (float)base.z()};
+					
+					// Note that no matter the scale, the quad vertices are the same magnitudes.
+					_PrismVertices v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, 1.0f });
+					
+					// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
+					// We subtract one from the base scale since we would double-count the top "1.0f".
+					float baseScale = (float)size - 1.0f;
+					
+					// X-normal plane.
+					for (byte z = 0; z < size; ++z)
+					{
+						float zBase = baseCoord[2] + (float)z;
+						for (byte y = 0; y < size; ++y)
+						{
+							float yBase = baseCoord[1] + (float)y;
+							float[] localBase = new float[] { baseCoord[0], yBase, zBase};
+							_populateQuad(builder, localBase, new float[][] {
+									v.v010, v.v000, v.v001, v.v011
+								}, new float[] {-1.0f, 0.0f, 0.0f}
+								, uvBaseSide, textureSize
+								, auxUv, auxTextureSize
+							);
+							localBase[0] += baseScale;
+							_populateQuad(builder, localBase, new float[][] {
+									v.v100, v.v110, v.v111, v.v101
+								}, new float[] {1.0f, 0.0f, 0.0f}
+								, uvBaseSide, textureSize
+								, auxUv, auxTextureSize
+							);
+						}
+					}
+					// Y-normal plane.
+					for (byte z = 0; z < size; ++z)
+					{
+						float zBase = baseCoord[2] + (float)z;
+						for (byte x = 0; x < size; ++x)
+						{
+							float xBase = baseCoord[0] + (float)x;
+							float[] localBase = new float[] { xBase, baseCoord[1], zBase};
+							_populateQuad(builder, localBase, new float[][] {
+									v.v000, v.v100, v.v101, v.v001
+								}, new float[] {0.0f, -1.0f,0.0f}
+								, uvBaseSide, textureSize
+								, auxUv, auxTextureSize
+							);
+							localBase[1] += baseScale;
+							_populateQuad(builder, localBase, new float[][] {
+									v.v110, v.v010, v.v011, v.v111
+								}, new float[] {0.0f, 1.0f, 0.0f}
+								, uvBaseSide, textureSize
+								, auxUv, auxTextureSize
+							);
+						}
+					}
+					// Z-normal plane.
+					// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+					for (byte y = 0; y < size; ++y)
+					{
+						float yBase = baseCoord[1] + (float)y;
+						for (byte x = 0; x < size; ++x)
+						{
+							float xBase = baseCoord[0] + (float)x;
+							float[] localBase = new float[] { xBase, yBase, baseCoord[2]};
+							_populateQuad(builder, localBase, new float[][] {
+									v.v100, v.v000, v.v010, v.v110
+								}, new float[] {0.0f, 0.0f, -1.0f}
+								, uvBaseBottom, textureSize
+								, auxUv, auxTextureSize
+							);
+							localBase[2] += baseScale;
+							_populateQuad(builder, localBase, new float[][] {
+									v.v001, v.v101, v.v111, v.v011
+								}, new float[] {0.0f, 0.0f, 1.0f}
+								, uvBaseTop, textureSize
+								, auxUv, auxTextureSize
+							);
+						}
+					}
 				}
 			}
 		}, (short)0);
@@ -553,127 +662,6 @@ public class SceneRenderer
 				, uvBase, textureSize
 				, otherUvBase, otherTextureSize
 		);
-	}
-
-	// uvBase is 3 pairs:  top, bottom, side.
-	private static void _drawCube(BufferBuilder builder
-			, float[] base
-			, byte scale
-			, float[][] uvBase
-			, float textureSize
-			, float[] otherUvBase
-			, float otherTextureSize
-	)
-	{
-		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		_drawRectangularPrism(builder
-				, base
-				, scale
-				, new float[] { 0.0f, 0.0f, 0.0f }
-				, new float[] { 1.0f, 1.0f, 1.0f }
-				, uvBase
-				, textureSize
-				, otherUvBase
-				, otherTextureSize
-		);
-	}
-
-	private static void _drawRectangularPrism(BufferBuilder builder
-			, float[] base
-			, byte scale
-			, float[] prismBase
-			, float[] prismEdge
-			// There are 3 texture base pairs:  top, bottom, side.
-			, float[][] uvBase
-			, float textureSize
-			, float[] otherUvBase
-			, float otherTextureSize
-	)
-	{
-		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		float[] v001 = new float[] { prismBase[0], prismBase[1], prismEdge[2] };
-		float[] v101 = new float[] { prismEdge[0], prismBase[1], prismEdge[2] };
-		float[] v111 = new float[] { prismEdge[0], prismEdge[1], prismEdge[2] };
-		float[] v011 = new float[] { prismBase[0], prismEdge[1], prismEdge[2] };
-		float[] v000 = new float[] { prismBase[0], prismBase[1], prismBase[2] };
-		float[] v100 = new float[] { prismEdge[0], prismBase[1], prismBase[2] };
-		float[] v110 = new float[] { prismEdge[0], prismEdge[1], prismBase[2] };
-		float[] v010 = new float[] { prismBase[0], prismEdge[1], prismBase[2] };
-		
-		// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
-		// We subtract one from the base scale since we would double-count the top "1.0f".
-		float baseScale = (float)scale - 1.0f;
-		
-		// X-normal plane.
-		for (byte z = 0; z < scale; ++z)
-		{
-			float zBase = base[2] + (float)z;
-			for (byte y = 0; y < scale; ++y)
-			{
-				float yBase = base[1] + (float)y;
-				float[] localBase = new float[] { base[0], yBase, zBase};
-				_populateQuad(builder, localBase, new float[][] {
-						v010, v000, v001, v011
-					}, new float[] {-1.0f, 0.0f, 0.0f}
-					, uvBase[2], textureSize
-					, otherUvBase, otherTextureSize
-				);
-				localBase[0] += baseScale;
-				_populateQuad(builder, localBase, new float[][] {
-						v100, v110, v111, v101
-					}, new float[] {1.0f, 0.0f, 0.0f}
-					, uvBase[2], textureSize
-					, otherUvBase, otherTextureSize
-				);
-			}
-		}
-		// Y-normal plane.
-		for (byte z = 0; z < scale; ++z)
-		{
-			float zBase = base[2] + (float)z;
-			for (byte x = 0; x < scale; ++x)
-			{
-				float xBase = base[0] + (float)x;
-				float[] localBase = new float[] { xBase, base[1], zBase};
-				_populateQuad(builder, localBase, new float[][] {
-						v000, v100, v101, v001
-					}, new float[] {0.0f, -1.0f,0.0f}
-					, uvBase[2], textureSize
-					, otherUvBase, otherTextureSize
-				);
-				localBase[1] += baseScale;
-				_populateQuad(builder, localBase, new float[][] {
-						v110, v010, v011, v111
-					}, new float[] {0.0f, 1.0f, 0.0f}
-					, uvBase[2], textureSize
-					, otherUvBase, otherTextureSize
-				);
-			}
-		}
-		// Z-normal plane.
-		// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
-		for (byte y = 0; y < scale; ++y)
-		{
-			float yBase = base[1] + (float)y;
-			for (byte x = 0; x < scale; ++x)
-			{
-				float xBase = base[0] + (float)x;
-				float[] localBase = new float[] { xBase, yBase, base[2]};
-				_populateQuad(builder, localBase, new float[][] {
-						v100, v000, v010, v110
-					}, new float[] {0.0f, 0.0f, -1.0f}
-					, uvBase[1], textureSize
-					, otherUvBase, otherTextureSize
-				);
-				localBase[2] += baseScale;
-				_populateQuad(builder, localBase, new float[][] {
-						v001, v101, v111, v011
-					}, new float[] {0.0f, 0.0f, 1.0f}
-					, uvBase[0], textureSize
-					, otherUvBase, otherTextureSize
-				);
-			}
-		}
 	}
 
 	private static void _populateQuad(BufferBuilder builder
@@ -772,5 +760,29 @@ public class SceneRenderer
 	private static enum _AuxVariant
 	{
 		NONE,
+	}
+
+	private static record _PrismVertices(float[] v001
+			, float[] v101
+			, float[] v111
+			, float[] v011
+			, float[] v000
+			, float[] v100
+			, float[] v110
+			, float[] v010
+	)
+	{
+		public static _PrismVertices from(float[] prismBase, float[] prismEdge)
+		{
+			float[] v001 = new float[] { prismBase[0], prismBase[1], prismEdge[2] };
+			float[] v101 = new float[] { prismEdge[0], prismBase[1], prismEdge[2] };
+			float[] v111 = new float[] { prismEdge[0], prismEdge[1], prismEdge[2] };
+			float[] v011 = new float[] { prismBase[0], prismEdge[1], prismEdge[2] };
+			float[] v000 = new float[] { prismBase[0], prismBase[1], prismBase[2] };
+			float[] v100 = new float[] { prismEdge[0], prismBase[1], prismBase[2] };
+			float[] v110 = new float[] { prismEdge[0], prismEdge[1], prismBase[2] };
+			float[] v010 = new float[] { prismBase[0], prismEdge[1], prismBase[2] };
+			return new _PrismVertices(v001, v101, v111, v011, v000, v100, v110, v010);
+		}
 	}
 }
