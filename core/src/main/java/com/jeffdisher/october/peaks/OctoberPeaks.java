@@ -122,6 +122,16 @@ public class OctoberPeaks extends ApplicationAdapter
 						_uiState.setThisEntity(projectedEntity);
 					}
 					@Override
+					public void otherClientJoined(int clientId, String name)
+					{
+						_windowManager.otherPlayerJoined(clientId, name);
+					}
+					@Override
+					public void otherClientLeft(int clientId)
+					{
+						_windowManager.otherPlayerLeft(clientId);
+					}
+					@Override
 					public void otherEntityUpdated(PartialEntity entity)
 					{
 						_scene.setEntity(entity);

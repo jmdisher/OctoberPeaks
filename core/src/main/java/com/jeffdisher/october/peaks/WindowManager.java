@@ -5,7 +5,9 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -67,6 +69,7 @@ public class WindowManager
 	private final TextureAtlas<ItemVariant> _itemAtlas;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final TextManager _textManager;
+	private final Map<Integer, String> _otherPlayersById;
 	private final Program _program;
 	private final int _uOffset;
 	private final int _uScale;
@@ -95,6 +98,7 @@ public class WindowManager
 		_itemAtlas = itemAtlas;
 		_blockLookup = blockLookup;
 		_textManager = new TextManager(_gl);
+		_otherPlayersById = new HashMap<>();
 		
 		// Create the program we will use for the window overlays.
 		// The overlays are all rectangular tiles representing windows, graphic tiles, or text tiles.
@@ -292,7 +296,13 @@ public class WindowManager
 		else if (null != selectedEntity)
 		{
 			// Draw the entity information.
-			_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, selectedEntity.type().name());
+			// If this matches a player, show the name instead of the type name.
+			String textToShow = _otherPlayersById.get(selectedEntity.id());
+			if (null == textToShow)
+			{
+				textToShow = selectedEntity.type().name();
+			}
+			_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, textToShow);
 		}
 		
 		// If we should be rendering a hover, do it here.
@@ -308,6 +318,18 @@ public class WindowManager
 	public void setThisEntity(Entity projectedEntity)
 	{
 		_projectedEntity = projectedEntity;
+	}
+
+	public void otherPlayerJoined(int clientId, String name)
+	{
+		Object old = _otherPlayersById.put(clientId, name);
+		Assert.assertTrue(null == old);
+	}
+
+	public void otherPlayerLeft(int clientId)
+	{
+		Object old = _otherPlayersById.remove(clientId);
+		Assert.assertTrue(null != old);
 	}
 
 

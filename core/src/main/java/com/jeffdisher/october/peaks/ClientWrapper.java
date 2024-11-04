@@ -748,10 +748,12 @@ public class ClientWrapper
 		@Override
 		public void otherClientJoined(int clientId, String name)
 		{
+			_updateConsumer.otherClientJoined(clientId, name);
 		}
 		@Override
 		public void otherClientLeft(int clientId)
 		{
+			_updateConsumer.otherClientLeft(clientId);
 		}
 		@Override
 		public void receivedChatMessage(int senderId, String message)
@@ -767,6 +769,9 @@ public class ClientWrapper
 		void unload(CuboidAddress address);
 		
 		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
+		
+		void otherClientJoined(int clientId, String name);
+		void otherClientLeft(int clientId);
 		
 		void otherEntityUpdated(PartialEntity entity);
 		void otherEntityDidUnload(int id);
