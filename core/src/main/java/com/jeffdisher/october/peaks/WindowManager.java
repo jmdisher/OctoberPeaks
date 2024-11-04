@@ -363,7 +363,7 @@ public class WindowManager
 		builder.appendVertex(new float[] {width, height}
 				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
 		);
-		return builder.flush(gl);
+		return builder.finishOne().flush(gl);
 	}
 
 	private void _drawHotbar()

@@ -318,17 +318,25 @@ public class SceneRenderer
 			return aux;
 		});
 		
+		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
+		
 		// Create the opaque cuboid vertices.
-		VertexArray opaqueData = _buildVertexArray(cuboid,variantProjection, true);
+		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, true);
+		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
 		
 		// Create the vertex array for any items dropped on the ground.
-		VertexArray itemsOnGroundArray = _buildDroppedItemVertexArray(cuboid);
+		_populateMeshForDroppedItems(_environment, builder, _itemAtlas, _auxBlockTextures, cuboid);
+		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
 		// Create the transparent cuboid vertices.
-		VertexArray transparentData = _buildVertexArray(cuboid, variantProjection, false);
+		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, false);
+		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
 		
-		if ((null != opaqueData) || (null != itemsOnGroundArray) || (null != transparentData))
+		if ((null != opaqueBuffer) || (null != itemsOnGroundBuffer) || (null != transparentBuffer))
 		{
+			VertexArray opaqueData = (null != opaqueBuffer) ? opaqueBuffer.flush(_gl) : null;
+			VertexArray itemsOnGroundArray = (null != itemsOnGroundBuffer) ? itemsOnGroundBuffer.flush(_gl) : null;
+			VertexArray transparentData = (null != transparentBuffer) ? transparentBuffer.flush(_gl) : null;
 			_cuboids.put(address, new _CuboidData(opaqueData, itemsOnGroundArray, transparentData));
 		}
 	}
@@ -384,7 +392,7 @@ public class SceneRenderer
 						, ignoredOtherTexture
 				);
 			}, rawMesh);
-			buffer = builder.flush(gl);
+			buffer = builder.finishOne().flush(gl);
 		}
 		else
 		{
@@ -403,20 +411,6 @@ public class SceneRenderer
 		}
 		_EntityData data = new _EntityData(buffer, texture);
 		return data;
-	}
-
-	private VertexArray _buildVertexArray(IReadOnlyCuboidData cuboid, SparseShortProjection<_AuxVariant> variantProjection, boolean renderOpaque)
-	{
-		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		_populateMeshBufferForCuboid(_environment, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, renderOpaque);
-		return builder.flush(_gl);
-	}
-
-	private VertexArray _buildDroppedItemVertexArray(IReadOnlyCuboidData cuboid)
-	{
-		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		_populateMeshForDroppedItems(_environment, builder, _itemAtlas, _auxBlockTextures, cuboid);
-		return builder.flush(_gl);
 	}
 
 	private static String _readUtf8Asset(String name)
@@ -488,7 +482,7 @@ public class SceneRenderer
 			, auxUv, auxTextureSize
 		);
 		
-		return builder.flush(gl);
+		return builder.finishOne().flush(gl);
 	}
 
 	private static void _populateMeshBufferForCuboid(Environment env
