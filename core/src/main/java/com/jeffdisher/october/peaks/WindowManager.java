@@ -63,6 +63,7 @@ public class WindowManager
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE - ARMOUR_SLOT_SPACING, 0.95f);
 	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
+	public static final float RETICLE_SIZE = 0.05f;
 
 	private final Environment _env;
 	private final GL20 _gl;
@@ -77,6 +78,7 @@ public class WindowManager
 	private final int _uTextureBaseOffset;
 	private final VertexArray _verticesUnitSquare;
 	private final VertexArray _verticesItemSquare;
+	private final VertexArray _verticesReticleLines;
 	private final int _pixelLightGrey;
 	private final int _pixelDarkGreyAlpha;
 	private final int _pixelRed;
@@ -132,6 +134,7 @@ public class WindowManager
 		_verticesUnitSquare = _defineCommonVertices(_gl, _program, meshBuffer, 1.0f);
 		// Create the unit square we can configure for item drawing
 		_verticesItemSquare = _defineCommonVertices(_gl, _program, meshBuffer, _itemAtlas.coordinateSize);
+		_verticesReticleLines = _defineReticleVertices(_gl, _program, meshBuffer);
 		
 		// Build the initial pixel textures.
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(4);
@@ -273,36 +276,45 @@ public class WindowManager
 			didDrawWindows = true;
 		}
 		
-		// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
 		if (didDrawWindows)
 		{
-			// Also draw the armour slots.
+			// We are in windowed mode so also draw the armour slots.
 			_drawArmourSlots(armourSlots, eventHoverBodyPart, glX, glY);
 		}
-		else if (null != selectedBlock)
+		else
 		{
-			// Draw the block information.
-			BlockProxy proxy = _blockLookup.apply(selectedBlock);
-			if (null != proxy)
+			// We are not in windowed mode so draw the selection (if any) and crosshairs.
+			// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
+			if (null != selectedBlock)
 			{
-				Block blockUnderMouse = proxy.getBlock();
-				if (_env.special.AIR != blockUnderMouse)
+				// Draw the block information.
+				BlockProxy proxy = _blockLookup.apply(selectedBlock);
+				if (null != proxy)
 				{
-					Item itemUnderMouse = blockUnderMouse.item();
-					_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, itemUnderMouse.name());
+					Block blockUnderMouse = proxy.getBlock();
+					if (_env.special.AIR != blockUnderMouse)
+					{
+						Item itemUnderMouse = blockUnderMouse.item();
+						_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, itemUnderMouse.name());
+					}
 				}
 			}
-		}
-		else if (null != selectedEntity)
-		{
-			// Draw the entity information.
-			// If this matches a player, show the name instead of the type name.
-			String textToShow = _otherPlayersById.get(selectedEntity.id());
-			if (null == textToShow)
+			else if (null != selectedEntity)
 			{
-				textToShow = selectedEntity.type().name();
+				// Draw the entity information.
+				// If this matches a player, show the name instead of the type name.
+				String textToShow = _otherPlayersById.get(selectedEntity.id());
+				if (null == textToShow)
+				{
+					textToShow = selectedEntity.type().name();
+				}
+				_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, textToShow);
 			}
-			_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, textToShow);
+			
+			// We will use the highlight texture for the reticle.
+			_gl.glActiveTexture(GL20.GL_TEXTURE0);
+			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelLightGrey);
+			_drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		}
 		
 		// If we should be rendering a hover, do it here.
@@ -339,6 +351,7 @@ public class WindowManager
 		_program.delete();
 		_verticesUnitSquare.delete(_gl);
 		_verticesItemSquare.delete(_gl);
+		_verticesReticleLines.delete(_gl);
 	}
 
 
@@ -370,6 +383,30 @@ public class WindowManager
 				, new float[] {textureBaseU + textureSize, textureBaseV}
 		);
 		builder.appendVertex(new float[] {width, height}
+				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
+		);
+		return builder.finishOne().flush(gl);
+	}
+
+	private static VertexArray _defineReticleVertices(GL20 gl, Program program, FloatBuffer meshBuffer)
+	{
+		// We always draw the reticle at the full size of the screen and scale it in the shader.
+		float origin = 0.0f;
+		float sizeFromOrigin = 1.0f;
+		float textureBaseU = 0.0f;
+		float textureBaseV = 0.0f;
+		float textureSize = 1.0f;
+		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+		builder.appendVertex(new float[] {origin, -sizeFromOrigin}
+				, new float[] {textureBaseU, textureBaseV}
+		);
+		builder.appendVertex(new float[] {origin, sizeFromOrigin}
+				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
+		);
+		builder.appendVertex(new float[] {-sizeFromOrigin, origin}
+				, new float[] {textureBaseU, textureBaseV}
+		);
+		builder.appendVertex(new float[] {sizeFromOrigin, origin}
 				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
 		);
 		return builder.finishOne().flush(gl);
@@ -724,6 +761,16 @@ public class WindowManager
 		_gl.glUniform2f(_uScale, xScale, yScale);
 		_gl.glUniform2f(_uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
 		_verticesItemSquare.drawAllTriangles(_gl);
+	}
+
+	private void _drawReticle(float xScale, float yScale)
+	{
+		// NOTE:  This assumes that texture unit 0 is already bound to the appropriate texture.
+		// The reticle is full-sized so scale it at the origin (where it started).
+		_gl.glUniform2f(_uOffset, 0.0f, 0.0f);
+		_gl.glUniform2f(_uScale, xScale, yScale);
+		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
+		_verticesReticleLines.drawAllLines(_gl);
 	}
 
 	private static boolean _isMouseOver(float left, float bottom, float right, float top, float glX, float glY)

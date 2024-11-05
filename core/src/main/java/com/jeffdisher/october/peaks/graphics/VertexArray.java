@@ -28,6 +28,24 @@ public class VertexArray
 
 	public void drawAllTriangles(GL20 gl)
 	{
+		_setupBuffer(gl);
+		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, _totalVertices);
+	}
+
+	public void drawAllLines(GL20 gl)
+	{
+		_setupBuffer(gl);
+		gl.glDrawArrays(GL20.GL_LINES, 0, _totalVertices);
+	}
+
+	public void delete(GL20 gl)
+	{
+		gl.glDeleteBuffer(_buffer);
+	}
+
+
+	private void _setupBuffer(GL20 gl)
+	{
 		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _buffer);
 		int floatOffset = 0;
 		for (int i = 0; i < _attributes.length; ++i)
@@ -37,11 +55,5 @@ public class VertexArray
 			gl.glVertexAttribPointer(i, attribute.floats(), GL20.GL_FLOAT, false, _totalFloats * Float.BYTES, floatOffset * Float.BYTES);
 			floatOffset += attribute.floats();
 		}
-		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, _totalVertices);
-	}
-
-	public void delete(GL20 gl)
-	{
-		gl.glDeleteBuffer(_buffer);
 	}
 }
