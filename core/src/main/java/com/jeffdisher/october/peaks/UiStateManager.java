@@ -30,6 +30,13 @@ import com.jeffdisher.october.types.PartialEntity;
  */
 public class UiStateManager
 {
+	/**
+	 * In order to avoid cases like placing blocks too quickly or aggressively breaking a block behind a target, we will
+	 * delay an action on a new block by this many milliseconds.
+	 * This will also be applied to things like right-click actions on entities/blocks.
+	 */
+	private static long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
+
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
@@ -57,6 +64,10 @@ public class UiStateManager
 	private int _topRightPage;
 	private int _bottomPage;
 	private boolean _viewingFuelInventory;
+
+	// Tracking related to delayed actions when switching targets.
+	private AbsoluteLocation _lastActionBlock;
+	private long _lastActionMillis;
 
 	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
@@ -338,8 +349,11 @@ public class UiStateManager
 		{
 			if (null != stopBlock)
 			{
-				_client.hitBlock(stopBlock);
-				_didAccountForTimeInFrame = true;
+				if (_canAct(stopBlock))
+				{
+					_client.hitBlock(stopBlock);
+					_didAccountForTimeInFrame = true;
+				}
 			}
 			else if (null != entity)
 			{
@@ -381,7 +395,14 @@ public class UiStateManager
 			}
 			if (!didAct && (null != stopBlock) && (null != preStopBlock))
 			{
-				didAct = _client.runPlaceBlock(stopBlock, preStopBlock);
+				if (_canAct(stopBlock))
+				{
+					didAct = _client.runPlaceBlock(stopBlock, preStopBlock);
+				}
+				else
+				{
+					didAct = false;
+				}
 			}
 		}
 		
@@ -635,6 +656,50 @@ public class UiStateManager
 				: _thisEntity.inventory()
 		;
 		return inventory;
+	}
+
+	private boolean _canAct(AbsoluteLocation selectedBlock)
+	{
+		// We apply our delay here.
+		boolean canAct;
+		long currentMillis = System.currentTimeMillis();
+		if (null == selectedBlock)
+		{
+			// This is placing a block or interacting with a block/entity so we always apply the delay.
+			if (currentMillis > (_lastActionMillis + MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS))
+			{
+				_lastActionMillis = currentMillis;
+				canAct = true;
+			}
+			else
+			{
+				canAct = false;
+			}
+		}
+		else
+		{
+			if (selectedBlock.equals(_lastActionBlock))
+			{
+				// We can continue breaking the current block, no matter the time.
+				_lastActionMillis = currentMillis;
+				canAct = true;
+			}
+			else
+			{
+				// If this is something else, apply the delay.
+				if (currentMillis > (_lastActionMillis + MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS))
+				{
+					_lastActionBlock = selectedBlock;
+					_lastActionMillis = currentMillis;
+					canAct = true;
+				}
+				else
+				{
+					canAct = false;
+				}
+			}
+		}
+		return canAct;
 	}
 
 
