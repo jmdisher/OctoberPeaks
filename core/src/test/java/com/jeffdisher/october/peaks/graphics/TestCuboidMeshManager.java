@@ -60,6 +60,18 @@ public class TestCuboidMeshManager
 		manager.setCuboid(cuboid);
 		Assert.assertEquals(1, manager.viewCuboids().size());
 		
+		// We shouldn't see the finished result, yet.
+		CuboidMeshManager.CuboidData data = manager.viewCuboids().iterator().next();
+		Assert.assertNull(data.opaqueArray());
+		Assert.assertNull(data.itemsOnGroundArray());
+		Assert.assertNull(data.transparentArray());
+		
+		// Process until we see these.
+		while (null == manager.viewCuboids().iterator().next().opaqueArray())
+		{
+			manager.processBackground();
+		}
+		
 		manager.shutdown();
 	}
 
