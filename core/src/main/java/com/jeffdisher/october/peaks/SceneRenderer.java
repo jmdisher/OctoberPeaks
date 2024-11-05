@@ -16,6 +16,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
+import com.jeffdisher.october.peaks.graphics.CuboidMeshManager;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.SceneMeshHelpers;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
@@ -37,14 +38,13 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class SceneRenderer
 {
-	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
+	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
 
 	private final Environment _environment;
 	private final GL20 _gl;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
 	private final TextureAtlas<BlockVariant> _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
-	private final short[] _itemToBlockIndexMapper;
 	private final Program _program;
 	private final int _uModelMatrix;
 	private final int _uViewMatrix;
@@ -52,8 +52,7 @@ public class SceneRenderer
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
 	private final int _uTexture1;
-	private final Map<CuboidAddress, _CuboidData> _cuboids;
-	private final FloatBuffer _meshBuffer;
+	private final CuboidMeshManager _cuboidMeshes;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, _EntityData> _entityData;
 	private final int _highlightTexture;
@@ -68,24 +67,6 @@ public class SceneRenderer
 		_environment = environment;
 		_gl = gl;
 		_itemAtlas = itemAtlas;
-		
-		// Extract the items which are blocks and create the index mapping function so we can pack the block atlas.
-		short[] itemToBlockMap = new short[_environment.items.ITEMS_BY_TYPE.length];
-		short nextIndex = 0;
-		for (int i = 0; i < _environment.items.ITEMS_BY_TYPE.length; ++ i)
-		{
-			Item item = _environment.items.ITEMS_BY_TYPE[i];
-			if (null != _environment.blocks.fromItem(item))
-			{
-				itemToBlockMap[i] = nextIndex;
-				nextIndex += 1;
-			}
-			else
-			{
-				itemToBlockMap[i] = -1;
-			}
-		}
-		_itemToBlockIndexMapper = itemToBlockMap;
 		
 		Block[] blocks = Arrays.stream(_environment.items.ITEMS_BY_TYPE)
 				.map((Item item) -> _environment.blocks.fromItem(item))
@@ -122,23 +103,24 @@ public class SceneRenderer
 		_uTexture0 = _program.getUniformLocation("uTexture0");
 		_uTexture1 = _program.getUniformLocation("uTexture1");
 		
-		_cuboids = new HashMap<>();
+		_cuboidMeshes = new CuboidMeshManager(_environment, _gl, _program, itemAtlas, _blockTextures, _auxBlockTextures);
+		
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
-		_meshBuffer = direct.asFloatBuffer();
+		FloatBuffer meshBuffer = direct.asFloatBuffer();
 		_entities = new HashMap<>();
 		Map<EntityType, _EntityData> entityData = new HashMap<>();
 		for (EntityType type : EntityType.values())
 		{
 			if (EntityType.ERROR != type)
 			{
-				_EntityData data = _loadEntityResources(gl, type);
+				_EntityData data = _loadEntityResources(gl, meshBuffer, type);
 				entityData.put(type, data);
 			}
 		}
 		_entityData = Collections.unmodifiableMap(entityData);
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-		_highlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, _meshBuffer, new float[] {1.0f, 1.0f, 1.0f}, _auxBlockTextures);
+		_highlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, new float[] {1.0f, 1.0f, 1.0f}, _auxBlockTextures);
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -174,30 +156,30 @@ public class SceneRenderer
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
-		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
+		for (Map.Entry<CuboidAddress, CuboidMeshManager.CuboidData> elt : _cuboidMeshes.viewCuboids().entrySet())
 		{
 			CuboidAddress key = elt.getKey();
-			_CuboidData value = elt.getValue();
-			if (null != value.opaqueArray)
+			CuboidMeshManager.CuboidData value = elt.getValue();
+			if (null != value.opaqueArray())
 			{
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 				model.uploadAsUniform(_gl, _uModelMatrix);
-				value.opaqueArray.drawAllTriangles(_gl);
+				value.opaqueArray().drawAllTriangles(_gl);
 			}
 		}
 		
 		// Render any dropped items.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
-		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
+		for (Map.Entry<CuboidAddress, CuboidMeshManager.CuboidData> elt : _cuboidMeshes.viewCuboids().entrySet())
 		{
 			CuboidAddress key = elt.getKey();
-			_CuboidData value = elt.getValue();
-			if (null != value.itemsOnGroundArray)
+			CuboidMeshManager.CuboidData value = elt.getValue();
+			if (null != value.itemsOnGroundArray())
 			{
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 				model.uploadAsUniform(_gl, _uModelMatrix);
-				value.itemsOnGroundArray.drawAllTriangles(_gl);
+				value.itemsOnGroundArray().drawAllTriangles(_gl);
 			}
 		}
 		
@@ -226,15 +208,15 @@ public class SceneRenderer
 		// this may not work for complex models.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
-		for (Map.Entry<CuboidAddress, _CuboidData> elt : _cuboids.entrySet())
+		for (Map.Entry<CuboidAddress, CuboidMeshManager.CuboidData> elt : _cuboidMeshes.viewCuboids().entrySet())
 		{
 			CuboidAddress key = elt.getKey();
-			_CuboidData value = elt.getValue();
-			if (null != value.transparentArray)
+			CuboidMeshManager.CuboidData value = elt.getValue();
+			if (null != value.transparentArray())
 			{
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 				model.uploadAsUniform(_gl, _uModelMatrix);
-				value.transparentArray.drawAllTriangles(_gl);
+				value.transparentArray().drawAllTriangles(_gl);
 			}
 		}
 		
@@ -263,71 +245,12 @@ public class SceneRenderer
 
 	public void setCuboid(IReadOnlyCuboidData cuboid)
 	{
-		// Delete any previous.
-		CuboidAddress address = cuboid.getCuboidAddress();
-		_CuboidData previous = _cuboids.remove(address);
-		if (null != previous)
-		{
-			if (null != previous.opaqueArray)
-			{
-				previous.opaqueArray.delete(_gl);
-			}
-			if (null != previous.itemsOnGroundArray)
-			{
-				previous.itemsOnGroundArray.delete(_gl);
-			}
-			if (null != previous.transparentArray)
-			{
-				previous.transparentArray.delete(_gl);
-			}
-		}
-		
-		// Collect information about the cuboid.
-		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_environment, cuboid);
-		
-		BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
-		
-		// Create the opaque cuboid vertices.
-		SceneMeshHelpers.populateMeshBufferForCuboid(_environment, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, true);
-		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
-		
-		// Create the vertex array for any items dropped on the ground.
-		SceneMeshHelpers.populateMeshForDroppedItems(_environment, builder, _itemAtlas, _auxBlockTextures, cuboid);
-		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
-		
-		// Create the transparent cuboid vertices.
-		SceneMeshHelpers.populateMeshBufferForCuboid(_environment, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, false);
-		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
-		
-		if ((null != opaqueBuffer) || (null != itemsOnGroundBuffer) || (null != transparentBuffer))
-		{
-			VertexArray opaqueData = (null != opaqueBuffer) ? opaqueBuffer.flush(_gl) : null;
-			VertexArray itemsOnGroundArray = (null != itemsOnGroundBuffer) ? itemsOnGroundBuffer.flush(_gl) : null;
-			VertexArray transparentData = (null != transparentBuffer) ? transparentBuffer.flush(_gl) : null;
-			_cuboids.put(address, new _CuboidData(opaqueData, itemsOnGroundArray, transparentData));
-		}
+		_cuboidMeshes.setCuboid(cuboid);
 	}
 
 	public void removeCuboid(CuboidAddress address)
 	{
-		_CuboidData removed = _cuboids.remove(address);
-		// Note that this will be null if the cuboid was empty.
-		if (null != removed)
-		{
-			if (null != removed.opaqueArray)
-			{
-				removed.opaqueArray.delete(_gl);
-			}
-			if (null != removed.itemsOnGroundArray)
-			{
-				removed.itemsOnGroundArray.delete(_gl);
-			}
-			if (null != removed.transparentArray)
-			{
-				removed.transparentArray.delete(_gl);
-			}
-			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
-		}
+		_cuboidMeshes.removeCuboid(address);
 	}
 
 	public void setEntity(PartialEntity entity)
@@ -341,7 +264,7 @@ public class SceneRenderer
 	}
 
 
-	private _EntityData _loadEntityResources(GL20 gl, EntityType type) throws IOException
+	private _EntityData _loadEntityResources(GL20 gl, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
 		EntityVolume volume = EntityConstants.getVolume(type);
 		String name = type.name();
@@ -351,7 +274,7 @@ public class SceneRenderer
 		if (meshFile.exists())
 		{
 			String rawMesh = meshFile.readString();
-			BufferBuilder builder = new BufferBuilder(_meshBuffer, _program.attributes);
+			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
 			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
 				builder.appendVertex(position
 						, normal
@@ -363,7 +286,7 @@ public class SceneRenderer
 		}
 		else
 		{
-			buffer = SceneMeshHelpers.createPrism(_gl, _program.attributes, _meshBuffer, new float[] {volume.width(), volume.width(), volume.height()}, _auxBlockTextures);
+			buffer = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, new float[] {volume.width(), volume.width(), volume.height()}, _auxBlockTextures);
 		}
 		
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
@@ -384,11 +307,6 @@ public class SceneRenderer
 	{
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
-
-	private static record _CuboidData(VertexArray opaqueArray
-			, VertexArray itemsOnGroundArray
-			, VertexArray transparentArray
-	) {}
 
 	private static record _EntityData(VertexArray vertices
 			, int texture
