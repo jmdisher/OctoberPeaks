@@ -86,7 +86,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		}
 		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup);
 		_movement = new MovementControl();
-		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget());
+		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
 		
 		_client = new ClientWrapper(_environment
 				, new ClientWrapper.IUpdateConsumer() {
@@ -116,7 +116,8 @@ public class OctoberPeaks extends ApplicationAdapter
 						_movement.setEye(Vector.fromEntityLocation(eyeLocation));
 						Vector eye = _movement.computeEye();
 						Vector target = _movement.computeTarget();
-						_scene.updatePosition(eye, target);
+						Vector upVector = _movement.computeUpVector();
+						_scene.updatePosition(eye, target, upVector);
 						_selectionManager.updatePosition(eye, target);
 						_windowManager.setThisEntity(projectedEntity);
 						_uiState.setThisEntity(projectedEntity);
@@ -170,8 +171,9 @@ public class OctoberPeaks extends ApplicationAdapter
 			{
 				Vector eye = _movement.computeEye();
 				Vector target = _movement.computeTarget();
+				Vector upVector = _movement.computeUpVector();
 				_selectionManager.updatePosition(eye, target);
-				_scene.updatePosition(eye, target);
+				_scene.updatePosition(eye, target, upVector);
 			}
 			
 			// Capture whatever is selected.

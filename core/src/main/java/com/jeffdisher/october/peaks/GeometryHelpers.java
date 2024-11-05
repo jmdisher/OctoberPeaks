@@ -23,6 +23,17 @@ public class GeometryHelpers
 		return new Vector(lookX * distanceZ, lookY * distanceZ, lookZ).normalize();
 	}
 
+	public static Vector computeUpVector(float yawRadians, float pitchRadians)
+	{
+		// We will assume that we are looking at (0, 1, 0) when at 0 rotation.
+		float pitchUp = pitchRadians + ((float)Math.PI * 0.5f);
+		float lookX = -(float)Math.sin(yawRadians);
+		float lookY = (float)Math.cos(yawRadians);
+		float lookZ = (float)Math.sin(pitchUp);
+		float distanceZ = (float)Math.cos(pitchUp);
+		return new Vector(lookX * distanceZ, lookY * distanceZ, lookZ).normalize();
+	}
+
 	/**
 	 * Essentially a 3D digital differential analysis (DDA) algorithm.  It will walk the ray from start to end until
 	 * stopPredicate returns true, returning a record of the last 2 blocks (null if it never return true).

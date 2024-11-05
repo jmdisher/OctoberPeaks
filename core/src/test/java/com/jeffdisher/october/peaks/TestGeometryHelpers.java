@@ -157,6 +157,47 @@ public class TestGeometryHelpers
 		Assert.assertNull(closest);
 	}
 
+	@Test
+	public void upVectpr() throws Throwable
+	{
+		float halfPi = (float)(Math.PI / 2.0f);
+		
+		// Test facing forward.
+		float yaw = 0.0f;
+		float pitch = 0.0f;
+		Vector forward = GeometryHelpers.computeUpVector(yaw, pitch);
+		_vectorEquals(new Vector(0.0f, 0.0f, 1.0f), forward);
+		
+		// Left - rotation of half pi.
+		yaw = halfPi;
+		Vector left = GeometryHelpers.computeUpVector(yaw, pitch);
+		_vectorEquals(new Vector(0.0f, 0.0f, 1.0f), left);
+		
+		// Back and up.
+		yaw = (float)Math.PI;
+		pitch = 0.2f;
+		Vector backUp = GeometryHelpers.computeUpVector(yaw, pitch);
+		_vectorEquals(new Vector(0.0f, 0.20f, 0.98f), backUp);
+		
+		// Forward straight up.
+		yaw = 0.0f;
+		pitch = (float)Math.PI * 0.5f;
+		Vector forwardStraightUp = GeometryHelpers.computeUpVector(yaw, pitch);
+		_vectorEquals(new Vector(0.0f, -1.0f, 0.0f), forwardStraightUp);
+		
+		// Forward straight down.
+		yaw = 0.0f;
+		pitch = (float)Math.PI * -0.5f;
+		Vector forwardStraightDown = GeometryHelpers.computeUpVector(yaw, pitch);
+		_vectorEquals(new Vector(0.0f, 1.0f, 0.0f), forwardStraightDown);
+		
+		// Backward straight up.
+		yaw = (float)Math.PI;
+		pitch = (float)Math.PI * 0.5f;
+		Vector backwardStraightUp = GeometryHelpers.computeUpVector(yaw, pitch);
+		_vectorEquals(new Vector(0.0f, 1.0f, 0.0f), backwardStraightUp);
+	}
+
 
 	private static void _vectorEquals(Vector expected, Vector test)
 	{

@@ -140,6 +140,11 @@ public class MovementControl
 		return new Vector(_eyeLocation.x() + looking.x(), _eyeLocation.y() + looking.y(), _eyeLocation.z() + looking.z());
 	}
 
+	public Vector computeUpVector()
+	{
+		return GeometryHelpers.computeUpVector(_rotateX, _rotateY);
+	}
+
 
 	private _Direction _findFacing()
 	{

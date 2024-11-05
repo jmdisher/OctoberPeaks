@@ -140,10 +140,10 @@ public class SceneRenderer
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
 	}
 
-	public void updatePosition(Vector eye, Vector target)
+	public void updatePosition(Vector eye, Vector target, Vector upVector)
 	{
 		_eye = eye;
-		_viewMatrix = Matrix.lookAt(eye, target, new Vector(0.0f, 0.0f, 1.0f));
+		_viewMatrix = Matrix.lookAt(eye, target, upVector);
 	}
 
 	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock)
