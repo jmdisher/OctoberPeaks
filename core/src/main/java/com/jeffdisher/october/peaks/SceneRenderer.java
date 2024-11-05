@@ -6,6 +6,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -165,13 +166,15 @@ public class SceneRenderer
 		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _auxBlockTextures.texture);
 		
+		// We use the same cuboid set for all of these passes.
+		Collection<CuboidMeshManager.CuboidData> cuboids = _cuboidMeshes.viewCuboids();
+		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
-		for (Map.Entry<CuboidAddress, CuboidMeshManager.CuboidData> elt : _cuboidMeshes.viewCuboids().entrySet())
+		for (CuboidMeshManager.CuboidData value : cuboids)
 		{
-			CuboidAddress key = elt.getKey();
-			CuboidMeshManager.CuboidData value = elt.getValue();
+			CuboidAddress key = value.address();
 			if (null != value.opaqueArray())
 			{
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
@@ -183,10 +186,9 @@ public class SceneRenderer
 		// Render any dropped items.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
-		for (Map.Entry<CuboidAddress, CuboidMeshManager.CuboidData> elt : _cuboidMeshes.viewCuboids().entrySet())
+		for (CuboidMeshManager.CuboidData value : cuboids)
 		{
-			CuboidAddress key = elt.getKey();
-			CuboidMeshManager.CuboidData value = elt.getValue();
+			CuboidAddress key = value.address();
 			if (null != value.itemsOnGroundArray())
 			{
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
@@ -220,10 +222,9 @@ public class SceneRenderer
 		// this may not work for complex models.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
-		for (Map.Entry<CuboidAddress, CuboidMeshManager.CuboidData> elt : _cuboidMeshes.viewCuboids().entrySet())
+		for (CuboidMeshManager.CuboidData value : cuboids)
 		{
-			CuboidAddress key = elt.getKey();
-			CuboidMeshManager.CuboidData value = elt.getValue();
+			CuboidAddress key = value.address();
 			if (null != value.transparentArray())
 			{
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
@@ -253,6 +254,9 @@ public class SceneRenderer
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			_entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 		}
+		
+		// Handle any background baking.
+		_cuboidMeshes.processBackground();
 	}
 
 	public void setCuboid(IReadOnlyCuboidData cuboid)

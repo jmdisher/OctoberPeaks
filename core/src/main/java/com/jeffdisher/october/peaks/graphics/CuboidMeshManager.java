@@ -3,7 +3,7 @@ package com.jeffdisher.october.peaks.graphics;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -75,9 +75,9 @@ public class CuboidMeshManager
 		_itemToBlockIndexMapper = itemToBlockMap;
 	}
 
-	public Map<CuboidAddress, CuboidData> viewCuboids()
+	public Collection<CuboidData> viewCuboids()
 	{
-		return Collections.unmodifiableMap(_cuboids);
+		return _cuboids.values();
 	}
 
 	public void setCuboid(IReadOnlyCuboidData cuboid)
@@ -108,13 +108,18 @@ public class CuboidMeshManager
 			VertexArray opaqueData = (null != opaqueBuffer) ? _gpu.uploadBuffer(opaqueBuffer) : null;
 			VertexArray itemsOnGroundArray = (null != itemsOnGroundBuffer) ? _gpu.uploadBuffer(itemsOnGroundBuffer) : null;
 			VertexArray transparentData = (null != transparentBuffer) ? _gpu.uploadBuffer(transparentBuffer) : null;
-			_cuboids.put(address, new CuboidData(opaqueData, itemsOnGroundArray, transparentData));
+			_cuboids.put(address, new CuboidData(address, opaqueData, itemsOnGroundArray, transparentData));
 		}
 	}
 
 	public void removeCuboid(CuboidAddress address)
 	{
 		_removeCuboid(address);
+	}
+
+	public void processBackground()
+	{
+		// TODO:  Implement.
 	}
 
 	public void shutdown()
@@ -162,7 +167,8 @@ public class CuboidMeshManager
 		void deleteBuffer(VertexArray array);
 	}
 
-	public static record CuboidData(VertexArray opaqueArray
+	public static record CuboidData(CuboidAddress address
+			, VertexArray opaqueArray
 			, VertexArray itemsOnGroundArray
 			, VertexArray transparentArray
 	) {}
