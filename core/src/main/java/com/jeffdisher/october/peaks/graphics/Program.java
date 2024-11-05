@@ -107,4 +107,9 @@ public class Program
 	{
 		return _gl.glGetUniformLocation(_program, name);
 	}
+
+	public void delete()
+	{
+		_gl.glDeleteProgram(_program);
+	}
 }

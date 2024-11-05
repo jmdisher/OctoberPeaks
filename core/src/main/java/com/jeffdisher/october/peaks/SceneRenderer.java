@@ -275,6 +275,16 @@ public class SceneRenderer
 		_entities.remove(id);
 	}
 
+	public void shutdown()
+	{
+		// We don't own _itemAtlas.
+		_blockTextures.shutdown(_gl);
+		_auxBlockTextures.shutdown(_gl);
+		_program.delete();
+		_cuboidMeshes.shutdown();
+		_highlightCube.delete(_gl);
+	}
+
 
 	private _EntityData _loadEntityResources(GL20 gl, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{

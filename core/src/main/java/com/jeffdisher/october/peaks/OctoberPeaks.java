@@ -209,6 +209,11 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Disconnect from the server.
 		_client.disconnect();
 		
+		// Shut down the other components.
+		_itemAtlas.shutdown(_gl);
+		_scene.shutdown();
+		_windowManager.shutdown();
+		
 		// Tear-down the shared environment.
 		Environment.clearSharedInstance();
 		_environment = null;

@@ -117,24 +117,38 @@ public class CuboidMeshManager
 		_removeCuboid(address);
 	}
 
+	public void shutdown()
+	{
+		for (CuboidData data : _cuboids.values())
+		{
+			_deleteBuffers(data);
+		}
+		_cuboids.clear();
+	}
+
 
 	private void _removeCuboid(CuboidAddress address)
 	{
 		CuboidData previous = _cuboids.remove(address);
 		if (null != previous)
 		{
-			if (null != previous.opaqueArray)
-			{
-				_gpu.deleteBuffer(previous.opaqueArray);
-			}
-			if (null != previous.itemsOnGroundArray)
-			{
-				_gpu.deleteBuffer(previous.itemsOnGroundArray);
-			}
-			if (null != previous.transparentArray)
-			{
-				_gpu.deleteBuffer(previous.transparentArray);
-			}
+			_deleteBuffers(previous);
+		}
+	}
+
+	private void _deleteBuffers(CuboidData previous)
+	{
+		if (null != previous.opaqueArray)
+		{
+			_gpu.deleteBuffer(previous.opaqueArray);
+		}
+		if (null != previous.itemsOnGroundArray)
+		{
+			_gpu.deleteBuffer(previous.itemsOnGroundArray);
+		}
+		if (null != previous.transparentArray)
+		{
+			_gpu.deleteBuffer(previous.transparentArray);
 		}
 	}
 

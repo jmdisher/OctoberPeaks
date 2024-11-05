@@ -130,6 +130,15 @@ public class TextManager
 		}
 	}
 
+	public void shutdown()
+	{
+		for (Element elt : _textTextures.values())
+		{
+			_gl.glDeleteTexture(elt.textureObject);
+		}
+		_textTextures.clear();
+	}
+
 
 	private float _renderTextToImage(int texture, String text)
 	{

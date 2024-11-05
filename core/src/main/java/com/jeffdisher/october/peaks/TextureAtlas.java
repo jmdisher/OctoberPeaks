@@ -174,4 +174,9 @@ public class TextureAtlas<T extends Enum<?>>
 	{
 		return _nonOpaqueVector[index];
 	}
+
+	public void shutdown(GL20 gl)
+	{
+		gl.glDeleteTexture(this.texture);
+	}
 }

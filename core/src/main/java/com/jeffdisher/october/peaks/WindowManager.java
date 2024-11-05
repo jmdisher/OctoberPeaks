@@ -332,6 +332,15 @@ public class WindowManager
 		Assert.assertTrue(null != old);
 	}
 
+	public void shutdown()
+	{
+		// We don't own _itemAtlas.
+		_textManager.shutdown();
+		_program.delete();
+		_verticesUnitSquare.delete(_gl);
+		_verticesItemSquare.delete(_gl);
+	}
+
 
 	private static String _readUtf8Asset(String name)
 	{
