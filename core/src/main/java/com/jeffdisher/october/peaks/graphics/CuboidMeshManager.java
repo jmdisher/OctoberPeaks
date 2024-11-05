@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BlockVariant;
@@ -28,8 +27,8 @@ public class CuboidMeshManager
 	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
 
 	private final Environment _env;
-	private final GL20 _gl;
-	private final Program _cuboidRenderProgram;
+	private final IGpu _gpu;
+	private final Attribute[] _programAttributes;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
 	private final TextureAtlas<BlockVariant> _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
@@ -38,16 +37,16 @@ public class CuboidMeshManager
 	private final short[] _itemToBlockIndexMapper;
 
 	public CuboidMeshManager(Environment env
-			, GL20 gl
-			, Program cuboidRenderProgram
+			, IGpu gpu
+			, Attribute[] programAttributes
 			, TextureAtlas<ItemVariant> itemAtlas
 			, TextureAtlas<BlockVariant> blockTextures
 			, TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures
 	)
 	{
 		_env = env;
-		_gl = gl;
-		_cuboidRenderProgram = cuboidRenderProgram;
+		_gpu = gpu;
+		_programAttributes = programAttributes;;
 		_itemAtlas = itemAtlas;
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
@@ -90,7 +89,7 @@ public class CuboidMeshManager
 		// Collect information about the cuboid.
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
 		
-		BufferBuilder builder = new BufferBuilder(_meshBuffer, _cuboidRenderProgram.attributes);
+		BufferBuilder builder = new BufferBuilder(_meshBuffer, _programAttributes);
 		
 		// Create the opaque cuboid vertices.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, cuboid, true);
@@ -106,9 +105,9 @@ public class CuboidMeshManager
 		
 		if ((null != opaqueBuffer) || (null != itemsOnGroundBuffer) || (null != transparentBuffer))
 		{
-			VertexArray opaqueData = (null != opaqueBuffer) ? opaqueBuffer.flush(_gl) : null;
-			VertexArray itemsOnGroundArray = (null != itemsOnGroundBuffer) ? itemsOnGroundBuffer.flush(_gl) : null;
-			VertexArray transparentData = (null != transparentBuffer) ? transparentBuffer.flush(_gl) : null;
+			VertexArray opaqueData = (null != opaqueBuffer) ? _gpu.uploadBuffer(opaqueBuffer) : null;
+			VertexArray itemsOnGroundArray = (null != itemsOnGroundBuffer) ? _gpu.uploadBuffer(itemsOnGroundBuffer) : null;
+			VertexArray transparentData = (null != transparentBuffer) ? _gpu.uploadBuffer(transparentBuffer) : null;
 			_cuboids.put(address, new CuboidData(opaqueData, itemsOnGroundArray, transparentData));
 		}
 	}
@@ -126,19 +125,28 @@ public class CuboidMeshManager
 		{
 			if (null != previous.opaqueArray)
 			{
-				previous.opaqueArray.delete(_gl);
+				_gpu.deleteBuffer(previous.opaqueArray);
 			}
 			if (null != previous.itemsOnGroundArray)
 			{
-				previous.itemsOnGroundArray.delete(_gl);
+				_gpu.deleteBuffer(previous.itemsOnGroundArray);
 			}
 			if (null != previous.transparentArray)
 			{
-				previous.transparentArray.delete(_gl);
+				_gpu.deleteBuffer(previous.transparentArray);
 			}
 		}
 	}
 
+
+	/**
+	 * This interface replaces the direct dependency on the GL20 object in order to enable testing.
+	 */
+	public static interface IGpu
+	{
+		VertexArray uploadBuffer(BufferBuilder.Buffer buffer);
+		void deleteBuffer(VertexArray array);
+	}
 
 	public static record CuboidData(VertexArray opaqueArray
 			, VertexArray itemsOnGroundArray

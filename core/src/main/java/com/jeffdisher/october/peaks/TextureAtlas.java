@@ -36,6 +36,13 @@ public class TextureAtlas<T extends Enum<?>>
 		return new TextureAtlas<T>(tileTexture, tileTexturesPerRow, nonOpaqueVector, variantsPerIndex);
 	}
 
+	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, boolean[] nonOpaqueVector, Class<T> variants) throws IOException
+	{
+		int tileTexturesPerRow = _texturesPerRow(tileTextures);
+		int variantsPerIndex = variants.getEnumConstants().length;
+		return new TextureAtlas<T>(1, tileTexturesPerRow, nonOpaqueVector, variantsPerIndex);
+	}
+
 
 	private static int _texturesPerRow(int textureCount)
 	{

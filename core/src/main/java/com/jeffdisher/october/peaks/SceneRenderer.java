@@ -20,6 +20,7 @@ import com.jeffdisher.october.peaks.graphics.CuboidMeshManager;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.SceneMeshHelpers;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -103,7 +104,18 @@ public class SceneRenderer
 		_uTexture0 = _program.getUniformLocation("uTexture0");
 		_uTexture1 = _program.getUniformLocation("uTexture1");
 		
-		_cuboidMeshes = new CuboidMeshManager(_environment, _gl, _program, itemAtlas, _blockTextures, _auxBlockTextures);
+		_cuboidMeshes = new CuboidMeshManager(_environment, new CuboidMeshManager.IGpu() {
+			@Override
+			public VertexArray uploadBuffer(Buffer buffer)
+			{
+				return buffer.flush(_gl);
+			}
+			@Override
+			public void deleteBuffer(VertexArray array)
+			{
+				array.delete(_gl);
+			}
+		}, _program.attributes, itemAtlas, _blockTextures, _auxBlockTextures);
 		
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
