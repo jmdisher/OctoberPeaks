@@ -66,109 +66,99 @@ public class SceneMeshHelpers
 			, boolean opaqueVertices
 	)
 	{
+		_PrismVertices v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, 1.0f });
 		float textureSize = blockAtlas.coordinateSize;
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
-		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
+		FaceBuilder faces = new FaceBuilder();
+		faces.buildFaces(cuboid, new FaceBuilder.IWriter() {
 			@Override
-			public void visit(BlockAddress base, byte size, Short value)
+			public boolean shouldInclude(short value)
 			{
 				short index = blockIndexMapper[value];
-				Assert.assertTrue(index >= 0);
-				if (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index))
+				return (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index));
+			}
+			@Override
+			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			{
+				// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+				short index = blockIndexMapper[value];
+				float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+				float[] uvBaseTop = blockAtlas.baseOfTexture(index, BlockVariant.TOP);
+				float[] uvBaseBottom = blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
+				float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
+				if (isPositiveNormal)
 				{
-					float[] uvBaseTop = blockAtlas.baseOfTexture(index, BlockVariant.TOP);
-					float[] uvBaseBottom = blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
-					float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
-					float[] baseCoord = new float[] { (float)base.x(), (float)base.y(), (float)base.z()};
-					
-					// Note that no matter the scale, the quad vertices are the same magnitudes.
-					_PrismVertices v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, 1.0f });
-					
-					// We will fill in each quad by multiple instances, offset by different bases, by tiling along each plane up to scale.
-					// We subtract one from the base scale since we would double-count the top "1.0f".
-					byte oppositeBase = (byte)(size - 1);
-					float baseScale = (float)oppositeBase;
-					
-					// X-normal plane.
-					for (byte z = 0; z < size; ++z)
-					{
-						float zBase = baseCoord[2] + (float)z;
-						for (byte y = 0; y < size; ++y)
-						{
-							float yBase = baseCoord[1] + (float)y;
-							float[] localBase = new float[] { baseCoord[0], yBase, zBase};
-							float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x()), (byte)(base.y() + y), (byte)(base.z() + z))));
-							_populateQuad(builder, localBase, new float[][] {
-									v.v010, v.v000, v.v001, v.v011
-								}, new float[] {-1.0f, 0.0f, 0.0f}
-								, uvBaseSide, textureSize
-								, auxUv, auxTextureSize
-							);
-							localBase[0] += baseScale;
-							auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + oppositeBase), (byte)(base.y() + y), (byte)(base.z() + z))));
-							_populateQuad(builder, localBase, new float[][] {
-									v.v100, v.v110, v.v111, v.v101
-								}, new float[] {1.0f, 0.0f, 0.0f}
-								, uvBaseSide, textureSize
-								, auxUv, auxTextureSize
-							);
-						}
-					}
-					// Y-normal plane.
-					for (byte z = 0; z < size; ++z)
-					{
-						float zBase = baseCoord[2] + (float)z;
-						for (byte x = 0; x < size; ++x)
-						{
-							float xBase = baseCoord[0] + (float)x;
-							float[] localBase = new float[] { xBase, baseCoord[1], zBase};
-							float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y()), (byte)(base.z() + z))));
-							_populateQuad(builder, localBase, new float[][] {
-									v.v000, v.v100, v.v101, v.v001
-								}, new float[] {0.0f, -1.0f,0.0f}
-								, uvBaseSide, textureSize
-								, auxUv, auxTextureSize
-							);
-							localBase[1] += baseScale;
-							auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y() + oppositeBase), (byte)(base.z() + z))));
-							_populateQuad(builder, localBase, new float[][] {
-									v.v110, v.v010, v.v011, v.v111
-								}, new float[] {0.0f, 1.0f, 0.0f}
-								, uvBaseSide, textureSize
-								, auxUv, auxTextureSize
-							);
-						}
-					}
-					// Z-normal plane.
-					// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
-					for (byte y = 0; y < size; ++y)
-					{
-						float yBase = baseCoord[1] + (float)y;
-						for (byte x = 0; x < size; ++x)
-						{
-							float xBase = baseCoord[0] + (float)x;
-							float[] localBase = new float[] { xBase, yBase, baseCoord[2]};
-							float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y() + y), (byte)(base.z()))));
-							_populateQuad(builder, localBase, new float[][] {
-									v.v100, v.v000, v.v010, v.v110
-								}, new float[] {0.0f, 0.0f, -1.0f}
-								, uvBaseBottom, textureSize
-								, auxUv, auxTextureSize
-							);
-							localBase[2] += baseScale;
-							auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress((byte)(base.x() + x), (byte)(base.y() + y), (byte)(base.z() + oppositeBase))));
-							_populateQuad(builder, localBase, new float[][] {
-									v.v001, v.v101, v.v111, v.v011
-								}, new float[] {0.0f, 0.0f, 1.0f}
-								, uvBaseTop, textureSize
-								, auxUv, auxTextureSize
-							);
-						}
-					}
+					_populateQuad(builder, localBase, new float[][] {
+							v.v001, v.v101, v.v111, v.v011
+						}, new float[] {0.0f, 0.0f, 1.0f}
+						, uvBaseTop, textureSize
+						, auxUv, auxTextureSize
+					);
+				}
+				else
+				{
+					_populateQuad(builder, localBase, new float[][] {
+							v.v100, v.v000, v.v010, v.v110
+						}, new float[] {0.0f, 0.0f, -1.0f}
+						, uvBaseBottom, textureSize
+						, auxUv, auxTextureSize
+					);
 				}
 			}
-		}, (short)0);
+			@Override
+			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			{
+				short index = blockIndexMapper[value];
+				float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+				float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
+				float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
+				if (isPositiveNormal)
+				{
+					_populateQuad(builder, localBase, new float[][] {
+							v.v110, v.v010, v.v011, v.v111
+						}, new float[] {0.0f, 1.0f, 0.0f}
+						, uvBaseSide, textureSize
+						, auxUv, auxTextureSize
+					);
+				}
+				else
+				{
+					_populateQuad(builder, localBase, new float[][] {
+							v.v000, v.v100, v.v101, v.v001
+						}, new float[] {0.0f, -1.0f,0.0f}
+						, uvBaseSide, textureSize
+						, auxUv, auxTextureSize
+					);
+				}
+			}
+			@Override
+			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			{
+				short index = blockIndexMapper[value];
+				float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+				float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
+				float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
+				if (isPositiveNormal)
+				{
+					_populateQuad(builder, localBase, new float[][] {
+							v.v100, v.v110, v.v111, v.v101
+						}, new float[] {1.0f, 0.0f, 0.0f}
+						, uvBaseSide, textureSize
+						, auxUv, auxTextureSize
+					);
+				}
+				else
+				{
+					_populateQuad(builder, localBase, new float[][] {
+							v.v010, v.v000, v.v001, v.v011
+						}, new float[] {-1.0f, 0.0f, 0.0f}
+						, uvBaseSide, textureSize
+						, auxUv, auxTextureSize
+					);
+				}
+			}
+		});
 	}
 
 	public static void populateMeshForDroppedItems(Environment env
