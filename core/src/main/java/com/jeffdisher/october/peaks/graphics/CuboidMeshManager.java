@@ -47,6 +47,7 @@ public class CuboidMeshManager
 
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
+	private final Queue<CuboidAddress> _foregroundRequestOrder;
 	private final Queue<FloatBuffer> _foregroundGraphicsBuffers;
 	
 	// Background-only data.
@@ -93,6 +94,7 @@ public class CuboidMeshManager
 		
 		// Foreground-only data.
 		_foregroundCuboids = new HashMap<>();
+		_foregroundRequestOrder = new LinkedList<>();
 		_foregroundGraphicsBuffers = new LinkedList<>();
 		for (int i = 0; i < SCRATCH_BUFFER_COUNT; ++i)
 		{
@@ -144,6 +146,8 @@ public class CuboidMeshManager
 			);
 		}
 		_foregroundCuboids.put(address, internal);
+		// We need to enqueue a request to re-bake this (will be skipped if this is a redundant change).
+		_foregroundRequestOrder.add(address);
 	}
 
 	public void removeCuboid(CuboidAddress address)
@@ -198,12 +202,15 @@ public class CuboidMeshManager
 		}
 		
 		// Now that we have freed up any scratch buffers, see if we can request something else.
-		Iterator<_InternalData> iterator = _foregroundCuboids.values().iterator();
+		// Adjacent cuboid views assume the order of requests so check that queue for the order.
+		Iterator<CuboidAddress> iterator = _foregroundRequestOrder.iterator();
 		List<_InternalData> toReplace = new ArrayList<>();
 		while (!_foregroundGraphicsBuffers.isEmpty() && iterator.hasNext())
 		{
-			_InternalData next = iterator.next();
-			if (next.requiresProcessing)
+			CuboidAddress address = iterator.next();
+			_InternalData next = _foregroundCuboids.get(address);
+			// It is possible that there are redundant requests in the list so double-check that processing is still required.
+			if ((null != next) && next.requiresProcessing)
 			{
 				// This is stale so regenerate it.
 				FloatBuffer meshBuffer = _foregroundGraphicsBuffers.poll();
@@ -213,6 +220,8 @@ public class CuboidMeshManager
 				_enqueueRequest(request);
 				toReplace.add(new _InternalData(false, next.cuboid, next.data));
 			}
+			// Whether we processed this or not, we have handled the request.
+			iterator.remove();
 		}
 		for (_InternalData replace : toReplace)
 		{
