@@ -94,13 +94,13 @@ public class OctoberPeaks extends ApplicationAdapter
 					public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 					{
 						_cuboids.put(cuboid.getCuboidAddress(), cuboid);
-						_scene.setCuboid(cuboid);
+						_scene.setCuboid(cuboid, null);
 					}
 					@Override
 					public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 					{
 						_cuboids.put(cuboid.getCuboidAddress(), cuboid);
-						_scene.setCuboid(cuboid);
+						_scene.setCuboid(cuboid, changedBlocks);
 					}
 					@Override
 					public void unload(CuboidAddress address)

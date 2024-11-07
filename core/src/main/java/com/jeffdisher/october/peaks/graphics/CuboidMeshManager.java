@@ -11,6 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.jeffdisher.october.aspects.Environment;
@@ -19,6 +20,7 @@ import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.SparseShortProjection;
 import com.jeffdisher.october.peaks.TextureAtlas;
+import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
@@ -34,15 +36,21 @@ public class CuboidMeshManager
 	public static final int SCRATCH_BUFFER_COUNT = 2;
 	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
 
+	// Non-mutated data.
 	private final Environment _env;
 	private final IGpu _gpu;
 	private final Attribute[] _programAttributes;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
 	private final TextureAtlas<BlockVariant> _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
-	private final Map<CuboidAddress, _InternalData> _cuboids;
-	private final Queue<FloatBuffer> _scratchGraphicsBuffers;
 	private final short[] _itemToBlockIndexMapper;
+
+	// Foreground-only data.
+	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
+	private final Queue<FloatBuffer> _foregroundGraphicsBuffers;
+	
+	// Background-only data.
+	private final Map<CuboidAddress, IReadOnlyCuboidData> _backgroundCuboids;
 
 	// Objects related to the handoff.
 	private boolean _keepRunning;
@@ -65,16 +73,6 @@ public class CuboidMeshManager
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
 		
-		_cuboids = new HashMap<>();
-		_scratchGraphicsBuffers = new LinkedList<>();
-		for (int i = 0; i < SCRATCH_BUFFER_COUNT; ++i)
-		{
-			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
-			direct.order(ByteOrder.nativeOrder());
-			FloatBuffer buffer = direct.asFloatBuffer();
-			_scratchGraphicsBuffers.add(buffer);
-		}
-		
 		// Extract the items which are blocks and create the index mapping function so we can pack the block atlas.
 		short[] itemToBlockMap = new short[_env.items.ITEMS_BY_TYPE.length];
 		short nextIndex = 0;
@@ -93,6 +91,20 @@ public class CuboidMeshManager
 		}
 		_itemToBlockIndexMapper = itemToBlockMap;
 		
+		// Foreground-only data.
+		_foregroundCuboids = new HashMap<>();
+		_foregroundGraphicsBuffers = new LinkedList<>();
+		for (int i = 0; i < SCRATCH_BUFFER_COUNT; ++i)
+		{
+			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
+			direct.order(ByteOrder.nativeOrder());
+			FloatBuffer buffer = direct.asFloatBuffer();
+			_foregroundGraphicsBuffers.add(buffer);
+		}
+		
+		// Background-only data.
+		_backgroundCuboids = new HashMap<>();
+		
 		// Setup the background processing thread.
 		_keepRunning = true;
 		_requests = new LinkedList<>();
@@ -105,17 +117,17 @@ public class CuboidMeshManager
 
 	public Collection<CuboidData> viewCuboids()
 	{
-		return _cuboids.values().stream()
+		return _foregroundCuboids.values().stream()
 				.map((_InternalData internal) -> internal.data)
 				.collect(Collectors.toList())
 		;
 	}
 
-	public void setCuboid(IReadOnlyCuboidData cuboid)
+	public void setCuboid(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
 	{
 		// We want to create the _InternalData instance of a newer generation, potentially just a placeholder for empty data.
 		CuboidAddress address = cuboid.getCuboidAddress();
-		_InternalData existing = _cuboids.remove(address);
+		_InternalData existing = _foregroundCuboids.remove(address);
 		_InternalData internal;
 		if (null != existing)
 		{
@@ -131,12 +143,21 @@ public class CuboidMeshManager
 					, new CuboidData(address, null, null, null, null)
 			);
 		}
-		_cuboids.put(address, internal);
+		_foregroundCuboids.put(address, internal);
 	}
 
 	public void removeCuboid(CuboidAddress address)
 	{
-		_removeCuboid(address);
+		_InternalData previous = _foregroundCuboids.remove(address);
+		
+		// This can't be missing if we were told to unload it.
+		Assert.assertTrue(null != previous);
+		
+		// Tell the background to drop its copy.
+		_enqueueRequest(new _Request(null, previous.cuboid));
+		
+		// Delete any buffers backing it.
+		_deleteBuffers(previous.data);
 	}
 
 	public void processBackground()
@@ -146,7 +167,7 @@ public class CuboidMeshManager
 		while (null != response)
 		{
 			CuboidAddress address = response.cuboid.getCuboidAddress();
-			_InternalData internal = _cuboids.remove(address);
+			_InternalData internal = _foregroundCuboids.remove(address);
 			
 			// We only replace this if it wasn't deleted.
 			if (null != internal)
@@ -167,25 +188,25 @@ public class CuboidMeshManager
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
 				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
-				_cuboids.put(address, newInstance);
+				_foregroundCuboids.put(address, newInstance);
 			}
 			
 			// We can now return the scratch buffer since we uploaded the related buffers.
-			_scratchGraphicsBuffers.add(response.meshBuffer);
+			_foregroundGraphicsBuffers.add(response.meshBuffer);
 			
 			response = _dequeueResponse();
 		}
 		
 		// Now that we have freed up any scratch buffers, see if we can request something else.
-		Iterator<_InternalData> iterator = _cuboids.values().iterator();
+		Iterator<_InternalData> iterator = _foregroundCuboids.values().iterator();
 		List<_InternalData> toReplace = new ArrayList<>();
-		while (!_scratchGraphicsBuffers.isEmpty() && iterator.hasNext())
+		while (!_foregroundGraphicsBuffers.isEmpty() && iterator.hasNext())
 		{
 			_InternalData next = iterator.next();
 			if (next.requiresProcessing)
 			{
 				// This is stale so regenerate it.
-				FloatBuffer meshBuffer = _scratchGraphicsBuffers.poll();
+				FloatBuffer meshBuffer = _foregroundGraphicsBuffers.poll();
 				_Request request = new _Request(meshBuffer
 						, next.cuboid
 				);
@@ -195,7 +216,7 @@ public class CuboidMeshManager
 		}
 		for (_InternalData replace : toReplace)
 		{
-			_cuboids.put(replace.cuboid.getCuboidAddress(), replace);
+			_foregroundCuboids.put(replace.cuboid.getCuboidAddress(), replace);
 		}
 	}
 
@@ -217,11 +238,11 @@ public class CuboidMeshManager
 		}
 		
 		// Now we can clean up the buffers which made it to GPU memory.
-		for (_InternalData data : _cuboids.values())
+		for (_InternalData data : _foregroundCuboids.values())
 		{
 			_deleteBuffers(data.data);
 		}
-		_cuboids.clear();
+		_foregroundCuboids.clear();
 	}
 
 
@@ -274,6 +295,25 @@ public class CuboidMeshManager
 
 	private _Response _backgroundProcessRequest(_Request request)
 	{
+		//'We need a way to remove unloaded cuboids from the background collection so we use a null buffer in those cases (only using cuboid for its address).
+		_Response response;
+		if (null != request.meshBuffer)
+		{
+			// Real request so run it and get a response.
+			_backgroundCuboids.put(request.cuboid.getCuboidAddress(), request.cuboid);
+			response = _backgroundBuildMesh(request);
+		}
+		else
+		{
+			// In this case, just remove it and don't send a response.
+			_backgroundCuboids.remove(request.cuboid.getCuboidAddress());
+			response = null;
+		}
+		return response;
+	}
+
+	private _Response _backgroundBuildMesh(_Request request)
+	{
 		// Collect information about the cuboid.
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, request.cuboid);
 		
@@ -303,15 +343,6 @@ public class CuboidMeshManager
 				, transparentBuffer
 				, waterBuffer
 		);
-	}
-
-	private void _removeCuboid(CuboidAddress address)
-	{
-		_InternalData previous = _cuboids.remove(address);
-		if (null != previous)
-		{
-			_deleteBuffers(previous.data);
-		}
 	}
 
 	private void _deleteBuffers(CuboidData previous)

@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
@@ -25,6 +26,7 @@ import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
@@ -270,9 +272,9 @@ public class SceneRenderer
 		_cuboidMeshes.processBackground();
 	}
 
-	public void setCuboid(IReadOnlyCuboidData cuboid)
+	public void setCuboid(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
 	{
-		_cuboidMeshes.setCuboid(cuboid);
+		_cuboidMeshes.setCuboid(cuboid, changedBlocks);
 	}
 
 	public void removeCuboid(CuboidAddress address)

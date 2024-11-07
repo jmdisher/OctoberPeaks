@@ -57,7 +57,7 @@ public class TestCuboidMeshManager
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
 		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)6, (byte)7), STONE_ITEM.number());
 		
-		manager.setCuboid(cuboid);
+		manager.setCuboid(cuboid, null);
 		Assert.assertEquals(1, manager.viewCuboids().size());
 		
 		// We shouldn't see the finished result, yet.
