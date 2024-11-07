@@ -2,6 +2,8 @@ package com.jeffdisher.october.peaks.graphics;
 
 import java.nio.FloatBuffer;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
@@ -66,103 +68,59 @@ public class SceneMeshHelpers
 			, boolean opaqueVertices
 	)
 	{
-		_PrismVertices v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, 1.0f });
-		float textureSize = blockAtlas.coordinateSize;
-		float auxTextureSize = auxAtlas.coordinateSize;
-		
+		Predicate<Short> shouldInclude;
+		if (opaqueVertices)
+		{
+			shouldInclude = (Short value) -> {
+				short index = blockIndexMapper[value];
+				return !blockAtlas.textureHasNonOpaquePixels(index);
+			};
+		}
+		else
+		{
+			Set<Short> water = _buildWaterNumberSet(env);
+			shouldInclude = (Short value) -> {
+				short index = blockIndexMapper[value];
+				return blockAtlas.textureHasNonOpaquePixels(index)
+						&& !water.contains(value)
+				;
+			};
+		}
 		FaceBuilder faces = new FaceBuilder();
-		faces.populateMasks(cuboid, (Short value) -> {
-			short index = blockIndexMapper[value];
-			return (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index));
-		});
-		faces.buildFaces(cuboid, new FaceBuilder.IWriter() {
-			@Override
-			public boolean shouldInclude(short value)
-			{
-				short index = blockIndexMapper[value];
-				return (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index));
-			}
-			@Override
-			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
-			{
-				// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
-				short index = blockIndexMapper[value];
-				float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-				float[] uvBaseTop = blockAtlas.baseOfTexture(index, BlockVariant.TOP);
-				float[] uvBaseBottom = blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
-				float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
-				if (isPositiveNormal)
-				{
-					_populateQuad(builder, localBase, new float[][] {
-							v.v001, v.v101, v.v111, v.v011
-						}, new float[] {0.0f, 0.0f, 1.0f}
-						, uvBaseTop, textureSize
-						, auxUv, auxTextureSize
-					);
-				}
-				else
-				{
-					_populateQuad(builder, localBase, new float[][] {
-							v.v100, v.v000, v.v010, v.v110
-						}, new float[] {0.0f, 0.0f, -1.0f}
-						, uvBaseBottom, textureSize
-						, auxUv, auxTextureSize
-					);
-				}
-			}
-			@Override
-			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
-			{
-				short index = blockIndexMapper[value];
-				float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-				float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
-				float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
-				if (isPositiveNormal)
-				{
-					_populateQuad(builder, localBase, new float[][] {
-							v.v110, v.v010, v.v011, v.v111
-						}, new float[] {0.0f, 1.0f, 0.0f}
-						, uvBaseSide, textureSize
-						, auxUv, auxTextureSize
-					);
-				}
-				else
-				{
-					_populateQuad(builder, localBase, new float[][] {
-							v.v000, v.v100, v.v101, v.v001
-						}, new float[] {0.0f, -1.0f,0.0f}
-						, uvBaseSide, textureSize
-						, auxUv, auxTextureSize
-					);
-				}
-			}
-			@Override
-			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
-			{
-				short index = blockIndexMapper[value];
-				float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-				float[] uvBaseSide = blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
-				float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
-				if (isPositiveNormal)
-				{
-					_populateQuad(builder, localBase, new float[][] {
-							v.v100, v.v110, v.v111, v.v101
-						}, new float[] {1.0f, 0.0f, 0.0f}
-						, uvBaseSide, textureSize
-						, auxUv, auxTextureSize
-					);
-				}
-				else
-				{
-					_populateQuad(builder, localBase, new float[][] {
-							v.v010, v.v000, v.v001, v.v011
-						}, new float[] {-1.0f, 0.0f, 0.0f}
-						, uvBaseSide, textureSize
-						, auxUv, auxTextureSize
-					);
-				}
-			}
-		});
+		faces.populateMasks(cuboid, shouldInclude);
+		faces.buildFaces(cuboid, new _CommonVertexWriter(builder
+				, projection
+				, blockIndexMapper
+				, blockAtlas
+				, auxAtlas
+				, shouldInclude
+				, 1.0f
+		));
+	}
+
+	public static void populateWaterMeshBufferForCuboid(Environment env
+			, BufferBuilder builder
+			, TextureAtlas<BlockVariant> blockAtlas
+			, SparseShortProjection<AuxVariant> projection
+			, TextureAtlas<AuxVariant> auxAtlas
+			, short[] blockIndexMapper
+			, IReadOnlyCuboidData cuboid
+	)
+	{
+		Set<Short> water = _buildWaterNumberSet(env);
+		Predicate<Short> shouldInclude = (Short value) -> {
+			return water.contains(value);
+		};
+		FaceBuilder faces = new FaceBuilder();
+		faces.populateMasks(cuboid, shouldInclude);
+		faces.buildFaces(cuboid, new _CommonVertexWriter(builder
+				, projection
+				, blockIndexMapper
+				, blockAtlas
+				, auxAtlas
+				, shouldInclude
+				, 0.9f
+		));
 	}
 
 	public static void populateMeshForDroppedItems(Environment env
@@ -403,6 +361,15 @@ public class SceneMeshHelpers
 		);
 	}
 
+	private static Set<Short> _buildWaterNumberSet(Environment env)
+	{
+		Set<Short> water = Set.of(env.items.getItemById("op.water_source").number()
+				, env.items.getItemById("op.water_strong").number()
+				, env.items.getItemById("op.water_weak").number()
+		);
+		return water;
+	}
+
 
 	public static enum AuxVariant
 	{
@@ -433,6 +400,120 @@ public class SceneMeshHelpers
 			float[] v110 = new float[] { prismEdge[0], prismEdge[1], prismBase[2] };
 			float[] v010 = new float[] { prismBase[0], prismEdge[1], prismBase[2] };
 			return new _PrismVertices(v001, v101, v111, v011, v000, v100, v110, v010);
+		}
+	}
+
+	private static class _CommonVertexWriter implements FaceBuilder.IWriter
+	{
+		private final BufferBuilder _builder;
+		private final SparseShortProjection<AuxVariant> _projection;
+		private final short[] _blockIndexMapper;
+		private final TextureAtlas<BlockVariant> _blockAtlas;
+		private final TextureAtlas<AuxVariant> _auxAtlas;
+		private final Predicate<Short> _shouldInclude;
+		private final _PrismVertices _v;
+		
+		public _CommonVertexWriter(BufferBuilder builder
+				, SparseShortProjection<AuxVariant> projection
+				, short[] blockIndexMapper
+				, TextureAtlas<BlockVariant> blockAtlas
+				, TextureAtlas<AuxVariant> auxAtlas
+				, Predicate<Short> shouldInclude
+				, float blockHeight
+		)
+		{
+			_builder = builder;
+			_projection = projection;
+			_blockIndexMapper = blockIndexMapper;
+			_blockAtlas = blockAtlas;
+			_auxAtlas = auxAtlas;
+			_shouldInclude = shouldInclude;
+			_v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, blockHeight });
+		}
+		@Override
+		public boolean shouldInclude(short value)
+		{
+			return _shouldInclude.test(value);
+		}
+		@Override
+		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		{
+			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+			short index = _blockIndexMapper[value];
+			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+			float[] uvBaseTop = _blockAtlas.baseOfTexture(index, BlockVariant.TOP);
+			float[] uvBaseBottom = _blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
+			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			if (isPositiveNormal)
+			{
+				_populateQuad(_builder, localBase, new float[][] {
+						_v.v001, _v.v101, _v.v111, _v.v011
+					}, new float[] {0.0f, 0.0f, 1.0f}
+					, uvBaseTop, _blockAtlas.coordinateSize
+					, auxUv, _auxAtlas.coordinateSize
+				);
+			}
+			else
+			{
+				_populateQuad(_builder, localBase, new float[][] {
+						_v.v100, _v.v000, _v.v010, _v.v110
+					}, new float[] {0.0f, 0.0f, -1.0f}
+					, uvBaseBottom, _blockAtlas.coordinateSize
+					, auxUv, _auxAtlas.coordinateSize
+				);
+			}
+		}
+		@Override
+		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		{
+			short index = _blockIndexMapper[value];
+			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+			float[] uvBaseSide = _blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
+			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			if (isPositiveNormal)
+			{
+				_populateQuad(_builder, localBase, new float[][] {
+						_v.v110, _v.v010, _v.v011, _v.v111
+					}, new float[] {0.0f, 1.0f, 0.0f}
+					, uvBaseSide, _blockAtlas.coordinateSize
+					, auxUv, _auxAtlas.coordinateSize
+				);
+			}
+			else
+			{
+				_populateQuad(_builder, localBase, new float[][] {
+						_v.v000, _v.v100, _v.v101, _v.v001
+					}, new float[] {0.0f, -1.0f,0.0f}
+					, uvBaseSide, _blockAtlas.coordinateSize
+					, auxUv, _auxAtlas.coordinateSize
+				);
+			}
+		}
+		@Override
+		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		{
+			short index = _blockIndexMapper[value];
+			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+			float[] uvBaseSide = _blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
+			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			if (isPositiveNormal)
+			{
+				_populateQuad(_builder, localBase, new float[][] {
+						_v.v100, _v.v110, _v.v111, _v.v101
+					}, new float[] {1.0f, 0.0f, 0.0f}
+					, uvBaseSide, _blockAtlas.coordinateSize
+					, auxUv, _auxAtlas.coordinateSize
+				);
+			}
+			else
+			{
+				_populateQuad(_builder, localBase, new float[][] {
+						_v.v010, _v.v000, _v.v001, _v.v011
+					}, new float[] {-1.0f, 0.0f, 0.0f}
+					, uvBaseSide, _blockAtlas.coordinateSize
+					, auxUv, _auxAtlas.coordinateSize
+				);
+			}
 		}
 	}
 }

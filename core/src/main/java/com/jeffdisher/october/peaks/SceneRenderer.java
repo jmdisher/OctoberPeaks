@@ -222,6 +222,17 @@ public class SceneRenderer
 		// this may not work for complex models.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
+		// We will render the water first, since we are usually looking down at it.
+		for (CuboidMeshManager.CuboidData value : cuboids)
+		{
+			CuboidAddress key = value.address();
+			if (null != value.waterArray())
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _uModelMatrix);
+				value.waterArray().drawAllTriangles(_gl);
+			}
+		}
 		for (CuboidMeshManager.CuboidData value : cuboids)
 		{
 			CuboidAddress key = value.address();

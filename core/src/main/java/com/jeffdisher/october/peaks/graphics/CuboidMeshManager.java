@@ -128,7 +128,7 @@ public class CuboidMeshManager
 		{
 			internal = new _InternalData(true
 					, cuboid
-					, new CuboidData(address, null, null, null)
+					, new CuboidData(address, null, null, null, null)
 			);
 		}
 		_cuboids.put(address, internal);
@@ -158,10 +158,12 @@ public class CuboidMeshManager
 				VertexArray opaqueData = (null != response.opaqueBuffer) ? _gpu.uploadBuffer(response.opaqueBuffer) : null;
 				VertexArray itemsOnGroundArray = (null != response.itemsOnGroundBuffer) ? _gpu.uploadBuffer(response.itemsOnGroundBuffer) : null;
 				VertexArray transparentData = (null != response.transparentBuffer) ? _gpu.uploadBuffer(response.transparentBuffer) : null;
+				VertexArray waterData = (null != response.waterBuffer) ? _gpu.uploadBuffer(response.waterBuffer) : null;
 				CuboidData newData = new CuboidData(response.cuboid.getCuboidAddress()
 						, opaqueData
 						, itemsOnGroundArray
 						, transparentData
+						, waterData
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
 				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
@@ -285,15 +287,21 @@ public class CuboidMeshManager
 		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, request.cuboid);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
-		// Create the transparent cuboid vertices.
+		// Create the transparent (non-water) cuboid vertices.
+		// Note that this may be removed in the future if we end up with no transparent block textures after converting associated blocks to models.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, request.cuboid, false);
 		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
+		
+		// Create the water cuboid vertices.
+		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env, builder, _blockTextures, variantProjection, _auxBlockTextures,_itemToBlockIndexMapper, request.cuboid);
+		BufferBuilder.Buffer waterBuffer = builder.finishOne();
 		
 		return new _Response(request.meshBuffer
 				, request.cuboid
 				, opaqueBuffer
 				, itemsOnGroundBuffer
 				, transparentBuffer
+				, waterBuffer
 		);
 	}
 
@@ -320,6 +328,10 @@ public class CuboidMeshManager
 		{
 			_gpu.deleteBuffer(previous.transparentArray);
 		}
+		if (null != previous.waterArray)
+		{
+			_gpu.deleteBuffer(previous.waterArray);
+		}
 	}
 
 
@@ -336,6 +348,7 @@ public class CuboidMeshManager
 			, VertexArray opaqueArray
 			, VertexArray itemsOnGroundArray
 			, VertexArray transparentArray
+			, VertexArray waterArray
 	) {}
 
 	private static record _InternalData(boolean requiresProcessing
@@ -352,5 +365,6 @@ public class CuboidMeshManager
 			, BufferBuilder.Buffer opaqueBuffer
 			, BufferBuilder.Buffer itemsOnGroundBuffer
 			, BufferBuilder.Buffer transparentBuffer
+			, BufferBuilder.Buffer waterBuffer
 	) {}
 }
