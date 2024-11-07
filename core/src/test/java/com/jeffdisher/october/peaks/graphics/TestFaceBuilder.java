@@ -17,11 +17,13 @@ import com.jeffdisher.october.worldgen.CuboidGenerator;
 public class TestFaceBuilder
 {
 	private static Environment ENV;
+	private static Item DIRT_ITEM;
 	private static Item STONE_ITEM;
 	@BeforeClass
 	public static void setup()
 	{
 		ENV = Environment.createSharedInstance();
+		DIRT_ITEM = ENV.items.getItemById("op.dirt");
 		STONE_ITEM = ENV.items.getItemById("op.stone");
 	}
 	@AfterClass
@@ -38,6 +40,7 @@ public class TestFaceBuilder
 		cuboid.setData15(AspectRegistry.BLOCK, blockAddress, STONE_ITEM.number());
 		int[] counts = new int[3];
 		FaceBuilder builder = new FaceBuilder();
+		builder.populateMasks(cuboid, (Short value) -> true);
 		builder.buildFaces(cuboid, new FaceBuilder.IWriter() {
 			@Override
 			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
@@ -66,5 +69,75 @@ public class TestFaceBuilder
 		});
 		
 		Assert.assertArrayEquals(new int[] { 2, 2, 2 }, counts);
+	}
+
+	@Test
+	public void twoBlocks() throws Throwable
+	{
+		// Draw 2 blocks which should share a single face.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)1, (byte)2, (byte)3), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)1, (byte)2, (byte)4), DIRT_ITEM.number());
+		FaceBuilder builder = new FaceBuilder();
+		builder.populateMasks(cuboid, (Short value) -> true);
+		_CountingWriter counter = new _CountingWriter();
+		builder.buildFaces(cuboid, counter);
+		
+		Assert.assertEquals(2, counter.xy);
+		Assert.assertEquals(4, counter.xz);
+		Assert.assertEquals(4, counter.yz);
+	}
+
+	@Test
+	public void largerBlock() throws Throwable
+	{
+		// Draw 2 blocks which should share a single face.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)2, (byte)2), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)2, (byte)3), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)3, (byte)2), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)3, (byte)3), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)2, (byte)2), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)2, (byte)3), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)3, (byte)2), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)3, (byte)3), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)3, (byte)4), DIRT_ITEM.number());
+		FaceBuilder builder = new FaceBuilder();
+		builder.populateMasks(cuboid, (Short value) -> true);
+		_CountingWriter counter = new _CountingWriter();
+		builder.buildFaces(cuboid, counter);
+		
+		Assert.assertEquals(8, counter.xy);
+		Assert.assertEquals(10, counter.xz);
+		Assert.assertEquals(10, counter.yz);
+	}
+
+
+	private static class _CountingWriter implements FaceBuilder.IWriter
+	{
+		public int yz;
+		public int xz;
+		public int xy;
+		
+		@Override
+		public boolean shouldInclude(short value)
+		{
+			return true;
+		}
+		@Override
+		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		{
+			this.xy += 1;
+		}
+		@Override
+		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		{
+			this.xz += 1;
+		}
+		@Override
+		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		{
+			this.yz += 1;
+		}
 	}
 }

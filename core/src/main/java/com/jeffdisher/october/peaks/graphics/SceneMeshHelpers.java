@@ -71,6 +71,10 @@ public class SceneMeshHelpers
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		FaceBuilder faces = new FaceBuilder();
+		faces.populateMasks(cuboid, (Short value) -> {
+			short index = blockIndexMapper[value];
+			return (opaqueVertices != blockAtlas.textureHasNonOpaquePixels(index));
+		});
 		faces.buildFaces(cuboid, new FaceBuilder.IWriter() {
 			@Override
 			public boolean shouldInclude(short value)
