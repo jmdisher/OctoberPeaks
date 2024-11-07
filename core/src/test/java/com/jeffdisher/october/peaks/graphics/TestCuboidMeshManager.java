@@ -14,7 +14,6 @@ import com.jeffdisher.october.peaks.TextureAtlas;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
-import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.worldgen.CuboidGenerator;
 
 
@@ -22,13 +21,13 @@ public class TestCuboidMeshManager
 {
 	private static Environment ENV;
 	private static Attribute[] ATTRIBUTES;
-	private static Item STONE_ITEM;
+	private static short STONE_VALUE;
 	@BeforeClass
 	public static void setup()
 	{
 		ENV = Environment.createSharedInstance();
 		ATTRIBUTES = new Attribute[] { new Attribute("aPosition", 3),  new Attribute("aNormal", 3),  new Attribute("aTexture0", 2),  new Attribute("aTexture1", 2) };
-		STONE_ITEM = ENV.items.getItemById("op.stone");
+		STONE_VALUE = ENV.items.getItemById("op.stone").number();
 	}
 	@AfterClass
 	public static void tearDown()
@@ -48,14 +47,14 @@ public class TestCuboidMeshManager
 	public void addOne() throws Throwable
 	{
 		_Gpu testingGpu = new _Gpu();
-		int textureCount = STONE_ITEM.number() + 1;
+		int textureCount = STONE_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
 		
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
-		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)6, (byte)7), STONE_ITEM.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)6, (byte)7), STONE_VALUE);
 		
 		manager.setCuboid(cuboid, null);
 		Assert.assertEquals(1, manager.viewCuboids().size());
@@ -71,6 +70,7 @@ public class TestCuboidMeshManager
 		{
 			manager.processBackground();
 		}
+		Assert.assertEquals(36, manager.viewCuboids().iterator().next().opaqueArray().totalVertices);
 		
 		manager.shutdown();
 	}

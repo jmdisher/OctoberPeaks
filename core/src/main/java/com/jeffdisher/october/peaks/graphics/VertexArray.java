@@ -12,14 +12,14 @@ import com.badlogic.gdx.graphics.GL20;
 public class VertexArray
 {
 	private final int _buffer;
-	private final int _totalVertices;
+	public final int totalVertices;
 	private final Attribute[] _attributes;
 	private final int _totalFloats;
 
 	public VertexArray(int buffer, int totalVertices, Attribute[] attributes)
 	{
 		_buffer = buffer;
-		_totalVertices = totalVertices;
+		this.totalVertices = totalVertices;
 		_attributes = attributes;
 		_totalFloats = Arrays.stream(_attributes)
 				.collect(Collectors.summingInt((Attribute a) -> a.floats()))
@@ -29,13 +29,13 @@ public class VertexArray
 	public void drawAllTriangles(GL20 gl)
 	{
 		_setupBuffer(gl);
-		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, _totalVertices);
+		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, this.totalVertices);
 	}
 
 	public void drawAllLines(GL20 gl)
 	{
 		_setupBuffer(gl);
-		gl.glDrawArrays(GL20.GL_LINES, 0, _totalVertices);
+		gl.glDrawArrays(GL20.GL_LINES, 0, this.totalVertices);
 	}
 
 	public void delete(GL20 gl)
