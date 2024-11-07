@@ -14,6 +14,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BlockVariant;
@@ -24,6 +25,7 @@ import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
+import com.jeffdisher.october.utils.Encoding;
 
 
 /**
@@ -148,6 +150,89 @@ public class CuboidMeshManager
 		_foregroundCuboids.put(address, internal);
 		// We need to enqueue a request to re-bake this (will be skipped if this is a redundant change).
 		_foregroundRequestOrder.add(address);
+		
+		// See if we need to re-bake any adjacent cuboids.
+		if (null == existing)
+		{
+			// Changed blocks should be null if this is newly loaded.
+			Assert.assertTrue(null == changedBlocks);
+			
+			// There was nothing here so re-bake all adjacent blocks.
+			_markDirty(address.getRelative(0, 0, 1));
+			_markDirty(address.getRelative(0, 0, -1));
+			_markDirty(address.getRelative(0, 1, 0));
+			_markDirty(address.getRelative(0, -1, 0));
+			_markDirty(address.getRelative(1, 0, 0));
+			_markDirty(address.getRelative(-1, 0, 0));
+		}
+		else
+		{
+			// Changed blocks should ONLY be null if this is newly loaded.
+			Assert.assertTrue(null != changedBlocks);
+			
+			// There was already something here so check the changed blocks, see if any are on any changed adjacent faces.
+			boolean up = false;
+			boolean down = false;
+			boolean north = false;
+			boolean south = false;
+			boolean east = false;
+			boolean west = false;
+			byte zero = 0;
+			byte edge = Encoding.CUBOID_EDGE_SIZE - 1;
+			IReadOnlyCuboidData oldCuboid = existing.cuboid;
+			for (BlockAddress changed : changedBlocks)
+			{
+				if (zero == changed.z())
+				{
+					down |= _didBlockChange(oldCuboid, cuboid, changed);
+				}
+				else if (edge == changed.z())
+				{
+					up |= _didBlockChange(oldCuboid, cuboid, changed);
+				}
+				if (zero == changed.y())
+				{
+					south |= _didBlockChange(oldCuboid, cuboid, changed);
+				}
+				else if (edge == changed.y())
+				{
+					north |= _didBlockChange(oldCuboid, cuboid, changed);
+				}
+				if (zero == changed.x())
+				{
+					west |= _didBlockChange(oldCuboid, cuboid, changed);
+				}
+				else if (edge == changed.x())
+				{
+					east |= _didBlockChange(oldCuboid, cuboid, changed);
+				}
+			}
+			
+			if (up)
+			{
+				_markDirty(address.getRelative(0, 0, 1));
+			}
+			if (down)
+			{
+				_markDirty(address.getRelative(0, 0, -1));
+			}
+			if (north)
+			{
+				_markDirty(address.getRelative(0, 1, 0));
+			}
+			if (south)
+			{
+				_markDirty(address.getRelative(0, -1, 0));
+			}
+			if (east)
+			{
+				_markDirty(address.getRelative(1, 0, 0));
+			}
+			if (west)
+			{
+				_markDirty(address.getRelative(-1, 0, 0));
+			}
+		}
 	}
 
 	public void removeCuboid(CuboidAddress address)
@@ -423,6 +508,29 @@ public class CuboidMeshManager
 		{
 			_gpu.deleteBuffer(previous.waterArray);
 		}
+	}
+
+	private void _markDirty(CuboidAddress address)
+	{
+		// We just replace the data for this cuboid, if it exists.
+		_InternalData existing = _foregroundCuboids.remove(address);
+		if (null != existing)
+		{
+			_foregroundCuboids.put(address, new _InternalData(true, existing.cuboid, existing.data));
+			// We need to enqueue a request to re-bake this (will be skipped if this is a redundant change).
+			_foregroundRequestOrder.add(address);
+		}
+	}
+
+	private boolean _didBlockChange(IReadOnlyCuboidData oldCuboid, IReadOnlyCuboidData newCuboid, BlockAddress blockAddress)
+	{
+		// See if the block changed type.
+		// TODO:  When implementing block lighting, add a lighting change check here, too.
+		
+		// NOTE:  Reading the block value, directly, can be somewhat expensive.
+		short oldBlockValue = oldCuboid.getData15(AspectRegistry.BLOCK, blockAddress);
+		short newBlockValue = newCuboid.getData15(AspectRegistry.BLOCK, blockAddress);
+		return (oldBlockValue != newBlockValue);
 	}
 
 
