@@ -19,6 +19,114 @@ public class FaceBuilder
 	private final _ColumnBits _xzColumn = new _ColumnBits();
 	private final _ColumnBits _yzColumn = new _ColumnBits();
 
+	public void preSeedMasks(IReadOnlyCuboidData cuboid
+			, Predicate<Short> shouldInclude
+			, byte lowZ
+			, byte highZ
+			, byte lowY
+			, byte highY
+			, byte lowX
+			, byte highX
+	)
+	{
+		// We we match at the high end, we need to set 0, and the low end, we need to set 32 (since the local addresses are from the other cuboid, not the target one).
+		byte low = 0;
+		byte high = Encoding.CUBOID_EDGE_SIZE;
+		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
+			@Override
+			public void visit(BlockAddress base, byte size, Short object)
+			{
+				if (shouldInclude.test(object))
+				{
+					byte baseX = base.x();
+					byte baseY = base.y();
+					byte baseZ = base.z();
+					byte edgeX = (byte)(baseX + size);
+					byte edgeY = (byte)(baseY + size);
+					byte edgeZ = (byte)(baseZ + size);
+					
+					// Z-normal plane.
+					if (lowZ == baseZ)
+					{
+						for (byte y = 0; y < size; ++y)
+						{
+							byte thisY = (byte)(baseY + y);
+							for (byte x = 0; x < size; ++x)
+							{
+								byte thisX = (byte)(baseX + x);
+								_xyColumn.toggle(thisX, thisY, high);
+							}
+						}
+					}
+					if (highZ == edgeZ)
+					{
+						for (byte y = 0; y < size; ++y)
+						{
+							byte thisY = (byte)(baseY + y);
+							for (byte x = 0; x < size; ++x)
+							{
+								byte thisX = (byte)(baseX + x);
+								_xyColumn.toggle(thisX, thisY, low);
+							}
+						}
+					}
+					
+					// Y-normal plane.
+					if (lowY == baseY)
+					{
+						for (byte z = 0; z < size; ++z)
+						{
+							byte thisZ = (byte)(baseZ + z);
+							for (byte x = 0; x < size; ++x)
+							{
+								byte thisX = (byte)(baseX + x);
+								_xzColumn.toggle(thisX, thisZ, high);
+							}
+						}
+					}
+					if (highY== edgeY)
+					{
+						for (byte z = 0; z < size; ++z)
+						{
+							byte thisZ = (byte)(baseZ + z);
+							for (byte x = 0; x < size; ++x)
+							{
+								byte thisX = (byte)(baseX + x);
+								_xzColumn.toggle(thisX, thisZ, low);
+							}
+						}
+					}
+					
+					// X-normal plane.
+					if (lowX == baseX)
+					{
+						for (byte z = 0; z < size; ++z)
+						{
+							byte thisZ = (byte)(baseZ + z);
+							for (byte y = 0; y < size; ++y)
+							{
+								byte thisY = (byte)(baseY + y);
+								_yzColumn.toggle(thisY, thisZ, high);
+							}
+						}
+					}
+					if (highX == edgeX)
+					{
+						for (byte z = 0; z < size; ++z)
+						{
+							byte thisZ = (byte)(baseZ + z);
+							for (byte y = 0; y < size; ++y)
+							{
+								byte thisY = (byte)(baseY + y);
+								_yzColumn.toggle(thisY, thisZ, low);
+							}
+						}
+					}
+				}
+			}
+		}, (short)0);
+	}
+
 	public void populateMasks(IReadOnlyCuboidData cuboid, Predicate<Short> shouldInclude)
 	{
 		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {

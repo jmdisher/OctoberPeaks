@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks.graphics;
 
+import java.util.function.Predicate;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -11,6 +13,7 @@ import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.utils.Encoding;
 import com.jeffdisher.october.worldgen.CuboidGenerator;
 
 
@@ -110,6 +113,46 @@ public class TestFaceBuilder
 		Assert.assertEquals(8, counter.xy);
 		Assert.assertEquals(10, counter.xz);
 		Assert.assertEquals(10, counter.yz);
+	}
+
+	@Test
+	public void largeBlockOnBoundary() throws Throwable
+	{
+		// Create 2 cuboids, each with blocks around the boundary to see that the shared face is still detected.
+		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)1), ENV.special.AIR);
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)2, (byte)30), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)2, (byte)31), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)3, (byte)30), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)2, (byte)3, (byte)31), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)2, (byte)30), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)2, (byte)31), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)3, (byte)30), STONE_ITEM.number());
+		lowCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)3, (byte)31), STONE_ITEM.number());
+		highCuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)3, (byte)3, (byte)0), DIRT_ITEM.number());
+		
+		byte omit = -1;
+		byte zero = 0;
+		byte edge = Encoding.CUBOID_EDGE_SIZE;
+		Predicate<Short> always = (Short value) -> true;
+		
+		FaceBuilder builder = new FaceBuilder();
+		builder.preSeedMasks(highCuboid, always, zero, omit, omit, omit, omit, omit);
+		builder.populateMasks(lowCuboid, always);
+		_CountingWriter counter = new _CountingWriter();
+		builder.buildFaces(lowCuboid, counter);
+		Assert.assertEquals(7, counter.xy);
+		Assert.assertEquals(8, counter.xz);
+		Assert.assertEquals(8, counter.yz);
+		
+		builder = new FaceBuilder();
+		builder.preSeedMasks(lowCuboid, always, omit, edge, omit, omit, omit, omit);
+		builder.populateMasks(highCuboid, always);
+		counter = new _CountingWriter();
+		builder.buildFaces(highCuboid, counter);
+		Assert.assertEquals(1, counter.xy);
+		Assert.assertEquals(2, counter.xz);
+		Assert.assertEquals(2, counter.yz);
 	}
 
 

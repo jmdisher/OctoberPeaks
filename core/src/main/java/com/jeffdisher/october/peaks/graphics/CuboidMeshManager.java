@@ -315,29 +315,80 @@ public class CuboidMeshManager
 	private _Response _backgroundBuildMesh(_Request request)
 	{
 		// Collect information about the cuboid.
-		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, request.cuboid);
+		IReadOnlyCuboidData cuboid = request.cuboid;
+		CuboidAddress address = cuboid.getCuboidAddress();
+		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
 		
+		// Get the adjacent cuboids to pre-seed the FaceBuilders.
+		IReadOnlyCuboidData otherUp = _backgroundCuboids.get(address.getRelative(0, 0, 1));
+		IReadOnlyCuboidData otherDown = _backgroundCuboids.get(address.getRelative(0, 0, -1));
+		IReadOnlyCuboidData otherNorth = _backgroundCuboids.get(address.getRelative(0, 1, 0));
+		IReadOnlyCuboidData otherSouth = _backgroundCuboids.get(address.getRelative(0, -1, 0));
+		IReadOnlyCuboidData otherEast = _backgroundCuboids.get(address.getRelative(1, 0, 0));
+		IReadOnlyCuboidData otherWest = _backgroundCuboids.get(address.getRelative(-1, 0, 0));
+		
 		// Create the opaque cuboid vertices.
-		SceneMeshHelpers.populateMeshBufferForCuboid(_env, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, request.cuboid, true);
+		SceneMeshHelpers.populateMeshBufferForCuboid(_env
+				, builder
+				, _blockTextures
+				, variantProjection
+				, _auxBlockTextures
+				, _itemToBlockIndexMapper
+				, cuboid
+				, otherUp
+				, otherDown
+				, otherNorth
+				, otherSouth
+				, otherEast
+				, otherWest
+				, true
+		);
 		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
 		
 		// Create the vertex array for any items dropped on the ground.
-		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, request.cuboid);
+		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, cuboid);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
 		// Create the transparent (non-water) cuboid vertices.
 		// Note that this may be removed in the future if we end up with no transparent block textures after converting associated blocks to models.
-		SceneMeshHelpers.populateMeshBufferForCuboid(_env, builder, _blockTextures, variantProjection, _auxBlockTextures, _itemToBlockIndexMapper, request.cuboid, false);
+		SceneMeshHelpers.populateMeshBufferForCuboid(_env
+				, builder
+				, _blockTextures
+				, variantProjection
+				, _auxBlockTextures
+				, _itemToBlockIndexMapper
+				, cuboid
+				, otherUp
+				, otherDown
+				, otherNorth
+				, otherSouth
+				, otherEast
+				, otherWest
+				, false
+		);
 		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
 		
 		// Create the water cuboid vertices.
-		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env, builder, _blockTextures, variantProjection, _auxBlockTextures,_itemToBlockIndexMapper, request.cuboid);
+		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
+				, builder
+				, _blockTextures
+				, variantProjection
+				, _auxBlockTextures
+				,_itemToBlockIndexMapper
+				, cuboid
+				, otherUp
+				, otherDown
+				, otherNorth
+				, otherSouth
+				, otherEast
+				, otherWest
+		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
 		
 		return new _Response(request.meshBuffer
-				, request.cuboid
+				, cuboid
 				, opaqueBuffer
 				, itemsOnGroundBuffer
 				, transparentBuffer

@@ -21,6 +21,7 @@ import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.utils.Assert;
+import com.jeffdisher.october.utils.Encoding;
 
 
 public class SceneMeshHelpers
@@ -65,6 +66,12 @@ public class SceneMeshHelpers
 			, TextureAtlas<AuxVariant> auxAtlas
 			, short[] blockIndexMapper
 			, IReadOnlyCuboidData cuboid
+			, IReadOnlyCuboidData otherUp
+			, IReadOnlyCuboidData otherDown
+			, IReadOnlyCuboidData otherNorth
+			, IReadOnlyCuboidData otherSouth
+			, IReadOnlyCuboidData otherEast
+			, IReadOnlyCuboidData otherWest
 			, boolean opaqueVertices
 	)
 	{
@@ -87,6 +94,15 @@ public class SceneMeshHelpers
 			};
 		}
 		FaceBuilder faces = new FaceBuilder();
+		_preSeed(faces
+				, shouldInclude
+				, otherUp
+				, otherDown
+				, otherNorth
+				, otherSouth
+				, otherEast
+				, otherWest
+		);
 		faces.populateMasks(cuboid, shouldInclude);
 		faces.buildFaces(cuboid, new _CommonVertexWriter(builder
 				, projection
@@ -105,6 +121,12 @@ public class SceneMeshHelpers
 			, TextureAtlas<AuxVariant> auxAtlas
 			, short[] blockIndexMapper
 			, IReadOnlyCuboidData cuboid
+			, IReadOnlyCuboidData otherUp
+			, IReadOnlyCuboidData otherDown
+			, IReadOnlyCuboidData otherNorth
+			, IReadOnlyCuboidData otherSouth
+			, IReadOnlyCuboidData otherEast
+			, IReadOnlyCuboidData otherWest
 	)
 	{
 		Set<Short> water = _buildWaterNumberSet(env);
@@ -112,6 +134,15 @@ public class SceneMeshHelpers
 			return water.contains(value);
 		};
 		FaceBuilder faces = new FaceBuilder();
+		_preSeed(faces
+				, shouldInclude
+				, otherUp
+				, otherDown
+				, otherNorth
+				, otherSouth
+				, otherEast
+				, otherWest
+		);
 		faces.populateMasks(cuboid, shouldInclude);
 		faces.buildFaces(cuboid, new _CommonVertexWriter(builder
 				, projection
@@ -238,6 +269,44 @@ public class SceneMeshHelpers
 		return builder.finishOne().flush(gl);
 	}
 
+
+	private static void _preSeed(FaceBuilder faces
+			, Predicate<Short> shouldInclude
+			, IReadOnlyCuboidData otherUp
+			, IReadOnlyCuboidData otherDown
+			, IReadOnlyCuboidData otherNorth
+			, IReadOnlyCuboidData otherSouth
+			, IReadOnlyCuboidData otherEast
+			, IReadOnlyCuboidData otherWest)
+	{
+		byte omit = -1;
+		byte zero = 0;
+		byte edge = Encoding.CUBOID_EDGE_SIZE;
+		if (null != otherUp)
+		{
+			faces.preSeedMasks(otherUp, shouldInclude, zero, omit, omit, omit, omit, omit);
+		}
+		if (null != otherDown)
+		{
+			faces.preSeedMasks(otherDown, shouldInclude, omit, edge, omit, omit, omit, omit);
+		}
+		if (null != otherNorth)
+		{
+			faces.preSeedMasks(otherNorth, shouldInclude, omit, omit, zero, omit, omit, omit);
+		}
+		if (null != otherSouth)
+		{
+			faces.preSeedMasks(otherSouth, shouldInclude, omit, omit, omit, edge, omit, omit);
+		}
+		if (null != otherEast)
+		{
+			faces.preSeedMasks(otherEast, shouldInclude, omit, omit, omit, omit, zero, omit);
+		}
+		if (null != otherWest)
+		{
+			faces.preSeedMasks(otherWest, shouldInclude, omit, omit, omit, omit, omit, edge);
+		}
+	}
 
 	private static void _drawUpFacingSquare(BufferBuilder builder
 			, float[] base
