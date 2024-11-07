@@ -98,6 +98,7 @@ public class SceneRenderer
 						"aNormal",
 						"aTexture0",
 						"aTexture1",
+						"aBlockLightMultiplier",
 				}
 		);
 		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
@@ -310,6 +311,7 @@ public class SceneRenderer
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 		VertexArray buffer;
 		float[] ignoredOtherTexture = new float[] { 0.0f, 0.0f };
+		float[] blockLightMultiplier = new float[] {1.0f};
 		if (meshFile.exists())
 		{
 			String rawMesh = meshFile.readString();
@@ -319,6 +321,7 @@ public class SceneRenderer
 						, normal
 						, texture
 						, ignoredOtherTexture
+						, blockLightMultiplier
 				);
 			}, rawMesh);
 			buffer = builder.finishOne().flush(gl);

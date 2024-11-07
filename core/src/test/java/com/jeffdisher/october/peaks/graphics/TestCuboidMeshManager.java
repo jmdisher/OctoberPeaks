@@ -30,7 +30,12 @@ public class TestCuboidMeshManager
 	public static void setup()
 	{
 		ENV = Environment.createSharedInstance();
-		ATTRIBUTES = new Attribute[] { new Attribute("aPosition", 3),  new Attribute("aNormal", 3),  new Attribute("aTexture0", 2),  new Attribute("aTexture1", 2) };
+		ATTRIBUTES = new Attribute[] { new Attribute("aPosition", 3)
+				, new Attribute("aNormal", 3)
+				, new Attribute("aTexture0", 2)
+				, new Attribute("aTexture1", 2)
+				, new Attribute("aBlockLightMultiplier", 1)
+		};
 		STONE_VALUE = ENV.items.getItemById("op.stone").number();
 		WATER_VALUE = ENV.items.getItemById("op.water_source").number();
 	}

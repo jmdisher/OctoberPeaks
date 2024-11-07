@@ -167,6 +167,9 @@ public class SceneMeshHelpers
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
+		// TODO:  Replace this light value with a real value.
+		float blockLightMultiplier = 1.0f;
+		
 		// See if there are any inventories in empty blocks in this cuboid.
 		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
 			@Override
@@ -195,6 +198,7 @@ public class SceneMeshHelpers
 						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE
 								, uvBase, textureSize
 								, auxUv, auxTextureSize
+								, blockLightMultiplier
 						);
 					}
 				}
@@ -222,6 +226,7 @@ public class SceneMeshHelpers
 		
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		_PrismVertices v = _PrismVertices.from(base, edgeVertices);
+		float blockLightMultiplier = 1.0f;
 		
 		// X-normal plane.
 		_populateQuad(builder, base, new float[][] {
@@ -229,12 +234,14 @@ public class SceneMeshHelpers
 			}, new float[] {-1.0f, 0.0f, 0.0f}
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
+			, blockLightMultiplier
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v100, v.v110, v.v111, v.v101
 			}, new float[] {1.0f, 0.0f, 0.0f}
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
+			, blockLightMultiplier
 		);
 		
 		// Y-normal plane.
@@ -243,12 +250,14 @@ public class SceneMeshHelpers
 			}, new float[] {0.0f, -1.0f,0.0f}
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
+			, blockLightMultiplier
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v110, v.v010, v.v011, v.v111
 			}, new float[] {0.0f, 1.0f, 0.0f}
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
+			, blockLightMultiplier
 		);
 		
 		// Z-normal plane.
@@ -258,12 +267,14 @@ public class SceneMeshHelpers
 			}, new float[] {0.0f, 0.0f, -1.0f}
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
+			, blockLightMultiplier
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v001, v.v101, v.v111, v.v011
 			}, new float[] {0.0f, 0.0f, 1.0f}
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
+			, blockLightMultiplier
 		);
 		
 		return builder.finishOne().flush(gl);
@@ -315,6 +326,7 @@ public class SceneMeshHelpers
 			, float textureSize
 			, float[] otherUvBase
 			, float otherTextureSize
+			, float blockLightMultiplier
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -343,6 +355,7 @@ public class SceneMeshHelpers
 				, new float[] { 0.0f, 0.0f, 1.0f }
 				, uvBase, textureSize
 				, otherUvBase, otherTextureSize
+				, blockLightMultiplier
 		);
 	}
 
@@ -354,6 +367,7 @@ public class SceneMeshHelpers
 			, float textureSize
 			, float[] otherUvBase
 			, float otherTextureSize
+			, float blockLightMultiplier
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -385,48 +399,56 @@ public class SceneMeshHelpers
 		float otherV = otherUvBase[1];
 		float otherUEdge = otherU + otherTextureSize;
 		float otherVEdge = otherV + otherTextureSize;
+		float[] light = new float[] { blockLightMultiplier };
 		
 		// Each element is:
 		// vx, vy, vz
 		// nx, ny, nz
 		// u, v
 		// otherU, otherV
+		// blockLight
 		
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
 				, new float[] {u, v}
 				, new float[] {otherU, otherV}
+				, light
 		);
 		// Right Bottom.
 		builder.appendVertex(bottomRight
 				, normal
 				, new float[] {uEdge, v}
 				, new float[] {otherUEdge, otherV}
+				, light
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
 				, new float[] {uEdge, vEdge}
 				, new float[] {otherUEdge, otherVEdge}
+				, light
 		);
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
 				, new float[] {u, v}
 				, new float[] {otherU, otherV}
+				, light
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
 				, new float[] {uEdge, vEdge}
 				, new float[] {otherUEdge, otherVEdge}
+				, light
 		);
 		// Left Top.
 		builder.appendVertex(topLeft
 				, normal
 				, new float[] {u, vEdge}
 				, new float[] {otherU, otherVEdge}
+				, light
 		);
 	}
 
@@ -481,6 +503,7 @@ public class SceneMeshHelpers
 		private final TextureAtlas<AuxVariant> _auxAtlas;
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
+		private final float _blockLightMultiplier;
 		
 		public _CommonVertexWriter(BufferBuilder builder
 				, SparseShortProjection<AuxVariant> projection
@@ -498,6 +521,8 @@ public class SceneMeshHelpers
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
 			_v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, blockHeight });
+			// TODO:  Replace this light value with a real value.
+			_blockLightMultiplier = 1.0f;
 		}
 		@Override
 		public boolean shouldInclude(short value)
@@ -520,6 +545,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, 0.0f, 1.0f}
 					, uvBaseTop, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
+					, _blockLightMultiplier
 				);
 			}
 			else
@@ -529,6 +555,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, 0.0f, -1.0f}
 					, uvBaseBottom, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
+					, _blockLightMultiplier
 				);
 			}
 		}
@@ -546,6 +573,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, 1.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
+					, _blockLightMultiplier
 				);
 			}
 			else
@@ -555,6 +583,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, -1.0f,0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
+					, _blockLightMultiplier
 				);
 			}
 		}
@@ -572,6 +601,7 @@ public class SceneMeshHelpers
 					}, new float[] {1.0f, 0.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
+					, _blockLightMultiplier
 				);
 			}
 			else
@@ -581,6 +611,7 @@ public class SceneMeshHelpers
 					}, new float[] {-1.0f, 0.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
+					, _blockLightMultiplier
 				);
 			}
 		}
