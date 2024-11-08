@@ -422,6 +422,14 @@ public class CuboidMeshManager
 		IReadOnlyCuboidData otherSouth = _backgroundCuboids.get(address.getRelative(0, -1, 0));
 		IReadOnlyCuboidData otherEast = _backgroundCuboids.get(address.getRelative(1, 0, 0));
 		IReadOnlyCuboidData otherWest = _backgroundCuboids.get(address.getRelative(-1, 0, 0));
+		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid
+				, otherUp
+				, otherDown
+				, otherNorth
+				, otherSouth
+				, otherEast
+				, otherWest
+		);
 		
 		// Create the opaque cuboid vertices.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
@@ -430,13 +438,7 @@ public class CuboidMeshManager
 				, variantProjection
 				, _auxBlockTextures
 				, _itemToBlockIndexMapper
-				, cuboid
-				, otherUp
-				, otherDown
-				, otherNorth
-				, otherSouth
-				, otherEast
-				, otherWest
+				, inputData
 				, true
 		);
 		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
@@ -453,13 +455,7 @@ public class CuboidMeshManager
 				, variantProjection
 				, _auxBlockTextures
 				, _itemToBlockIndexMapper
-				, cuboid
-				, otherUp
-				, otherDown
-				, otherNorth
-				, otherSouth
-				, otherEast
-				, otherWest
+				, inputData
 				, false
 		);
 		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
@@ -471,13 +467,7 @@ public class CuboidMeshManager
 				, variantProjection
 				, _auxBlockTextures
 				,_itemToBlockIndexMapper
-				, cuboid
-				, otherUp
-				, otherDown
-				, otherNorth
-				, otherSouth
-				, otherEast
-				, otherWest
+				, inputData
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
 		
