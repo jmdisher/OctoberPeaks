@@ -190,6 +190,9 @@ public class SceneMeshHelpers
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
+		// TODO:  Use a real sky light
+		float skyLightMultiplier = 0.0f;
+		
 		// See if there are any inventories in empty blocks in this cuboid.
 		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
 			@Override
@@ -221,6 +224,7 @@ public class SceneMeshHelpers
 								, uvBase, textureSize
 								, auxUv, auxTextureSize
 								, blockLightMultiplier
+								, skyLightMultiplier
 						);
 					}
 				}
@@ -249,6 +253,7 @@ public class SceneMeshHelpers
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		_PrismVertices v = _PrismVertices.from(base, edgeVertices);
 		float blockLightMultiplier = 1.0f;
+		float skyLightMultiplier = 0.0f;
 		
 		// X-normal plane.
 		_populateQuad(builder, base, new float[][] {
@@ -257,6 +262,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultiplier
+			, skyLightMultiplier
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v100, v.v110, v.v111, v.v101
@@ -264,6 +270,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultiplier
+			, skyLightMultiplier
 		);
 		
 		// Y-normal plane.
@@ -273,6 +280,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultiplier
+			, skyLightMultiplier
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v110, v.v010, v.v011, v.v111
@@ -280,6 +288,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultiplier
+			, skyLightMultiplier
 		);
 		
 		// Z-normal plane.
@@ -290,6 +299,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultiplier
+			, skyLightMultiplier
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v001, v.v101, v.v111, v.v011
@@ -297,6 +307,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultiplier
+			, skyLightMultiplier
 		);
 		
 		return builder.finishOne().flush(gl);
@@ -349,6 +360,7 @@ public class SceneMeshHelpers
 			, float[] otherUvBase
 			, float otherTextureSize
 			, float blockLightMultiplier
+			, float skyLightMultiplier
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -378,6 +390,7 @@ public class SceneMeshHelpers
 				, uvBase, textureSize
 				, otherUvBase, otherTextureSize
 				, blockLightMultiplier
+				, skyLightMultiplier
 		);
 	}
 
@@ -390,6 +403,7 @@ public class SceneMeshHelpers
 			, float[] otherUvBase
 			, float otherTextureSize
 			, float blockLightMultiplier
+			, float skyLightMultiplier
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -421,7 +435,8 @@ public class SceneMeshHelpers
 		float otherV = otherUvBase[1];
 		float otherUEdge = otherU + otherTextureSize;
 		float otherVEdge = otherV + otherTextureSize;
-		float[] light = new float[] { blockLightMultiplier };
+		float[] blockLight = new float[] { blockLightMultiplier };
+		float[] skyLight = new float[] { skyLightMultiplier };
 		
 		// Each element is:
 		// vx, vy, vz
@@ -435,42 +450,48 @@ public class SceneMeshHelpers
 				, normal
 				, new float[] {u, v}
 				, new float[] {otherU, otherV}
-				, light
+				, blockLight
+				, skyLight
 		);
 		// Right Bottom.
 		builder.appendVertex(bottomRight
 				, normal
 				, new float[] {uEdge, v}
 				, new float[] {otherUEdge, otherV}
-				, light
+				, blockLight
+				, skyLight
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
 				, new float[] {uEdge, vEdge}
 				, new float[] {otherUEdge, otherVEdge}
-				, light
+				, blockLight
+				, skyLight
 		);
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
 				, normal
 				, new float[] {u, v}
 				, new float[] {otherU, otherV}
-				, light
+				, blockLight
+				, skyLight
 		);
 		// Right Top.
 		builder.appendVertex(topRight
 				, normal
 				, new float[] {uEdge, vEdge}
 				, new float[] {otherUEdge, otherVEdge}
-				, light
+				, blockLight
+				, skyLight
 		);
 		// Left Top.
 		builder.appendVertex(topLeft
 				, normal
 				, new float[] {u, vEdge}
 				, new float[] {otherU, otherVEdge}
-				, light
+				, blockLight
+				, skyLight
 		);
 	}
 
@@ -532,6 +553,7 @@ public class SceneMeshHelpers
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
 		private final _CommonLightLookup _light;
+		private final float _skyLightMultiplier;
 		
 		public _CommonVertexWriter(BufferBuilder builder
 				, SparseShortProjection<AuxVariant> projection
@@ -550,6 +572,8 @@ public class SceneMeshHelpers
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
 			_light = light;
+			// TODO:  Use a real sky light
+			_skyLightMultiplier = 0.0f;
 			_v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, blockHeight });
 		}
 		@Override
@@ -574,6 +598,7 @@ public class SceneMeshHelpers
 					, uvBaseTop, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _getBlockLight(_light.get(baseX, baseY, (byte)(baseZ + 1)))
+					, _skyLightMultiplier
 				);
 			}
 			else
@@ -584,6 +609,7 @@ public class SceneMeshHelpers
 					, uvBaseBottom, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _getBlockLight(_light.get(baseX, baseY, (byte)(baseZ - 1)))
+					, _skyLightMultiplier
 				);
 			}
 		}
@@ -602,6 +628,7 @@ public class SceneMeshHelpers
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _getBlockLight(_light.get(baseX, (byte)(baseY + 1), baseZ))
+					, _skyLightMultiplier
 				);
 			}
 			else
@@ -612,6 +639,7 @@ public class SceneMeshHelpers
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _getBlockLight(_light.get(baseX, (byte)(baseY - 1), baseZ))
+					, _skyLightMultiplier
 				);
 			}
 		}
@@ -630,6 +658,7 @@ public class SceneMeshHelpers
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _getBlockLight(_light.get((byte)(baseX + 1), baseY, baseZ))
+					, _skyLightMultiplier
 				);
 			}
 			else
@@ -640,6 +669,7 @@ public class SceneMeshHelpers
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _getBlockLight(_light.get((byte)(baseX - 1), baseY, baseZ))
+					, _skyLightMultiplier
 				);
 			}
 		}

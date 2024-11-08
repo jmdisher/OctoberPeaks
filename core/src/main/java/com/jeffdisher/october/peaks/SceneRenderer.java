@@ -56,6 +56,7 @@ public class SceneRenderer
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
 	private final int _uTexture1;
+	private final int _uSkyLight;
 	private final CuboidMeshManager _cuboidMeshes;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, _EntityData> _entityData;
@@ -99,6 +100,7 @@ public class SceneRenderer
 						"aTexture0",
 						"aTexture1",
 						"aBlockLightMultiplier",
+						"aSkyLightMultiplier",
 				}
 		);
 		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
@@ -107,6 +109,7 @@ public class SceneRenderer
 		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
 		_uTexture1 = _program.getUniformLocation("uTexture1");
+		_uSkyLight = _program.getUniformLocation("uSkyLight");
 		
 		_cuboidMeshes = new CuboidMeshManager(_environment, new CuboidMeshManager.IGpu() {
 			@Override
@@ -158,6 +161,8 @@ public class SceneRenderer
 		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
 		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
+		// TODO:  Calculate the sky light.
+		_gl.glUniform1f(_uSkyLight, 0.0f);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// This shader uses 2 textures.
@@ -312,6 +317,7 @@ public class SceneRenderer
 		VertexArray buffer;
 		float[] ignoredOtherTexture = new float[] { 0.0f, 0.0f };
 		float[] blockLightMultiplier = new float[] {1.0f};
+		float[] skyLightMultiplier = new float[] {0.0f};
 		if (meshFile.exists())
 		{
 			String rawMesh = meshFile.readString();
@@ -322,6 +328,7 @@ public class SceneRenderer
 						, texture
 						, ignoredOtherTexture
 						, blockLightMultiplier
+						, skyLightMultiplier
 				);
 			}, rawMesh);
 			buffer = builder.finishOne().flush(gl);

@@ -35,6 +35,7 @@ public class TestCuboidMeshManager
 				, new Attribute("aTexture0", 2)
 				, new Attribute("aTexture1", 2)
 				, new Attribute("aBlockLightMultiplier", 1)
+				, new Attribute("aSkyLightMultiplier", 1)
 		};
 		STONE_VALUE = ENV.items.getItemById("op.stone").number();
 		WATER_VALUE = ENV.items.getItemById("op.water_source").number();
