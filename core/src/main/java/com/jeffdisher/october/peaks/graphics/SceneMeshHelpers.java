@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.LightAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
@@ -26,6 +27,12 @@ import com.jeffdisher.october.utils.Encoding;
 
 public class SceneMeshHelpers
 {
+	/**
+	 * The light value we will see for block light in the case of "total darkness".  Actual block light is added on top
+	 * of this.
+	 * TODO:  Reduce this value once sky light is added.
+	 */
+	public static final float MINIMUM_LIGHT = 0.5f;
 	public static final float DEBRIS_ELEMENT_SIZE = 0.5f;
 	public static final float[][] DEBRIS_BASES = new float[][] {
 		new float[] { 0.1f, 0.1f, 0.05f }
@@ -110,6 +117,14 @@ public class SceneMeshHelpers
 				, blockAtlas
 				, auxAtlas
 				, shouldInclude
+				, new _CommonLightLookup(cuboid
+						, otherUp
+						, otherDown
+						, otherNorth
+						, otherSouth
+						, otherEast
+						, otherWest
+				)
 				, 1.0f
 		));
 	}
@@ -150,6 +165,14 @@ public class SceneMeshHelpers
 				, blockAtlas
 				, auxAtlas
 				, shouldInclude
+				, new _CommonLightLookup(cuboid
+						, otherUp
+						, otherDown
+						, otherNorth
+						, otherSouth
+						, otherEast
+						, otherWest
+				)
 				, 0.9f
 		));
 	}
@@ -166,9 +189,6 @@ public class SceneMeshHelpers
 		// Dropped items will never have an aux texture.
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
-		
-		// TODO:  Replace this light value with a real value.
-		float blockLightMultiplier = 1.0f;
 		
 		// See if there are any inventories in empty blocks in this cuboid.
 		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
@@ -195,6 +215,8 @@ public class SceneMeshHelpers
 						float[] uvBase = itemAtlas.baseOfTexture(type.number(), ItemVariant.NONE);
 						float[] offset = DEBRIS_BASES[i];
 						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
+						byte light = cuboid.getData7(AspectRegistry.LIGHT, base);
+						float blockLightMultiplier = _getBlockLight(light);
 						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE
 								, uvBase, textureSize
 								, auxUv, auxTextureSize
@@ -461,6 +483,12 @@ public class SceneMeshHelpers
 		return water;
 	}
 
+	private static float _getBlockLight(byte inputValue)
+	{
+		float maxLightFloat = (float)LightAspect.MAX_LIGHT;
+		return MINIMUM_LIGHT + (((float)inputValue) / maxLightFloat);
+	}
+
 
 	public static enum AuxVariant
 	{
@@ -503,7 +531,7 @@ public class SceneMeshHelpers
 		private final TextureAtlas<AuxVariant> _auxAtlas;
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
-		private final float _blockLightMultiplier;
+		private final _CommonLightLookup _light;
 		
 		public _CommonVertexWriter(BufferBuilder builder
 				, SparseShortProjection<AuxVariant> projection
@@ -511,6 +539,7 @@ public class SceneMeshHelpers
 				, TextureAtlas<BlockVariant> blockAtlas
 				, TextureAtlas<AuxVariant> auxAtlas
 				, Predicate<Short> shouldInclude
+				, _CommonLightLookup light
 				, float blockHeight
 		)
 		{
@@ -520,9 +549,8 @@ public class SceneMeshHelpers
 			_blockAtlas = blockAtlas;
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
+			_light = light;
 			_v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, blockHeight });
-			// TODO:  Replace this light value with a real value.
-			_blockLightMultiplier = 1.0f;
 		}
 		@Override
 		public boolean shouldInclude(short value)
@@ -545,7 +573,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, 0.0f, 1.0f}
 					, uvBaseTop, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _blockLightMultiplier
+					, _getBlockLight(_light.get(baseX, baseY, (byte)(baseZ + 1)))
 				);
 			}
 			else
@@ -555,7 +583,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, 0.0f, -1.0f}
 					, uvBaseBottom, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _blockLightMultiplier
+					, _getBlockLight(_light.get(baseX, baseY, (byte)(baseZ - 1)))
 				);
 			}
 		}
@@ -573,7 +601,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, 1.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _blockLightMultiplier
+					, _getBlockLight(_light.get(baseX, (byte)(baseY + 1), baseZ))
 				);
 			}
 			else
@@ -583,7 +611,7 @@ public class SceneMeshHelpers
 					}, new float[] {0.0f, -1.0f,0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _blockLightMultiplier
+					, _getBlockLight(_light.get(baseX, (byte)(baseY - 1), baseZ))
 				);
 			}
 		}
@@ -601,7 +629,7 @@ public class SceneMeshHelpers
 					}, new float[] {1.0f, 0.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _blockLightMultiplier
+					, _getBlockLight(_light.get((byte)(baseX + 1), baseY, baseZ))
 				);
 			}
 			else
@@ -611,9 +639,113 @@ public class SceneMeshHelpers
 					}, new float[] {-1.0f, 0.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _blockLightMultiplier
+					, _getBlockLight(_light.get((byte)(baseX - 1), baseY, baseZ))
 				);
 			}
+		}
+	}
+
+	private static class _CommonLightLookup
+	{
+		private final IReadOnlyCuboidData _cuboid;
+		private final IReadOnlyCuboidData _otherUp;
+		private final IReadOnlyCuboidData _otherDown;
+		private final IReadOnlyCuboidData _otherNorth;
+		private final IReadOnlyCuboidData _otherSouth;
+		private final IReadOnlyCuboidData _otherEast;
+		private final IReadOnlyCuboidData _otherWest;
+		
+		public _CommonLightLookup(IReadOnlyCuboidData cuboid
+				, IReadOnlyCuboidData otherUp
+				, IReadOnlyCuboidData otherDown
+				, IReadOnlyCuboidData otherNorth
+				, IReadOnlyCuboidData otherSouth
+				, IReadOnlyCuboidData otherEast
+				, IReadOnlyCuboidData otherWest
+		)
+		{
+			_cuboid = cuboid;
+			_otherUp = otherUp;
+			_otherDown = otherDown;
+			_otherNorth = otherNorth;
+			_otherSouth = otherSouth;
+			_otherEast = otherEast;
+			_otherWest = otherWest;
+		}
+		public byte get(byte baseX, byte baseY, byte baseZ)
+		{
+			byte light;
+			if (baseX < 0)
+			{
+				if (null != _otherWest)
+				{
+					light = _otherWest.getData7(AspectRegistry.LIGHT, new BlockAddress((byte)(baseX + Encoding.CUBOID_EDGE_SIZE), baseY, baseZ));
+				}
+				else
+				{
+					light = 0;
+				}
+			}
+			else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
+			{
+				if (null != _otherEast)
+				{
+					light = _otherEast.getData7(AspectRegistry.LIGHT, new BlockAddress((byte)(baseX - Encoding.CUBOID_EDGE_SIZE), baseY, baseZ));
+				}
+				else
+				{
+					light = 0;
+				}
+			}
+			else if (baseY < 0)
+			{
+				if (null != _otherSouth)
+				{
+					light = _otherSouth.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, (byte)(baseY + Encoding.CUBOID_EDGE_SIZE), baseZ));
+				}
+				else
+				{
+					light = 0;
+				}
+			}
+			else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
+			{
+				if (null != _otherNorth)
+				{
+					light = _otherNorth.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, (byte)(baseY - Encoding.CUBOID_EDGE_SIZE), baseZ));
+				}
+				else
+				{
+					light = 0;
+				}
+			}
+			else if (baseZ < 0)
+			{
+				if (null != _otherDown)
+				{
+					light = _otherDown.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, (byte)(baseZ + Encoding.CUBOID_EDGE_SIZE)));
+				}
+				else
+				{
+					light = 0;
+				}
+			}
+			else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
+			{
+				if (null != _otherUp)
+				{
+					light = _otherUp.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, (byte)(baseZ - Encoding.CUBOID_EDGE_SIZE)));
+				}
+				else
+				{
+					light = 0;
+				}
+			}
+			else
+			{
+				light = _cuboid.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, baseZ));
+			}
+			return light;
 		}
 	}
 }
