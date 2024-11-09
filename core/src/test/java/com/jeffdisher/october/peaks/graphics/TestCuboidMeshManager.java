@@ -9,7 +9,9 @@ import org.junit.Test;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
+import com.jeffdisher.october.logic.HeightMapHelpers;
 import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.TextureAtlas;
@@ -66,8 +68,9 @@ public class TestCuboidMeshManager
 		
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
 		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)6, (byte)7), STONE_VALUE);
+		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(cuboid), cuboid.getCuboidAddress().z()).freeze();
 		
-		manager.setCuboid(cuboid, null);
+		manager.setCuboid(cuboid, heightMap, null);
 		Assert.assertEquals(1, manager.viewCuboids().size());
 		
 		// We shouldn't see the finished result, yet.
@@ -100,18 +103,20 @@ public class TestCuboidMeshManager
 		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(lowAddress, ENV.special.AIR);
 		BlockAddress lowBlock = new BlockAddress((byte)31, (byte)31, (byte)31);
 		lowCuboid.setData15(AspectRegistry.BLOCK, lowBlock, WATER_VALUE);
+		ColumnHeightMap lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress.z()).freeze();
 		
 		CuboidAddress highAddress = new CuboidAddress((short)0, (short)0, (short)1);
 		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, ENV.special.AIR);
 		BlockAddress highBlock = new BlockAddress((byte)31, (byte)31, (byte)0);
 		highCuboid.setData15(AspectRegistry.BLOCK, highBlock, WATER_VALUE);
+		ColumnHeightMap highMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress.z()).freeze();
 		
-		manager.setCuboid(lowCuboid, null);
+		manager.setCuboid(lowCuboid, lowMap, null);
 		Assert.assertNull(_readCuboidWater(manager, lowAddress));
 		VertexArray lowWaterArray = _waitForWaterChange(manager, lowAddress, null);
 		Assert.assertEquals(36, lowWaterArray.totalVertices);
 		
-		manager.setCuboid(highCuboid, null);
+		manager.setCuboid(highCuboid, highMap, null);
 		Assert.assertNull(_readCuboidWater(manager, highAddress));
 		VertexArray highWaterArray = _waitForWaterChange(manager, highAddress, null);
 		Assert.assertEquals(30, highWaterArray.totalVertices);
@@ -123,7 +128,8 @@ public class TestCuboidMeshManager
 		// Now change one of these blocks and observe the updates in both blocks.
 		lowCuboid = CuboidData.mutableClone(lowCuboid);
 		lowCuboid.setData15(AspectRegistry.BLOCK, lowBlock, STONE_VALUE);
-		manager.setCuboid(lowCuboid, Set.of(lowBlock));
+		lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress.z()).freeze();
+		manager.setCuboid(lowCuboid, lowMap, Set.of(lowBlock));
 		
 		// Note that the water array should disappear now and be replaced with opaque.
 		Assert.assertNull(_waitForWaterChange(manager, lowAddress, lowWaterArray));

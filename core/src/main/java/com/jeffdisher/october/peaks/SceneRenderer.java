@@ -16,6 +16,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.CuboidMeshManager;
@@ -278,9 +279,9 @@ public class SceneRenderer
 		_cuboidMeshes.processBackground();
 	}
 
-	public void setCuboid(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
+	public void setCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 	{
-		_cuboidMeshes.setCuboid(cuboid, changedBlocks);
+		_cuboidMeshes.setCuboid(cuboid, heightMap, changedBlocks);
 	}
 
 	public void removeCuboid(CuboidAddress address)

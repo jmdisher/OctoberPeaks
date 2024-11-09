@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
@@ -53,7 +54,7 @@ public class CuboidMeshManager
 	private final Queue<FloatBuffer> _foregroundGraphicsBuffers;
 	
 	// Background-only data.
-	private final Map<CuboidAddress, IReadOnlyCuboidData> _backgroundCuboids;
+	private final Map<CuboidAddress, _CuboidInfo> _backgroundCuboids;
 
 	// Objects related to the handoff.
 	private boolean _keepRunning;
@@ -127,7 +128,7 @@ public class CuboidMeshManager
 		;
 	}
 
-	public void setCuboid(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
+	public void setCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 	{
 		// We want to create the _InternalData instance of a newer generation, potentially just a placeholder for empty data.
 		CuboidAddress address = cuboid.getCuboidAddress();
@@ -136,14 +137,14 @@ public class CuboidMeshManager
 		if (null != existing)
 		{
 			internal = new _InternalData(true
-					, cuboid
+					, new _CuboidInfo(cuboid, heightMap)
 					, existing.vertices
 			);
 		}
 		else
 		{
 			internal = new _InternalData(true
-					, cuboid
+					, new _CuboidInfo(cuboid, heightMap)
 					, new CuboidMeshes(address, null, null, null, null)
 			);
 		}
@@ -179,7 +180,7 @@ public class CuboidMeshManager
 			boolean west = false;
 			byte zero = 0;
 			byte edge = Encoding.CUBOID_EDGE_SIZE - 1;
-			IReadOnlyCuboidData oldCuboid = existing.cuboid;
+			IReadOnlyCuboidData oldCuboid = existing.info.cuboid;
 			for (BlockAddress changed : changedBlocks)
 			{
 				if (zero == changed.z())
@@ -243,7 +244,7 @@ public class CuboidMeshManager
 		Assert.assertTrue(null != previous);
 		
 		// Tell the background to drop its copy.
-		_enqueueRequest(new _Request(null, previous.cuboid));
+		_enqueueRequest(new _Request(null, previous.info));
 		
 		// Delete any buffers backing it.
 		_deleteBuffers(previous.vertices);
@@ -276,7 +277,7 @@ public class CuboidMeshManager
 						, waterData
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
-				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
+				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.info, newData);
 				_foregroundCuboids.put(address, newInstance);
 			}
 			
@@ -300,17 +301,17 @@ public class CuboidMeshManager
 				// This is stale so regenerate it.
 				FloatBuffer meshBuffer = _foregroundGraphicsBuffers.poll();
 				_Request request = new _Request(meshBuffer
-						, next.cuboid
+						, next.info
 				);
 				_enqueueRequest(request);
-				toReplace.add(new _InternalData(false, next.cuboid, next.vertices));
+				toReplace.add(new _InternalData(false, next.info, next.vertices));
 			}
 			// Whether we processed this or not, we have handled the request.
 			iterator.remove();
 		}
 		for (_InternalData replace : toReplace)
 		{
-			_foregroundCuboids.put(replace.cuboid.getCuboidAddress(), replace);
+			_foregroundCuboids.put(replace.info.cuboid.getCuboidAddress(), replace);
 		}
 	}
 
@@ -394,13 +395,13 @@ public class CuboidMeshManager
 		if (null != request.meshBuffer)
 		{
 			// Real request so run it and get a response.
-			_backgroundCuboids.put(request.cuboid.getCuboidAddress(), request.cuboid);
+			_backgroundCuboids.put(request.info.cuboid.getCuboidAddress(), request.info);
 			response = _backgroundBuildMesh(request);
 		}
 		else
 		{
 			// In this case, just remove it and don't send a response.
-			_backgroundCuboids.remove(request.cuboid.getCuboidAddress());
+			_backgroundCuboids.remove(request.info.cuboid.getCuboidAddress());
 			response = null;
 		}
 		return response;
@@ -409,26 +410,26 @@ public class CuboidMeshManager
 	private _Response _backgroundBuildMesh(_Request request)
 	{
 		// Collect information about the cuboid.
-		IReadOnlyCuboidData cuboid = request.cuboid;
+		IReadOnlyCuboidData cuboid = request.info.cuboid;
 		CuboidAddress address = cuboid.getCuboidAddress();
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
 		
 		// Get the adjacent cuboids to pre-seed the FaceBuilders.
-		IReadOnlyCuboidData otherUp = _backgroundCuboids.get(address.getRelative(0, 0, 1));
-		IReadOnlyCuboidData otherDown = _backgroundCuboids.get(address.getRelative(0, 0, -1));
-		IReadOnlyCuboidData otherNorth = _backgroundCuboids.get(address.getRelative(0, 1, 0));
-		IReadOnlyCuboidData otherSouth = _backgroundCuboids.get(address.getRelative(0, -1, 0));
-		IReadOnlyCuboidData otherEast = _backgroundCuboids.get(address.getRelative(1, 0, 0));
-		IReadOnlyCuboidData otherWest = _backgroundCuboids.get(address.getRelative(-1, 0, 0));
+		_CuboidInfo otherUp = _backgroundCuboids.get(address.getRelative(0, 0, 1));
+		_CuboidInfo otherDown = _backgroundCuboids.get(address.getRelative(0, 0, -1));
+		_CuboidInfo otherNorth = _backgroundCuboids.get(address.getRelative(0, 1, 0));
+		_CuboidInfo otherSouth = _backgroundCuboids.get(address.getRelative(0, -1, 0));
+		_CuboidInfo otherEast = _backgroundCuboids.get(address.getRelative(1, 0, 0));
+		_CuboidInfo otherWest = _backgroundCuboids.get(address.getRelative(-1, 0, 0));
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid
-				, otherUp
-				, otherDown
-				, otherNorth
-				, otherSouth
-				, otherEast
-				, otherWest
+				, (null != otherUp) ? otherUp.cuboid : null
+				, (null != otherDown) ? otherDown.cuboid : null
+				, (null != otherNorth) ? otherNorth.cuboid : null
+				, (null != otherSouth) ? otherSouth.cuboid : null
+				, (null != otherEast) ? otherEast.cuboid : null
+				, (null != otherWest) ? otherWest.cuboid : null
 		);
 		
 		// Create the opaque cuboid vertices.
@@ -506,7 +507,7 @@ public class CuboidMeshManager
 		_InternalData existing = _foregroundCuboids.remove(address);
 		if (null != existing)
 		{
-			_foregroundCuboids.put(address, new _InternalData(true, existing.cuboid, existing.vertices));
+			_foregroundCuboids.put(address, new _InternalData(true, existing.info, existing.vertices));
 			// We need to enqueue a request to re-bake this (will be skipped if this is a redundant change).
 			_foregroundRequestOrder.add(address);
 		}
@@ -540,13 +541,18 @@ public class CuboidMeshManager
 			, VertexArray waterArray
 	) {}
 
+	// Should this heightMap be only tracked by xy locations? (currently here to avoid more convoluted paths)
 	private static record _InternalData(boolean requiresProcessing
-			, IReadOnlyCuboidData cuboid
+			, _CuboidInfo info
 			, CuboidMeshes vertices
 	) {}
 
+	private static record _CuboidInfo(IReadOnlyCuboidData cuboid
+			, ColumnHeightMap heightMap
+	) {}
+
 	private static record _Request(FloatBuffer meshBuffer
-			, IReadOnlyCuboidData cuboid
+			, _CuboidInfo info
 	) {}
 
 	private static record _Response(FloatBuffer meshBuffer
