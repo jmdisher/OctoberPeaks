@@ -523,13 +523,11 @@ public class CuboidMeshManager
 
 	private boolean _didBlockChange(IReadOnlyCuboidData oldCuboid, IReadOnlyCuboidData newCuboid, BlockAddress blockAddress)
 	{
-		// See if the block changed type.
-		// TODO:  When implementing block lighting, add a lighting change check here, too.
-		
-		// NOTE:  Reading the block value, directly, can be somewhat expensive.
-		short oldBlockValue = oldCuboid.getData15(AspectRegistry.BLOCK, blockAddress);
-		short newBlockValue = newCuboid.getData15(AspectRegistry.BLOCK, blockAddress);
-		return (oldBlockValue != newBlockValue);
+		// Since the mesh depends on the block type (for textures) and light level (for multiplier), we need to check those here.
+		// We will check light first since it is usually a cheaper lookup (direct block value reads can be somewhat expensive).
+		return (oldCuboid.getData7(AspectRegistry.LIGHT, blockAddress) != newCuboid.getData7(AspectRegistry.LIGHT, blockAddress))
+				|| (oldCuboid.getData15(AspectRegistry.BLOCK, blockAddress) != newCuboid.getData15(AspectRegistry.BLOCK, blockAddress))
+		;
 	}
 
 
