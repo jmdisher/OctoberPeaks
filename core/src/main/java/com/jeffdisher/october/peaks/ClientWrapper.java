@@ -666,6 +666,8 @@ public class ClientWrapper
 	private class _ClientListener implements ClientProcess.IListener
 	{
 		private int _assignedLocalEntityId;
+		private int _ticksPerDay;
+		private int _dayStartTick;
 		@Override
 		public void connectionClosed()
 		{
@@ -740,10 +742,14 @@ public class ClientWrapper
 		@Override
 		public void tickDidComplete(long tickNumber)
 		{
+			float multiplier = PropagationHelpers.skyLightMultiplier(tickNumber, _ticksPerDay,_dayStartTick);
+			_updateConsumer.setSkyLightMultiplier(multiplier);
 		}
 		@Override
 		public void configUpdated(int ticksPerDay, int dayStartTick)
 		{
+			_ticksPerDay = ticksPerDay;
+			_dayStartTick = dayStartTick;
 		}
 		@Override
 		public void otherClientJoined(int clientId, String name)
@@ -775,6 +781,8 @@ public class ClientWrapper
 		
 		void otherEntityUpdated(PartialEntity entity);
 		void otherEntityDidUnload(int id);
+		
+		void setSkyLightMultiplier(float skyLightMultiplier);
 	}
 
 	/**

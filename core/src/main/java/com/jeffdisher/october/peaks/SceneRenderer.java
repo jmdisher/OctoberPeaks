@@ -66,6 +66,7 @@ public class SceneRenderer
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
 	private Vector _eye;
+	private float _skyLightMultiplier;
 
 	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas<ItemVariant> itemAtlas) throws IOException
 	{
@@ -161,8 +162,7 @@ public class SceneRenderer
 		_gl.glUniform3f(_uWorldLightLocation, _eye.x(), _eye.y(), _eye.z());
 		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		_projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		// TODO:  Calculate the sky light.
-		_gl.glUniform1f(_uSkyLight, 0.0f);
+		_gl.glUniform1f(_uSkyLight, _skyLightMultiplier);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// This shader uses 2 textures.
@@ -296,6 +296,11 @@ public class SceneRenderer
 	public void removeEntity(int id)
 	{
 		_entities.remove(id);
+	}
+
+	public void setSkyLightMultiplier(float skyLightMultiplier)
+	{
+		_skyLightMultiplier = skyLightMultiplier;
 	}
 
 	public void shutdown()

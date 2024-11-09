@@ -144,6 +144,11 @@ public class OctoberPeaks extends ApplicationAdapter
 						_scene.removeEntity(id);
 						_selectionManager.removeEntity(id);
 					}
+					@Override
+					public void setSkyLightMultiplier(float skyLightMultiplier)
+					{
+						_scene.setSkyLightMultiplier(skyLightMultiplier);
+					}
 				}
 				, _clientName
 				, _serverSocketAddress
