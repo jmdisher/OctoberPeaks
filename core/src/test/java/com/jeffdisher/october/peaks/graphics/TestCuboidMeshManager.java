@@ -71,7 +71,7 @@ public class TestCuboidMeshManager
 		Assert.assertEquals(1, manager.viewCuboids().size());
 		
 		// We shouldn't see the finished result, yet.
-		CuboidMeshManager.CuboidData data = manager.viewCuboids().iterator().next();
+		CuboidMeshManager.CuboidMeshes data = manager.viewCuboids().iterator().next();
 		Assert.assertNull(data.opaqueArray());
 		Assert.assertNull(data.itemsOnGroundArray());
 		Assert.assertNull(data.transparentArray());
@@ -157,7 +157,7 @@ public class TestCuboidMeshManager
 	private VertexArray _readCuboidWater(CuboidMeshManager manager, CuboidAddress address)
 	{
 		VertexArray waterArray = null;
-		for (CuboidMeshManager.CuboidData data : manager.viewCuboids())
+		for (CuboidMeshManager.CuboidMeshes data : manager.viewCuboids())
 		{
 			if (address.equals(data.address()))
 			{
@@ -171,7 +171,7 @@ public class TestCuboidMeshManager
 	private VertexArray _readCuboidOpaque(CuboidMeshManager manager, CuboidAddress address)
 	{
 		VertexArray waterArray = null;
-		for (CuboidMeshManager.CuboidData data : manager.viewCuboids())
+		for (CuboidMeshManager.CuboidMeshes data : manager.viewCuboids())
 		{
 			if (address.equals(data.address()))
 			{

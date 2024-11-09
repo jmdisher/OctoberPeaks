@@ -175,12 +175,12 @@ public class SceneRenderer
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _auxBlockTextures.texture);
 		
 		// We use the same cuboid set for all of these passes.
-		Collection<CuboidMeshManager.CuboidData> cuboids = _cuboidMeshes.viewCuboids();
+		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
 		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
-		for (CuboidMeshManager.CuboidData value : cuboids)
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			CuboidAddress key = value.address();
 			if (null != value.opaqueArray())
@@ -194,7 +194,7 @@ public class SceneRenderer
 		// Render any dropped items.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
-		for (CuboidMeshManager.CuboidData value : cuboids)
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			CuboidAddress key = value.address();
 			if (null != value.itemsOnGroundArray())
@@ -231,7 +231,7 @@ public class SceneRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
 		// We will render the water first, since we are usually looking down at it.
-		for (CuboidMeshManager.CuboidData value : cuboids)
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			CuboidAddress key = value.address();
 			if (null != value.waterArray())
@@ -241,7 +241,7 @@ public class SceneRenderer
 				value.waterArray().drawAllTriangles(_gl);
 			}
 		}
-		for (CuboidMeshManager.CuboidData value : cuboids)
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			CuboidAddress key = value.address();
 			if (null != value.transparentArray())
