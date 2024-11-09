@@ -411,6 +411,7 @@ public class CuboidMeshManager
 	{
 		// Collect information about the cuboid.
 		IReadOnlyCuboidData cuboid = request.info.cuboid;
+		ColumnHeightMap heightMap = request.info.heightMap;
 		CuboidAddress address = cuboid.getCuboidAddress();
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
 		
@@ -424,12 +425,19 @@ public class CuboidMeshManager
 		_CuboidInfo otherEast = _backgroundCuboids.get(address.getRelative(1, 0, 0));
 		_CuboidInfo otherWest = _backgroundCuboids.get(address.getRelative(-1, 0, 0));
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid
+				, heightMap
 				, (null != otherUp) ? otherUp.cuboid : null
+				, (null != otherUp) ? otherUp.heightMap : null
 				, (null != otherDown) ? otherDown.cuboid : null
+				, (null != otherDown) ? otherDown.heightMap : null
 				, (null != otherNorth) ? otherNorth.cuboid : null
+				, (null != otherNorth) ? otherNorth.heightMap : null
 				, (null != otherSouth) ? otherSouth.cuboid : null
+				, (null != otherSouth) ? otherSouth.heightMap : null
 				, (null != otherEast) ? otherEast.cuboid : null
+				, (null != otherEast) ? otherEast.heightMap : null
 				, (null != otherWest) ? otherWest.cuboid : null
+				, (null != otherWest) ? otherWest.heightMap : null
 		);
 		
 		// Create the opaque cuboid vertices.
@@ -445,7 +453,7 @@ public class CuboidMeshManager
 		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
 		
 		// Create the vertex array for any items dropped on the ground.
-		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, cuboid);
+		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
 		// Create the transparent (non-water) cuboid vertices.

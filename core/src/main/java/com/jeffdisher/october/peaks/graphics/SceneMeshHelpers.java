@@ -10,6 +10,7 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.LightAspect;
 import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BlockVariant;
@@ -30,9 +31,11 @@ public class SceneMeshHelpers
 	/**
 	 * The light value we will see for block light in the case of "total darkness".  Actual block light is added on top
 	 * of this.
-	 * TODO:  Reduce this value once sky light is added.
 	 */
-	public static final float MINIMUM_LIGHT = 0.5f;
+	public static final float MINIMUM_LIGHT = 0.1f;
+	public static final float SKY_LIGHT_SHADOW = 0.0f;
+	public static final float SKY_LIGHT_PARTIAL = 0.5f;
+	public static final float SKY_LIGHT_DIRECT = 1.0f;
 	public static final float DEBRIS_ELEMENT_SIZE = 0.5f;
 	public static final float[][] DEBRIS_BASES = new float[][] {
 		new float[] { 0.1f, 0.1f, 0.05f }
@@ -146,6 +149,7 @@ public class SceneMeshHelpers
 			, TextureAtlas<ItemVariant> itemAtlas
 			, TextureAtlas<AuxVariant> auxAtlas
 			, IReadOnlyCuboidData cuboid
+			, ColumnHeightMap heightMap
 	)
 	{
 		float textureSize = itemAtlas.coordinateSize;
@@ -154,8 +158,7 @@ public class SceneMeshHelpers
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
-		// TODO:  Use a real sky light
-		float skyLightMultiplier = 0.0f;
+		int cuboidZ = cuboid.getCuboidAddress().getBase().z();
 		
 		// See if there are any inventories in empty blocks in this cuboid.
 		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
@@ -184,6 +187,7 @@ public class SceneMeshHelpers
 						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
 						byte light = cuboid.getData7(AspectRegistry.LIGHT, base);
 						float blockLightMultiplier = _mapBlockLight(light);
+						float skyLightMultiplier = ((base.z() + cuboidZ - 1) == heightMap.getHeight(base.x(), base.y())) ? 1.0f : 0.0f;
 						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE
 								, uvBase, textureSize
 								, auxUv, auxTextureSize
@@ -513,7 +517,6 @@ public class SceneMeshHelpers
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
 		private final MeshInputData _inputData;
-		private final float _skyLightMultiplier;
 		
 		public _CommonVertexWriter(BufferBuilder builder
 				, SparseShortProjection<AuxVariant> projection
@@ -532,8 +535,6 @@ public class SceneMeshHelpers
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
 			_inputData = inputData;
-			// TODO:  Use a real sky light
-			_skyLightMultiplier = 0.0f;
 			_v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, blockHeight });
 		}
 		@Override
@@ -552,24 +553,26 @@ public class SceneMeshHelpers
 			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
+				byte z = (byte)(baseZ + 1);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v001, _v.v101, _v.v111, _v.v011
 					}, new float[] {0.0f, 0.0f, 1.0f}
 					, uvBaseTop, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _mapBlockLight(_getBlockLight(_inputData, baseX, baseY, (byte)(baseZ + 1)))
-					, _skyLightMultiplier
+					, _mapBlockLight(_getBlockLight(_inputData, baseX, baseY, z))
+					, _getSkyLightMultiplier(_inputData, baseX, baseY, z, SKY_LIGHT_DIRECT)
 				);
 			}
 			else
 			{
+				byte z = (byte)(baseZ - 1);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v100, _v.v000, _v.v010, _v.v110
 					}, new float[] {0.0f, 0.0f, -1.0f}
 					, uvBaseBottom, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _mapBlockLight(_getBlockLight(_inputData, baseX, baseY, (byte)(baseZ - 1)))
-					, _skyLightMultiplier
+					, _mapBlockLight(_getBlockLight(_inputData, baseX, baseY, z))
+					, SKY_LIGHT_SHADOW
 				);
 			}
 		}
@@ -582,24 +585,26 @@ public class SceneMeshHelpers
 			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
+				byte y = (byte)(baseY + 1);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v110, _v.v010, _v.v011, _v.v111
 					}, new float[] {0.0f, 1.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _mapBlockLight(_getBlockLight(_inputData, baseX, (byte)(baseY + 1), baseZ))
-					, _skyLightMultiplier
+					, _mapBlockLight(_getBlockLight(_inputData, baseX, y, baseZ))
+					, _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL)
 				);
 			}
 			else
 			{
+				byte y = (byte)(baseY - 1);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v000, _v.v100, _v.v101, _v.v001
 					}, new float[] {0.0f, -1.0f,0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _mapBlockLight(_getBlockLight(_inputData, baseX, (byte)(baseY - 1), baseZ))
-					, _skyLightMultiplier
+					, _mapBlockLight(_getBlockLight(_inputData, baseX, y, baseZ))
+					, _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL)
 				);
 			}
 		}
@@ -612,24 +617,26 @@ public class SceneMeshHelpers
 			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
+				byte x = (byte)(baseX + 1);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v100, _v.v110, _v.v111, _v.v101
 					}, new float[] {1.0f, 0.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _mapBlockLight(_getBlockLight(_inputData, (byte)(baseX + 1), baseY, baseZ))
-					, _skyLightMultiplier
+					, _mapBlockLight(_getBlockLight(_inputData, x, baseY, baseZ))
+					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)
 				);
 			}
 			else
 			{
+				byte x = (byte)(baseX - 1);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v010, _v.v000, _v.v001, _v.v011
 					}, new float[] {-1.0f, 0.0f, 0.0f}
 					, uvBaseSide, _blockAtlas.coordinateSize
 					, auxUv, _auxAtlas.coordinateSize
-					, _mapBlockLight(_getBlockLight(_inputData, (byte)(baseX - 1), baseY, baseZ))
-					, _skyLightMultiplier
+					, _mapBlockLight(_getBlockLight(_inputData, x, baseY, baseZ))
+					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)
 				);
 			}
 		}
@@ -711,17 +718,105 @@ public class SceneMeshHelpers
 		return light;
 	}
 
+	private static float _getSkyLightMultiplier(MeshInputData data, byte baseX, byte baseY, byte baseZ, float aboveOrMatchLight)
+	{
+		int realZ = data.cuboid.getCuboidAddress().z() + baseZ - 1;
+		
+		int delta;
+		if (baseX < 0)
+		{
+			if (null != data.westHeight)
+			{
+				delta = realZ - data.westHeight.getHeight(baseX + Encoding.CUBOID_EDGE_SIZE, baseY);
+			}
+			else
+			{
+				delta = 0;
+			}
+		}
+		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			if (null != data.eastHeight)
+			{
+				delta = realZ - data.eastHeight.getHeight(baseX - Encoding.CUBOID_EDGE_SIZE, baseY);
+			}
+			else
+			{
+				delta = 0;
+			}
+		}
+		else if (baseY < 0)
+		{
+			if (null != data.southHeight)
+			{
+				delta = realZ - data.southHeight.getHeight(baseX, baseY + Encoding.CUBOID_EDGE_SIZE);
+			}
+			else
+			{
+				delta = 0;
+			}
+		}
+		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			if (null != data.northHeight)
+			{
+				delta = realZ - data.northHeight.getHeight(baseX, baseY - Encoding.CUBOID_EDGE_SIZE);
+			}
+			else
+			{
+				delta = 0;
+			}
+		}
+		else if (baseZ < 0)
+		{
+			if (null != data.downHeight)
+			{
+				delta = (realZ - Encoding.CUBOID_EDGE_SIZE) - data.downHeight.getHeight(baseX, baseY);
+			}
+			else
+			{
+				delta = 0;
+			}
+		}
+		else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			if (null != data.upHeight)
+			{
+				delta = (realZ + Encoding.CUBOID_EDGE_SIZE) - data.upHeight.getHeight(baseX, baseY);
+			}
+			else
+			{
+				delta = 0;
+			}
+		}
+		else
+		{
+			delta = realZ - data.height.getHeight(baseX, baseY);
+		}
+		return (delta >= 0)
+				? aboveOrMatchLight
+				: SKY_LIGHT_SHADOW
+		;
+	}
+
 	/**
 	 * Packaged-up data passed into the mesh generation helpers.
 	 * This record exists to give names to the inputs, instead of just a long parameter list.
 	 * Note that any of the fields can be null except for "cuboid".
 	 */
 	public static record MeshInputData(IReadOnlyCuboidData cuboid
+			, ColumnHeightMap height
 			, IReadOnlyCuboidData up
+			, ColumnHeightMap upHeight
 			, IReadOnlyCuboidData down
+			, ColumnHeightMap downHeight
 			, IReadOnlyCuboidData north
+			, ColumnHeightMap northHeight
 			, IReadOnlyCuboidData south
+			, ColumnHeightMap southHeight
 			, IReadOnlyCuboidData east
+			, ColumnHeightMap eastHeight
 			, IReadOnlyCuboidData west
+			, ColumnHeightMap westHeight
 	) {}
 }
