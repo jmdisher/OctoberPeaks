@@ -179,6 +179,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				Vector upVector = _movement.computeUpVector();
 				_selectionManager.updatePosition(eye, target);
 				_scene.updatePosition(eye, target, upVector);
+				_windowManager.updateEyeBlock(GeometryHelpers.locationFromVector(eye));
 			}
 			
 			// Capture whatever is selected.

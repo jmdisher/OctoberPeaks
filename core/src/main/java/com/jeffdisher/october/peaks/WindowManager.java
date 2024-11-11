@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -84,7 +85,10 @@ public class WindowManager
 	private final int _pixelRed;
 	private final int _pixelGreen;
 	private final int _pixelGreenAlpha;
+	private final int _pixelBlueAlpha;
+	private final Set<Block> _waterBlockTypes;
 	private Entity _projectedEntity;
+	private AbsoluteLocation _eyeBlockLocation;
 
 	// We define these public rendering helpers in order to avoid adding special public interfaces or spreading rendering logic around.
 	public final ItemRenderer<Items> renderItemStack;
@@ -153,7 +157,16 @@ public class WindowManager
 		// We use the semi-transparent green for "progress" overlays.
 		_pixelGreenAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)100);
 		
+		// We use the semi-transparent blue for "under water" overlay layer.
+		_pixelBlueAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)0, (byte)255, (byte)100);
+		
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// Find the set of water block types we will use to determine when to draw the water overlay.
+		_waterBlockTypes = Set.of(env.blocks.fromItem(env.items.getItemById("op.water_source"))
+				, env.blocks.fromItem(env.items.getItemById("op.water_strong"))
+				, env.blocks.fromItem(env.items.getItemById("op.water_weak"))
+		);
 		
 		// Set up our public rendering helpers.
 		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
@@ -235,6 +248,19 @@ public class WindowManager
 		_program.useProgram();
 		_gl.glUniform1i(_uTexture, 0);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// If our eye is under water, draw water over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
+		if (null != _eyeBlockLocation)
+		{
+			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
+			// For now, we will just use opacity
+			if ((null != eyeProxy) && _waterBlockTypes.contains(eyeProxy.getBlock()))
+			{
+				_gl.glActiveTexture(GL20.GL_TEXTURE0);
+				_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelBlueAlpha);
+				_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+			}
+		}
 		
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _projectedEntity)
@@ -342,6 +368,11 @@ public class WindowManager
 	{
 		Object old = _otherPlayersById.remove(clientId);
 		Assert.assertTrue(null != old);
+	}
+
+	public void updateEyeBlock(AbsoluteLocation eyeBlockLocation)
+	{
+		_eyeBlockLocation = eyeBlockLocation;
 	}
 
 	public void shutdown()
