@@ -163,7 +163,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 									{(float)x + 1.0f, (float)y, (float)z + bottomRight},
 									{(float)x + 1.0f, (float)y + 1.0f, (float)z + topRight},
 								};
-								writer.writeQuad(address, vertices, NORMAL_UP);
+								writer.writeQuad(address
+										, new BlockAddress(x, y, (byte)(z + 1))
+										, vertices
+										, NORMAL_UP
+								);
 							}
 							
 							if (0 != (value & BYTE_NORTH))
@@ -174,7 +178,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 									{(float)x, (float)y + 1.0f, (float)z},
 									{(float)x, (float)y + 1.0f, (float)z + topLeft},
 								};
-								writer.writeQuad(address, vertices, NORMAL_NORTH);
+								writer.writeQuad(address
+										, new BlockAddress(x, (byte)(y + 1), z)
+										, vertices
+										, NORMAL_NORTH
+								);
 							}
 							if (0 != (value & BYTE_SOUTH))
 							{
@@ -184,7 +192,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 									{(float)x + 1.0f, (float)y, (float)z},
 									{(float)x + 1.0f, (float)y, (float)z + bottomRight},
 								};
-								writer.writeQuad(address, vertices, NORMAL_SOUTH);
+								writer.writeQuad(address
+										, new BlockAddress(x, (byte)(y - 1), z)
+										, vertices
+										, NORMAL_SOUTH
+								);
 							}
 							if (0 != (value & BYTE_EAST))
 							{
@@ -194,7 +206,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 									{(float)x + 1.0f, (float)y + 1.0f, (float)z},
 									{(float)x + 1.0f, (float)y + 1.0f, (float)z + topRight},
 								};
-								writer.writeQuad(address, vertices, NORMAL_EAST);
+								writer.writeQuad(address
+										, new BlockAddress((byte)(x + 1), y, z)
+										, vertices
+										, NORMAL_EAST
+								);
 							}
 							if (0 != (value & BYTE_WEST))
 							{
@@ -204,7 +220,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 									{(float)x, (float)y, (float)z},
 									{(float)x, (float)y, (float)z + bottomLeft},
 								};
-								writer.writeQuad(address, vertices, NORMAL_WEST);
+								writer.writeQuad(address
+										, new BlockAddress((byte)(x - 1), y, z)
+										, vertices
+										, NORMAL_WEST
+								);
 							}
 							if (0 != (value & BYTE_DOWN))
 							{
@@ -214,7 +234,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 									{(float)x, (float)y, (float)z},
 									{(float)x, (float)y + 1.0f, (float)z},
 								};
-								writer.writeQuad(address, vertices, NORMAL_DOWN);
+								writer.writeQuad(address
+										, new BlockAddress(x, y, (byte)(z - 1))
+										, vertices
+										, NORMAL_DOWN
+								);
 							}
 						}
 					}
@@ -284,6 +308,10 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 
 	public static interface IQuadWriter
 	{
-		public void writeQuad(BlockAddress address, float[][] counterClockWiseVertices, float[] normal);
+		public void writeQuad(BlockAddress address
+				, BlockAddress externalBlock
+				, float[][] counterClockWiseVertices
+				, float[] normal
+		);
 	}
 }

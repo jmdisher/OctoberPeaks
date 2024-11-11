@@ -69,7 +69,7 @@ public class TestWaterSurfaceBuilder
 		public int west;
 		
 		@Override
-		public void writeQuad(BlockAddress address, float[][] counterClockWiseVertices, float[] normal)
+		public void writeQuad(BlockAddress address, BlockAddress externalBlock, float[][] counterClockWiseVertices, float[] normal)
 		{
 			if (WaterSurfaceBuilder.NORMAL_UP == normal)
 			{

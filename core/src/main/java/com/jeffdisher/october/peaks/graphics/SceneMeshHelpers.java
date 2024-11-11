@@ -148,27 +148,30 @@ public class SceneMeshHelpers
 		float textureSize = blockAtlas.coordinateSize;
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
-		short cuboidZ = inputData.cuboid.getCuboidAddress().z();
 		
 		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {
 			float[] _base = new float[] {0.0f, 0.0f, 0.0f};
 			@Override
-			public void writeQuad(BlockAddress address, float[][] counterClockWiseVertices, float[] normal)
+			public void writeQuad(BlockAddress address, BlockAddress externalBlock, float[][] counterClockWiseVertices, float[] normal)
 			{
-				byte light = inputData.cuboid.getData7(AspectRegistry.LIGHT, address);
-				float blockLightMultiplier = _mapBlockLight(light);
-				float skyLightMultiplier = ((address.z() + cuboidZ - 1) == inputData.height.getHeight(address.x(), address.y())) ? 1.0f : 0.0f;
-				_populateQuad(builder
-						, _base
-						, counterClockWiseVertices
-						, normal
-						, uvBase
-						, textureSize
-						, auxUv
-						, auxTextureSize
-						, blockLightMultiplier
-						, skyLightMultiplier
-				);
+				// We want to check the opacity since we won't draw the internal faces of the water if there is something opaque on the other side.
+				if (!_isBlockOpaque(env, inputData, externalBlock))
+				{
+					float blockLightMultiplier = _mapBlockLight(_getBlockLight(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z()));
+					float skyLightMultiplier = _getSkyLightMultiplier(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z(), SKY_LIGHT_DIRECT);
+					
+					_populateQuad(builder
+							, _base
+							, counterClockWiseVertices
+							, normal
+							, uvBase
+							, textureSize
+							, auxUv
+							, auxTextureSize
+							, blockLightMultiplier
+							, skyLightMultiplier
+					);
+				}
 			}
 		});
 	}
@@ -825,6 +828,85 @@ public class SceneMeshHelpers
 		return (delta >= 0)
 				? aboveOrMatchLight
 				: SKY_LIGHT_SHADOW
+		;
+	}
+
+	private static boolean _isBlockOpaque(Environment env, MeshInputData data, BlockAddress address)
+	{
+		Block blockType;
+		if (address.x() < 0)
+		{
+			if (null != data.west)
+			{
+				blockType = new BlockProxy(new BlockAddress((byte)(address.x() + Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.west).getBlock();
+			}
+			else
+			{
+				blockType = null;
+			}
+		}
+		else if (address.x() >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			if (null != data.east)
+			{
+				blockType = new BlockProxy(new BlockAddress((byte)(address.x() - Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.east).getBlock();
+			}
+			else
+			{
+				blockType = null;
+			}
+		}
+		else if (address.y() < 0)
+		{
+			if (null != data.south)
+			{
+				blockType = new BlockProxy(new BlockAddress(address.x(), (byte)(address.y() + Encoding.CUBOID_EDGE_SIZE), address.z()), data.south).getBlock();
+			}
+			else
+			{
+				blockType = null;
+			}
+		}
+		else if (address.y() >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			if (null != data.north)
+			{
+				blockType = new BlockProxy(new BlockAddress(address.x(), (byte)(address.y() - Encoding.CUBOID_EDGE_SIZE), address.z()), data.north).getBlock();
+			}
+			else
+			{
+				blockType = null;
+			}
+		}
+		else if (address.z() < 0)
+		{
+			if (null != data.down)
+			{
+				blockType = new BlockProxy(new BlockAddress(address.x(), address.y(), (byte)(address.z() + Encoding.CUBOID_EDGE_SIZE)), data.down).getBlock();
+			}
+			else
+			{
+				blockType = null;
+			}
+		}
+		else if (address.z() >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			if (null != data.up)
+			{
+				blockType = new BlockProxy(new BlockAddress(address.x(), address.y(), (byte)(address.z() - Encoding.CUBOID_EDGE_SIZE)), data.up).getBlock();
+			}
+			else
+			{
+				blockType = null;
+			}
+		}
+		else
+		{
+			blockType = new BlockProxy(address, data.cuboid).getBlock();
+		}
+		return (null != blockType)
+				? (LightAspect.OPAQUE ==  env.lighting.getOpacity(blockType))
+				: false
 		;
 	}
 

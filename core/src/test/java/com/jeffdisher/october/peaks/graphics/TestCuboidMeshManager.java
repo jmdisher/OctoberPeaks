@@ -136,7 +136,8 @@ public class TestCuboidMeshManager
 		VertexArray lowOpaqueArray = _waitForOpaqueChange(manager, lowAddress, null);
 		Assert.assertEquals(36, lowOpaqueArray.totalVertices);
 		highWaterArray = _waitForWaterChange(manager, highAddress, highWaterArray);
-		Assert.assertEquals(36, highWaterArray.totalVertices);
+		// The water face toward the opaque block is skipped.
+		Assert.assertEquals(30, highWaterArray.totalVertices);
 		
 		manager.shutdown();
 	}
