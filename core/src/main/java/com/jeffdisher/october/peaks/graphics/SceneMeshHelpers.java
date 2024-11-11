@@ -123,7 +123,14 @@ public class SceneMeshHelpers
 			, MeshInputData inputData
 	)
 	{
-		Set<Short> water = _buildWaterNumberSet(env);
+		// In this case, we need to configure a WaterSurfaceBuilder since water's surface depends on the strength of flow.
+		short sourceNumber = env.items.getItemById("op.water_source").number();
+		short strongNumber = env.items.getItemById("op.water_strong").number();
+		short weakNumber = env.items.getItemById("op.water_weak").number();
+		Set<Short> water = Set.of(sourceNumber
+				, strongNumber
+				, weakNumber
+		);
 		Predicate<Short> shouldInclude = (Short value) -> {
 			return water.contains(value);
 		};
@@ -133,15 +140,37 @@ public class SceneMeshHelpers
 				, inputData
 		);
 		faces.populateMasks(inputData.cuboid, shouldInclude);
-		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(builder
-				, projection
-				, blockIndexMapper
-				, blockAtlas
-				, auxAtlas
-				, shouldInclude
-				, inputData
-				, 0.9f
-		));
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(shouldInclude, sourceNumber, strongNumber, weakNumber);
+		faces.buildFaces(inputData.cuboid, surface);
+		
+		// For now, just use the same image for all faces.
+		float[] uvBase = blockAtlas.baseOfTexture(blockIndexMapper[sourceNumber], BlockVariant.TOP);
+		float textureSize = blockAtlas.coordinateSize;
+		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
+		float auxTextureSize = auxAtlas.coordinateSize;
+		short cuboidZ = inputData.cuboid.getCuboidAddress().z();
+		
+		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {
+			float[] _base = new float[] {0.0f, 0.0f, 0.0f};
+			@Override
+			public void writeQuad(BlockAddress address, float[][] counterClockWiseVertices, float[] normal)
+			{
+				byte light = inputData.cuboid.getData7(AspectRegistry.LIGHT, address);
+				float blockLightMultiplier = _mapBlockLight(light);
+				float skyLightMultiplier = ((address.z() + cuboidZ - 1) == inputData.height.getHeight(address.x(), address.y())) ? 1.0f : 0.0f;
+				_populateQuad(builder
+						, _base
+						, counterClockWiseVertices
+						, normal
+						, uvBase
+						, textureSize
+						, auxUv
+						, auxTextureSize
+						, blockLightMultiplier
+						, skyLightMultiplier
+				);
+			}
+		});
 	}
 
 	public static void populateMeshForDroppedItems(Environment env
