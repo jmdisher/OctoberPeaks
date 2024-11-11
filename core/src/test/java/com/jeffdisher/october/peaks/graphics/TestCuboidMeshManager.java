@@ -114,16 +114,19 @@ public class TestCuboidMeshManager
 		manager.setCuboid(lowCuboid, lowMap, null);
 		Assert.assertNull(_readCuboidWater(manager, lowAddress));
 		VertexArray lowWaterArray = _waitForWaterChange(manager, lowAddress, null);
-		Assert.assertEquals(36, lowWaterArray.totalVertices);
+		// Note that we draw both sides of the water surface.
+		Assert.assertEquals(72, lowWaterArray.totalVertices);
 		
 		manager.setCuboid(highCuboid, highMap, null);
 		Assert.assertNull(_readCuboidWater(manager, highAddress));
 		VertexArray highWaterArray = _waitForWaterChange(manager, highAddress, null);
-		Assert.assertEquals(30, highWaterArray.totalVertices);
+		// Note that we draw both sides of the water surface.
+		Assert.assertEquals(60, highWaterArray.totalVertices);
 		
 		// Wait for the re-bake of the low cuboid.
 		lowWaterArray = _waitForWaterChange(manager, lowAddress, lowWaterArray);
-		Assert.assertEquals(30, lowWaterArray.totalVertices);
+		// Note that we draw both sides of the water surface.
+		Assert.assertEquals(60, lowWaterArray.totalVertices);
 		
 		// Now change one of these blocks and observe the updates in both blocks.
 		lowCuboid = CuboidData.mutableClone(lowCuboid);
@@ -137,7 +140,8 @@ public class TestCuboidMeshManager
 		Assert.assertEquals(36, lowOpaqueArray.totalVertices);
 		highWaterArray = _waitForWaterChange(manager, highAddress, highWaterArray);
 		// The water face toward the opaque block is skipped.
-		Assert.assertEquals(30, highWaterArray.totalVertices);
+		// Note that we draw both sides of the water surface.
+		Assert.assertEquals(60, highWaterArray.totalVertices);
 		
 		manager.shutdown();
 	}

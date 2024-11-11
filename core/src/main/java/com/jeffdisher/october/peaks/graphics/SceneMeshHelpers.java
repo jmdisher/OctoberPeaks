@@ -171,6 +171,31 @@ public class SceneMeshHelpers
 							, blockLightMultiplier
 							, skyLightMultiplier
 					);
+					
+					// We want to draw the quad on the outside and inside of the water (in case you are looking out).
+					// We may want a different texture for the "looking out", later.
+					float[][] reverseVertices = new float[][] {
+						counterClockWiseVertices[3],
+						counterClockWiseVertices[2],
+						counterClockWiseVertices[1],
+						counterClockWiseVertices[0],
+					};
+					float[] reverseNormal = new float[] {
+							-1.0f * normal[0],
+							-1.0f * normal[1],
+							-1.0f * normal[2],
+					};
+					_populateQuad(builder
+							, _base
+							, reverseVertices
+							, reverseNormal
+							, uvBase
+							, textureSize
+							, auxUv
+							, auxTextureSize
+							, blockLightMultiplier
+							, skyLightMultiplier
+					);
 				}
 			}
 		});
