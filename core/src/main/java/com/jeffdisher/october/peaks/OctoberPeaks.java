@@ -27,13 +27,13 @@ import com.jeffdisher.october.utils.Assert;
 
 public class OctoberPeaks extends ApplicationAdapter
 {
+	private final Environment _environment;
 	private final String _clientName;
 	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final InetSocketAddress _serverSocketAddress;
 	private final SelectionManager _selectionManager;
 
-	private Environment _environment;
 	private GL20 _gl;
 	private TextureAtlas<ItemVariant> _itemAtlas;
 	private SceneRenderer _scene;
@@ -45,6 +45,7 @@ public class OctoberPeaks extends ApplicationAdapter
 
 	public OctoberPeaks(Options options)
 	{
+		_environment = Environment.createSharedInstance();
 		_clientName = options.clientName();
 		_cuboids = new HashMap<>();
 		_blockLookup = (AbsoluteLocation location) -> {
@@ -57,13 +58,12 @@ public class OctoberPeaks extends ApplicationAdapter
 			return proxy;
 		};
 		_serverSocketAddress = options.serverAddress();
-		_selectionManager = new SelectionManager(_blockLookup);
+		_selectionManager = new SelectionManager(_environment, _blockLookup);
 	}
 
 	@Override
 	public void create()
 	{
-		_environment = Environment.createSharedInstance();
 		_gl = Gdx.graphics.getGL20();
 		
 		// Set common GL functionality for the view.
@@ -121,6 +121,7 @@ public class OctoberPeaks extends ApplicationAdapter
 						_selectionManager.updatePosition(eye, target);
 						_windowManager.setThisEntity(projectedEntity);
 						_uiState.setThisEntity(projectedEntity);
+						_selectionManager.setThisEntity(projectedEntity);
 					}
 					@Override
 					public void otherClientJoined(int clientId, String name)
@@ -224,6 +225,5 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		// Tear-down the shared environment.
 		Environment.clearSharedInstance();
-		_environment = null;
 	}
 }

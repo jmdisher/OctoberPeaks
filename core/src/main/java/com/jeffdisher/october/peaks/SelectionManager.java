@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
@@ -9,6 +10,11 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.mutations.EntityChangeIncrementalBlockBreak;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.CreativeInventory;
+import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.Inventory;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -20,13 +26,27 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class SelectionManager
 {
+	private final Set<Block> _ignoreCommon;
+	private final Set<Block> _ignoreCommonAndWaterSource;
+	private final Item _emptyBucketItem;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final Map<Integer, PartialEntity> _entities;
 	private Vector _eye;
 	private Vector _target;
+	private boolean _isEmptyBucketSelected;
 
-	public SelectionManager(Function<AbsoluteLocation, BlockProxy> blockLookup)
+	public SelectionManager(Environment environment, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
+		_ignoreCommon = Set.of(environment.special.AIR
+				, environment.special.WATER_WEAK
+				, environment.special.WATER_STRONG
+		);
+		_ignoreCommonAndWaterSource = Set.of(environment.special.AIR
+				, environment.special.WATER_WEAK
+				, environment.special.WATER_STRONG
+				, environment.special.WATER_SOURCE
+		);
+		_emptyBucketItem = environment.items.getItemById("op.bucket_empty");
 		_blockLookup = blockLookup;
 		_entities = new HashMap<>();
 	}
@@ -48,6 +68,32 @@ public class SelectionManager
 		Assert.assertTrue(null != removed);
 	}
 
+	public void setThisEntity(Entity projectedEntity)
+	{
+		// We only use care about an empty bucket being selected, for now, so we only store that.
+		// (even if we want more information than this, it is probably just other specific items).
+		int selectedKey = projectedEntity.hotbarItems()[projectedEntity.hotbarIndex()];
+		boolean isEmptyBucket;
+		if (Entity.NO_SELECTION != selectedKey)
+		{
+			Inventory inv = projectedEntity.isCreativeMode()
+					? CreativeInventory.fakeInventory()
+					: projectedEntity.inventory()
+			;
+			// The bucket is not stackable.
+			NonStackableItem nonStack = inv.getNonStackableForKey(selectedKey);
+			isEmptyBucket = (null != nonStack)
+					? (_emptyBucketItem == nonStack.type())
+					: false
+			;
+		}
+		else
+		{
+			isEmptyBucket = false;
+		}
+		_isEmptyBucketSelected = isEmptyBucket;
+	}
+
 	public SelectionTuple findSelection()
 	{
 		// Find any selected entity or block.
@@ -60,19 +106,18 @@ public class SelectionManager
 			Vector relative = Vector.delta(_eye, endPoint).normalize().scale(selectedEntity.distance());
 			edgeLimit = new Vector(_eye.x() + relative.x(), _eye.y() + relative.y(), _eye.z() + relative.z());
 		}
-		Environment env = Environment.getShared();
 		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, edgeLimit, (AbsoluteLocation location) -> {
 			BlockProxy proxy = _blockLookup.apply(location);
 			boolean shouldStop = true;
 			if (null != proxy)
 			{
-				shouldStop = false;
 				Block block = proxy.getBlock();
-				// Check against the air block.
-				if (env.special.AIR != block)
-				{
-					shouldStop = true;
-				}
+				// If we can select the water source, don't ignore it.
+				boolean shouldIgnore = _isEmptyBucketSelected
+						? _ignoreCommon.contains(block)
+						: _ignoreCommonAndWaterSource.contains(block)
+				;
+				shouldStop = !shouldIgnore;
 			}
 			return shouldStop;
 		});
