@@ -69,6 +69,11 @@ public class UiStateManager
 	private AbsoluteLocation _lastActionBlock;
 	private long _lastActionMillis;
 
+	// Tracking related to orientation change updates.
+	private boolean _orientationNeedsFlush;
+	private float _yawRadians;
+	private float _pitchRadians;
+
 	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
 		_movement = movement;
@@ -344,6 +349,13 @@ public class UiStateManager
 
 	public void finalizeFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
+		// See if we need to update our orientation.
+		if (_orientationNeedsFlush)
+		{
+			_client.setOrientation(_yawRadians, _pitchRadians);
+			_orientationNeedsFlush = false;
+		}
+		
 		// See if the click refers to anything selected.
 		if (_mouseHeld0)
 		{
@@ -438,7 +450,12 @@ public class UiStateManager
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
 	{
-		_movement.rotate(deltaX, deltaY);
+		if ((0 != deltaX) || (0 != deltaY))
+		{
+			_yawRadians = _movement.rotateYaw(deltaX);
+			_pitchRadians = _movement.rotatePitch(deltaY);
+			_orientationNeedsFlush = true;
+		}
 		_rotationDidUpdate = true;
 	}
 

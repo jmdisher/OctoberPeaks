@@ -95,17 +95,13 @@ public class MovementControl
 		return mutationDirection;
 	}
 
-	public void rotate(int distanceRight, int distanceDown)
+	public float rotateYaw(int distanceRight)
 	{
 		float xRadians = ((float)distanceRight) / 300.0f;
-		float yRadians = ((float)distanceDown) / 300.0f;
 		// Note that _rotateX is counter-clockwise around the positive Z (yaw - positive X turns to the left).
 		_rotateX -= xRadians;
-		// Note that _rotateY is counter-clockwise around the positive X (pitch - positive Y looks up).
-		_rotateY -= yRadians;
 		float pi = (float)Math.PI;
 		float pi2 = 2.0f * pi;
-		float piHalf = pi / 2.0f;
 		if (_rotateX > pi2)
 		{
 			_rotateX -= pi2;
@@ -114,6 +110,16 @@ public class MovementControl
 		{
 			_rotateX += pi2;
 		}
+		return _rotateX;
+	}
+
+	public float rotatePitch(int distanceDown)
+	{
+		float yRadians = ((float)distanceDown) / 300.0f;
+		// Note that _rotateY is counter-clockwise around the positive X (pitch - positive Y looks up).
+		_rotateY -= yRadians;
+		float pi = (float)Math.PI;
+		float piHalf = pi / 2.0f;
 		if (_rotateY > piHalf)
 		{
 			_rotateY = piHalf;
@@ -122,6 +128,7 @@ public class MovementControl
 		{
 			_rotateY = -piHalf;
 		}
+		return _rotateY;
 	}
 
 	public void setEye(Vector eyeLocation)

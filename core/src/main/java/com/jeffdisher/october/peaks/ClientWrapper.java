@@ -13,6 +13,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAttackEntity;
 import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
@@ -20,6 +21,7 @@ import com.jeffdisher.october.mutations.EntityChangeJump;
 import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
 import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
+import com.jeffdisher.october.mutations.EntityChangeSetOrientation;
 import com.jeffdisher.october.mutations.EntityChangeSwapArmour;
 import com.jeffdisher.october.mutations.EntityChangeSwim;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
@@ -185,6 +187,15 @@ public class ClientWrapper
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.doNothing(currentTimeMillis);
+	}
+
+	public void setOrientation(float yawRadians, float pitchRadians)
+	{
+		byte yaw = OrientationHelpers.yawFromRadians(yawRadians);
+		byte pitch = OrientationHelpers.yawFromRadians(pitchRadians);
+		EntityChangeSetOrientation<IMutablePlayerEntity> set = new EntityChangeSetOrientation<>(yaw, pitch);
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.sendAction(set, currentTimeMillis);
 	}
 
 	public void stepHorizontal(EntityChangeMove.Direction direction)
