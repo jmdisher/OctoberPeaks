@@ -15,10 +15,10 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
+import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.mutations.EntityChangeAttackEntity;
 import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
 import com.jeffdisher.october.mutations.EntityChangeJump;
-import com.jeffdisher.october.mutations.EntityChangeMove;
 import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
 import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
 import com.jeffdisher.october.mutations.EntityChangeSetOrientation;
@@ -198,11 +198,10 @@ public class ClientWrapper
 		_client.sendAction(set, currentTimeMillis);
 	}
 
-	public void stepHorizontal(EntityChangeMove.Direction direction)
+	public void accelerateHorizontal(EntityChangeAccelerate.Relative relativeDirection)
 	{
-		// Make sure that there is no in-progress action, first.
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.moveHorizontalFully(direction, currentTimeMillis);
+		_client.accelerateHorizontally(relativeDirection, currentTimeMillis);
 	}
 
 	public boolean jumpOrSwim()

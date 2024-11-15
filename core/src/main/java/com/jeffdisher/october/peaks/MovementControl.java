@@ -1,7 +1,5 @@
 package com.jeffdisher.october.peaks;
 
-import com.jeffdisher.october.mutations.EntityChangeMove;
-import com.jeffdisher.october.utils.Assert;
 
 /**
  * This helper class is meant to encapsulate the logic for how the first-person perspective is managed and updated.
@@ -21,78 +19,6 @@ public class MovementControl
 		_eyeLocation = new Vector(0.0f, 0.0f, 0.0f);
 		_rotateX = 4.07f;
 		_rotateY = -0.83f;
-	}
-
-	public EntityChangeMove.Direction walk(boolean isForward)
-	{
-		EntityChangeMove.Direction mutationDirection;
-		_Direction direction = _findFacing();
-		switch (direction)
-		{
-		case NORTH:
-			mutationDirection = isForward
-				? EntityChangeMove.Direction.NORTH
-				: EntityChangeMove.Direction.SOUTH
-			;
-			break;
-		case EAST:
-			mutationDirection = isForward
-				? EntityChangeMove.Direction.EAST
-				: EntityChangeMove.Direction.WEST
-			;
-			break;
-		case SOUTH:
-			mutationDirection = isForward
-				? EntityChangeMove.Direction.SOUTH
-				: EntityChangeMove.Direction.NORTH
-			;
-			break;
-		case WEST:
-			mutationDirection = isForward
-				? EntityChangeMove.Direction.WEST
-				: EntityChangeMove.Direction.EAST
-			;
-			break;
-		default:
-			throw Assert.unreachable();
-		}
-		return mutationDirection;
-	}
-
-	public EntityChangeMove.Direction strafeRight(boolean isRight)
-	{
-		EntityChangeMove.Direction mutationDirection;
-		_Direction direction = _findFacing();
-		switch (direction)
-		{
-		case NORTH:
-			mutationDirection = isRight
-				? EntityChangeMove.Direction.EAST
-				: EntityChangeMove.Direction.WEST
-			;
-			break;
-		case EAST:
-			mutationDirection = isRight
-				? EntityChangeMove.Direction.SOUTH
-				: EntityChangeMove.Direction.NORTH
-			;
-			break;
-		case SOUTH:
-			mutationDirection = isRight
-				? EntityChangeMove.Direction.WEST
-				: EntityChangeMove.Direction.EAST
-			;
-			break;
-		case WEST:
-			mutationDirection = isRight
-				? EntityChangeMove.Direction.NORTH
-				: EntityChangeMove.Direction.SOUTH
-			;
-			break;
-		default:
-			throw Assert.unreachable();
-		}
-		return mutationDirection;
 	}
 
 	public float rotateYaw(int distanceRight)
@@ -150,27 +76,5 @@ public class MovementControl
 	public Vector computeUpVector()
 	{
 		return GeometryHelpers.computeUpVector(_rotateX, _rotateY);
-	}
-
-
-	private _Direction _findFacing()
-	{
-		// We will take the facing direction into account but always walk in cardinal directions (since the movement mutation requires that).
-		float pi = (float)Math.PI;
-		float half = pi / 2.0f;
-		float quarter = pi / 4.0f;
-		int quadrant = (int)Math.floor((_rotateX + quarter) % (pi * 2.0f) / half);
-		_Direction direction = _Direction.values()[quadrant];
-		return direction;
-	}
-
-
-	// These are in this order since the rotation is counter-clockwise.
-	private static enum _Direction
-	{
-		NORTH,
-		WEST,
-		SOUTH,
-		EAST,
 	}
 }

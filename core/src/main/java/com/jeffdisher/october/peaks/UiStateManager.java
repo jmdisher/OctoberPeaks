@@ -9,7 +9,7 @@ import java.util.function.Function;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.mutations.EntityChangeMove;
+import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -35,7 +35,7 @@ public class UiStateManager
 	 * delay an action on a new block by this many milliseconds.
 	 * This will also be applied to things like right-click actions on entities/blocks.
 	 */
-	private static long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
+	public static final long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
 
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
@@ -473,29 +473,25 @@ public class UiStateManager
 
 	public void moveForward()
 	{
-		EntityChangeMove.Direction direction = _movement.walk(true);
-		_client.stepHorizontal(direction);
+		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.FORWARD);
 		_didAccountForTimeInFrame = true;
 	}
 
 	public void moveBackward()
 	{
-		EntityChangeMove.Direction direction = _movement.walk(false);
-		_client.stepHorizontal(direction);
+		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.BACKWARD);
 		_didAccountForTimeInFrame = true;
 	}
 
 	public void strafeRight()
 	{
-		EntityChangeMove.Direction direction = _movement.strafeRight(true);
-		_client.stepHorizontal(direction);
+		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.RIGHT);
 		_didAccountForTimeInFrame = true;
 	}
 
 	public void strafeLeft()
 	{
-		EntityChangeMove.Direction direction = _movement.strafeRight(false);
-		_client.stepHorizontal(direction);
+		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.LEFT);
 		_didAccountForTimeInFrame = true;
 	}
 
