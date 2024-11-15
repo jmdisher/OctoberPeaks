@@ -18,6 +18,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.CuboidMeshManager;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -209,12 +210,8 @@ public class SceneRenderer
 		// Render any entities.
 		for (PartialEntity entity : _entities.values())
 		{
-			EntityLocation location = entity.location();
 			EntityType type = entity.type();
-			EntityVolume volume = EntityConstants.getVolume(type);
-			Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
-			Matrix scale = Matrix.scale(volume.width(), volume.width(), volume.height());
-			Matrix model = Matrix.mutliply(translate, scale);
+			Matrix model = _generateEntityModelMatrix(entity, type);
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
 			_EntityData data = _entityData.get(type);
@@ -265,12 +262,8 @@ public class SceneRenderer
 		}
 		else if (null != selectedEntity)
 		{
-			EntityLocation location = selectedEntity.location();
 			EntityType type = selectedEntity.type();
-			EntityVolume volume = EntityConstants.getVolume(type);
-			Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
-			Matrix scale = Matrix.scale(volume.width(), volume.width(), volume.height());
-			Matrix model = Matrix.mutliply(translate, scale);
+			Matrix model = _generateEntityModelMatrix(selectedEntity, type);
 			model.uploadAsUniform(_gl, _uModelMatrix);
 			_entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 		}
@@ -356,6 +349,19 @@ public class SceneRenderer
 		}
 		_EntityData data = new _EntityData(buffer, texture);
 		return data;
+	}
+
+	private static Matrix _generateEntityModelMatrix(PartialEntity entity, EntityType type)
+	{
+		EntityLocation location = entity.location();
+		EntityVolume volume = EntityConstants.getVolume(type);
+		Matrix rotatePitch = Matrix.rotateX(OrientationHelpers.getPitchRadians(entity.pitch()));
+		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(entity.yaw()));
+		Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
+		Matrix scale = Matrix.scale(volume.width(), volume.width(), volume.height());
+		Matrix rotate = Matrix.mutliply(rotateYaw, rotatePitch);
+		Matrix model = Matrix.mutliply(translate, Matrix.mutliply(rotate, scale));
+		return model;
 	}
 
 	private static String _readUtf8Asset(String name)
