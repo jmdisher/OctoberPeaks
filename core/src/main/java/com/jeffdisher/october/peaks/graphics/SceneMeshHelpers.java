@@ -777,80 +777,80 @@ public class SceneMeshHelpers
 
 	private static float _getSkyLightMultiplier(MeshInputData data, byte baseX, byte baseY, byte baseZ, float aboveOrMatchLight)
 	{
-		int realZ = data.cuboid.getCuboidAddress().z() + baseZ - 1;
+		int realZ = data.cuboid.getCuboidAddress().getBase().z() + baseZ - 1;
 		
-		int delta;
+		boolean isLit;
 		if (baseX < 0)
 		{
 			if (null != data.westHeight)
 			{
-				delta = realZ - data.westHeight.getHeight(baseX + Encoding.CUBOID_EDGE_SIZE, baseY);
+				isLit = (realZ >= data.westHeight.getHeight(baseX + Encoding.CUBOID_EDGE_SIZE, baseY));
 			}
 			else
 			{
-				delta = 0;
+				isLit = true;
 			}
 		}
 		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
 		{
 			if (null != data.eastHeight)
 			{
-				delta = realZ - data.eastHeight.getHeight(baseX - Encoding.CUBOID_EDGE_SIZE, baseY);
+				isLit = (realZ >= data.eastHeight.getHeight(baseX - Encoding.CUBOID_EDGE_SIZE, baseY));
 			}
 			else
 			{
-				delta = 0;
+				isLit = true;
 			}
 		}
 		else if (baseY < 0)
 		{
 			if (null != data.southHeight)
 			{
-				delta = realZ - data.southHeight.getHeight(baseX, baseY + Encoding.CUBOID_EDGE_SIZE);
+				isLit = (realZ >= data.southHeight.getHeight(baseX, baseY + Encoding.CUBOID_EDGE_SIZE));
 			}
 			else
 			{
-				delta = 0;
+				isLit = true;
 			}
 		}
 		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
 		{
 			if (null != data.northHeight)
 			{
-				delta = realZ - data.northHeight.getHeight(baseX, baseY - Encoding.CUBOID_EDGE_SIZE);
+				isLit = (realZ >= data.northHeight.getHeight(baseX, baseY - Encoding.CUBOID_EDGE_SIZE));
 			}
 			else
 			{
-				delta = 0;
+				isLit = true;
 			}
 		}
 		else if (baseZ < 0)
 		{
 			if (null != data.downHeight)
 			{
-				delta = (realZ - Encoding.CUBOID_EDGE_SIZE) - data.downHeight.getHeight(baseX, baseY);
+				isLit = (realZ >= data.downHeight.getHeight(baseX, baseY));
 			}
 			else
 			{
-				delta = 0;
+				isLit = true;
 			}
 		}
 		else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
 		{
 			if (null != data.upHeight)
 			{
-				delta = (realZ + Encoding.CUBOID_EDGE_SIZE) - data.upHeight.getHeight(baseX, baseY);
+				isLit = (realZ >= data.upHeight.getHeight(baseX, baseY));
 			}
 			else
 			{
-				delta = 0;
+				isLit = true;
 			}
 		}
 		else
 		{
-			delta = realZ - data.height.getHeight(baseX, baseY);
+			isLit = (realZ >= data.height.getHeight(baseX, baseY));
 		}
-		return (delta >= 0)
+		return isLit
 				? aboveOrMatchLight
 				: SKY_LIGHT_SHADOW
 		;

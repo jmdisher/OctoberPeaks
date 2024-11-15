@@ -1,6 +1,9 @@
 package com.jeffdisher.october.peaks.graphics;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.AfterClass;
@@ -16,6 +19,7 @@ import com.jeffdisher.october.logic.HeightMapHelpers;
 import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.TextureAtlas;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Item;
@@ -26,6 +30,8 @@ public class TestCuboidMeshManager
 {
 	private static Environment ENV;
 	private static Attribute[] ATTRIBUTES;
+	private static int FLOATS_PER_VERTEX;
+	private static Block STONE_BLOCK;
 	private static short STONE_VALUE;
 	private static short WATER_VALUE;
 	@BeforeClass
@@ -39,7 +45,12 @@ public class TestCuboidMeshManager
 				, new Attribute("aBlockLightMultiplier", 1)
 				, new Attribute("aSkyLightMultiplier", 1)
 		};
+		for (Attribute attr : ATTRIBUTES)
+		{
+			FLOATS_PER_VERTEX += attr.floats();
+		}
 		Item stoneItem = ENV.items.getItemById("op.stone");
+		STONE_BLOCK = ENV.blocks.fromItem(stoneItem);
 		STONE_VALUE = stoneItem.number();
 		WATER_VALUE = ENV.items.getItemById("op.water_source").number();
 	}
@@ -144,6 +155,227 @@ public class TestCuboidMeshManager
 		manager.shutdown();
 	}
 
+	@Test
+	public void skyLightUpdates() throws Throwable
+	{
+		// We want to test 2 cuboids, one stacked on top of the other, to see how we handle the height map updates.
+		_Gpu testingGpu = new _Gpu();
+		int textureCount = STONE_VALUE + 1;
+		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
+		
+		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
+		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
+		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(lowAddress, ENV.special.AIR);
+		lowCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 30), STONE_VALUE);
+		ColumnHeightMap lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress).freeze();
+		CuboidAddress highAddress = new CuboidAddress((short)0, (short)0, (short)1);
+		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, STONE_BLOCK);
+		ColumnHeightMap highMap = ColumnHeightMap.build()
+				.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
+				.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
+				.freeze();
+		
+		// Request the bottom one first and verify it.
+		manager.setCuboid(lowCuboid, lowMap, null);
+		Assert.assertEquals(1, manager.viewCuboids().size());
+		VertexArray opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(36, opaque.totalVertices);
+		Assert.assertEquals(1, testingGpu.uploadedBuffers.size());
+		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(0).vertexCount);
+		float[] initial = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(0).vertexCount];
+		testingGpu.uploadedBuffers.get(0).testGetFloats(initial);
+		testingGpu.uploadedBuffers.clear();
+		
+		// Now, request the top one and verify that both are changed and that the low one has different sky multiplier values.
+		manager.setCuboid(highCuboid, highMap, null);
+		Assert.assertEquals(2, manager.viewCuboids().size());
+		testingGpu.processUntilBufferCount(manager, 2);
+		VertexArray other = _waitForOpaqueArray(manager, highAddress);
+		opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(36, opaque.totalVertices);
+		Assert.assertEquals(2, testingGpu.uploadedBuffers.size());
+		Assert.assertEquals(other.totalVertices, testingGpu.uploadedBuffers.get(0).vertexCount);
+		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(1).vertexCount);
+		float[] updated = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(1).vertexCount];
+		testingGpu.uploadedBuffers.get(1).testGetFloats(updated);
+		testingGpu.uploadedBuffers.clear();
+		
+		manager.shutdown();
+		
+		// The top and side faces should switch to 0 sky multiplier.
+		int multiplier1 = 0;
+		int multiplierHalf = 0;
+		int multiplier0 = 0;
+		for (int vertex = 0; vertex < 36; ++vertex)
+		{
+			int base = vertex * FLOATS_PER_VERTEX;
+			
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 0));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 1));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 2));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 3));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 4));
+			
+			float initialSkyMultiplier = _extractField(initial, base, ATTRIBUTES, 5)[0];
+			float updatedSkyMultiplier = _extractField(updated, base, ATTRIBUTES, 5)[0];
+			if (1.0f == initialSkyMultiplier)
+			{
+				multiplier1 += 1;
+			}
+			else if (0.5f == initialSkyMultiplier)
+			{
+				multiplierHalf += 1;
+			}
+			else if (0.0f == initialSkyMultiplier)
+			{
+				multiplier0 += 1;
+			}
+			Assert.assertEquals(0.0f, updatedSkyMultiplier, 0.01f);
+		}
+		Assert.assertEquals(6, multiplier1);
+		Assert.assertEquals(24, multiplierHalf);
+		Assert.assertEquals(6, multiplier0);
+	}
+
+	@Test
+	public void skyLightUpdatesBoundary() throws Throwable
+	{
+		// We want to test 2 cuboids, one stacked on top of the other, to see how we handle the height map updates.
+		_Gpu testingGpu = new _Gpu();
+		int textureCount = STONE_VALUE + 1;
+		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
+		
+		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
+		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
+		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(lowAddress, ENV.special.AIR);
+		lowCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 31), STONE_VALUE);
+		ColumnHeightMap lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress).freeze();
+		CuboidAddress highAddress = new CuboidAddress((short)0, (short)0, (short)1);
+		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, STONE_BLOCK);
+		highCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 0), ENV.special.AIR.item().number());
+		ColumnHeightMap highMap = ColumnHeightMap.build()
+				.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
+				.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
+				.freeze();
+		
+		// Request the bottom one first and verify it.
+		manager.setCuboid(lowCuboid, lowMap, null);
+		Assert.assertEquals(1, manager.viewCuboids().size());
+		VertexArray opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(36, opaque.totalVertices);
+		Assert.assertEquals(1, testingGpu.uploadedBuffers.size());
+		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(0).vertexCount);
+		float[] initial = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(0).vertexCount];
+		testingGpu.uploadedBuffers.get(0).testGetFloats(initial);
+		testingGpu.uploadedBuffers.clear();
+		
+		// Now, request the top one and verify that both are changed and that the low one has different sky multiplier values.
+		manager.setCuboid(highCuboid, highMap, null);
+		Assert.assertEquals(2, manager.viewCuboids().size());
+		testingGpu.processUntilBufferCount(manager, 2);
+		VertexArray other = _waitForOpaqueArray(manager, highAddress);
+		opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(36, opaque.totalVertices);
+		Assert.assertEquals(2, testingGpu.uploadedBuffers.size());
+		Assert.assertEquals(other.totalVertices, testingGpu.uploadedBuffers.get(0).vertexCount);
+		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(1).vertexCount);
+		float[] updated = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(1).vertexCount];
+		testingGpu.uploadedBuffers.get(1).testGetFloats(updated);
+		testingGpu.uploadedBuffers.clear();
+		
+		manager.shutdown();
+		
+		// The top and side faces should switch to 0 sky multiplier.
+		int multiplier1 = 0;
+		int multiplierHalf = 0;
+		int multiplier0 = 0;
+		for (int vertex = 0; vertex < 36; ++vertex)
+		{
+			int base = vertex * FLOATS_PER_VERTEX;
+			
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 0));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 1));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 2));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 3));
+			Assert.assertTrue(_compareVertexFields(initial, updated, base, ATTRIBUTES, 4));
+			
+			float initialSkyMultiplier = _extractField(initial, base, ATTRIBUTES, 5)[0];
+			float updatedSkyMultiplier = _extractField(updated, base, ATTRIBUTES, 5)[0];
+			if (1.0f == initialSkyMultiplier)
+			{
+				multiplier1 += 1;
+			}
+			else if (0.5f == initialSkyMultiplier)
+			{
+				multiplierHalf += 1;
+			}
+			else if (0.0f == initialSkyMultiplier)
+			{
+				multiplier0 += 1;
+			}
+			Assert.assertEquals(0.0f, updatedSkyMultiplier, 0.01f);
+		}
+		Assert.assertEquals(6, multiplier1);
+		Assert.assertEquals(24, multiplierHalf);
+		Assert.assertEquals(6, multiplier0);
+	}
+
+	@Test
+	public void skyLightUpdatesMultiple() throws Throwable
+	{
+		// We want to test 2 cuboids, one stacked on top of the other, but enqueue both of them to make sure the lower height map is correct.
+		_Gpu testingGpu = new _Gpu();
+		int textureCount = STONE_VALUE + 1;
+		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
+		
+		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
+		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
+		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(lowAddress, ENV.special.AIR);
+		lowCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 31), STONE_VALUE);
+		ColumnHeightMap lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress).freeze();
+		CuboidAddress highAddress = new CuboidAddress((short)0, (short)0, (short)1);
+		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, STONE_BLOCK);
+		highCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 0), ENV.special.AIR.item().number());
+		ColumnHeightMap highMap = ColumnHeightMap.build()
+				.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
+				.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
+				.freeze();
+		
+		// Upload both of these.
+		manager.setCuboid(lowCuboid, lowMap, null);
+		manager.setCuboid(highCuboid, highMap, null);
+		Assert.assertEquals(2, manager.viewCuboids().size());
+		testingGpu.processUntilBufferCount(manager, 2);
+		
+		// Get the lower data.
+		VertexArray opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(36, opaque.totalVertices);
+		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(0).vertexCount);
+		float[] raw = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(0).vertexCount];
+		testingGpu.uploadedBuffers.get(0).testGetFloats(raw);
+		testingGpu.uploadedBuffers.clear();
+		
+		manager.shutdown();
+		
+		// This block is entirely in shadow so all multipliers should be 0.0.
+		for (int vertex = 0; vertex < 36; ++vertex)
+		{
+			int base = vertex * FLOATS_PER_VERTEX;
+			
+			float skyMultiplier = _extractField(raw, base, ATTRIBUTES, 5)[0];
+			Assert.assertEquals(0.0f, skyMultiplier, 0.01f);
+		}
+	}
+
 
 	private VertexArray _waitForWaterChange(CuboidMeshManager manager, CuboidAddress lowAddress, VertexArray previous)
 	{
@@ -240,12 +472,40 @@ public class TestCuboidMeshManager
 		return foundMesh;
 	}
 
+	private static boolean _compareVertexFields(float[] initial, float[] updated, int vertexBase, Attribute[] attributes, int field)
+	{
+		float[] initialPosition = _extractField(initial, vertexBase, attributes, field);
+		float[] updatedPosition = _extractField(updated, vertexBase, attributes, field);
+		return Arrays.equals(initialPosition, updatedPosition);
+	}
+
+	private static float[] _extractField(float[] array, int vertexBase, Attribute[] attributes, int field)
+	{
+		int offset = 0;
+		for (int i = 0; i < field; ++i)
+		{
+			offset += ATTRIBUTES[i].floats();
+		}
+		int start = vertexBase + offset;
+		int end = start + ATTRIBUTES[field].floats();
+		return Arrays.copyOfRange(array, start, end);
+	}
+
 
 	private static class _Gpu implements CuboidMeshManager.IGpu
 	{
+		public final List<BufferBuilder.Buffer> uploadedBuffers = new ArrayList<>();
+		public void processUntilBufferCount(CuboidMeshManager manager, int count)
+		{
+			while (this.uploadedBuffers.size() < count)
+			{
+				manager.processBackground();
+			}
+		}
 		@Override
 		public VertexArray uploadBuffer(BufferBuilder.Buffer buffer)
 		{
+			this.uploadedBuffers.add(buffer);
 			return new VertexArray(1, buffer.vertexCount, ATTRIBUTES);
 		}
 		@Override
