@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks.graphics;
 
+import java.util.Iterator;
 import java.util.Set;
 
 import org.junit.AfterClass;
@@ -15,7 +16,6 @@ import com.jeffdisher.october.logic.HeightMapHelpers;
 import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.TextureAtlas;
-import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Item;
@@ -39,7 +39,8 @@ public class TestCuboidMeshManager
 				, new Attribute("aBlockLightMultiplier", 1)
 				, new Attribute("aSkyLightMultiplier", 1)
 		};
-		STONE_VALUE = ENV.items.getItemById("op.stone").number();
+		Item stoneItem = ENV.items.getItemById("op.stone");
+		STONE_VALUE = stoneItem.number();
 		WATER_VALUE = ENV.items.getItemById("op.water_source").number();
 	}
 	@AfterClass
@@ -80,11 +81,7 @@ public class TestCuboidMeshManager
 		Assert.assertNull(data.itemsOnGroundArray());
 		Assert.assertNull(data.transparentArray());
 		
-		// Process until we see these.
-		while (null == manager.viewCuboids().iterator().next().opaqueArray())
-		{
-			manager.processBackground();
-		}
+		_waitForOpaqueArray(manager, address);
 		Assert.assertEquals(36, manager.viewCuboids().iterator().next().opaqueArray().totalVertices);
 		
 		manager.shutdown();
@@ -180,7 +177,7 @@ public class TestCuboidMeshManager
 		return waterArray;
 	}
 
-	private VertexArray _readCuboidOpaque(CuboidMeshManager manager, CuboidAddress address)
+	private static VertexArray _readCuboidOpaque(CuboidMeshManager manager, CuboidAddress address)
 	{
 		VertexArray waterArray = null;
 		for (CuboidMeshManager.CuboidMeshes data : manager.viewCuboids())
@@ -194,7 +191,7 @@ public class TestCuboidMeshManager
 		return waterArray;
 	}
 
-	private boolean[] buildNonOpaqueVector()
+	private static boolean[] buildNonOpaqueVector()
 	{
 		// We just want to add stone as our only opaque value.
 		int size = 0;
@@ -220,11 +217,34 @@ public class TestCuboidMeshManager
 		return vector;
 	}
 
+	private static VertexArray _waitForOpaqueArray(CuboidMeshManager manager, CuboidAddress address)
+	{
+		VertexArray foundMesh = null;
+		while (null == foundMesh)
+		{
+			manager.processBackground();
+			Iterator<CuboidMeshManager.CuboidMeshes> iterator = manager.viewCuboids().iterator();
+			
+			while (iterator.hasNext())
+			{
+				CuboidMeshManager.CuboidMeshes mesh = iterator.next();
+				if (address.equals(mesh.address()))
+				{
+					if (null != mesh.opaqueArray())
+					{
+						foundMesh = mesh.opaqueArray();
+					}
+				}
+			}
+		}
+		return foundMesh;
+	}
+
 
 	private static class _Gpu implements CuboidMeshManager.IGpu
 	{
 		@Override
-		public VertexArray uploadBuffer(Buffer buffer)
+		public VertexArray uploadBuffer(BufferBuilder.Buffer buffer)
 		{
 			return new VertexArray(1, buffer.vertexCount, ATTRIBUTES);
 		}
