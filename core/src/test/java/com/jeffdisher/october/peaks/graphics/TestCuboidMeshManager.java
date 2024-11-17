@@ -19,6 +19,7 @@ import com.jeffdisher.october.logic.HeightMapHelpers;
 import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.TextureAtlas;
+import com.jeffdisher.october.peaks.TextureHelpers;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
@@ -73,9 +74,9 @@ public class TestCuboidMeshManager
 	{
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
-		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
 		
 		CuboidAddress address = new CuboidAddress((short)0, (short)0, (short)0);
@@ -103,9 +104,9 @@ public class TestCuboidMeshManager
 	{
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = WATER_VALUE + 1;
-		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, buildNonOpaqueVector(), BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, buildNonOpaqueVector(), BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
 		
 		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
@@ -161,9 +162,9 @@ public class TestCuboidMeshManager
 		// We want to test 2 cuboids, one stacked on top of the other, to see how we handle the height map updates.
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
-		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
@@ -246,9 +247,9 @@ public class TestCuboidMeshManager
 		// We want to test 2 cuboids, one stacked on top of the other, to see how we handle the height map updates.
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
-		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
@@ -332,9 +333,9 @@ public class TestCuboidMeshManager
 		// We want to test 2 cuboids, one stacked on top of the other, but enqueue both of them to make sure the lower height map is correct.
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
-		TextureAtlas<ItemVariant> itemAtlas = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureAtlas.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, new boolean[textureCount], SceneMeshHelpers.AuxVariant.class);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockTextures, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
