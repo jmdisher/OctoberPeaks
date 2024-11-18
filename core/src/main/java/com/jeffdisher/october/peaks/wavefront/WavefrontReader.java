@@ -21,6 +21,15 @@ public class WavefrontReader
 	public static final String TEXTURE = "vt";
 	public static final String FACE = "f";
 
+	public static int getVertexCount(String fileText)
+	{
+		long faceCount = fileText.lines()
+			.filter((String line) -> line.startsWith(FACE))
+			.count()
+		;
+		return 3 * (int)faceCount;
+	}
+
 	public static void readFile(VertexConsumer consumer, String fileText)
 	{
 		List<float[]> vertices = new ArrayList<>();

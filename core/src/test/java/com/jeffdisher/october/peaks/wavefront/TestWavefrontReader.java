@@ -40,5 +40,6 @@ public class TestWavefrontReader
 			Assert.assertArrayEquals(expectedNormals[nextVertex[0]], normal, 0.01f);
 			nextVertex[0] += 1;
 		}, string);
+		Assert.assertEquals(3,  WavefrontReader.getVertexCount(string));
 	}
 }
