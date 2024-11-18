@@ -13,7 +13,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.peaks.BlockVariant;
+import com.jeffdisher.october.peaks.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.SparseShortProjection;
 import com.jeffdisher.october.peaks.TextureAtlas;
@@ -71,10 +71,9 @@ public class SceneMeshHelpers
 
 	public static void populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
-			, TextureAtlas<BlockVariant> blockAtlas
+			, BasicBlockAtlas blockAtlas
 			, SparseShortProjection<AuxVariant> projection
 			, TextureAtlas<AuxVariant> auxAtlas
-			, short[] blockIndexMapper
 			, MeshInputData inputData
 			, boolean opaqueVertices
 	)
@@ -83,16 +82,14 @@ public class SceneMeshHelpers
 		if (opaqueVertices)
 		{
 			shouldInclude = (Short value) -> {
-				short index = blockIndexMapper[value];
-				return !blockAtlas.textureHasNonOpaquePixels(index);
+				return !blockAtlas.textureHasNonOpaquePixels(value);
 			};
 		}
 		else
 		{
 			Set<Short> water = _buildWaterNumberSet(env);
 			shouldInclude = (Short value) -> {
-				short index = blockIndexMapper[value];
-				return blockAtlas.textureHasNonOpaquePixels(index)
+				return blockAtlas.textureHasNonOpaquePixels(value)
 						&& !water.contains(value)
 				;
 			};
@@ -105,7 +102,6 @@ public class SceneMeshHelpers
 		faces.populateMasks(inputData.cuboid, shouldInclude);
 		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(builder
 				, projection
-				, blockIndexMapper
 				, blockAtlas
 				, auxAtlas
 				, shouldInclude
@@ -116,10 +112,9 @@ public class SceneMeshHelpers
 
 	public static void populateWaterMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
-			, TextureAtlas<BlockVariant> blockAtlas
+			, BasicBlockAtlas blockAtlas
 			, SparseShortProjection<AuxVariant> projection
 			, TextureAtlas<AuxVariant> auxAtlas
-			, short[] blockIndexMapper
 			, MeshInputData inputData
 	)
 	{
@@ -144,8 +139,8 @@ public class SceneMeshHelpers
 		faces.buildFaces(inputData.cuboid, surface);
 		
 		// For now, just use the same image for all faces.
-		float[] uvBase = blockAtlas.baseOfTexture(blockIndexMapper[sourceNumber], BlockVariant.TOP);
-		float textureSize = blockAtlas.coordinateSize;
+		float[] uvBase = blockAtlas.baseOfTopTexture(sourceNumber);
+		float textureSize = blockAtlas.getCoordinateSize();
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
@@ -568,8 +563,7 @@ public class SceneMeshHelpers
 	{
 		private final BufferBuilder _builder;
 		private final SparseShortProjection<AuxVariant> _projection;
-		private final short[] _blockIndexMapper;
-		private final TextureAtlas<BlockVariant> _blockAtlas;
+		private final BasicBlockAtlas _blockAtlas;
 		private final TextureAtlas<AuxVariant> _auxAtlas;
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
@@ -577,8 +571,7 @@ public class SceneMeshHelpers
 		
 		public _CommonVertexWriter(BufferBuilder builder
 				, SparseShortProjection<AuxVariant> projection
-				, short[] blockIndexMapper
-				, TextureAtlas<BlockVariant> blockAtlas
+				, BasicBlockAtlas blockAtlas
 				, TextureAtlas<AuxVariant> auxAtlas
 				, Predicate<Short> shouldInclude
 				, MeshInputData inputData
@@ -587,7 +580,6 @@ public class SceneMeshHelpers
 		{
 			_builder = builder;
 			_projection = projection;
-			_blockIndexMapper = blockIndexMapper;
 			_blockAtlas = blockAtlas;
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
@@ -603,10 +595,10 @@ public class SceneMeshHelpers
 		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
-			short index = _blockIndexMapper[value];
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-			float[] uvBaseTop = _blockAtlas.baseOfTexture(index, BlockVariant.TOP);
-			float[] uvBaseBottom = _blockAtlas.baseOfTexture(index, BlockVariant.BOTTOM);
+			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(value);
+			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(value);
+			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
@@ -614,7 +606,7 @@ public class SceneMeshHelpers
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v001, _v.v101, _v.v111, _v.v011
 					}, new float[] {0.0f, 0.0f, 1.0f}
-					, uvBaseTop, _blockAtlas.coordinateSize
+					, uvBaseTop, uvCoordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _mapBlockLight(_getBlockLight(_inputData, baseX, baseY, z))
 					, _getSkyLightMultiplier(_inputData, baseX, baseY, z, SKY_LIGHT_DIRECT)
@@ -626,7 +618,7 @@ public class SceneMeshHelpers
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v100, _v.v000, _v.v010, _v.v110
 					}, new float[] {0.0f, 0.0f, -1.0f}
-					, uvBaseBottom, _blockAtlas.coordinateSize
+					, uvBaseBottom, uvCoordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _mapBlockLight(_getBlockLight(_inputData, baseX, baseY, z))
 					, SKY_LIGHT_SHADOW
@@ -636,9 +628,9 @@ public class SceneMeshHelpers
 		@Override
 		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
-			short index = _blockIndexMapper[value];
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-			float[] uvBaseSide = _blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
+			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(value);
+			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
@@ -646,7 +638,7 @@ public class SceneMeshHelpers
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v110, _v.v010, _v.v011, _v.v111
 					}, new float[] {0.0f, 1.0f, 0.0f}
-					, uvBaseSide, _blockAtlas.coordinateSize
+					, uvBaseSide, uvCoordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _mapBlockLight(_getBlockLight(_inputData, baseX, y, baseZ))
 					, _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL)
@@ -658,7 +650,7 @@ public class SceneMeshHelpers
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v000, _v.v100, _v.v101, _v.v001
 					}, new float[] {0.0f, -1.0f,0.0f}
-					, uvBaseSide, _blockAtlas.coordinateSize
+					, uvBaseSide, uvCoordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _mapBlockLight(_getBlockLight(_inputData, baseX, y, baseZ))
 					, _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL)
@@ -668,9 +660,9 @@ public class SceneMeshHelpers
 		@Override
 		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
-			short index = _blockIndexMapper[value];
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-			float[] uvBaseSide = _blockAtlas.baseOfTexture(index, BlockVariant.SIDE);
+			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(value);
+			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
@@ -678,7 +670,7 @@ public class SceneMeshHelpers
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v100, _v.v110, _v.v111, _v.v101
 					}, new float[] {1.0f, 0.0f, 0.0f}
-					, uvBaseSide, _blockAtlas.coordinateSize
+					, uvBaseSide, uvCoordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _mapBlockLight(_getBlockLight(_inputData, x, baseY, baseZ))
 					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)
@@ -690,7 +682,7 @@ public class SceneMeshHelpers
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v010, _v.v000, _v.v001, _v.v011
 					}, new float[] {-1.0f, 0.0f, 0.0f}
-					, uvBaseSide, _blockAtlas.coordinateSize
+					, uvBaseSide, uvCoordinateSize
 					, auxUv, _auxAtlas.coordinateSize
 					, _mapBlockLight(_getBlockLight(_inputData, x, baseY, baseZ))
 					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)

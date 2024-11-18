@@ -49,7 +49,7 @@ public class SceneRenderer
 	private final Environment _environment;
 	private final GL20 _gl;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
-	private final TextureAtlas<BlockVariant> _blockTextures;
+	private final BasicBlockAtlas _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
 	private final Program _program;
 	private final int _uModelMatrix;
@@ -81,7 +81,8 @@ public class SceneRenderer
 				.filter((Block block) -> null != block)
 				.toArray((int size) -> new Block[size])
 		;
-		_blockTextures = TextureHelpers.loadAtlasForBlocks(_gl
+		_blockTextures = TextureHelpers.loadAtlasForBlocks(_environment
+				, _gl
 				, blocks
 				, "missing_texture.png"
 		);
@@ -181,7 +182,7 @@ public class SceneRenderer
 		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.getAtlasTexture());
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			CuboidAddress key = value.address();
@@ -227,7 +228,7 @@ public class SceneRenderer
 		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
 		// this may not work for complex models.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.texture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockTextures.getAtlasTexture());
 		// We will render the water first, since we are usually looking down at it.
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{

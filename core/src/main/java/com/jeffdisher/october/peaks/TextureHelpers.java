@@ -11,6 +11,7 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
@@ -66,7 +67,8 @@ public class TextureHelpers
 		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, ItemVariant.class);
 	}
 
-	public static TextureAtlas<BlockVariant> loadAtlasForBlocks(GL20 gl
+	public static BasicBlockAtlas loadAtlasForBlocks(Environment env
+			, GL20 gl
 			, Block[] blockItems
 			, String missingTextureName
 	) throws IOException
@@ -90,8 +92,27 @@ public class TextureHelpers
 				primaryNames[i * variants + variant.ordinal()] = name;
 			}
 		}
-		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, COMMON_TEXTURE_EDGE_PIXELS);
-		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, BlockVariant.class);
+		int textureEdgePixels = COMMON_TEXTURE_EDGE_PIXELS;
+		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, textureEdgePixels);
+		
+		
+		
+		// Verify our size assumptions.
+		for (BufferedImage image : images)
+		{
+			Assert.assertTrue(textureEdgePixels == image.getWidth());
+			Assert.assertTrue(textureEdgePixels == image.getHeight());
+		}
+		int tileTexturesPerRow = _texturesPerRow(images.length);
+		int variantsPerIndex = BlockVariant.class.getEnumConstants().length;
+		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerIndex];
+		ByteBuffer textureBufferData = _loadTexturesIntoAtlas(nonOpaqueVector, images, textureEdgePixels, tileTexturesPerRow, variantsPerIndex);
+		((java.nio.Buffer) textureBufferData).flip();
+		int textureAtlasEdge = tileTexturesPerRow * textureEdgePixels;
+		int tileTexture = _uploadTextureAtlas(gl, textureBufferData, textureAtlasEdge);
+		
+		TextureAtlas<BlockVariant> atlas = new TextureAtlas<BlockVariant>(tileTexture, tileTexturesPerRow, variantsPerIndex);
+		return new BasicBlockAtlas(env, atlas, nonOpaqueVector);
 	}
 
 	public static <T extends Enum<?>> TextureAtlas<T> loadAtlasForVariants(GL20 gl
@@ -111,11 +132,11 @@ public class TextureHelpers
 		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, clazz);
 	}
 
-	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, boolean[] nonOpaqueVector, Class<T> variants) throws IOException
+	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, Class<T> variants) throws IOException
 	{
 		int tileTexturesPerRow = _texturesPerRow(tileTextures);
 		int variantsPerIndex = variants.getEnumConstants().length;
-		return new TextureAtlas<T>(1, tileTexturesPerRow, nonOpaqueVector, variantsPerIndex);
+		return new TextureAtlas<T>(1, tileTexturesPerRow, variantsPerIndex);
 	}
 
 
@@ -215,7 +236,7 @@ public class TextureHelpers
 		int textureAtlasEdge = tileTexturesPerRow * textureEdgePixels;
 		int tileTexture = _uploadTextureAtlas(gl, textureBufferData, textureAtlasEdge);
 		
-		return new TextureAtlas<T>(tileTexture, tileTexturesPerRow, nonOpaqueVector, variantsPerIndex);
+		return new TextureAtlas<T>(tileTexture, tileTexturesPerRow, variantsPerIndex);
 	}
 
 	private static int _texturesPerRow(int textureCount)

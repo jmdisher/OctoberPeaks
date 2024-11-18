@@ -18,14 +18,13 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.peaks.BlockVariant;
+import com.jeffdisher.october.peaks.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.SparseShortProjection;
 import com.jeffdisher.october.peaks.TextureAtlas;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.CuboidColumnAddress;
-import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;
 
@@ -45,9 +44,8 @@ public class CuboidMeshManager
 	private final IGpu _gpu;
 	private final Attribute[] _programAttributes;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
-	private final TextureAtlas<BlockVariant> _blockTextures;
+	private final BasicBlockAtlas _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
-	private final short[] _itemToBlockIndexMapper;
 
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
@@ -65,7 +63,7 @@ public class CuboidMeshManager
 			, IGpu gpu
 			, Attribute[] programAttributes
 			, TextureAtlas<ItemVariant> itemAtlas
-			, TextureAtlas<BlockVariant> blockTextures
+			, BasicBlockAtlas blockTextures
 			, TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures
 	)
 	{
@@ -75,24 +73,6 @@ public class CuboidMeshManager
 		_itemAtlas = itemAtlas;
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
-		
-		// Extract the items which are blocks and create the index mapping function so we can pack the block atlas.
-		short[] itemToBlockMap = new short[_env.items.ITEMS_BY_TYPE.length];
-		short nextIndex = 0;
-		for (int i = 0; i < _env.items.ITEMS_BY_TYPE.length; ++ i)
-		{
-			Item item = _env.items.ITEMS_BY_TYPE[i];
-			if (null != _env.blocks.fromItem(item))
-			{
-				itemToBlockMap[i] = nextIndex;
-				nextIndex += 1;
-			}
-			else
-			{
-				itemToBlockMap[i] = -1;
-			}
-		}
-		_itemToBlockIndexMapper = itemToBlockMap;
 		
 		// Foreground-only data.
 		_foregroundCuboids = new HashMap<>();
@@ -421,7 +401,6 @@ public class CuboidMeshManager
 				, _blockTextures
 				, variantProjection
 				, _auxBlockTextures
-				, _itemToBlockIndexMapper
 				, request.inputs
 				, true
 		);
@@ -438,7 +417,6 @@ public class CuboidMeshManager
 				, _blockTextures
 				, variantProjection
 				, _auxBlockTextures
-				, _itemToBlockIndexMapper
 				, request.inputs
 				, false
 		);
@@ -450,7 +428,6 @@ public class CuboidMeshManager
 				, _blockTextures
 				, variantProjection
 				, _auxBlockTextures
-				,_itemToBlockIndexMapper
 				, request.inputs
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
