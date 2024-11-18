@@ -1,8 +1,9 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.Arrays;
+
 import com.badlogic.gdx.graphics.GL20;
-import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Block;
 
 
 /**
@@ -14,23 +15,20 @@ public class BasicBlockAtlas
 	private final short[] _itemToBlockMap;
 	private final boolean[] _nonOpaqueVector;
 
-	public BasicBlockAtlas(Environment env, TextureAtlas<BlockVariant> blockTextures, boolean[] nonOpaqueVector)
+	public BasicBlockAtlas(Block[] blocksIncluded, TextureAtlas<BlockVariant> blockTextures, boolean[] nonOpaqueVector)
 	{
-		// Extract the items which are blocks and create the index mapping function so we can pack the block atlas.
-		short[] itemToBlockMap = new short[env.items.ITEMS_BY_TYPE.length];
-		short nextIndex = 0;
-		for (int i = 0; i < env.items.ITEMS_BY_TYPE.length; ++ i)
+		// We only care about the blocks we are given so build the mapping from items to these block indices.
+		int maxItemNumber = 0;
+		for (Block block : blocksIncluded)
 		{
-			Item item = env.items.ITEMS_BY_TYPE[i];
-			if (null != env.blocks.fromItem(item))
-			{
-				itemToBlockMap[i] = nextIndex;
-				nextIndex += 1;
-			}
-			else
-			{
-				itemToBlockMap[i] = -1;
-			}
+			maxItemNumber = Math.max(maxItemNumber, block.item().number());
+		}
+		short[] itemToBlockMap = new short[maxItemNumber + 1];
+		Arrays.fill(itemToBlockMap, (short)-1);
+		for (int i = 0; i < blocksIncluded.length; ++i)
+		{
+			short itemNumber = blocksIncluded[i].item().number();
+			itemToBlockMap[itemNumber] = (short)i;
 		}
 		
 		_blockTextures = blockTextures;

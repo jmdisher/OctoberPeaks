@@ -81,8 +81,7 @@ public class SceneRenderer
 				.filter((Block block) -> null != block)
 				.toArray((int size) -> new Block[size])
 		;
-		_blockTextures = TextureHelpers.loadAtlasForBlocks(_environment
-				, _gl
+		_blockTextures = TextureHelpers.loadAtlasForBlocks(_gl
 				, blocks
 				, "missing_texture.png"
 		);

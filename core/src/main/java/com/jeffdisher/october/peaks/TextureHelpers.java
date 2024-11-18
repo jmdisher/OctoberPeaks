@@ -11,7 +11,6 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
-import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
@@ -67,8 +66,7 @@ public class TextureHelpers
 		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, ItemVariant.class);
 	}
 
-	public static BasicBlockAtlas loadAtlasForBlocks(Environment env
-			, GL20 gl
+	public static BasicBlockAtlas loadAtlasForBlocks(GL20 gl
 			, Block[] blockItems
 			, String missingTextureName
 	) throws IOException
@@ -95,8 +93,6 @@ public class TextureHelpers
 		int textureEdgePixels = COMMON_TEXTURE_EDGE_PIXELS;
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, textureEdgePixels);
 		
-		
-		
 		// Verify our size assumptions.
 		for (BufferedImage image : images)
 		{
@@ -112,7 +108,7 @@ public class TextureHelpers
 		int tileTexture = _uploadTextureAtlas(gl, textureBufferData, textureAtlasEdge);
 		
 		TextureAtlas<BlockVariant> atlas = new TextureAtlas<BlockVariant>(tileTexture, tileTexturesPerRow, variantsPerIndex);
-		return new BasicBlockAtlas(env, atlas, nonOpaqueVector);
+		return new BasicBlockAtlas(blockItems, atlas, nonOpaqueVector);
 	}
 
 	public static <T extends Enum<?>> TextureAtlas<T> loadAtlasForVariants(GL20 gl
