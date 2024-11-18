@@ -49,6 +49,7 @@ public class SceneRenderer
 	private final Environment _environment;
 	private final GL20 _gl;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
+	private final BlockModelsAndAtlas _blockModels;
 	private final BasicBlockAtlas _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
 	private final Program _program;
@@ -76,9 +77,16 @@ public class SceneRenderer
 		_gl = gl;
 		_itemAtlas = itemAtlas;
 		
+		// Some blocks have models and some are just blocks (potentially with sides) so we will load the models first and extract those from the list before defaulting to basic blocks.
 		Block[] blocks = Arrays.stream(_environment.items.ITEMS_BY_TYPE)
 				.map((Item item) -> _environment.blocks.fromItem(item))
 				.filter((Block block) -> null != block)
+				.toArray((int size) -> new Block[size])
+		;
+		_blockModels = BlockModelsAndAtlas.loadForItems(gl, blocks);
+		Set<Block> models = _blockModels.getBlockSet();
+		blocks = Arrays.stream(blocks)
+				.filter((Block block) -> !models.contains(block))
 				.toArray((int size) -> new Block[size])
 		;
 		_blockTextures = TextureHelpers.loadAtlasForBlocks(_gl
@@ -125,7 +133,7 @@ public class SceneRenderer
 			{
 				array.delete(_gl);
 			}
-		}, _program.attributes, itemAtlas, _blockTextures, _auxBlockTextures);
+		}, _program.attributes, itemAtlas, _blockModels, _blockTextures, _auxBlockTextures);
 		
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
@@ -190,6 +198,20 @@ public class SceneRenderer
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 				model.uploadAsUniform(_gl, _uModelMatrix);
 				value.opaqueArray().drawAllTriangles(_gl);
+			}
+		}
+		
+		// Render the complex models
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _blockModels.getModelAtlasTexture());
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		{
+			CuboidAddress key = value.address();
+			if (null != value.modelArray())
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _uModelMatrix);
+				value.modelArray().drawAllTriangles(_gl);
 			}
 		}
 		

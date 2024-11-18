@@ -2,8 +2,10 @@ package com.jeffdisher.october.peaks.graphics;
 
 import java.nio.FloatBuffer;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
@@ -14,9 +16,11 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.BlockModelsAndAtlas;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.SparseShortProjection;
 import com.jeffdisher.october.peaks.TextureAtlas;
+import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.Inventory;
@@ -82,14 +86,17 @@ public class SceneMeshHelpers
 		if (opaqueVertices)
 		{
 			shouldInclude = (Short value) -> {
-				return !blockAtlas.textureHasNonOpaquePixels(value);
+				return blockAtlas.isInBasicAtlas(value)
+						&& !blockAtlas.textureHasNonOpaquePixels(value)
+				;
 			};
 		}
 		else
 		{
 			Set<Short> water = _buildWaterNumberSet(env);
 			shouldInclude = (Short value) -> {
-				return blockAtlas.textureHasNonOpaquePixels(value)
+				return blockAtlas.isInBasicAtlas(value)
+						&& blockAtlas.textureHasNonOpaquePixels(value)
 						&& !water.contains(value)
 				;
 			};
@@ -108,6 +115,84 @@ public class SceneMeshHelpers
 				, inputData
 				, 1.0f
 		));
+	}
+
+	public static void populateBufferWithComplexModels(Environment env
+			, BufferBuilder builder
+			, BlockModelsAndAtlas blockModels
+			, SparseShortProjection<AuxVariant> projection
+			, TextureAtlas<AuxVariant> auxAtlas
+			, MeshInputData inputData
+	)
+	{
+		Map<Short, Block> included = blockModels.getBlockSet().stream().collect(Collectors.toMap((Block block) -> block.item().number(), (Block block) -> block));
+		float uvCoordinateSize = blockModels.getCoordinateSize();
+		float auxCoordinateSize = auxAtlas.coordinateSize;
+		inputData.cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
+			@Override
+			public void visit(BlockAddress base, byte size, Short object)
+			{
+				Block includedBlock = included.get(object);
+				if (null != includedBlock)
+				{
+					float[] uv = blockModels.baseOfModelTexture(includedBlock);
+					ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock);
+					for (byte z = 0; z < size; ++z)
+					{
+						for (byte y = 0; y < size; ++y)
+						{
+							for (byte x = 0; x < size; ++x)
+							{
+								byte baseX = (byte)(base.x() + x);
+								byte baseY = (byte)(base.y() + y);
+								byte baseZ = (byte)(base.z() + z);
+								float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
+								float[] blockLight = new float[] { _mapBlockLight(_getBlockLight(inputData, baseX, baseY, baseZ)) };
+								float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, baseZ, SKY_LIGHT_PARTIAL) };
+								float offsetX = baseX;
+								float offsetY = baseY;
+								float offsetZ = baseZ;
+								for (int i = 0; i < bufferForType.vertexCount; ++i)
+								{
+									// Each element is:
+									// vx, vy, vz
+									// nx, ny, nz
+									// u, v
+									// otherU, otherV
+									// blockLight
+									float[] positions = new float[] {
+											offsetX + bufferForType.positionValues[3 * i + 0],
+											offsetY + bufferForType.positionValues[3 * i + 1],
+											offsetZ + bufferForType.positionValues[3 * i + 2],
+									};
+									float[] normals = new float[] {
+											bufferForType.normalValues[3 * i + 0],
+											bufferForType.normalValues[3 * i + 1],
+											bufferForType.normalValues[3 * i + 2],
+									};
+									float[] textures = new float[] {
+											uv[0] + (uvCoordinateSize * bufferForType.textureValues[2 * i + 0]),
+											uv[1] + (uvCoordinateSize * bufferForType.textureValues[2 * i + 1]),
+									};
+									float[] otherTextures = new float[] {
+											auxUv[0] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 0]),
+											auxUv[1] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 1]),
+									};
+									
+									builder.appendVertex(positions
+											, normals
+											, textures
+											, otherTextures
+											, blockLight
+											, skyLight
+									);
+								}
+							}
+						}
+					}
+				}
+			}
+		}, (short)0);
 	}
 
 	public static void populateWaterMeshBufferForCuboid(Environment env

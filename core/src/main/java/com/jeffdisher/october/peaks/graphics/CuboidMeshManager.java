@@ -19,6 +19,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.BlockModelsAndAtlas;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.SparseShortProjection;
 import com.jeffdisher.october.peaks.TextureAtlas;
@@ -44,6 +45,7 @@ public class CuboidMeshManager
 	private final IGpu _gpu;
 	private final Attribute[] _programAttributes;
 	private final TextureAtlas<ItemVariant> _itemAtlas;
+	private final BlockModelsAndAtlas _blockModels;
 	private final BasicBlockAtlas _blockTextures;
 	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
 
@@ -63,6 +65,7 @@ public class CuboidMeshManager
 			, IGpu gpu
 			, Attribute[] programAttributes
 			, TextureAtlas<ItemVariant> itemAtlas
+			, BlockModelsAndAtlas blockModels
 			, BasicBlockAtlas blockTextures
 			, TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures
 	)
@@ -71,6 +74,7 @@ public class CuboidMeshManager
 		_gpu = gpu;
 		_programAttributes = programAttributes;;
 		_itemAtlas = itemAtlas;
+		_blockModels = blockModels;
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
 		
@@ -122,7 +126,7 @@ public class CuboidMeshManager
 		{
 			internal = new _InternalData(true
 					, cuboid
-					, new CuboidMeshes(address, null, null, null, null)
+					, new CuboidMeshes(address, null, null, null, null, null)
 			);
 		}
 		_foregroundCuboids.put(address, internal);
@@ -259,11 +263,13 @@ public class CuboidMeshManager
 				
 				// We will still store an empty CuboidData if all of these are null, just for simplicity.
 				VertexArray opaqueData = (null != response.opaqueBuffer) ? _gpu.uploadBuffer(response.opaqueBuffer) : null;
+				VertexArray modelData = (null != response.modelBuffer) ? _gpu.uploadBuffer(response.modelBuffer) : null;
 				VertexArray itemsOnGroundArray = (null != response.itemsOnGroundBuffer) ? _gpu.uploadBuffer(response.itemsOnGroundBuffer) : null;
 				VertexArray transparentData = (null != response.transparentBuffer) ? _gpu.uploadBuffer(response.transparentBuffer) : null;
 				VertexArray waterData = (null != response.waterBuffer) ? _gpu.uploadBuffer(response.waterBuffer) : null;
 				CuboidMeshes newData = new CuboidMeshes(response.cuboid.getCuboidAddress()
 						, opaqueData
+						, modelData
 						, itemsOnGroundArray
 						, transparentData
 						, waterData
@@ -406,6 +412,16 @@ public class CuboidMeshManager
 		);
 		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
 		
+		// We will render the complex models (they need a different texture binding so they can't be part of the opaque buffer).
+		SceneMeshHelpers.populateBufferWithComplexModels(_env
+				, builder
+				, _blockModels
+				, variantProjection
+				, _auxBlockTextures
+				, request.inputs
+		);
+		BufferBuilder.Buffer modelBuffer = builder.finishOne();
+		
 		// Create the vertex array for any items dropped on the ground.
 		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
@@ -435,6 +451,7 @@ public class CuboidMeshManager
 		return new _Response(request.meshBuffer
 				, cuboid
 				, opaqueBuffer
+				, modelBuffer
 				, itemsOnGroundBuffer
 				, transparentBuffer
 				, waterBuffer
@@ -446,6 +463,10 @@ public class CuboidMeshManager
 		if (null != previous.opaqueArray)
 		{
 			_gpu.deleteBuffer(previous.opaqueArray);
+		}
+		if (null != previous.modelArray)
+		{
+			_gpu.deleteBuffer(previous.modelArray);
 		}
 		if (null != previous.itemsOnGroundArray)
 		{
@@ -555,6 +576,7 @@ public class CuboidMeshManager
 
 	public static record CuboidMeshes(CuboidAddress address
 			, VertexArray opaqueArray
+			, VertexArray modelArray
 			, VertexArray itemsOnGroundArray
 			, VertexArray transparentArray
 			, VertexArray waterArray
@@ -572,6 +594,7 @@ public class CuboidMeshManager
 	private static record _Response(FloatBuffer meshBuffer
 			, IReadOnlyCuboidData cuboid
 			, BufferBuilder.Buffer opaqueBuffer
+			, BufferBuilder.Buffer modelBuffer
 			, BufferBuilder.Buffer itemsOnGroundBuffer
 			, BufferBuilder.Buffer transparentBuffer
 			, BufferBuilder.Buffer waterBuffer

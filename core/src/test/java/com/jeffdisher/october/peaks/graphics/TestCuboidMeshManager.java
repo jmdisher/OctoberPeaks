@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.AfterClass;
@@ -17,10 +18,12 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.logic.HeightMapHelpers;
 import com.jeffdisher.october.peaks.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.BlockModelsAndAtlas;
 import com.jeffdisher.october.peaks.BlockVariant;
 import com.jeffdisher.october.peaks.ItemVariant;
 import com.jeffdisher.october.peaks.TextureAtlas;
 import com.jeffdisher.october.peaks.TextureHelpers;
+import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
@@ -71,7 +74,7 @@ public class TestCuboidMeshManager
 	@Test
 	public void empty() throws Throwable
 	{
-		CuboidMeshManager manager = new CuboidMeshManager(ENV, null, null, null, null, null);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, null, null, null, null, null, null);
 		Assert.assertEquals(0, manager.viewCuboids().size());
 		manager.shutdown();
 	}
@@ -84,8 +87,9 @@ public class TestCuboidMeshManager
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
-		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockAtlas, auxBlockTextures);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		CuboidAddress address = new CuboidAddress((short)0, (short)0, (short)0);
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(address, ENV.special.AIR);
@@ -115,8 +119,9 @@ public class TestCuboidMeshManager
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  buildNonOpaqueVector());
-		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockAtlas, auxBlockTextures);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
 		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(lowAddress, ENV.special.AIR);
@@ -174,8 +179,9 @@ public class TestCuboidMeshManager
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
-		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockAtlas, auxBlockTextures);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
 		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
@@ -260,8 +266,9 @@ public class TestCuboidMeshManager
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
-		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockAtlas, auxBlockTextures);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
 		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
@@ -347,8 +354,9 @@ public class TestCuboidMeshManager
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
-		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, blockAtlas, auxBlockTextures);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
 		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
@@ -387,6 +395,64 @@ public class TestCuboidMeshManager
 			float skyMultiplier = _extractField(raw, base, ATTRIBUTES, 5)[0];
 			Assert.assertEquals(0.0f, skyMultiplier, 0.01f);
 		}
+	}
+
+	@Test
+	public void singleComplexBlock() throws Throwable
+	{
+		// We will just load in a single block and claim it uses a complex mesh.
+		String string = "v 0.828934 -1.421580 0.697664\n"
+				+ "v 0.828934 -1.421580 1.994554\n"
+				+ "v 0.828934 -0.124690 0.697664\n"
+				+ "vn -1.0000 -0.0000 -0.0000\n"
+				+ "vt 0.656723 0.765970\n"
+				+ "vt 0.791192 0.631300\n"
+				+ "vt 0.791192 0.765970\n"
+				+ "f 2/1/1 3/2/1 1/3/1\n"
+		;
+		_Gpu testingGpu = new _Gpu();
+		int textureCount = STONE_VALUE + 1;
+		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(0, BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(1, SceneMeshHelpers.AuxVariant.class);
+		ModelBuffer[] modelBuffers = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
+		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(STONE_BLOCK, (short)0), modelBuffers, itemAtlas);
+		// Note that the Block[] must minimally include water sources.
+		Block[] basicBlocks = new Block[] {ENV.special.WATER_SOURCE, ENV.special.WATER_STRONG, ENV.special.WATER_WEAK};
+		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(basicBlocks, blockTextures,  new boolean[basicBlocks.length]);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
+		
+		CuboidAddress lowAddress = new CuboidAddress((short)0, (short)0, (short)0);
+		CuboidData lowCuboid = CuboidGenerator.createFilledCuboid(lowAddress, ENV.special.AIR);
+		lowCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(5, 5, 5), STONE_VALUE);
+		ColumnHeightMap lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress).freeze();
+		
+		manager.setCuboid(lowCuboid, lowMap, null);
+		Assert.assertEquals(1, manager.viewCuboids().size());
+		VertexArray modelArray = _waitForModelArray(manager, lowAddress);
+		Assert.assertEquals(3, modelArray.totalVertices);
+		Assert.assertEquals(1, testingGpu.uploadedBuffers.size());
+		Assert.assertEquals(3, testingGpu.uploadedBuffers.get(0).vertexCount);
+		float[] initial = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(0).vertexCount];
+		testingGpu.uploadedBuffers.get(0).testGetFloats(initial);
+		testingGpu.uploadedBuffers.clear();
+		
+		manager.shutdown();
+		
+		// Just verify that one of the vertices looks correct - index 0 should be vertex 2 (shifted by block location), normal 1, and texture 1 (adjusted for atlas).
+		int base = 0;
+		float position[] = _extractField(initial, base, ATTRIBUTES, 0);
+		float normal[] = _extractField(initial, base, ATTRIBUTES, 1);
+		float texture0[] = _extractField(initial, base, ATTRIBUTES, 2);
+		float texture1[] = _extractField(initial, base, ATTRIBUTES, 3);
+		float blockLight[] = _extractField(initial, base, ATTRIBUTES, 4);
+		float skyLight[] = _extractField(initial, base, ATTRIBUTES, 5);
+		Assert.assertArrayEquals(new float[] { 5.828934f, 3.5784202f, 6.994554f }, position, 0.01f);
+		Assert.assertArrayEquals(new float[] { -1.0f, -0.0f, -0.0f }, normal, 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.3283615f, 0.382985f }, texture0, 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.656723f, 0.76597f }, texture1, 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.1f }, blockLight, 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.0f }, skyLight, 0.01f);
 	}
 
 
@@ -478,6 +544,29 @@ public class TestCuboidMeshManager
 					if (null != mesh.opaqueArray())
 					{
 						foundMesh = mesh.opaqueArray();
+					}
+				}
+			}
+		}
+		return foundMesh;
+	}
+
+	private static VertexArray _waitForModelArray(CuboidMeshManager manager, CuboidAddress address)
+	{
+		VertexArray foundMesh = null;
+		while (null == foundMesh)
+		{
+			manager.processBackground();
+			Iterator<CuboidMeshManager.CuboidMeshes> iterator = manager.viewCuboids().iterator();
+			
+			while (iterator.hasNext())
+			{
+				CuboidMeshManager.CuboidMeshes mesh = iterator.next();
+				if (address.equals(mesh.address()))
+				{
+					if (null != mesh.modelArray())
+					{
+						foundMesh = mesh.modelArray();
 					}
 				}
 			}

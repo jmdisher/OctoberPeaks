@@ -11,6 +11,8 @@ import com.jeffdisher.october.types.Block;
  */
 public class BasicBlockAtlas
 {
+	public static final short NOT_MAPPED = -1;
+
 	private final TextureAtlas<BlockVariant> _blockTextures;
 	private final short[] _itemToBlockMap;
 	private final boolean[] _nonOpaqueVector;
@@ -24,7 +26,7 @@ public class BasicBlockAtlas
 			maxItemNumber = Math.max(maxItemNumber, block.item().number());
 		}
 		short[] itemToBlockMap = new short[maxItemNumber + 1];
-		Arrays.fill(itemToBlockMap, (short)-1);
+		Arrays.fill(itemToBlockMap, NOT_MAPPED);
 		for (int i = 0; i < blocksIncluded.length; ++i)
 		{
 			short itemNumber = blocksIncluded[i].item().number();
@@ -34,6 +36,18 @@ public class BasicBlockAtlas
 		_blockTextures = blockTextures;
 		_itemToBlockMap = itemToBlockMap;
 		_nonOpaqueVector = nonOpaqueVector;
+	}
+
+	/**
+	 * Returns true if this block is defined in the basic atlas.  If not, this is likely a complex model.
+	 * 
+	 * @param value The item number.
+	 * @return True if this block is in the basic atlas.
+	 */
+	public boolean isInBasicAtlas(short value)
+	{
+		short index = _itemToBlockMap[value];
+		return (NOT_MAPPED != index);
 	}
 
 	/**
