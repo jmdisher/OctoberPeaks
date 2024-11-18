@@ -23,6 +23,8 @@ public class TextureHelpers
 {
 	// Most textures are 32-square.
 	public static int COMMON_TEXTURE_EDGE_PIXELS = 32;
+	// The block model textures are 128-square.
+	public static int BLOCK_MODEL_TEXTURE_EDGE_PIXELS = 128;
 
 	public static int loadInternalRGBA(GL20 gl, String imageName) throws IOException
 	{
@@ -128,6 +130,14 @@ public class TextureHelpers
 		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, clazz);
 	}
 
+	public static TextureAtlas<ItemVariant> loadModelAtlasFromHandles(GL20 gl
+			, FileHandle[] handles
+	) throws IOException
+	{
+		BufferedImage[] images = _loadFileHandles(handles, BLOCK_MODEL_TEXTURE_EDGE_PIXELS);
+		return _loadAtlas(gl, images, BLOCK_MODEL_TEXTURE_EDGE_PIXELS, ItemVariant.class);
+	}
+
 	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, Class<T> variants) throws IOException
 	{
 		int tileTexturesPerRow = _texturesPerRow(tileTextures);
@@ -204,6 +214,22 @@ public class TextureHelpers
 				unknownTextureFile = Gdx.files.internal(missingTextureName);
 			}
 			BufferedImage loadedTexture = ImageIO.read(unknownTextureFile.read());
+			// We require all textures to be of fixed square size.
+			Assert.assertTrue(loadedTexture.getWidth() == textureEdgePixels);
+			Assert.assertTrue(loadedTexture.getHeight() == textureEdgePixels);
+			loadedTextures[i] = loadedTexture;
+		}
+		return loadedTextures;
+	}
+
+	private static BufferedImage[] _loadFileHandles(FileHandle[] handles, int textureEdgePixels) throws IOException
+	{
+		BufferedImage loadedTextures[] = new BufferedImage[handles.length];
+		for (int i = 0; i < handles.length; ++i)
+		{
+			FileHandle handle = handles[i];
+			Assert.assertTrue(handle.exists());
+			BufferedImage loadedTexture = ImageIO.read(handle.read());
 			// We require all textures to be of fixed square size.
 			Assert.assertTrue(loadedTexture.getWidth() == textureEdgePixels);
 			Assert.assertTrue(loadedTexture.getHeight() == textureEdgePixels);
