@@ -46,8 +46,17 @@ public class BasicBlockAtlas
 	 */
 	public boolean isInBasicAtlas(short value)
 	{
-		short index = _itemToBlockMap[value];
-		return (NOT_MAPPED != index);
+		boolean isIn;
+		if (value < _itemToBlockMap.length)
+		{
+			short index = _itemToBlockMap[value];
+			isIn =(NOT_MAPPED != index);
+		}
+		else
+		{
+			isIn = false;
+		}
+		return isIn;
 	}
 
 	/**
