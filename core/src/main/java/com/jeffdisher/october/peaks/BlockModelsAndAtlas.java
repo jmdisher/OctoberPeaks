@@ -118,8 +118,48 @@ public class BlockModelsAndAtlas
 		return _atlas.coordinateSize;
 	}
 
+	public Map<Block, Prism> buildModelBoundingBoxes()
+	{
+		Map<Block, Prism> boxes = new HashMap<>();
+		for (Map.Entry<Block, Short> elt : _blockToIndex.entrySet())
+		{
+			Block block = elt.getKey();
+			short index = elt.getValue();
+			ModelBuffer buffer = _models[index];
+			Prism bounds = _buildBounds(buffer);
+			boxes.put(block, bounds);
+		}
+		return Collections.unmodifiableMap(boxes);
+	}
+
 	public void shutdown(GL20 gl)
 	{
 		_atlas.shutdown(gl);
+	}
+
+
+	private static Prism _buildBounds(ModelBuffer buffer)
+	{
+		float west = Float.MAX_VALUE;
+		float east = Float.MIN_VALUE;
+		float south = Float.MAX_VALUE;
+		float north = Float.MIN_VALUE;
+		float bottom = Float.MAX_VALUE;
+		float top = Float.MIN_VALUE;
+		for (int i = 0; i < buffer.vertexCount; ++i)
+		{
+			int index = 3 * i;
+			float x = buffer.positionValues[index + 0];
+			float y = buffer.positionValues[index + 1];
+			float z = buffer.positionValues[index + 2];
+			
+			west = Math.min(west, x);
+			east = Math.max(east, x);
+			south = Math.min(south, y);
+			north = Math.max(north, y);
+			bottom = Math.min(bottom, z);
+			top = Math.max(top, z);
+		}
+		return new Prism(west, south, bottom, east, north, top);
 	}
 }
