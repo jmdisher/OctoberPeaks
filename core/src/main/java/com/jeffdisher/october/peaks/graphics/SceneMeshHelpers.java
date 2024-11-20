@@ -147,8 +147,10 @@ public class SceneMeshHelpers
 								byte baseY = (byte)(base.y() + y);
 								byte baseZ = (byte)(base.z() + z);
 								float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
-								float[] blockLight = new float[] { _mapBlockLight(_getBlockLight(inputData, baseX, baseY, baseZ)) };
-								float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, baseZ, SKY_LIGHT_PARTIAL) };
+								// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
+								float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
+								// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
+								float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + 1), SKY_LIGHT_PARTIAL) };
 								float offsetX = baseX;
 								float offsetY = baseY;
 								float offsetZ = baseZ;
@@ -774,6 +776,29 @@ public class SceneMeshHelpers
 				);
 			}
 		}
+	}
+
+	private static byte _getMaxAreaLight(MeshInputData data, byte baseX, byte baseY, byte baseZ)
+	{
+		// Check this block and the adjacent ones, returning the maximum light value.
+		byte centre = _getBlockLight(data, baseX, baseY, baseZ);
+		byte xm = _getBlockLight(data, (byte)(baseX - 1), baseY, baseZ);
+		byte xp = _getBlockLight(data, (byte)(baseX + 1), baseY, baseZ);
+		byte ym = _getBlockLight(data, baseX, (byte)(baseY - 1), baseZ);
+		byte yp = _getBlockLight(data, baseX, (byte)(baseY + 1), baseZ);
+		byte zm = _getBlockLight(data, baseX, baseY, (byte)(baseZ - 1));
+		byte zp = _getBlockLight(data, baseX, baseY, (byte)(baseZ + 1));
+		
+		return (byte) Math.max(
+				Math.max(
+						centre
+						, Math.max(xm, xp)
+				)
+				, Math.max(
+						Math.max(ym, yp)
+						, Math.max(zm, zp)
+				)
+		);
 	}
 
 	private static byte _getBlockLight(MeshInputData data, byte baseX, byte baseY, byte baseZ)

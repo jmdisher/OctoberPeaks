@@ -452,7 +452,8 @@ public class TestCuboidMeshManager
 		Assert.assertArrayEquals(new float[] { 0.3283615f, 0.382985f }, texture0, 0.01f);
 		Assert.assertArrayEquals(new float[] { 0.656723f, 0.76597f }, texture1, 0.01f);
 		Assert.assertArrayEquals(new float[] { 0.1f }, blockLight, 0.01f);
-		Assert.assertArrayEquals(new float[] { 0.0f }, skyLight, 0.01f);
+		// Since this is a model-based block at the top of the column, it is given partial sky light.
+		Assert.assertArrayEquals(new float[] { 0.5f }, skyLight, 0.01f);
 	}
 
 
