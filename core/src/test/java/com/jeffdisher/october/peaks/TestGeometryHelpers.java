@@ -111,7 +111,7 @@ public class TestGeometryHelpers
 		PartialEntity entity = _getTestCow(-1, new EntityLocation(0.0f, 1.0f, 0.0f));
 		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
 		Assert.assertEquals(entity, closest.entity());
-		Assert.assertEquals(3.26f, closest.distance(), 0.01f);
+		Assert.assertEquals(3.22f, closest.distance(), 0.01f);
 	}
 
 	@Test
@@ -122,7 +122,7 @@ public class TestGeometryHelpers
 		PartialEntity entity = _getTestCow(-1, new EntityLocation(0.0f, 1.0f, 0.0f));
 		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
 		Assert.assertEquals(entity, closest.entity());
-		Assert.assertEquals(3.22f, closest.distance(), 0.01f);
+		Assert.assertEquals(3.20f, closest.distance(), 0.01f);
 	}
 
 	@Test
@@ -145,7 +145,7 @@ public class TestGeometryHelpers
 		PartialEntity entity2 = _getTestCow(-3, new EntityLocation(1.0f, 3.0f, 0.5f));
 		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity2, entity1, entity0));
 		Assert.assertEquals(entity1, closest.entity());
-		Assert.assertEquals(2.23f, closest.distance(), 0.01f);
+		Assert.assertEquals(2.20f, closest.distance(), 0.01f);
 	}
 
 	@Test

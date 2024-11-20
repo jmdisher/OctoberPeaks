@@ -243,8 +243,9 @@ public class GeometryHelpers
 			// Compute the distance in the XY plane.
 			float deltaX = centreFoot.x() - start.x();
 			float deltaY = centreFoot.y() - start.y();
-			float horizontalDistance = Math.max(0.0f, (float)Math.sqrt(deltaX * deltaX + deltaY * deltaY) - halfWidth);
-			float totalDistance = (float)Math.sqrt(horizontalDistance * horizontalDistance + zDistance * zDistance);
+			float distanceX = Math.max(0.0f, Math.abs(deltaX) - halfWidth);
+			float distanceY = Math.max(0.0f, Math.abs(deltaY) - halfWidth);
+			float totalDistance = (float)Math.sqrt(distanceX * distanceX + distanceY * distanceY + zDistance * zDistance);
 			selected = new SelectedEntity(closest, totalDistance);
 		}
 		return selected;
