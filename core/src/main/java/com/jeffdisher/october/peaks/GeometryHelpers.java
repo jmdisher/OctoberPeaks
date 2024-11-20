@@ -157,29 +157,22 @@ public class GeometryHelpers
 		for (PartialEntity entity : entities)
 		{
 			// Extract the axis-aligned bounding-box from the entity.
-			EntityLocation base = entity.location();
-			EntityVolume volume = EntityConstants.getVolume(entity.type());
-			float baseX = base.x();
-			float edgeX = baseX + volume.width();
-			float baseY = base.y();
-			float edgeY = baseY + volume.width();
-			float baseZ = base.z();
-			float edgeZ = baseZ + volume.height();
+			Prism bounds = Prism.getLocationBoundsForEntity(entity);
 			
 			// We will calculate the t-values relative to the end of the vector so any match will be when all axes have t values in [0..1].
 			float closeX = Float.MIN_VALUE;
 			float farX;
 			if (isFixedX)
 			{
-				farX = ((baseX <= compX) && (compX <= edgeX))
+				farX = ((bounds.west() <= compX) && (compX <= bounds.east()))
 						? Float.MAX_VALUE
 						: Float.MIN_VALUE
 				;
 			}
 			else
 			{
-				float txLow = (baseX - start.x()) / compX;
-				float txHigh = (edgeX - start.x()) / compX;
+				float txLow = (bounds.west() - start.x()) / compX;
+				float txHigh = (bounds.east() - start.x()) / compX;
 				closeX = Math.min(txLow, txHigh);
 				farX = Math.max(txLow, txHigh);
 			}
@@ -187,15 +180,15 @@ public class GeometryHelpers
 			float farY;
 			if (isFixedY)
 			{
-				farY = ((baseY <= compY) && (compY <= edgeY))
+				farY = ((bounds.south() <= compY) && (compY <= bounds.north()))
 						? Float.MAX_VALUE
 						: Float.MIN_VALUE
 				;
 			}
 			else
 			{
-				float tyLow = (baseY - start.y()) / compY;
-				float tyHigh = (edgeY - start.y()) / compY;
+				float tyLow = (bounds.south() - start.y()) / compY;
+				float tyHigh = (bounds.north() - start.y()) / compY;
 				closeY = Math.min(tyLow, tyHigh);
 				farY = Math.max(tyLow, tyHigh);
 			}
@@ -203,15 +196,15 @@ public class GeometryHelpers
 			float farZ;
 			if (isFixedZ)
 			{
-				farZ = ((baseZ <= compZ) && (compZ <= edgeZ))
+				farZ = ((bounds.bottom() <= compZ) && (compZ <= bounds.top()))
 						? Float.MAX_VALUE
 						: Float.MIN_VALUE
 				;
 			}
 			else
 			{
-				float tzLow = (baseZ - start.z()) / compZ;
-				float tzHigh = (edgeZ - start.z()) / compZ;
+				float tzLow = (bounds.bottom() - start.z()) / compZ;
+				float tzHigh = (bounds.top() - start.z()) / compZ;
 				closeZ = Math.min(tzLow, tzHigh);
 				farZ = Math.max(tzLow, tzHigh);
 			}

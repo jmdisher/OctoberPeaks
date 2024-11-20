@@ -150,7 +150,7 @@ public class SceneRenderer
 		}
 		_entityData = Collections.unmodifiableMap(entityData);
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-		_highlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, new float[] {1.0f, 1.0f, 1.0f}, _auxBlockTextures);
+		_highlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -356,7 +356,8 @@ public class SceneRenderer
 		}
 		else
 		{
-			buffer = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, new float[] {volume.width(), volume.width(), volume.height()}, _auxBlockTextures);
+			Prism prism = Prism.getBoundsAtOrigin(volume.width(), volume.width(), volume.height());
+			buffer = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, prism, _auxBlockTextures);
 		}
 		
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");

@@ -18,6 +18,7 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.BlockModelsAndAtlas;
 import com.jeffdisher.october.peaks.ItemVariant;
+import com.jeffdisher.october.peaks.Prism;
 import com.jeffdisher.october.peaks.SparseShortProjection;
 import com.jeffdisher.october.peaks.TextureAtlas;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
@@ -342,7 +343,7 @@ public class SceneMeshHelpers
 	public static VertexArray createPrism(GL20 gl
 			, Attribute[] attributes
 			, FloatBuffer meshBuffer
-			, float[] edgeVertices
+			, Prism prism
 			, TextureAtlas<AuxVariant> auxAtlas
 	)
 	{
@@ -355,12 +356,12 @@ public class SceneMeshHelpers
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
-		float[] base = new float[] { 0.0f, 0.0f, 0.0f };
 		
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		_PrismVertices v = _PrismVertices.from(base, edgeVertices);
+		_PrismVertices v = _PrismVertices.from(prism);
 		float blockLightMultiplier = 1.0f;
 		float skyLightMultiplier = 0.0f;
+		float[] base = new float[] { 0.0f, 0.0f, 0.0f };
 		
 		// X-normal plane.
 		_populateQuad(builder, base, new float[][] {
@@ -632,16 +633,16 @@ public class SceneMeshHelpers
 			, float[] v010
 	)
 	{
-		public static _PrismVertices from(float[] prismBase, float[] prismEdge)
+		public static _PrismVertices from(Prism prism)
 		{
-			float[] v001 = new float[] { prismBase[0], prismBase[1], prismEdge[2] };
-			float[] v101 = new float[] { prismEdge[0], prismBase[1], prismEdge[2] };
-			float[] v111 = new float[] { prismEdge[0], prismEdge[1], prismEdge[2] };
-			float[] v011 = new float[] { prismBase[0], prismEdge[1], prismEdge[2] };
-			float[] v000 = new float[] { prismBase[0], prismBase[1], prismBase[2] };
-			float[] v100 = new float[] { prismEdge[0], prismBase[1], prismBase[2] };
-			float[] v110 = new float[] { prismEdge[0], prismEdge[1], prismBase[2] };
-			float[] v010 = new float[] { prismBase[0], prismEdge[1], prismBase[2] };
+			float[] v001 = new float[] { prism.west(), prism.south(), prism.top() };
+			float[] v101 = new float[] { prism.east(), prism.south(), prism.top() };
+			float[] v111 = new float[] { prism.east(), prism.north(), prism.top() };
+			float[] v011 = new float[] { prism.west(), prism.north(), prism.top() };
+			float[] v000 = new float[] { prism.west(), prism.south(), prism.bottom() };
+			float[] v100 = new float[] { prism.east(), prism.south(), prism.bottom() };
+			float[] v110 = new float[] { prism.east(), prism.north(), prism.bottom() };
+			float[] v010 = new float[] { prism.west(), prism.north(), prism.bottom() };
 			return new _PrismVertices(v001, v101, v111, v011, v000, v100, v110, v010);
 		}
 	}
@@ -671,7 +672,7 @@ public class SceneMeshHelpers
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
 			_inputData = inputData;
-			_v = _PrismVertices.from(new float[] { 0.0f, 0.0f, 0.0f }, new float[] { 1.0f, 1.0f, blockHeight });
+			_v = _PrismVertices.from(Prism.getBoundsAtOrigin(1.0f, 1.0f, blockHeight));
 		}
 		@Override
 		public boolean shouldInclude(short value)
