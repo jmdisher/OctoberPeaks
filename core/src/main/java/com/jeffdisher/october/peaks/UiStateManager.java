@@ -64,6 +64,8 @@ public class UiStateManager
 	private int _topRightPage;
 	private int _bottomPage;
 	private boolean _viewingFuelInventory;
+	private Craft _continuousInInventory;
+	private Craft _continuousInBlock;
 
 	// Tracking related to delayed actions when switching targets.
 	private AbsoluteLocation _lastActionBlock;
@@ -161,6 +163,8 @@ public class UiStateManager
 				{
 					// This is no longer a station.
 					_openStationLocation = null;
+					_continuousInInventory = null;
+					_continuousInBlock = null;
 					_topLeftPage = 0;
 					_bottomPage = 0;
 				}
@@ -244,15 +248,17 @@ public class UiStateManager
 			// Determine if we can handle manual crafting selection callbacks.
 			Consumer<WindowManager.CraftDescription> craftHoverOverItem = canBeManuallySelected
 					? (WindowManager.CraftDescription elt) -> {
-						if (_leftClick)
+						if (_leftClick || _leftShiftClick)
 						{
 							Craft craft = elt.craft();
 							if (null != _openStationLocation)
 							{
+								_continuousInBlock = _leftShiftClick ? craft : null;
 								_client.beginCraftInBlock(_openStationLocation, craft);
 							}
 							else
 							{
+								_continuousInInventory = _leftShiftClick ? craft : null;
 								_client.beginCraftInInventory(craft);
 							}
 							_didAccountForTimeInFrame = true;
@@ -422,14 +428,22 @@ public class UiStateManager
 		if (!_didAccountForTimeInFrame && (null != _openStationLocation))
 		{
 			// The common code doesn't know we are looking at this block so it can't apply this for us (as it does for in-inventory crafting).
-			_client.beginCraftInBlock(_openStationLocation, null);
+			_client.beginCraftInBlock(_openStationLocation, _continuousInBlock);
 			// We don't account for time here since this usually doesn't do anything.
 		}
 		
 		// If we took no action, just tell the client to pass time.
 		if (!_didAccountForTimeInFrame)
 		{
-			_client.doNothing();
+			// See if we are doing continuous in-inventory crafting.
+			if (null != _continuousInInventory)
+			{
+				_client.beginCraftInInventory(_continuousInInventory);
+			}
+			else
+			{
+				_client.doNothing();
+			}
 		}
 		// And reset.
 		_didAccountForTimeInFrame = false;
@@ -540,6 +554,8 @@ public class UiStateManager
 			_captureState.shouldCaptureMouse(false);
 			break;
 		}
+		_continuousInInventory = null;
+		_continuousInBlock = null;
 	}
 
 	public void handleHotbarIndex(int hotbarIndex)
@@ -568,6 +584,8 @@ public class UiStateManager
 			_captureState.shouldCaptureMouse(false);
 			break;
 		}
+		_continuousInInventory = null;
+		_continuousInBlock = null;
 	}
 
 	public void handleKeyF()
@@ -586,6 +604,8 @@ public class UiStateManager
 				_viewingFuelInventory = (null != stationBlock.getFuel());
 			}
 		}
+		_continuousInInventory = null;
+		_continuousInBlock = null;
 	}
 
 
