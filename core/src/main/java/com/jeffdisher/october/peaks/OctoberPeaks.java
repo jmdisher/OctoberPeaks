@@ -172,6 +172,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Find the selection, if the mode supports this.
 		PartialEntity entity = null;
 		AbsoluteLocation stopBlock = null;
+		Block stopBlockType = null;
 		AbsoluteLocation preStopBlock = null;
 		if (_uiState.canSelectInScene())
 		{
@@ -192,6 +193,11 @@ public class OctoberPeaks extends ApplicationAdapter
 			{
 				entity = selection.entity();
 				stopBlock = selection.stopBlock();
+				BlockProxy proxy = _blockLookup.apply(stopBlock);
+				if (null != proxy)
+				{
+					stopBlockType = proxy.getBlock();
+				}
 				preStopBlock = selection.preStopBlock();
 			}
 		}
@@ -203,7 +209,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Draw the main scene first (since we only draw the other data on top of this).
-		_scene.render(entity, stopBlock);
+		_scene.render(entity, stopBlock, stopBlockType);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).

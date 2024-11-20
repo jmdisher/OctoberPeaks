@@ -63,8 +63,10 @@ public class SceneRenderer
 	private final CuboidMeshManager _cuboidMeshes;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, _EntityData> _entityData;
+	private final Map<Block, Prism> _blockModelBounds;
 	private final int _highlightTexture;
-	private final VertexArray _highlightCube;
+	private final VertexArray _defaultHighlightCube;
+	private final Map<Block, VertexArray> _blockModelHighlightCubes;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
@@ -149,8 +151,18 @@ public class SceneRenderer
 			}
 		}
 		_entityData = Collections.unmodifiableMap(entityData);
+		_blockModelBounds = _blockModels.buildModelBoundingBoxes();
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-		_highlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
+		_defaultHighlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
+		Map<Block, VertexArray> blockModelHighlightCubes = new HashMap<>();
+		for (Map.Entry<Block, Prism> elt : _blockModelBounds.entrySet())
+		{
+			Block key = elt.getKey();
+			Prism value = elt.getValue();
+			VertexArray specialCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, value, _auxBlockTextures);
+			blockModelHighlightCubes.put(key, specialCube);
+		}
+		_blockModelHighlightCubes = Collections.unmodifiableMap(blockModelHighlightCubes);
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -159,7 +171,7 @@ public class SceneRenderer
 
 	public Map<Block, Prism> getModelBoundingBoxes()
 	{
-		return _blockModels.buildModelBoundingBoxes();
+		return _blockModelBounds;
 	}
 
 	public void updatePosition(Vector eye, Vector target, Vector upVector)
@@ -168,7 +180,7 @@ public class SceneRenderer
 		_viewMatrix = Matrix.lookAt(eye, target, upVector);
 	}
 
-	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock)
+	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
@@ -285,7 +297,8 @@ public class SceneRenderer
 		{
 			Matrix model = Matrix.translate(selectedBlock.x(), selectedBlock.y(), selectedBlock.z());
 			model.uploadAsUniform(_gl, _uModelMatrix);
-			_highlightCube.drawAllTriangles(_gl);
+			VertexArray highlighter = _blockModelHighlightCubes.getOrDefault(selectedType, _defaultHighlightCube);
+			highlighter.drawAllTriangles(_gl);
 		}
 		else if (null != selectedEntity)
 		{
@@ -331,7 +344,11 @@ public class SceneRenderer
 		_auxBlockTextures.shutdown(_gl);
 		_program.delete();
 		_cuboidMeshes.shutdown();
-		_highlightCube.delete(_gl);
+		_defaultHighlightCube.delete(_gl);
+		for (VertexArray special : _blockModelHighlightCubes.values())
+		{
+			special.delete(_gl);
+		}
 	}
 
 
