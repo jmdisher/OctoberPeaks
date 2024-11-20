@@ -193,7 +193,10 @@ public class OctoberPeaks extends ApplicationAdapter
 			{
 				entity = selection.entity();
 				stopBlock = selection.stopBlock();
-				BlockProxy proxy = _blockLookup.apply(stopBlock);
+				BlockProxy proxy = (null != stopBlock)
+						? _blockLookup.apply(stopBlock)
+						: null
+				;
 				if (null != proxy)
 				{
 					stopBlockType = proxy.getBlock();
