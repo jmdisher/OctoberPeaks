@@ -199,6 +199,24 @@ public class TestGeometryHelpers
 		_vectorEquals(new Vector(0.0f, 1.0f, 0.0f), backwardStraightUp);
 	}
 
+	@Test
+	public void intersectPrism() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 0.0f, 0.0f);
+		Vector end = new Vector(2.0f, 2.0f, 2.0f);
+		Prism prism = new Prism(1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f);
+		Assert.assertTrue(GeometryHelpers.doesIntersect(start, end, prism));
+	}
+
+	@Test
+	public void prismBehind() throws Throwable
+	{
+		Vector start = new Vector(0.0f, 0.0f, 0.0f);
+		Vector end = new Vector(2.0f, 2.0f, 2.0f);
+		Prism prism = new Prism(-2.0f, -2.0f, -2.0f, -1.5f, -1.5f, -1.5f);
+		Assert.assertFalse(GeometryHelpers.doesIntersect(start, end, prism));
+	}
+
 
 	private static void _vectorEquals(Vector expected, Vector test)
 	{

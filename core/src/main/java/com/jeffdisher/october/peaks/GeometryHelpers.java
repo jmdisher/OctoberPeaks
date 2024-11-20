@@ -159,60 +159,13 @@ public class GeometryHelpers
 			// Extract the axis-aligned bounding-box from the entity.
 			Prism bounds = Prism.getLocationBoundsForEntity(entity);
 			
-			// We will calculate the t-values relative to the end of the vector so any match will be when all axes have t values in [0..1].
-			float closeX = Float.MIN_VALUE;
-			float farX;
-			if (isFixedX)
-			{
-				farX = ((bounds.west() <= compX) && (compX <= bounds.east()))
-						? Float.MAX_VALUE
-						: Float.MIN_VALUE
-				;
-			}
-			else
-			{
-				float txLow = (bounds.west() - start.x()) / compX;
-				float txHigh = (bounds.east() - start.x()) / compX;
-				closeX = Math.min(txLow, txHigh);
-				farX = Math.max(txLow, txHigh);
-			}
-			float closeY = Float.MIN_VALUE;
-			float farY;
-			if (isFixedY)
-			{
-				farY = ((bounds.south() <= compY) && (compY <= bounds.north()))
-						? Float.MAX_VALUE
-						: Float.MIN_VALUE
-				;
-			}
-			else
-			{
-				float tyLow = (bounds.south() - start.y()) / compY;
-				float tyHigh = (bounds.north() - start.y()) / compY;
-				closeY = Math.min(tyLow, tyHigh);
-				farY = Math.max(tyLow, tyHigh);
-			}
-			float closeZ = Float.MIN_VALUE;
-			float farZ;
-			if (isFixedZ)
-			{
-				farZ = ((bounds.bottom() <= compZ) && (compZ <= bounds.top()))
-						? Float.MAX_VALUE
-						: Float.MIN_VALUE
-				;
-			}
-			else
-			{
-				float tzLow = (bounds.bottom() - start.z()) / compZ;
-				float tzHigh = (bounds.top() - start.z()) / compZ;
-				closeZ = Math.min(tzLow, tzHigh);
-				farZ = Math.max(tzLow, tzHigh);
-			}
+			float close = _findDistanceToIntersect(start, bounds
+					, isFixedX, compX
+					, isFixedY, compY
+					, isFixedZ, compZ
+			);
 			
-			float close = Math.max(closeX, Math.max(closeY, closeZ));
-			float far = Math.min(farX, Math.min(farY, farZ));
-			
-			if ((close <= far) && (close >= 0.0f) && (close < distance))
+			if (close < distance)
 			{
 				closest = entity;
 				distance = close;
@@ -244,6 +197,42 @@ public class GeometryHelpers
 		return selected;
 	}
 
+	/**
+	 * Returns true if the vector from start to end intersects the given bounds.
+	 * 
+	 * @param start The starting-point of the ray.
+	 * @param end The end-point of the ray.
+	 * @param bounds The bounds to attempt intersection.
+	 * @return True if the bounds is intersected.
+	 */
+	public static boolean doesIntersect(Vector start, Vector end, Prism bounds)
+	{
+		// Extract the axis-aligned components of the ray.
+		// (we will handle the axis-parallel rays as special-cases)
+		boolean isFixedX = (end.x() == start.x());
+		boolean isFixedY = (end.y() == start.y());
+		boolean isFixedZ = (end.z() == start.z());
+		float compX = isFixedX
+				? start.x()
+				: end.x() - start.x()
+		;
+		float compY = isFixedY
+				? start.y()
+				: end.y() - start.y()
+		;
+		float compZ = isFixedZ
+				? start.z()
+				: end.z() - start.z()
+		;
+		
+		float close = _findDistanceToIntersect(start, bounds
+				, isFixedX, compX
+				, isFixedY, compY
+				, isFixedZ, compZ
+		);
+		return (close < Float.MAX_VALUE);
+	}
+
 	public static AbsoluteLocation locationFromVector(Vector vector)
 	{
 		return _locationFromVector(vector);
@@ -265,6 +254,67 @@ public class GeometryHelpers
 				, (int)Math.floor(vector.y())
 				, (int)Math.floor(vector.z())
 		);
+	}
+
+	private static float _findDistanceToIntersect(Vector start, Prism bounds, boolean isFixedX, float compX, boolean isFixedY, float compY, boolean isFixedZ, float compZ)
+	{
+		// We will calculate the t-values relative to the end of the vector so any match will be when all axes have t values in [0..1].
+		float closeX = Float.MIN_VALUE;
+		float farX;
+		if (isFixedX)
+		{
+			farX = ((bounds.west() <= compX) && (compX <= bounds.east()))
+					? Float.MAX_VALUE
+					: Float.MIN_VALUE
+			;
+		}
+		else
+		{
+			float txLow = (bounds.west() - start.x()) / compX;
+			float txHigh = (bounds.east() - start.x()) / compX;
+			closeX = Math.min(txLow, txHigh);
+			farX = Math.max(txLow, txHigh);
+		}
+		float closeY = Float.MIN_VALUE;
+		float farY;
+		if (isFixedY)
+		{
+			farY = ((bounds.south() <= compY) && (compY <= bounds.north()))
+					? Float.MAX_VALUE
+					: Float.MIN_VALUE
+			;
+		}
+		else
+		{
+			float tyLow = (bounds.south() - start.y()) / compY;
+			float tyHigh = (bounds.north() - start.y()) / compY;
+			closeY = Math.min(tyLow, tyHigh);
+			farY = Math.max(tyLow, tyHigh);
+		}
+		float closeZ = Float.MIN_VALUE;
+		float farZ;
+		if (isFixedZ)
+		{
+			farZ = ((bounds.bottom() <= compZ) && (compZ <= bounds.top()))
+					? Float.MAX_VALUE
+					: Float.MIN_VALUE
+			;
+		}
+		else
+		{
+			float tzLow = (bounds.bottom() - start.z()) / compZ;
+			float tzHigh = (bounds.top() - start.z()) / compZ;
+			closeZ = Math.min(tzLow, tzHigh);
+			farZ = Math.max(tzLow, tzHigh);
+		}
+		
+		float close = Math.max(closeX, Math.max(closeY, closeZ));
+		float far = Math.min(farX, Math.min(farY, farZ));
+		
+		return ((close <= far) && (close >= 0.0f))
+				? close
+				: Float.MAX_VALUE
+		;
 	}
 
 
