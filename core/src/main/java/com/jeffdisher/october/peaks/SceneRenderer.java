@@ -375,14 +375,22 @@ public class SceneRenderer
 
 	private static Matrix _generateEntityModelMatrix(PartialEntity entity, EntityType type)
 	{
+		// Note that the model definitions are within the unit cube from [0..1] on all axes.
+		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
+		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
 		EntityLocation location = entity.location();
 		EntityVolume volume = EntityConstants.getVolume(type);
+		float width = volume.width();
+		float height = volume.height();
+		float halfWidth = width / 2.0f;
+		float halfHeight = height / 2.0f;
 		Matrix rotatePitch = Matrix.rotateX(OrientationHelpers.getPitchRadians(entity.pitch()));
 		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(entity.yaw()));
-		Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
-		Matrix scale = Matrix.scale(volume.width(), volume.width(), volume.height());
+		Matrix translate = Matrix.translate(location.x() + halfWidth, location.y() + halfWidth, location.z() + halfHeight);
+		Matrix scale = Matrix.scale(width, width, height);
 		Matrix rotate = Matrix.mutliply(rotateYaw, rotatePitch);
-		Matrix model = Matrix.mutliply(translate, Matrix.mutliply(rotate, scale));
+		Matrix centreTranslate = Matrix.translate(-halfWidth, -halfWidth, -halfHeight);
+		Matrix model = Matrix.mutliply(translate, Matrix.mutliply(rotate, Matrix.mutliply(centreTranslate, scale)));
 		return model;
 	}
 
