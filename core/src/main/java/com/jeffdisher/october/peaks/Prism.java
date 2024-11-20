@@ -45,4 +45,15 @@ public record Prism(float west
 				, edgeZ
 		);
 	}
+
+	public final Prism getRelative(float rx, float ry, float rz)
+	{
+		return new Prism(this.west + rx
+				, this.south + ry
+				, this.bottom + rz
+				, this.east + rx
+				, this.north + ry
+				, this.top + rz
+		);
+	}
 }

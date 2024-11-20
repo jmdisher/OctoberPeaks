@@ -157,6 +157,11 @@ public class SceneRenderer
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
 	}
 
+	public Map<Block, Prism> getModelBoundingBoxes()
+	{
+		return _blockModels.buildModelBoundingBoxes();
+	}
+
 	public void updatePosition(Vector eye, Vector target, Vector upVector)
 	{
 		_eye = eye;

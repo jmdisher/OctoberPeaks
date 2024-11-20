@@ -26,6 +26,7 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class SelectionManager
 {
+	private final Map<Block, Prism> _specialBounds;
 	private final Set<Block> _ignoreCommon;
 	private final Set<Block> _ignoreCommonAndWaterSource;
 	private final Item _emptyBucketItem;
@@ -35,8 +36,12 @@ public class SelectionManager
 	private Vector _target;
 	private boolean _isEmptyBucketSelected;
 
-	public SelectionManager(Environment environment, Function<AbsoluteLocation, BlockProxy> blockLookup)
+	public SelectionManager(Environment environment
+			, Map<Block, Prism> specialBounds
+			, Function<AbsoluteLocation, BlockProxy> blockLookup
+	)
 	{
+		_specialBounds = specialBounds;
 		_ignoreCommon = Set.of(environment.special.AIR
 				, environment.special.WATER_WEAK
 				, environment.special.WATER_STRONG
@@ -117,7 +122,22 @@ public class SelectionManager
 						? _ignoreCommon.contains(block)
 						: _ignoreCommonAndWaterSource.contains(block)
 				;
-				shouldStop = !shouldIgnore;
+				
+				if (shouldIgnore)
+				{
+					// If we should ignore this, we can continue.
+					shouldStop = false;
+				}
+				else if (_specialBounds.containsKey(block))
+				{
+					// This is a model block so we need special intersection.
+					shouldStop = GeometryHelpers.doesIntersect(_eye, endPoint, _specialBounds.get(block).getRelative(location.x(), location.y(), location.z()));
+				}
+				else
+				{
+					// This is just a normal block so stop.
+					shouldStop = true;
+				}
 			}
 			return shouldStop;
 		});

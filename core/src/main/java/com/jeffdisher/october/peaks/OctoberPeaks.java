@@ -16,6 +16,7 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
@@ -32,13 +33,13 @@ public class OctoberPeaks extends ApplicationAdapter
 	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final InetSocketAddress _serverSocketAddress;
-	private final SelectionManager _selectionManager;
 
 	private GL20 _gl;
 	private TextureAtlas<ItemVariant> _itemAtlas;
 	private SceneRenderer _scene;
 	private WindowManager _windowManager;
 	private MovementControl _movement;
+	private SelectionManager _selectionManager;
 	private ClientWrapper _client;
 	private UiStateManager _uiState;
 	private InputManager _input;
@@ -58,7 +59,6 @@ public class OctoberPeaks extends ApplicationAdapter
 			return proxy;
 		};
 		_serverSocketAddress = options.serverAddress();
-		_selectionManager = new SelectionManager(_environment, _blockLookup);
 	}
 
 	@Override
@@ -87,6 +87,9 @@ public class OctoberPeaks extends ApplicationAdapter
 		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
+		
+		Map<Block, Prism> specialBlockBounds = _scene.getModelBoundingBoxes();
+		_selectionManager = new SelectionManager(_environment, specialBlockBounds, _blockLookup);
 		
 		_client = new ClientWrapper(_environment
 				, new ClientWrapper.IUpdateConsumer() {
