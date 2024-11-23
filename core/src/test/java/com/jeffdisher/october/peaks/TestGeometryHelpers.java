@@ -217,6 +217,16 @@ public class TestGeometryHelpers
 		Assert.assertFalse(GeometryHelpers.doesIntersect(start, end, prism));
 	}
 
+	@Test
+	public void entityOutOfRange() throws Throwable
+	{
+		Vector start = new Vector(16.43f, 1.38f, 0.81f);
+		Vector end = new Vector(17.71418f, 2.1456556f, 0.68893725f);
+		PartialEntity entity = _getTestCow(-1, new EntityLocation(21.19f, 3.96f, 0.0f));
+		GeometryHelpers.SelectedEntity closest = GeometryHelpers.findSelectedEntity(start, end, List.of(entity));
+		Assert.assertNull(closest);
+	}
+
 
 	private static void _vectorEquals(Vector expected, Vector test)
 	{

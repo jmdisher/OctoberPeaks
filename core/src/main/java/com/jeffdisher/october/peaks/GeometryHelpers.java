@@ -3,11 +3,11 @@ package com.jeffdisher.october.peaks;
 import java.util.Collection;
 import java.util.function.Predicate;
 
+import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
-import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.PartialEntity;
 
 
@@ -172,29 +172,10 @@ public class GeometryHelpers
 			}
 		}
 		
-		// If we have a closest, find the distance to it.
-		SelectedEntity selected = null;
-		if (null != closest)
-		{
-			// We will interpret the entity bounding box as a cylinder so compute the z distance first.
-			EntityVolume volume = EntityConstants.getVolume(closest.type());
-			float halfWidth = volume.width() / 2.0f;
-			EntityLocation location = closest.location();
-			EntityLocation centreFoot = new EntityLocation(location.x() + halfWidth, location.y() + halfWidth, location.z());
-			float zDistance = centreFoot.z() - start.z();
-			if (zDistance < 0.0f)
-			{
-				zDistance = Math.min(0.0f, zDistance + volume.height());
-			}
-			// Compute the distance in the XY plane.
-			float deltaX = centreFoot.x() - start.x();
-			float deltaY = centreFoot.y() - start.y();
-			float distanceX = Math.max(0.0f, Math.abs(deltaX) - halfWidth);
-			float distanceY = Math.max(0.0f, Math.abs(deltaY) - halfWidth);
-			float totalDistance = (float)Math.sqrt(distanceX * distanceX + distanceY * distanceY + zDistance * zDistance);
-			selected = new SelectedEntity(closest, totalDistance);
-		}
-		return selected;
+		return (null != closest)
+				? new SelectedEntity(closest, distance)
+				: null
+		;
 	}
 
 	/**
@@ -311,8 +292,9 @@ public class GeometryHelpers
 		float close = Math.max(closeX, Math.max(closeY, closeZ));
 		float far = Math.min(farX, Math.min(farY, farZ));
 		
-		return ((close <= far) && (close >= 0.0f))
-				? close
+		// NOTE:  "close" is not the physical distance, but a proportional one, so actually calculate the distance.
+		return ((close <= far) && (close >= 0.0f) && (far <= 1.0f))
+				? SpatialHelpers.distanceFromLocationToVolume(new EntityLocation(start.x(), start.y(), start.z()), bounds.getBaseLocation(), bounds.getVolume())
 				: Float.MAX_VALUE
 		;
 	}
