@@ -56,4 +56,15 @@ public record Prism(float west
 				, this.top + rz
 		);
 	}
+
+	public final EntityLocation getBaseLocation()
+	{
+		return new EntityLocation(this.west, this.south, this.bottom);
+	}
+
+	public final EntityVolume getVolume()
+	{
+		// WARNING:  This only uses the X-axis for width, ignoring the Y-axies.
+		return new EntityVolume(this.top - this.bottom, this.east - this.west);
+	}
 }

@@ -102,17 +102,17 @@ public class SelectionManager
 	public SelectionTuple findSelection()
 	{
 		// Find any selected entity or block.
-		// TODO:  Use the appropriate reach constants for different phases of the selection.
-		Vector direction = Vector.delta(_eye, _target).scale(MiscConstants.REACH_BLOCK);
-		Vector endPoint = _eye.add(direction);
-		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, endPoint, _entities.values());
-		Vector edgeLimit = endPoint;
+		Vector delta = Vector.delta(_eye, _target).normalize();
+		// Even though the reach to an entity is shorter than that to a block, we will use the block limit and check the entity, later, so that the entity will mask out blocks behind it but still in range.
+		Vector end = _eye.add(delta.scale(MiscConstants.REACH_BLOCK));
+		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, end, _entities.values());
 		if (null != selectedEntity)
 		{
-			Vector relative = Vector.delta(_eye, endPoint).normalize().scale(selectedEntity.distance());
-			edgeLimit = new Vector(_eye.x() + relative.x(), _eye.y() + relative.y(), _eye.z() + relative.z());
+			float entityDistance = selectedEntity.distance();
+			end = _eye.add(delta.scale(entityDistance));
 		}
-		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, edgeLimit, (AbsoluteLocation location) -> {
+		final Vector finalEnd = end;
+		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, end, (AbsoluteLocation location) -> {
 			BlockProxy proxy = _blockLookup.apply(location);
 			boolean shouldStop = true;
 			if (null != proxy)
@@ -132,7 +132,7 @@ public class SelectionManager
 				else if (_specialBounds.containsKey(block))
 				{
 					// This is a model block so we need special intersection.
-					shouldStop = GeometryHelpers.doesIntersect(_eye, endPoint, _specialBounds.get(block).getRelative(location.x(), location.y(), location.z()));
+					shouldStop = GeometryHelpers.doesIntersect(_eye, finalEnd, _specialBounds.get(block).getRelative(location.x(), location.y(), location.z()));
 				}
 				else
 				{
@@ -151,7 +151,11 @@ public class SelectionManager
 		}
 		else if (null != selectedEntity)
 		{
-			tuple = new SelectionTuple(selectedEntity.entity(), null, null);
+			// Here, we will impose the limits of the entity selection range.
+			tuple = (selectedEntity.distance() <= MiscConstants.REACH_ENTITY)
+					? new SelectionTuple(selectedEntity.entity(), null, null)
+					: null
+			;
 		}
 		else
 		{
