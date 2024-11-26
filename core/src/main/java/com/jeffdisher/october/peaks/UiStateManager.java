@@ -75,6 +75,8 @@ public class UiStateManager
 	private boolean _orientationNeedsFlush;
 	private float _yawRadians;
 	private float _pitchRadians;
+	private boolean _shouldPause;
+	private boolean _shouldResume;
 
 	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
@@ -355,6 +357,13 @@ public class UiStateManager
 
 	public void finalizeFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
+		// Make sure the client is in the right state.
+		if (_shouldResume)
+		{
+			_captureState.trySetPaused(false);
+			_shouldResume = false;
+		}
+		
 		// See if we need to update our orientation.
 		if (_orientationNeedsFlush)
 		{
@@ -445,6 +454,14 @@ public class UiStateManager
 				_client.doNothing();
 			}
 		}
+		
+		// We handle resume and pause distinctly since we need to put the client into the right state before/after any actions.
+		if (_shouldPause)
+		{
+			_captureState.trySetPaused(true);
+			_shouldPause = false;
+		}
+		
 		// And reset.
 		_didAccountForTimeInFrame = false;
 		_mouseHeld0 = false;
@@ -548,10 +565,12 @@ public class UiStateManager
 		case MENU:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
+			_shouldResume = true;
 			break;
 		case PLAY:
 			_uiState = _UiState.MENU;
 			_captureState.shouldCaptureMouse(false);
+			_shouldPause = true;
 			break;
 		}
 		_continuousInInventory = null;
@@ -560,7 +579,16 @@ public class UiStateManager
 
 	public void handleHotbarIndex(int hotbarIndex)
 	{
-		_client.changeHotbarIndex(hotbarIndex);
+		switch (_uiState)
+		{
+		case MENU:
+			// Just ignore this.
+			break;
+		case INVENTORY:
+		case PLAY:
+			_client.changeHotbarIndex(hotbarIndex);
+			break;
+		}
 	}
 
 	public void handleKeyI()
@@ -764,5 +792,6 @@ public class UiStateManager
 	public static interface IInputStateChanger
 	{
 		public void shouldCaptureMouse(boolean setCapture);
+		public void trySetPaused(boolean isPaused);
 	}
 }

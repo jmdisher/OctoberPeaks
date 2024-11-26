@@ -78,6 +78,7 @@ public class ClientWrapper
 	private final ServerProcess _server;
 	private final ClientProcess _client;
 	private final ConsoleRunner _console;
+	private boolean _isPaused;
 
 	// Data cached from the client listener.
 	private Entity _thisEntity;
@@ -188,7 +189,14 @@ public class ClientWrapper
 	public void doNothing()
 	{
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.doNothing(currentTimeMillis);
+		if (_isPaused)
+		{
+			_client.advanceTime(currentTimeMillis);
+		}
+		else
+		{
+			_client.doNothing(currentTimeMillis);
+		}
 	}
 
 	public void setOrientation(float yawRadians, float pitchRadians)
@@ -197,12 +205,14 @@ public class ClientWrapper
 		byte pitch = OrientationHelpers.yawFromRadians(pitchRadians);
 		EntityChangeSetOrientation<IMutablePlayerEntity> set = new EntityChangeSetOrientation<>(yaw, pitch);
 		long currentTimeMillis = System.currentTimeMillis();
+		Assert.assertTrue(!_isPaused);
 		_client.sendAction(set, currentTimeMillis);
 	}
 
 	public void accelerateHorizontal(EntityChangeAccelerate.Relative relativeDirection)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
+		Assert.assertTrue(!_isPaused);
 		_client.accelerateHorizontally(relativeDirection, currentTimeMillis);
 	}
 
@@ -210,6 +220,7 @@ public class ClientWrapper
 	{
 		// See if we can jump or swim.
 		boolean didMove = false;
+		Assert.assertTrue(!_isPaused);
 		// Filter for redundant events.
 		if (!_didJump)
 		{
@@ -260,6 +271,7 @@ public class ClientWrapper
 		// Make sure that this is a block we can break.
 		IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
 		boolean didHit = false;
+		Assert.assertTrue(!_isPaused);
 		// This can be null when the action is taken due to loading issues, respawn, etc.
 		if (null != cuboid)
 		{
@@ -345,6 +357,7 @@ public class ClientWrapper
 			change = null;
 		}
 		
+		Assert.assertTrue(!_isPaused);
 		if (null != change)
 		{
 			long currentTimeMillis = System.currentTimeMillis();
@@ -388,6 +401,7 @@ public class ClientWrapper
 			change = null;
 		}
 		
+		Assert.assertTrue(!_isPaused);
 		if (null != change)
 		{
 			long currentTimeMillis = System.currentTimeMillis();
@@ -412,6 +426,7 @@ public class ClientWrapper
 		// We need to check our selected item and see what "action" is associated with it.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		
+		Assert.assertTrue(!_isPaused);
 		boolean didAttemptPlace = false;
 		if (Entity.NO_SELECTION != selectedKey)
 		{
@@ -425,6 +440,7 @@ public class ClientWrapper
 
 	public void applyToEntity(PartialEntity selectedEntity)
 	{
+		Assert.assertTrue(!_isPaused);
 		// We need to check our selected item and see if there is some interaction it has with this entity.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		if (Entity.NO_SELECTION != selectedKey)
@@ -445,6 +461,7 @@ public class ClientWrapper
 
 	public void changeHotbarIndex(int index)
 	{
+		Assert.assertTrue(!_isPaused);
 		EntityChangeChangeHotbarSlot change = new EntityChangeChangeHotbarSlot(index);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(change, currentTimeMillis);
@@ -458,6 +475,7 @@ public class ClientWrapper
 				: itemInventoryKey
 		;
 		
+		Assert.assertTrue(!_isPaused);
 		MutationEntitySelectItem select = new MutationEntitySelectItem(keyToSelect);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(select, currentTimeMillis);
@@ -494,6 +512,7 @@ public class ClientWrapper
 			inventoryAspect = Inventory.INVENTORY_ASPECT_INVENTORY;
 		}
 		
+		Assert.assertTrue(!_isPaused);
 		boolean didSubmit = false;
 		if (null != blockInventory)
 		{
@@ -537,6 +556,7 @@ public class ClientWrapper
 		Items stack = entityInventory.getStackForKey(entityInventoryKey);
 		NonStackableItem nonStack = entityInventory.getNonStackableForKey(entityInventoryKey);
 		
+		Assert.assertTrue(!_isPaused);
 		boolean didSubmit = false;
 		if ((null != stack) != (null != nonStack))
 		{
@@ -584,18 +604,21 @@ public class ClientWrapper
 
 	public void beginCraftInInventory(Craft craft)
 	{
+		Assert.assertTrue(!_isPaused);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.craft(craft, currentTimeMillis);
 	}
 
 	public void beginCraftInBlock(AbsoluteLocation block, Craft craft)
 	{
+		Assert.assertTrue(!_isPaused);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.craftInBlock(block, craft, currentTimeMillis);
 	}
 
 	public void swapArmour(BodyPart part)
 	{
+		Assert.assertTrue(!_isPaused);
 		// In order to avoid gratuitous validation duplication, we will submit this mutation if it seems possible and rely on its own validation.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
@@ -605,13 +628,39 @@ public class ClientWrapper
 
 	public void hitEntity(PartialEntity selectedEntity)
 	{
+		Assert.assertTrue(!_isPaused);
 		EntityChangeAttackEntity attack = new EntityChangeAttackEntity(selectedEntity.id());
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(attack, currentTimeMillis);
 	}
 
+	public boolean pauseGame()
+	{
+		if (null != _monitoringAgent)
+		{
+			_monitoringAgent.getCommandSink().pauseTickProcessing();
+			_isPaused = true;
+		}
+		return _isPaused;
+	}
+
+	public void resumeGame()
+	{
+		if (null != _monitoringAgent)
+		{
+			_monitoringAgent.getCommandSink().resumeTickProcessing();
+			_isPaused = false;
+		}
+	}
+
 	public void disconnect()
 	{
+		// The server needs to be running in order for this shutdown to work.
+		if (_isPaused)
+		{
+			_monitoringAgent.getCommandSink().resumeTickProcessing();
+		}
+		
 		_client.disconnect();
 		if (null != _server)
 		{

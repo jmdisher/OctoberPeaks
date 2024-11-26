@@ -157,7 +157,28 @@ public class OctoberPeaks extends ApplicationAdapter
 				, _clientName
 				, _serverSocketAddress
 		);
-		_uiState = new UiStateManager(_movement, _client, _blockLookup, (boolean setCapture) -> _input.enterCaptureState(setCapture));
+		_uiState = new UiStateManager(_movement, _client, _blockLookup, new UiStateManager.IInputStateChanger() {
+			@Override
+			public void shouldCaptureMouse(boolean setCapture)
+			{
+				_input.enterCaptureState(setCapture);
+			}
+			@Override
+			public void trySetPaused(boolean isPaused)
+			{
+				boolean didPause;
+				if (isPaused)
+				{
+					didPause = _client.pauseGame();
+				}
+				else
+				{
+					_client.resumeGame();
+					didPause = false;
+				}
+				_windowManager.setPaused(didPause);
+			}
+		});
 		_input = new InputManager();
 		_client.finishStartup();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());

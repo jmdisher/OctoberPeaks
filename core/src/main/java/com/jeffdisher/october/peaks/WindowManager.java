@@ -89,6 +89,7 @@ public class WindowManager
 	private final Set<Block> _waterBlockTypes;
 	private Entity _projectedEntity;
 	private AbsoluteLocation _eyeBlockLocation;
+	private boolean _isPaused;
 
 	// We define these public rendering helpers in order to avoid adding special public interfaces or spreading rendering logic around.
 	public final ItemRenderer<Items> renderItemStack;
@@ -349,6 +350,18 @@ public class WindowManager
 			hoverRunnable.run();
 		}
 		
+		// If we are paused, show the pause overlay.
+		if (_isPaused)
+		{
+			// Draw the overlay to dim the window.
+			_gl.glActiveTexture(GL20.GL_TEXTURE0);
+			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelDarkGreyAlpha);
+			_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+			
+			// Draw the paused text.
+			_drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
+		}
+		
 		// Allow any periodic cleanup.
 		_textManager.allowTexturePurge();
 	}
@@ -373,6 +386,11 @@ public class WindowManager
 	public void updateEyeBlock(AbsoluteLocation eyeBlockLocation)
 	{
 		_eyeBlockLocation = eyeBlockLocation;
+	}
+
+	public void setPaused(boolean isPaused)
+	{
+		_isPaused = isPaused;
 	}
 
 	public void shutdown()
