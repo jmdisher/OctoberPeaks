@@ -569,6 +569,7 @@ public class UiStateManager
 			break;
 		case PLAY:
 			_uiState = _UiState.MENU;
+			_openStationLocation = null;
 			_captureState.shouldCaptureMouse(false);
 			_shouldPause = true;
 			break;
