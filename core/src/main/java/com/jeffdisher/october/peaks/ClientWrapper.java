@@ -53,6 +53,7 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.EventRecord;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
 import com.jeffdisher.october.types.Inventory;
@@ -810,6 +811,23 @@ public class ClientWrapper
 			_updateConsumer.setSkyLightMultiplier(multiplier);
 		}
 		@Override
+		public void handleEvent(EventRecord event)
+		{
+			// We will see if this kind of event needs special handling (this will evolve over time).
+			if ((EventRecord.Type.ENTITY_HURT == event.type()) && (_assignedLocalEntityId == event.entityTarget()))
+			{
+				_updateConsumer.thisEntityHurt();
+			}
+			else if (EventRecord.Type.ENTITY_KILLED == event.type())
+			{
+				System.out.println("Entity killed: " + event.entityTarget());
+			}
+			else
+			{
+				// Do nothing - these other events are currently ignored.
+			}
+		}
+		@Override
 		public void configUpdated(int ticksPerDay, int dayStartTick)
 		{
 			_ticksPerDay = ticksPerDay;
@@ -839,6 +857,7 @@ public class ClientWrapper
 		void unload(CuboidAddress address);
 		
 		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
+		void thisEntityHurt();
 		
 		void otherClientJoined(int clientId, String name);
 		void otherClientLeft(int clientId);
