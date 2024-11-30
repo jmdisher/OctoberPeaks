@@ -813,6 +813,19 @@ public class ClientWrapper
 		@Override
 		public void handleEvent(EventRecord event)
 		{
+			// We will see if this kind of event needs special handling (this will evolve over time).
+			if ((EventRecord.Type.ENTITY_HURT == event.type()) && (_assignedLocalEntityId == event.entityTarget()))
+			{
+				_updateConsumer.thisEntityHurt();
+			}
+			else if (EventRecord.Type.ENTITY_KILLED == event.type())
+			{
+				System.out.println("Entity killed: " + event.entityTarget());
+			}
+			else
+			{
+				// Do nothing - these other events are currently ignored.
+			}
 		}
 		@Override
 		public void configUpdated(int ticksPerDay, int dayStartTick)
@@ -844,6 +857,7 @@ public class ClientWrapper
 		void unload(CuboidAddress address);
 		
 		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
+		void thisEntityHurt();
 		
 		void otherClientJoined(int clientId, String name);
 		void otherClientLeft(int clientId);

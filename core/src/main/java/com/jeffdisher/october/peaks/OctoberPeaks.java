@@ -37,6 +37,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	private GL20 _gl;
 	private TextureAtlas<ItemVariant> _itemAtlas;
 	private SceneRenderer _scene;
+	private EyeEffect _eyeEffect;
 	private WindowManager _windowManager;
 	private MovementControl _movement;
 	private SelectionManager _selectionManager;
@@ -84,6 +85,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
+		_eyeEffect = new EyeEffect(_gl);
 		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
@@ -125,6 +127,11 @@ public class OctoberPeaks extends ApplicationAdapter
 						_windowManager.setThisEntity(projectedEntity);
 						_uiState.setThisEntity(projectedEntity);
 						_selectionManager.setThisEntity(projectedEntity);
+					}
+					@Override
+					public void thisEntityHurt()
+					{
+						_eyeEffect.thisEntityHurt();
 					}
 					@Override
 					public void otherClientJoined(int clientId, String name)
@@ -235,6 +242,9 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Draw the main scene first (since we only draw the other data on top of this).
 		_scene.render(entity, stopBlock, stopBlockType);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// Draw any eye effect overlay.
+		_eyeEffect.drawEyeEffect();
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_uiState.drawRelevantWindows(_windowManager, stopBlock, entity);
