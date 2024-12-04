@@ -405,7 +405,7 @@ public class UiStateManager
 			{
 				if (_mouseClicked1)
 				{
-					// Try to apply the selected item to the inventory (we consider this an action even if it did nothing).
+					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
 					_client.applyToEntity(entity);
 					didAct = true;
 				}
@@ -424,7 +424,12 @@ public class UiStateManager
 			{
 				if (_canAct(stopBlock))
 				{
+					// In this case, we either want to place a block or repair a block.
 					didAct = _client.runPlaceBlock(stopBlock, preStopBlock);
+					if (!didAct)
+					{
+						didAct = _client.runRepairBlock(stopBlock);
+					}
 				}
 				else
 				{
