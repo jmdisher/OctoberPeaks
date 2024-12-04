@@ -231,7 +231,7 @@ public class InputManager
 			}
 			if (_buttonDown1)
 			{
-				uiManager.captureMouse1Down(!_didHandleButton1);
+				uiManager.captureMouse1Down(!_didHandleButton1, _leftShiftDown);
 				_didHandleButton1 = true;
 			}
 			

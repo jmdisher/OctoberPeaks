@@ -501,10 +501,16 @@ public class UiStateManager
 		_mouseClicked0 = justClicked;
 	}
 
-	public void captureMouse1Down(boolean justClicked)
+	public void captureMouse1Down(boolean justClicked, boolean leftShiftHeld)
 	{
 		_mouseHeld1 = true;
-		_mouseClicked1 = justClicked;
+		// We use the shift to allow us to set the "held" without "clicked".
+		// In the future, this will likely be expanded but it isn't obvious where the interpretation of this key should
+		// go (InputManager, where it can associated with key settings, or here where it is associated with the UI state).
+		if (!leftShiftHeld)
+		{
+			_mouseClicked1 = justClicked;
+		}
 	}
 
 	public void moveForward()
