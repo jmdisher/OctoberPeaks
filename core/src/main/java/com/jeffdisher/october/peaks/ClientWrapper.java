@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Aspect;
+import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -436,6 +437,24 @@ public class ClientWrapper
 			didAttemptPlace = true;
 		}
 		return didAttemptPlace;
+	}
+
+	public boolean runRepairBlock(AbsoluteLocation solidBlock)
+	{
+		// The only check we perform is to see if this block is damaged.
+		IReadOnlyCuboidData cuboid = _cuboids.get(solidBlock.getCuboidAddress());
+		boolean didAttemptRepair = false;
+		if (null != cuboid)
+		{
+			short damage = cuboid.getData15(AspectRegistry.DAMAGE, solidBlock.getBlockAddress());
+			if (damage > 0)
+			{
+				long currentTimeMillis = System.currentTimeMillis();
+				_client.repairBlock(solidBlock, currentTimeMillis);
+				didAttemptRepair = true;
+			}
+		}
+		return didAttemptRepair;
 	}
 
 	public void applyToEntity(PartialEntity selectedEntity)
