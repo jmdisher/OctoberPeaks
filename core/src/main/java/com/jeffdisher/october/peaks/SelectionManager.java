@@ -6,8 +6,8 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.mutations.EntityChangeIncrementalBlockBreak;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.CreativeInventory;
@@ -102,7 +102,8 @@ public class SelectionManager
 	public SelectionTuple findSelection()
 	{
 		// Find any selected entity or block.
-		Vector direction = Vector.delta(_eye, _target).scale(EntityChangeIncrementalBlockBreak.MAX_REACH);
+		// TODO:  Use the appropriate reach constants for different phases of the selection.
+		Vector direction = Vector.delta(_eye, _target).scale(MiscConstants.REACH_BLOCK);
 		Vector endPoint = _eye.add(direction);
 		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, endPoint, _entities.values());
 		Vector edgeLimit = endPoint;

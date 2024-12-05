@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -52,6 +53,7 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.EventRecord;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
 import com.jeffdisher.october.types.Inventory;
@@ -695,7 +697,11 @@ public class ClientWrapper
 			_assignedLocalEntityId = assignedLocalEntityId;
 		}
 		@Override
-		public void cuboidDidChange(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
+		public void cuboidDidChange(IReadOnlyCuboidData cuboid
+				, ColumnHeightMap heightMap
+				, Set<BlockAddress> changedBlocks
+				, Set<Aspect<?, ?>> changedAspects
+		)
 		{
 			_cuboids.put(cuboid.getCuboidAddress(), cuboid);
 			_updateConsumer.updateExisting(cuboid, heightMap, changedBlocks);
@@ -754,6 +760,10 @@ public class ClientWrapper
 		{
 			float multiplier = PropagationHelpers.skyLightMultiplier(tickNumber, _ticksPerDay,_dayStartTick);
 			_updateConsumer.setSkyLightMultiplier(multiplier);
+		}
+		@Override
+		public void handleEvent(EventRecord event)
+		{
 		}
 		@Override
 		public void configUpdated(int ticksPerDay, int dayStartTick)
