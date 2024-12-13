@@ -7,6 +7,7 @@ import java.nio.IntBuffer;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.utils.Assert;
 
+
 /**
  * A high-level representation of an OpenGL shader program.
  * This exists so that we can hang high-level helpers off of it while also giving it a distinct type.

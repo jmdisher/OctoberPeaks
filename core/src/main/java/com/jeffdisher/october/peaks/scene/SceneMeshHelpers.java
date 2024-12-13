@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks.graphics;
+package com.jeffdisher.october.peaks.scene;
 
 import java.nio.FloatBuffer;
 import java.util.Iterator;
@@ -15,12 +15,14 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.peaks.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.BlockModelsAndAtlas;
-import com.jeffdisher.october.peaks.ItemVariant;
-import com.jeffdisher.october.peaks.Prism;
-import com.jeffdisher.october.peaks.SparseShortProjection;
-import com.jeffdisher.october.peaks.TextureAtlas;
+import com.jeffdisher.october.peaks.graphics.Attribute;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
+import com.jeffdisher.october.peaks.graphics.FaceBuilder;
+import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;

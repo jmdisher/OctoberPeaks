@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.scene;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,11 +20,16 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
-import com.jeffdisher.october.peaks.graphics.CuboidMeshManager;
+import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
-import com.jeffdisher.october.peaks.graphics.SceneMeshHelpers;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
+import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.TextureHelpers;
+import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.types.Prism;
+import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;

@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.utils;
 
 import java.util.List;
 
@@ -6,6 +6,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.jeffdisher.october.logic.OrientationHelpers;
+import com.jeffdisher.october.peaks.types.Prism;
+import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;

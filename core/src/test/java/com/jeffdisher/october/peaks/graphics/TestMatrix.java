@@ -1,7 +1,9 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.graphics;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.jeffdisher.october.peaks.types.Vector;
 
 
 public class TestMatrix

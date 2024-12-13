@@ -1,10 +1,9 @@
-package com.jeffdisher.october.peaks.graphics;
+package com.jeffdisher.october.peaks.scene;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.jeffdisher.october.types.BlockAddress;
-
 
 
 public class TestWaterSurfaceBuilder

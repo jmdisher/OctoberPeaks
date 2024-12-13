@@ -1,7 +1,8 @@
-package com.jeffdisher.october.peaks.graphics;
+package com.jeffdisher.october.peaks.scene;
 
 import java.util.function.Predicate;
 
+import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;

@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.textures;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -11,6 +11,8 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.peaks.types.BlockVariant;
+import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;

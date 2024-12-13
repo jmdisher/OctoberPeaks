@@ -1,9 +1,11 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.utils;
 
 import java.util.Collection;
 import java.util.function.Predicate;
 
 import com.jeffdisher.october.logic.SpatialHelpers;
+import com.jeffdisher.october.peaks.types.Prism;
+import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityConstants;
