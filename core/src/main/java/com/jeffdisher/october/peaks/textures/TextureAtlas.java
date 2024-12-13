@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.textures;
 
 import com.badlogic.gdx.graphics.GL20;
 

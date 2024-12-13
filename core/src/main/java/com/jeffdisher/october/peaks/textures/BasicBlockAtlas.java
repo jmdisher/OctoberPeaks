@@ -1,8 +1,9 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.textures;
 
 import java.util.Arrays;
 
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.peaks.types.BlockVariant;
 import com.jeffdisher.october.types.Block;
 
 

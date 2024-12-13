@@ -1,6 +1,7 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.graphics;
 
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.peaks.types.Vector;
 
 
 public class Matrix

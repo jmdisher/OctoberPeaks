@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.scene;
 
 import java.util.HashMap;
 import java.util.Map;

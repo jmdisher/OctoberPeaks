@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.textures;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -6,6 +6,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.types.Item;
 
 

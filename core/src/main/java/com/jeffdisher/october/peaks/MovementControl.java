@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks;
 
+import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 
 /**
  * This helper class is meant to encapsulate the logic for how the first-person perspective is managed and updated.

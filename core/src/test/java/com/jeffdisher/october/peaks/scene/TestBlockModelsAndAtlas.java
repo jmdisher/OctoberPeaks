@@ -1,10 +1,14 @@
-package com.jeffdisher.october.peaks;
+package com.jeffdisher.october.peaks.scene;
 
 import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.TextureHelpers;
+import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Item;

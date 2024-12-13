@@ -14,6 +14,7 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.utils.Assert;
 
 

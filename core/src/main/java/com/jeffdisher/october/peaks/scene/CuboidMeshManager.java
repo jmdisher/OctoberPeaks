@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks.graphics;
+package com.jeffdisher.october.peaks.scene;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -18,11 +18,12 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.peaks.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.BlockModelsAndAtlas;
-import com.jeffdisher.october.peaks.ItemVariant;
-import com.jeffdisher.october.peaks.SparseShortProjection;
-import com.jeffdisher.october.peaks.TextureAtlas;
+import com.jeffdisher.october.peaks.graphics.Attribute;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
+import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.CuboidColumnAddress;
