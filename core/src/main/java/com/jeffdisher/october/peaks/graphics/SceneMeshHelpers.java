@@ -340,7 +340,7 @@ public class SceneMeshHelpers
 		}, null);
 	}
 
-	public static VertexArray createPrism(GL20 gl
+	public static VertexArray createOutlinePrism(GL20 gl
 			, Attribute[] attributes
 			, FloatBuffer meshBuffer
 			, Prism prism
@@ -357,8 +357,18 @@ public class SceneMeshHelpers
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
 		
+		// This is an outline so we want to increase the space around the prism before making the vertices.
+		float outlineDistance = 0.01f;
+		Prism outline = new Prism(prism.west() - outlineDistance
+				, prism.south() - outlineDistance
+				, prism.bottom() - outlineDistance
+				, prism.east() + outlineDistance
+				, prism.north() + outlineDistance
+				, prism.top() + outlineDistance
+		);
+		
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		_PrismVertices v = _PrismVertices.from(prism);
+		_PrismVertices v = _PrismVertices.from(outline);
 		float blockLightMultiplier = 1.0f;
 		float skyLightMultiplier = 0.0f;
 		float[] base = new float[] { 0.0f, 0.0f, 0.0f };

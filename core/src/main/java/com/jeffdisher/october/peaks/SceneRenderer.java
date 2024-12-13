@@ -153,13 +153,13 @@ public class SceneRenderer
 		_entityData = Collections.unmodifiableMap(entityData);
 		_blockModelBounds = _blockModels.buildModelBoundingBoxes();
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-		_defaultHighlightCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
+		_defaultHighlightCube = SceneMeshHelpers.createOutlinePrism(_gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
 		Map<Block, VertexArray> blockModelHighlightCubes = new HashMap<>();
 		for (Map.Entry<Block, Prism> elt : _blockModelBounds.entrySet())
 		{
 			Block key = elt.getKey();
 			Prism value = elt.getValue();
-			VertexArray specialCube = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, value, _auxBlockTextures);
+			VertexArray specialCube = SceneMeshHelpers.createOutlinePrism(_gl, _program.attributes, meshBuffer, value, _auxBlockTextures);
 			blockModelHighlightCubes.put(key, specialCube);
 		}
 		_blockModelHighlightCubes = Collections.unmodifiableMap(blockModelHighlightCubes);
@@ -379,7 +379,7 @@ public class SceneRenderer
 		else
 		{
 			Prism prism = Prism.getBoundsAtOrigin(volume.width(), volume.width(), volume.height());
-			buffer = SceneMeshHelpers.createPrism(_gl, _program.attributes, meshBuffer, prism, _auxBlockTextures);
+			buffer = SceneMeshHelpers.createOutlinePrism(_gl, _program.attributes, meshBuffer, prism, _auxBlockTextures);
 		}
 		
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
