@@ -17,9 +17,7 @@ import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.EntityConstants;
@@ -38,15 +36,12 @@ public class EntityRenderer
 	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
 
 	private final GL20 _gl;
-	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
 	private final Program _program;
 	private final int _uModelMatrix;
 	private final int _uViewMatrix;
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
-	private final int _uTexture1;
-	private final int _uSkyLight;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, _EntityData> _entityData;
 	private final int _highlightTexture;
@@ -55,24 +50,14 @@ public class EntityRenderer
 	{
 		_gl = gl;
 		
-		// Load the secondary atlas for secondary textures.
-		_auxBlockTextures = TextureHelpers.loadAtlasForVariants(_gl
-				, "aux_"
-				, SceneMeshHelpers.AuxVariant.class
-				, "missing_texture.png"
-		);
-		
 		// Create the shader program.
 		_program = Program.fullyLinkedProgram(_gl
-				, _readUtf8Asset("scene.vert")
-				, _readUtf8Asset("scene.frag")
+				, _readUtf8Asset("entity.vert")
+				, _readUtf8Asset("entity.frag")
 				, new String[] {
 						"aPosition",
 						"aNormal",
 						"aTexture0",
-						"aTexture1",
-						"aBlockLightMultiplier",
-						"aSkyLightMultiplier",
 				}
 		);
 		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
@@ -80,8 +65,6 @@ public class EntityRenderer
 		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
 		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
-		_uTexture1 = _program.getUniformLocation("uTexture1");
-		_uSkyLight = _program.getUniformLocation("uSkyLight");
 		
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
@@ -109,17 +92,11 @@ public class EntityRenderer
 		_gl.glUniform3f(_uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		_gl.glUniform1f(_uSkyLight, skyLightMultiplier);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// This shader uses 2 textures.
+		// We just use the texture for the entity.
 		_gl.glUniform1i(_uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glUniform1i(_uTexture1, 1);
-		_gl.glActiveTexture(GL20.GL_TEXTURE1);
-		
-		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _auxBlockTextures.texture);
 		
 		// Render any entities.
 		for (PartialEntity entity : _entities.values())
@@ -144,17 +121,11 @@ public class EntityRenderer
 		_gl.glUniform3f(_uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		_gl.glUniform1f(_uSkyLight, skyLightMultiplier);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// This shader uses 2 textures.
+		// We just use the texture for the entity.
 		_gl.glUniform1i(_uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glUniform1i(_uTexture1, 1);
-		_gl.glActiveTexture(GL20.GL_TEXTURE1);
-		
-		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _auxBlockTextures.texture);
 		
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _highlightTexture);
@@ -177,51 +148,31 @@ public class EntityRenderer
 
 	public void shutdown()
 	{
-		_auxBlockTextures.shutdown(_gl);
 		_program.delete();
 	}
 
 
 	private _EntityData _loadEntityResources(GL20 gl, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
-		EntityVolume volume = EntityConstants.getVolume(type);
 		String name = type.name();
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
-		VertexArray buffer;
-		float[] ignoredOtherTexture = new float[] { 0.0f, 0.0f };
-		float[] blockLightMultiplier = new float[] {1.0f};
-		float[] skyLightMultiplier = new float[] {0.0f};
-		if (meshFile.exists())
-		{
-			String rawMesh = meshFile.readString();
-			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
-				builder.appendVertex(position
-						, normal
-						, texture
-						, ignoredOtherTexture
-						, blockLightMultiplier
-						, skyLightMultiplier
-				);
-			}, rawMesh);
-			buffer = builder.finishOne().flush(gl);
-		}
-		else
-		{
-			Prism prism = Prism.getBoundsAtOrigin(volume.width(), volume.width(), volume.height());
-			buffer = SceneMeshHelpers.createOutlinePrism(_gl, _program.attributes, meshBuffer, prism, _auxBlockTextures);
-		}
-		
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
-		int texture;
-		if (textureFile.exists())
-		{
-			texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
-		}
-		else
-		{
-			texture = TextureHelpers.loadInternalRGBA(_gl, "missing_texture.png");
-		}
+		
+		// We will require that the entity has a mesh definition and a texture.
+		Assert.assertTrue(meshFile.exists());
+		Assert.assertTrue(textureFile.exists());
+		
+		String rawMesh = meshFile.readString();
+		BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
+		WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
+			builder.appendVertex(position
+					, normal
+					, texture
+			);
+		}, rawMesh);
+		VertexArray buffer = builder.finishOne().flush(gl);
+		
+		int texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
 		_EntityData data = new _EntityData(buffer, texture);
 		return data;
 	}
