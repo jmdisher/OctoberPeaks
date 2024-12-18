@@ -134,6 +134,7 @@ public class OctoberPeaks extends ApplicationAdapter
 						_windowManager.setThisEntity(projectedEntity);
 						_uiState.setThisEntity(projectedEntity);
 						_selectionManager.setThisEntity(projectedEntity);
+						_eyeEffect.setThisEntity(projectedEntity);
 					}
 					@Override
 					public void thisEntityHurt()

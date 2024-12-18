@@ -15,6 +15,7 @@ import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
+import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -32,6 +33,9 @@ public class EyeEffect
 	private final int _effectTexture;
 	private final int _uTexture;
 	private final int _uColour;
+
+	private byte _health;
+	private final float[] _colour;
 	private long _effectEndMillis;
 
 	public EyeEffect(GL20 gl)
@@ -70,6 +74,9 @@ public class EyeEffect
 		Assert.assertTrue(_uTexture >= 0);
 		_uColour = _program.getUniformLocation("uColour");
 		Assert.assertTrue(_uColour >= 0);
+		
+		_health = Byte.MAX_VALUE;
+		_colour = new float[] { 1.0f, 1.0f, 1.0f };
 	}
 
 	public void drawEyeEffect()
@@ -83,14 +90,37 @@ public class EyeEffect
 			_gl.glActiveTexture(GL20.GL_TEXTURE1);
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _effectTexture);
 			_gl.glUniform1i(_uTexture, 1);
-			_gl.glUniform4f(_uColour, 1.0f, 0.0f, 0.0f, alpha);
+			_gl.glUniform4f(_uColour, _colour[0], _colour[1], _colour[2], alpha);
 			_screenSquare.drawAllTriangles(_gl);
 		}
 	}
 
 	public void thisEntityHurt()
 	{
+		_colour[0] = 1.0f;
+		_colour[1] = 0.0f;
+		_colour[2] = 0.0f;
 		_effectEndMillis = System.currentTimeMillis() + EYE_EFFECT_DURATION_MILLIS;
+	}
+
+	public void setThisEntity(Entity projectedEntity)
+	{
+		byte health = projectedEntity.health();
+		if (health > _health)
+		{
+			// We healed set this to something short, if not busy.
+			long millisToSet = EYE_EFFECT_DURATION_MILLIS / 5L;
+			long currentMillis = System.currentTimeMillis();
+			long targetEndMillis = currentMillis + millisToSet;
+			if (targetEndMillis > _effectEndMillis)
+			{
+				_colour[0] = 0.0f;
+				_colour[1] = 1.0f;
+				_colour[2] = 0.0f;
+				_effectEndMillis = targetEndMillis;
+			}
+		}
+		_health = health;
 	}
 
 
