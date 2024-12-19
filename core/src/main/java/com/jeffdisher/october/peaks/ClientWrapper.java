@@ -833,9 +833,16 @@ public class ClientWrapper
 		public void handleEvent(EventRecord event)
 		{
 			// We will see if this kind of event needs special handling (this will evolve over time).
-			if ((EventRecord.Type.ENTITY_HURT == event.type()) && (_assignedLocalEntityId == event.entityTarget()))
+			if (EventRecord.Type.ENTITY_HURT == event.type())
 			{
-				_updateConsumer.thisEntityHurt();
+				if (_assignedLocalEntityId == event.entityTarget())
+				{
+					_updateConsumer.thisEntityHurt();
+				}
+				else
+				{
+					_updateConsumer.otherEntityHurt(event.entityTarget(), event.location());
+				}
 			}
 			else if (EventRecord.Type.ENTITY_KILLED == event.type())
 			{
@@ -883,6 +890,7 @@ public class ClientWrapper
 		
 		void otherEntityUpdated(PartialEntity entity);
 		void otherEntityDidUnload(int id);
+		void otherEntityHurt(int id, AbsoluteLocation location);
 		
 		void setSkyLightMultiplier(float skyLightMultiplier);
 	}

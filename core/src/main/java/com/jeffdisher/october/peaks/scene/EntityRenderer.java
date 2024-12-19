@@ -34,6 +34,7 @@ import com.jeffdisher.october.utils.Assert;
 public class EntityRenderer
 {
 	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
+	public static final long DAMAGE_DURATION_MILLIS = 1000L;
 
 	private final GL20 _gl;
 	private final Program _program;
@@ -42,8 +43,10 @@ public class EntityRenderer
 	private final int _uProjectionMatrix;
 	private final int _uWorldLightLocation;
 	private final int _uTexture0;
+	private final int _uDamage;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<EntityType, _EntityData> _entityData;
+	private final Map<Integer, Long> _entityDamageMillis;
 	private final int _highlightTexture;
 
 	public EntityRenderer(GL20 gl) throws IOException
@@ -65,6 +68,7 @@ public class EntityRenderer
 		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
 		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
+		_uDamage = _program.getUniformLocation("uDamage");
 		
 		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 		direct.order(ByteOrder.nativeOrder());
@@ -80,6 +84,7 @@ public class EntityRenderer
 			}
 		}
 		_entityData = Collections.unmodifiableMap(entityData);
+		_entityDamageMillis = new HashMap<>();
 		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
 	}
 
@@ -99,6 +104,7 @@ public class EntityRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		
 		// Render any entities.
+		long currentMillis = System.currentTimeMillis();
 		for (PartialEntity entity : _entities.values())
 		{
 			EntityType type = entity.type();
@@ -108,6 +114,26 @@ public class EntityRenderer
 			_EntityData data = _entityData.get(type);
 			_gl.glActiveTexture(GL20.GL_TEXTURE0);
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
+			if (_entityDamageMillis.containsKey(entity.id()))
+			{
+				// We want to set the damage.
+				long effectEndMillis = _entityDamageMillis.get(entity.id());
+				if (effectEndMillis > currentMillis)
+				{
+					long millisLeft = effectEndMillis - currentMillis;
+					float magnitude = (float)millisLeft / (float)DAMAGE_DURATION_MILLIS;
+					_gl.glUniform1f(_uDamage, magnitude);
+				}
+				else
+				{
+					_gl.glUniform1f(_uDamage, 0.0f);
+					_entityDamageMillis.remove(entity.id());
+				}
+			}
+			else
+			{
+				_gl.glUniform1f(_uDamage, 0.0f);
+			}
 			data.vertices.drawAllTriangles(_gl);
 		}
 	}
@@ -144,6 +170,13 @@ public class EntityRenderer
 	public void removeEntity(int id)
 	{
 		_entities.remove(id);
+		_entityDamageMillis.remove(id);
+	}
+
+	public void entityHurt(int id)
+	{
+		long endOfEffectMillis = System.currentTimeMillis() + DAMAGE_DURATION_MILLIS;
+		_entityDamageMillis.put(id, endOfEffectMillis);
 	}
 
 	public void shutdown()
