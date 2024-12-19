@@ -93,6 +93,11 @@ public class SceneRenderer
 		_entityRenderer.removeEntity(id);
 	}
 
+	public void entityHurt(int id)
+	{
+		_entityRenderer.entityHurt(id);
+	}
+
 	public void setSkyLightMultiplier(float skyLightMultiplier)
 	{
 		_skyLightMultiplier = skyLightMultiplier;

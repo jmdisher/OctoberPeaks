@@ -164,6 +164,11 @@ public class OctoberPeaks extends ApplicationAdapter
 						_selectionManager.removeEntity(id);
 					}
 					@Override
+					public void otherEntityHurt(int id, AbsoluteLocation location)
+					{
+						_scene.entityHurt(id);
+					}
+					@Override
 					public void setSkyLightMultiplier(float skyLightMultiplier)
 					{
 						_scene.setSkyLightMultiplier(skyLightMultiplier);
