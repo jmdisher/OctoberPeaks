@@ -9,6 +9,7 @@ import java.util.function.Function;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -18,6 +19,7 @@ import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
@@ -40,12 +42,14 @@ public class UiStateManager
 
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
+	private final AudioManager _audioManager;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final IInputStateChanger _captureState;
 
 	private Entity _thisEntity;
 	private boolean _rotationDidUpdate;
 	private boolean _didAccountForTimeInFrame;
+	private boolean _didWalkInFrame;
 	private boolean _mouseHeld0;
 	private boolean _mouseHeld1;
 	private boolean _mouseClicked0;
@@ -79,10 +83,11 @@ public class UiStateManager
 	private boolean _shouldPause;
 	private boolean _shouldResume;
 
-	public UiStateManager(MovementControl movement, ClientWrapper client, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
+	public UiStateManager(MovementControl movement, ClientWrapper client, AudioManager audioManager, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
 		_movement = movement;
 		_client = client;
+		_audioManager = audioManager;
 		_blockLookup = blockLookup;
 		_captureState = captureState;
 		
@@ -467,9 +472,18 @@ public class UiStateManager
 			_captureState.trySetPaused(true);
 			_shouldPause = false;
 		}
+		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _thisEntity.location(), EntityConstants.VOLUME_PLAYER))
+		{
+			_audioManager.setWalking();
+		}
+		else
+		{
+			_audioManager.setStanding();
+		}
 		
 		// And reset.
 		_didAccountForTimeInFrame = false;
+		_didWalkInFrame = false;
 		_mouseHeld0 = false;
 		_mouseHeld1 = false;
 		_mouseClicked0 = false;
@@ -518,24 +532,28 @@ public class UiStateManager
 	{
 		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.FORWARD);
 		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
 	public void moveBackward()
 	{
 		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.BACKWARD);
 		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
 	public void strafeRight()
 	{
 		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.RIGHT);
 		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
 	public void strafeLeft()
 	{
 		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.LEFT);
 		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
 	public void jumpOrSwim()
