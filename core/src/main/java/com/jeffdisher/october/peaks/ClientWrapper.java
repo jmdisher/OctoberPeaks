@@ -828,13 +828,21 @@ public class ClientWrapper
 		{
 			float multiplier = PropagationHelpers.skyLightMultiplier(tickNumber, _ticksPerDay,_dayStartTick);
 			_updateConsumer.setSkyLightMultiplier(multiplier);
+			_updateConsumer.tickDidComplete(tickNumber);
 		}
 		@Override
 		public void handleEvent(EventRecord event)
 		{
 			// We will see if this kind of event needs special handling (this will evolve over time).
-			if (EventRecord.Type.ENTITY_HURT == event.type())
+			switch (event.type())
 			{
+			case BLOCK_BROKEN:
+				_updateConsumer.blockBroken(event.location());
+				break;
+			case BLOCK_PLACED:
+				_updateConsumer.blockPlaced(event.location());
+				break;
+			case ENTITY_HURT:
 				if (_assignedLocalEntityId == event.entityTarget())
 				{
 					_updateConsumer.thisEntityHurt();
@@ -843,14 +851,20 @@ public class ClientWrapper
 				{
 					_updateConsumer.otherEntityHurt(event.entityTarget(), event.location());
 				}
-			}
-			else if (EventRecord.Type.ENTITY_KILLED == event.type())
-			{
-				System.out.println("Entity killed: " + event.entityTarget());
-			}
-			else
-			{
-				// Do nothing - these other events are currently ignored.
+				break;
+			case ENTITY_KILLED:
+				if (_assignedLocalEntityId != event.entityTarget())
+				{
+					_updateConsumer.otherEntityKilled(event.entityTarget(), event.location());
+				}
+				break;
+			case LIQUID_PLACED:
+			case LIQUID_REMOVED:
+				// Ignore these.
+				break;
+			default:
+				// Undefined.
+				throw Assert.unreachable();
 			}
 		}
 		@Override
@@ -881,6 +895,8 @@ public class ClientWrapper
 		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
 		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks);
 		void unload(CuboidAddress address);
+		void blockPlaced(AbsoluteLocation location);
+		void blockBroken(AbsoluteLocation location);
 		
 		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
 		void thisEntityHurt();
@@ -891,8 +907,10 @@ public class ClientWrapper
 		void otherEntityUpdated(PartialEntity entity);
 		void otherEntityDidUnload(int id);
 		void otherEntityHurt(int id, AbsoluteLocation location);
+		void otherEntityKilled(int id, AbsoluteLocation location);
 		
 		void setSkyLightMultiplier(float skyLightMultiplier);
+		void tickDidComplete(long gameTick);
 	}
 
 	/**

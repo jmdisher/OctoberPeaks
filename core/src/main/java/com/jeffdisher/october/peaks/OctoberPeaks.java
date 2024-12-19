@@ -49,8 +49,9 @@ public class OctoberPeaks extends ApplicationAdapter
 	private MovementControl _movement;
 	private SelectionManager _selectionManager;
 	private ClientWrapper _client;
-	private UiStateManager _uiState;
+	private AudioManager _audioManager;
 	private InputManager _input;
+	private UiStateManager _uiState;
 
 	public OctoberPeaks(Options options)
 	{
@@ -135,11 +136,13 @@ public class OctoberPeaks extends ApplicationAdapter
 						_uiState.setThisEntity(projectedEntity);
 						_selectionManager.setThisEntity(projectedEntity);
 						_eyeEffect.setThisEntity(projectedEntity);
+						_audioManager.setThisEntity(authoritativeEntity, projectedEntity);
 					}
 					@Override
 					public void thisEntityHurt()
 					{
 						_eyeEffect.thisEntityHurt();
+						_audioManager.thisEntityHurt();
 					}
 					@Override
 					public void otherClientJoined(int clientId, String name)
@@ -156,28 +159,67 @@ public class OctoberPeaks extends ApplicationAdapter
 					{
 						_scene.setEntity(entity);
 						_selectionManager.setEntity(entity);
+						_audioManager.setOtherEntity(entity);
 					}
 					@Override
 					public void otherEntityDidUnload(int id)
 					{
 						_scene.removeEntity(id);
 						_selectionManager.removeEntity(id);
+						_audioManager.removeOtherEntity(id);
 					}
 					@Override
 					public void otherEntityHurt(int id, AbsoluteLocation location)
 					{
 						_scene.entityHurt(id);
+						_audioManager.otherEntityHurt(location, id);
+					}
+					@Override
+					public void otherEntityKilled(int id, AbsoluteLocation location)
+					{
+						_audioManager.otherEntityKilled(location, id);
 					}
 					@Override
 					public void setSkyLightMultiplier(float skyLightMultiplier)
 					{
 						_scene.setSkyLightMultiplier(skyLightMultiplier);
 					}
+					@Override
+					public void tickDidComplete(long gameTick)
+					{
+						_audioManager.tickCompleted();
+					}
+					@Override
+					public void blockPlaced(AbsoluteLocation location)
+					{
+						_audioManager.blockPlaced(location);
+					}
+					@Override
+					public void blockBroken(AbsoluteLocation location)
+					{
+						_audioManager.blockBroken(location);
+					}
 				}
 				, _clientName
 				, _serverSocketAddress
 		);
-		_uiState = new UiStateManager(_movement, _client, _blockLookup, new UiStateManager.IInputStateChanger() {
+		
+		// Load the audio.
+		_audioManager = AudioManager.load(_environment, Map.of(AudioManager.Cue.WALK, "walking.ogg"
+				, AudioManager.Cue.TAKE_DAMAGE, "take_damage.ogg"
+				, AudioManager.Cue.BREAK_BLOCK, "break_block.ogg"
+				, AudioManager.Cue.PLACE_BLOCK, "place_block.ogg"
+				, AudioManager.Cue.COW_IDLE, "cow_idle.ogg"
+				, AudioManager.Cue.COW_DEATH, "cow_death.ogg"
+				, AudioManager.Cue.COW_INJURY, "cow_injury.ogg"
+				, AudioManager.Cue.ORC_IDLE, "orc_idle.ogg"
+				, AudioManager.Cue.ORC_INJURY, "orc_injury.ogg"
+				, AudioManager.Cue.ORC_DEATH, "orc_death.ogg"
+		));
+		
+		// Create the input manager and connect the UI state manager to the relevant parts of the system.
+		_input = new InputManager();
+		_uiState = new UiStateManager(_movement, _client, _audioManager, _blockLookup, new UiStateManager.IInputStateChanger() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{
@@ -199,7 +241,8 @@ public class OctoberPeaks extends ApplicationAdapter
 				_windowManager.setPaused(didPause);
 			}
 		});
-		_input = new InputManager();
+		
+		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
