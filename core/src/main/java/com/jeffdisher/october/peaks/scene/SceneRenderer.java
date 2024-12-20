@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.peaks.SkyBox;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
@@ -27,6 +28,7 @@ public class SceneRenderer
 {
 	private final BlockRenderer _blockRenderer;
 	private final EntityRenderer _entityRenderer;
+	private final SkyBox _skyBox;
 
 	private Matrix _viewMatrix;
 	private final Matrix _projectionMatrix;
@@ -37,6 +39,7 @@ public class SceneRenderer
 	{
 		_blockRenderer = new BlockRenderer(environment, gl, itemAtlas);
 		_entityRenderer = new EntityRenderer(gl);
+		_skyBox = new SkyBox(gl);
 		
 		_viewMatrix = Matrix.identity();
 		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
@@ -52,10 +55,15 @@ public class SceneRenderer
 	{
 		_eye = eye;
 		_viewMatrix = Matrix.lookAt(eye, target, upVector);
+		_skyBox.updateView(eye, target, upVector);
 	}
 
 	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType)
 	{
+		// We will begin with the sky box since we don't know if there are transparent blocks to render on top of it.
+		_skyBox.render(_projectionMatrix);
+		
+		// Now we can render the world, opaque blocks first, transparent ones last.
 		_blockRenderer.renderOpaqueBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
@@ -98,8 +106,9 @@ public class SceneRenderer
 		_entityRenderer.entityHurt(id);
 	}
 
-	public void setSkyLightMultiplier(float skyLightMultiplier)
+	public void setDayTime(float dayProgression, float skyLightMultiplier)
 	{
+		_skyBox.setDayProgression(dayProgression);
 		_skyLightMultiplier = skyLightMultiplier;
 	}
 
@@ -107,5 +116,6 @@ public class SceneRenderer
 	{
 		_blockRenderer.shutdown();
 		_entityRenderer.shutdown();
+		_skyBox.shutdown();
 	}
 }

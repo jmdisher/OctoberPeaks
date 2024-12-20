@@ -40,6 +40,33 @@ public class TextureHelpers
 		return _loadHandleRGBA(gl, textureFile);
 	}
 
+	public static void populateCubeMapInternalRGBA(ByteBuffer buffer, String imageName) throws IOException
+	{
+		FileHandle textureFile = Gdx.files.internal(imageName);
+		BufferedImage loadedTexture = ImageIO.read(textureFile.read());
+		
+		int height = loadedTexture.getHeight();
+		int width = loadedTexture.getWidth();
+		// 4 bytes per pixel since we are storing pixels as RGBA.
+		int bytesToUse = 4 * height * width;
+		Assert.assertTrue(bytesToUse <= buffer.remaining());
+		
+		// NOTE:  In the case of cube maps, we don't invert.
+		for (int y = 0; y < height; ++y)
+		{
+			for (int x = 0; x < width; ++x)
+			{
+				int pixel = loadedTexture.getRGB(x, y);
+				// This data is pulled out as ARGB but we need to upload it as RGBA.
+				byte a = (byte)((0xFF000000 & pixel) >> 24);
+				byte r = (byte)((0x00FF0000 & pixel) >> 16);
+				byte g = (byte)((0x0000FF00 & pixel) >> 8);
+				byte b = (byte) (0x000000FF & pixel);
+				buffer.put(new byte[] { r, g, b, a });
+			}
+		}
+	}
+
 	public static int loadSinglePixelImageRGBA(GL20 gl, byte[] rawPixel)
 	{
 		Assert.assertTrue(4 == rawPixel.length);

@@ -180,9 +180,9 @@ public class OctoberPeaks extends ApplicationAdapter
 						_audioManager.otherEntityKilled(location, id);
 					}
 					@Override
-					public void tickDidComplete(long gameTick, float skyLightMultiplier)
+					public void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression)
 					{
-						_scene.setSkyLightMultiplier(skyLightMultiplier);
+						_scene.setDayTime(dayProgression, skyLightMultiplier);
 						_audioManager.tickCompleted();
 					}
 					@Override
