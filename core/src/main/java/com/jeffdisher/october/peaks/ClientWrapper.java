@@ -826,9 +826,8 @@ public class ClientWrapper
 		@Override
 		public void tickDidComplete(long tickNumber)
 		{
-			float multiplier = PropagationHelpers.skyLightMultiplier(tickNumber, _ticksPerDay,_dayStartTick);
-			_updateConsumer.setSkyLightMultiplier(multiplier);
-			_updateConsumer.tickDidComplete(tickNumber);
+			float multiplier = PropagationHelpers.skyLightMultiplier(tickNumber, _ticksPerDay, _dayStartTick);
+			_updateConsumer.tickDidComplete(tickNumber, multiplier);
 		}
 		@Override
 		public void handleEvent(EventRecord event)
@@ -909,8 +908,7 @@ public class ClientWrapper
 		void otherEntityHurt(int id, AbsoluteLocation location);
 		void otherEntityKilled(int id, AbsoluteLocation location);
 		
-		void setSkyLightMultiplier(float skyLightMultiplier);
-		void tickDidComplete(long gameTick);
+		void tickDidComplete(long gameTick, float skyLightMultiplier);
 	}
 
 	/**
