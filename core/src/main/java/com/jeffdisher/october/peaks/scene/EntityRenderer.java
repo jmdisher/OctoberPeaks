@@ -12,6 +12,7 @@ import java.util.Map;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -20,7 +21,6 @@ import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
-import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
@@ -49,7 +49,7 @@ public class EntityRenderer
 	private final Map<Integer, Long> _entityDamageMillis;
 	private final int _highlightTexture;
 
-	public EntityRenderer(GL20 gl) throws IOException
+	public EntityRenderer(Environment environment, GL20 gl) throws IOException
 	{
 		_gl = gl;
 		
@@ -75,9 +75,9 @@ public class EntityRenderer
 		FloatBuffer meshBuffer = direct.asFloatBuffer();
 		_entities = new HashMap<>();
 		Map<EntityType, _EntityData> entityData = new HashMap<>();
-		for (EntityType type : EntityType.values())
+		for (EntityType type : environment.creatures.ENTITY_BY_NUMBER)
 		{
-			if (EntityType.ERROR != type)
+			if (null != type)
 			{
 				_EntityData data = _loadEntityResources(gl, meshBuffer, type);
 				entityData.put(type, data);
@@ -187,7 +187,7 @@ public class EntityRenderer
 
 	private _EntityData _loadEntityResources(GL20 gl, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
-		String name = type.name();
+		String name = type.name().toUpperCase();
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
 		
@@ -216,7 +216,7 @@ public class EntityRenderer
 		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
 		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
 		EntityLocation location = entity.location();
-		EntityVolume volume = EntityConstants.getVolume(type);
+		EntityVolume volume = type.volume();
 		float width = volume.width();
 		float height = volume.height();
 		float halfWidth = width / 2.0f;

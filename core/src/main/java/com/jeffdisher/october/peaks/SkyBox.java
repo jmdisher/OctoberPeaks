@@ -103,8 +103,9 @@ public class SkyBox
 
 	public void setDayProgression(float dayProgression)
 	{
-		// We will set the rotation of the sky.
-		float dayStart = (float)Math.PI / 2.0f;
+		// The day starts at day, which is 0 radians rotated from the horizon.
+		float dayStart = 0.0f;
+		// The day progression is [0.0 .. 1.0] so map that on to the 2pi radian arc of the sky.
 		float dayOffset = dayProgression * 2.0f * (float)Math.PI;
 		// We rotate around the X axis, due to how the cube maps interpret Y as "up" and Z is normally our "up".
 		_dayTimeModelMatrix = Matrix.rotateX(dayStart + dayOffset);

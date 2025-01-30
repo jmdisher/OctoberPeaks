@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks.types;
 
-import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.PartialEntity;
@@ -30,7 +29,7 @@ public record Prism(float west
 	public static Prism getLocationBoundsForEntity(PartialEntity entity)
 	{
 		EntityLocation base = entity.location();
-		EntityVolume volume = EntityConstants.getVolume(entity.type());
+		EntityVolume volume = entity.type().volume();
 		float baseX = base.x();
 		float edgeX = baseX + volume.width();
 		float baseY = base.y();

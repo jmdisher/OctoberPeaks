@@ -2,9 +2,12 @@ package com.jeffdisher.october.peaks.utils;
 
 import java.util.List;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
@@ -16,6 +19,20 @@ import com.jeffdisher.october.types.PartialEntity;
 
 public class TestGeometryHelpers
 {
+	private static Environment ENV;
+	private static EntityType COW;
+	@BeforeClass
+	public static void setup()
+	{
+		ENV = Environment.createSharedInstance();
+		COW = ENV.creatures.getTypeById("op.cow");
+	}
+	@AfterClass
+	public static void tearDown()
+	{
+		Environment.clearSharedInstance();
+	}
+
 	@Test
 	public void facingVector() throws Throwable
 	{
@@ -240,7 +257,7 @@ public class TestGeometryHelpers
 	private static PartialEntity _getTestCow(int id, EntityLocation location)
 	{
 		return new PartialEntity(id
-				, EntityType.COW
+				, COW
 				, location
 				, OrientationHelpers.YAW_NORTH
 				, OrientationHelpers.PITCH_FLAT

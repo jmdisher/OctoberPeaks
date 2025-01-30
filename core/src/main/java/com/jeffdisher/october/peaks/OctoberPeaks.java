@@ -215,7 +215,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		_input = new InputManager();
-		_uiState = new UiStateManager(_movement, _client, _audioManager, _blockLookup, new UiStateManager.IInputStateChanger() {
+		_uiState = new UiStateManager(_environment, _movement, _client, _audioManager, _blockLookup, new UiStateManager.IInputStateChanger() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{

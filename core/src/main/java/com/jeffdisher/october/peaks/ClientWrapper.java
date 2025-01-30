@@ -51,9 +51,8 @@ import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
-import com.jeffdisher.october.types.EntityConstants;
 import com.jeffdisher.october.types.EntityLocation;
-import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.EventRecord;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
@@ -72,6 +71,7 @@ public class ClientWrapper
 	public static final int PORT = 5678;
 
 	private final Environment _environment;
+	private final EntityVolume _playerVolume;
 	private final IUpdateConsumer _updateConsumer;
 	private final WorldConfig _config;
 	private final ResourceLoader _loader;
@@ -95,6 +95,7 @@ public class ClientWrapper
 	)
 	{
 		_environment = environment;
+		_playerVolume = environment.creatures.PLAYER.volume();
 		_updateConsumer = updateConsumer;
 		
 		try
@@ -238,7 +239,7 @@ public class ClientWrapper
 			
 			if (EntityChangeJump.canJump(previousBlockLookUp
 					, location
-					, EntityConstants.getVolume(EntityType.PLAYER)
+					, _playerVolume
 					, vector
 			))
 			{

@@ -38,7 +38,7 @@ public class SceneRenderer
 	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas<ItemVariant> itemAtlas) throws IOException
 	{
 		_blockRenderer = new BlockRenderer(environment, gl, itemAtlas);
-		_entityRenderer = new EntityRenderer(gl);
+		_entityRenderer = new EntityRenderer(environment, gl);
 		_skyBox = new SkyBox(gl);
 		
 		_viewMatrix = Matrix.identity();

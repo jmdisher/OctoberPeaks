@@ -45,14 +45,17 @@ public class SelectionManager
 	)
 	{
 		_specialBounds = specialBounds;
+		Block waterSource = environment.blocks.fromItem(environment.items.getItemById("op.water_source"));
+		Block waterStrong = environment.blocks.fromItem(environment.items.getItemById("op.water_strong"));
+		Block waterWeak = environment.blocks.fromItem(environment.items.getItemById("op.water_weak"));
 		_ignoreCommon = Set.of(environment.special.AIR
-				, environment.special.WATER_WEAK
-				, environment.special.WATER_STRONG
+				, waterWeak
+				, waterStrong
 		);
 		_ignoreCommonAndWaterSource = Set.of(environment.special.AIR
-				, environment.special.WATER_WEAK
-				, environment.special.WATER_STRONG
-				, environment.special.WATER_SOURCE
+				, waterWeak
+				, waterStrong
+				, waterSource
 		);
 		_emptyBucketItem = environment.items.getItemById("op.bucket_empty");
 		_blockLookup = blockLookup;

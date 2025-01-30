@@ -19,7 +19,7 @@ import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
-import com.jeffdisher.october.types.EntityConstants;
+import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
@@ -40,6 +40,7 @@ public class UiStateManager
 	 */
 	public static final long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
 
+	private final EntityVolume _playerVolume;
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
 	private final AudioManager _audioManager;
@@ -83,8 +84,9 @@ public class UiStateManager
 	private boolean _shouldPause;
 	private boolean _shouldResume;
 
-	public UiStateManager(MovementControl movement, ClientWrapper client, AudioManager audioManager, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
+	public UiStateManager(Environment environment, MovementControl movement, ClientWrapper client, AudioManager audioManager, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
 	{
+		_playerVolume = environment.creatures.PLAYER.volume();
 		_movement = movement;
 		_client = client;
 		_audioManager = audioManager;
@@ -182,7 +184,7 @@ public class UiStateManager
 			if (null == _openStationLocation)
 			{
 				// We are just looking at the floor at our feet.
-				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity);
+				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
 				BlockProxy thisBlock = _blockLookup.apply(feetBlock);
 				Inventory floorInventory = thisBlock.getInventory();
 				
@@ -472,7 +474,7 @@ public class UiStateManager
 			_captureState.trySetPaused(true);
 			_shouldPause = false;
 		}
-		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _thisEntity.location(), EntityConstants.VOLUME_PLAYER))
+		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _thisEntity.location(), _playerVolume))
 		{
 			_audioManager.setWalking();
 		}
