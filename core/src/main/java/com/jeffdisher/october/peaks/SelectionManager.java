@@ -48,14 +48,22 @@ public class SelectionManager
 		Block waterSource = environment.blocks.fromItem(environment.items.getItemById("op.water_source"));
 		Block waterStrong = environment.blocks.fromItem(environment.items.getItemById("op.water_strong"));
 		Block waterWeak = environment.blocks.fromItem(environment.items.getItemById("op.water_weak"));
+		Block lavaSource = environment.blocks.fromItem(environment.items.getItemById("op.lava_source"));
+		Block lavaStrong = environment.blocks.fromItem(environment.items.getItemById("op.lava_strong"));
+		Block lavaWeak = environment.blocks.fromItem(environment.items.getItemById("op.lava_weak"));
 		_ignoreCommon = Set.of(environment.special.AIR
 				, waterWeak
 				, waterStrong
+				, lavaWeak
+				, lavaStrong
 		);
 		_ignoreCommonAndWaterSource = Set.of(environment.special.AIR
 				, waterWeak
 				, waterStrong
 				, waterSource
+				, lavaWeak
+				, lavaStrong
+				, lavaSource
 		);
 		_emptyBucketItem = environment.items.getItemById("op.bucket_empty");
 		_blockLookup = blockLookup;
