@@ -88,9 +88,11 @@ public class SceneMeshHelpers
 		Predicate<Short> shouldInclude;
 		if (opaqueVertices)
 		{
+			Set<Short> lava = _buildLavaNumberSet(env);
 			shouldInclude = (Short value) -> {
 				return blockAtlas.isInBasicAtlas(value)
 						&& !blockAtlas.textureHasNonOpaquePixels(value)
+						&& !lava.contains(value)
 				;
 			};
 		}
@@ -206,12 +208,13 @@ public class SceneMeshHelpers
 			, SparseShortProjection<AuxVariant> projection
 			, TextureAtlas<AuxVariant> auxAtlas
 			, MeshInputData inputData
+			, short sourceNumber
+			, short strongNumber
+			, short weakNumber
+			, boolean drawInternalSurfaces
 	)
 	{
 		// In this case, we need to configure a WaterSurfaceBuilder since water's surface depends on the strength of flow.
-		short sourceNumber = env.items.getItemById("op.water_source").number();
-		short strongNumber = env.items.getItemById("op.water_strong").number();
-		short weakNumber = env.items.getItemById("op.water_weak").number();
 		Set<Short> water = Set.of(sourceNumber
 				, strongNumber
 				, weakNumber
@@ -257,30 +260,33 @@ public class SceneMeshHelpers
 							, skyLightMultiplier
 					);
 					
-					// We want to draw the quad on the outside and inside of the water (in case you are looking out).
-					// We may want a different texture for the "looking out", later.
-					float[][] reverseVertices = new float[][] {
-						counterClockWiseVertices[3],
-						counterClockWiseVertices[2],
-						counterClockWiseVertices[1],
-						counterClockWiseVertices[0],
-					};
-					float[] reverseNormal = new float[] {
-							-1.0f * normal[0],
-							-1.0f * normal[1],
-							-1.0f * normal[2],
-					};
-					_populateQuad(builder
-							, _base
-							, reverseVertices
-							, reverseNormal
-							, uvBase
-							, textureSize
-							, auxUv
-							, auxTextureSize
-							, blockLightMultiplier
-							, skyLightMultiplier
-					);
+					if (drawInternalSurfaces)
+					{
+						// We want to draw the quad on the outside and inside of the water (in case you are looking out).
+						// We may want a different texture for the "looking out", later.
+						float[][] reverseVertices = new float[][] {
+							counterClockWiseVertices[3],
+							counterClockWiseVertices[2],
+							counterClockWiseVertices[1],
+							counterClockWiseVertices[0],
+						};
+						float[] reverseNormal = new float[] {
+								-1.0f * normal[0],
+								-1.0f * normal[1],
+								-1.0f * normal[2],
+						};
+						_populateQuad(builder
+								, _base
+								, reverseVertices
+								, reverseNormal
+								, uvBase
+								, textureSize
+								, auxUv
+								, auxTextureSize
+								, blockLightMultiplier
+								, skyLightMultiplier
+						);
+					}
 				}
 			}
 		});
@@ -616,6 +622,15 @@ public class SceneMeshHelpers
 		Set<Short> water = Set.of(env.items.getItemById("op.water_source").number()
 				, env.items.getItemById("op.water_strong").number()
 				, env.items.getItemById("op.water_weak").number()
+		);
+		return water;
+	}
+
+	private static Set<Short> _buildLavaNumberSet(Environment env)
+	{
+		Set<Short> water = Set.of(env.items.getItemById("op.lava_source").number()
+				, env.items.getItemById("op.lava_strong").number()
+				, env.items.getItemById("op.lava_weak").number()
 		);
 		return water;
 	}
