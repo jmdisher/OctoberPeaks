@@ -108,7 +108,7 @@ public class SceneRenderer
 
 	public void setDayTime(float dayProgression, float skyLightMultiplier)
 	{
-		_skyBox.setDayProgression(dayProgression);
+		_skyBox.setDayProgression(dayProgression, skyLightMultiplier);
 		_skyLightMultiplier = skyLightMultiplier;
 	}
 

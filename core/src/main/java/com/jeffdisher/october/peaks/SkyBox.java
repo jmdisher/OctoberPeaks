@@ -31,11 +31,15 @@ public class SkyBox
 	private final int _uModelMatrix;
 	private final int _uViewMatrix;
 	private final int _uProjectionMatrix;
+	private final int _uSkyFraction;
 	private final int _uTexture0;
-	private final int _skyTexture;
+	private final int _uTexture1;
+	private final int _nightTexture;
+	private final int _dayTexture;
 	private final VertexArray _cubeMesh;
 	private Matrix _viewMatrix;
 	private Matrix _dayTimeModelMatrix;
+	private float _skyDayFraction;
 
 	public SkyBox(GL20 gl)
 	{
@@ -50,40 +54,15 @@ public class SkyBox
 		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 		_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+		_uSkyFraction = _program.getUniformLocation("uSkyFraction");
 		_uTexture0 = _program.getUniformLocation("uTexture0");
-		_skyTexture = gl.glGenTexture();
+		_uTexture1 = _program.getUniformLocation("uTexture1");
 		
-		gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _skyTexture);
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(TEXTURE_BUFFER_SIZE);
 		textureBufferData.order(ByteOrder.nativeOrder());
-		try
-		{
-			TextureHelpers.populateCubeMapInternalRGBA(textureBufferData, "sky_horizon.png");
-			textureBufferData.flip();
-			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-			
-			textureBufferData.clear();
-			TextureHelpers.populateCubeMapInternalRGBA(textureBufferData, "sky_up.png");
-			textureBufferData.flip();
-			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-			
-			textureBufferData.clear();
-			TextureHelpers.populateCubeMapInternalRGBA(textureBufferData, "sky_down.png");
-			textureBufferData.flip();
-			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-		}
-		catch (IOException e)
-		{
-			throw Assert.unexpected(e);
-		}
-		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_MAG_FILTER, GL20.GL_LINEAR);
-		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_MIN_FILTER, GL20.GL_LINEAR);
-		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_WRAP_S, GL20.GL_CLAMP_TO_EDGE);
-		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_WRAP_T, GL20.GL_CLAMP_TO_EDGE);
-		gl.glGenerateMipmap(GL20.GL_TEXTURE_CUBE_MAP);
+		
+		_nightTexture = _loadCubeMap(gl, textureBufferData, "sky_up.png", "sky_horizon.png", "sky_down.png");
+		_dayTexture = _loadCubeMap(gl, textureBufferData, "sky_up_blue.png", "sky_blue.png", "sky_blue.png");
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// We will just reuse this buffer for the cube upload.
@@ -101,7 +80,7 @@ public class SkyBox
 		_viewMatrix = Matrix.lookAt(origin, relative, upVector);
 	}
 
-	public void setDayProgression(float dayProgression)
+	public void setDayProgression(float dayProgression, float skyLightMultiplier)
 	{
 		// The day starts at day, which is 0 radians rotated from the horizon.
 		float dayStart = 0.0f;
@@ -109,6 +88,21 @@ public class SkyBox
 		float dayOffset = dayProgression * 2.0f * (float)Math.PI;
 		// We rotate around the X axis, due to how the cube maps interpret Y as "up" and Z is normally our "up".
 		_dayTimeModelMatrix = Matrix.rotateX(dayStart + dayOffset);
+		
+		// We want to map most of the day to day sky and most of the night to night sky so we will pick a twilight range to transition.
+		if (skyLightMultiplier > 0.6f)
+		{
+			_skyDayFraction = 1.0f;
+		}
+		else if (skyLightMultiplier > 0.4f)
+		{
+			float innerBase = skyLightMultiplier - 0.4f;
+			_skyDayFraction = 5.0f * innerBase;
+		}
+		else
+		{
+			_skyDayFraction = 0.0f;
+		}
 	}
 
 	public void render(Matrix projectionMatrix)
@@ -117,12 +111,16 @@ public class SkyBox
 		_dayTimeModelMatrix.uploadAsUniform(_gl, _uModelMatrix);
 		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
+		_gl.glUniform1f(_uSkyFraction, _skyDayFraction);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// This shader uses 1 texture.
+		// We use texture 0 for the night sky and texture 1 for the day sky.
 		_gl.glUniform1i(_uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _skyTexture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _nightTexture);
+		_gl.glUniform1i(_uTexture1, 1);
+		_gl.glActiveTexture(GL20.GL_TEXTURE1);
+		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _dayTexture);
 		_cubeMesh.drawAllTriangles(_gl);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
@@ -130,7 +128,8 @@ public class SkyBox
 	public void shutdown()
 	{
 		_program.delete();
-		_gl.glDeleteTexture(_skyTexture);
+		_gl.glDeleteTexture(_nightTexture);
+		_gl.glDeleteTexture(_dayTexture);
 		_cubeMesh.delete(_gl);
 	}
 
@@ -191,5 +190,41 @@ public class SkyBox
 	private static String _readUtf8Asset(String name)
 	{
 		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
+	}
+
+	private static int _loadCubeMap(GL20 gl, ByteBuffer textureBufferData, String upName, String horizonName, String downName)
+	{
+		int texture = gl.glGenTexture();
+		gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, texture);
+		try
+		{
+			textureBufferData.clear();
+			TextureHelpers.populateCubeMapInternalRGBA(textureBufferData, horizonName);
+			textureBufferData.flip();
+			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+			
+			textureBufferData.clear();
+			TextureHelpers.populateCubeMapInternalRGBA(textureBufferData, upName);
+			textureBufferData.flip();
+			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+			
+			textureBufferData.clear();
+			TextureHelpers.populateCubeMapInternalRGBA(textureBufferData, downName);
+			textureBufferData.flip();
+			gl.glTexImage2D(GL20.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL20.GL_RGBA, SKY_PIXEL_EDGE, SKY_PIXEL_EDGE, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+		}
+		catch (IOException e)
+		{
+			throw Assert.unexpected(e);
+		}
+		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_MAG_FILTER, GL20.GL_LINEAR);
+		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_MIN_FILTER, GL20.GL_LINEAR);
+		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_WRAP_S, GL20.GL_CLAMP_TO_EDGE);
+		gl.glTexParameteri(GL20.GL_TEXTURE_CUBE_MAP, GL20.GL_TEXTURE_WRAP_T, GL20.GL_CLAMP_TO_EDGE);
+		gl.glGenerateMipmap(GL20.GL_TEXTURE_CUBE_MAP);
+		return texture;
 	}
 }
