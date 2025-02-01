@@ -395,6 +395,7 @@ public class UiStateManager
 				if (_mouseClicked0)
 				{
 					_client.hitEntity(entity);
+					_updateLastActionMillis();
 				}
 			}
 		}
@@ -415,6 +416,7 @@ public class UiStateManager
 				{
 					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
 					_client.applyToEntity(entity);
+					_updateLastActionMillis();
 					didAct = true;
 				}
 			}
@@ -423,10 +425,18 @@ public class UiStateManager
 			if (!didAct && _mouseClicked1 && (null != stopBlock) && (null != preStopBlock))
 			{
 				didAct = _client.runRightClickOnBlock(stopBlock, preStopBlock);
+				if (didAct)
+				{
+					_updateLastActionMillis();
+				}
 			}
 			if (!didAct && _mouseClicked1)
 			{
 				didAct = _client.runRightClickOnSelf();
+				if (didAct)
+				{
+					_updateLastActionMillis();
+				}
 			}
 			if (!didAct && (null != stopBlock) && (null != preStopBlock))
 			{
@@ -794,6 +804,16 @@ public class UiStateManager
 			}
 		}
 		return canAct;
+	}
+
+	/**
+	 * Called when we perform some action which isn't directly breaking a block so that they next frame doesn't capture
+	 * the event and accidentally break/place a block.
+	 */
+	private void _updateLastActionMillis()
+	{
+		_lastActionBlock = null;
+		_lastActionMillis = System.currentTimeMillis();
 	}
 
 
