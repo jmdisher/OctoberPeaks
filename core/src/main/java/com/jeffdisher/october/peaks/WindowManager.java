@@ -89,7 +89,9 @@ public class WindowManager
 	private final int _pixelGreen;
 	private final int _pixelGreenAlpha;
 	private final int _pixelBlueAlpha;
+	private final int _pixelOrangeLava;
 	private final Set<Block> _waterBlockTypes;
+	private final Set<Block> _lavaBlockTypes;
 	private Entity _projectedEntity;
 	private AbsoluteLocation _eyeBlockLocation;
 	private boolean _isPaused;
@@ -164,12 +166,21 @@ public class WindowManager
 		// We use the semi-transparent blue for "under water" overlay layer.
 		_pixelBlueAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)0, (byte)255, (byte)100);
 		
+		// We use a mostly-opaque orange for "under lava" overlay layer.
+		_pixelOrangeLava = _makePixelRgba(_gl, textureBufferData, (byte)255, (byte)69, (byte)0, (byte)220);
+		
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Find the set of water block types we will use to determine when to draw the water overlay.
 		_waterBlockTypes = Set.of(env.blocks.fromItem(env.items.getItemById("op.water_source"))
 				, env.blocks.fromItem(env.items.getItemById("op.water_strong"))
 				, env.blocks.fromItem(env.items.getItemById("op.water_weak"))
+		);
+		
+		// Same for lava block types.
+		_lavaBlockTypes = Set.of(env.blocks.fromItem(env.items.getItemById("op.lava_source"))
+				, env.blocks.fromItem(env.items.getItemById("op.lava_strong"))
+				, env.blocks.fromItem(env.items.getItemById("op.lava_weak"))
 		);
 		
 		// Set up our public rendering helpers.
@@ -253,16 +264,25 @@ public class WindowManager
 		_gl.glUniform1i(_uTexture, 0);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// If our eye is under water, draw water over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
+		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
 		if (null != _eyeBlockLocation)
 		{
 			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
-			// For now, we will just use opacity
-			if ((null != eyeProxy) && _waterBlockTypes.contains(eyeProxy.getBlock()))
+			if (null != eyeProxy)
 			{
-				_gl.glActiveTexture(GL20.GL_TEXTURE0);
-				_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelBlueAlpha);
-				_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+				Block blockType = eyeProxy.getBlock();
+				if (_waterBlockTypes.contains(blockType))
+				{
+					_gl.glActiveTexture(GL20.GL_TEXTURE0);
+					_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelBlueAlpha);
+					_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+				}
+				else if (_lavaBlockTypes.contains(blockType))
+				{
+					_gl.glActiveTexture(GL20.GL_TEXTURE0);
+					_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelOrangeLava);
+					_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+				}
 			}
 		}
 		
