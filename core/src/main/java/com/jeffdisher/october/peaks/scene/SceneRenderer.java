@@ -109,7 +109,23 @@ public class SceneRenderer
 	public void setDayTime(float dayProgression, float skyLightMultiplier)
 	{
 		_skyBox.setDayProgression(dayProgression, skyLightMultiplier);
-		_skyLightMultiplier = skyLightMultiplier;
+		
+		// We want to artificially brighten the scene so we will manipulate this normalized light multiplier.
+		// This may be made into a user option in the future.
+		if (skyLightMultiplier > 0.6f)
+		{
+			skyLightMultiplier = 1.0f;
+		}
+		else if (skyLightMultiplier < 0.4f)
+		{
+			skyLightMultiplier = 0.0f;
+		}
+		else
+		{
+			skyLightMultiplier = 5.0f * (skyLightMultiplier - 0.4f);
+		}
+		float minimumBias = 0.3f;
+		_skyLightMultiplier = minimumBias + skyLightMultiplier;
 	}
 
 	public void shutdown()
