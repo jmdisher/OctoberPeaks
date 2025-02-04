@@ -57,6 +57,53 @@ public class TestWaterSurfaceBuilder
 		Assert.assertEquals(2, counter.west);
 	}
 
+	@Test
+	public void waterFlow() throws Throwable
+	{
+		// Create some downward flowing water to see what callbacks we get for faces.
+		short waterSource = 3;
+		short waterStrong = 2;
+		short waterWeak = 1;
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder((Short value) -> true, waterSource, waterStrong, waterWeak);
+		
+		BlockAddress sourceBlock = new BlockAddress((byte)5, (byte)5, (byte)5);
+		BlockAddress flowBlock = new BlockAddress((byte)5, (byte)5, (byte)4);
+		BlockAddress bottomBlock = new BlockAddress((byte)5, (byte)5, (byte)3);
+		BlockAddress spillBlock = new BlockAddress((byte)5, (byte)6, (byte)3);
+		
+		// We should see only the external faces but the internal ones will be skipped.
+		surface.writeXYPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, waterSource);
+		surface.writeXZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, waterSource);
+		surface.writeXZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), false, waterSource);
+		surface.writeYZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, waterSource);
+		surface.writeYZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), false, waterSource);
+		
+		surface.writeXZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), true, waterWeak);
+		surface.writeXZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), false, waterWeak);
+		surface.writeYZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), true, waterWeak);
+		surface.writeYZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), false, waterWeak);
+		
+		surface.writeXYPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, waterStrong);
+		surface.writeXZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, waterStrong);
+		surface.writeYZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), true, waterStrong);
+		surface.writeYZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, waterStrong);
+		
+		surface.writeXYPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
+		surface.writeXYPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, waterWeak);
+		surface.writeXZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
+		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
+		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, waterWeak);
+		
+		_NormalCounter counter = new _NormalCounter();
+		surface.writeVertices(counter);
+		Assert.assertEquals(2, counter.up);
+		Assert.assertEquals(2, counter.down);
+		Assert.assertEquals(3, counter.north);
+		Assert.assertEquals(3, counter.south);
+		Assert.assertEquals(4, counter.east);
+		Assert.assertEquals(4, counter.west);
+	}
+
 
 	private static class _NormalCounter implements WaterSurfaceBuilder.IQuadWriter
 	{

@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks.graphics;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.junit.AfterClass;
@@ -153,6 +155,90 @@ public class TestFaceBuilder
 		Assert.assertEquals(1, counter.xy);
 		Assert.assertEquals(2, counter.xz);
 		Assert.assertEquals(2, counter.yz);
+	}
+
+	@Test
+	public void waterFlow() throws Throwable
+	{
+		// Create some downward flowing water to see what callbacks we get for faces.
+		Item waterSource = ENV.items.getItemById("op.water_source");
+		Item waterStrong = ENV.items.getItemById("op.water_strong");
+		Item waterWeak = ENV.items.getItemById("op.water_weak");
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress sourceBlock = new BlockAddress((byte)5, (byte)5, (byte)5);
+		BlockAddress flowBlock = new BlockAddress((byte)5, (byte)5, (byte)4);
+		BlockAddress bottomBlock = new BlockAddress((byte)5, (byte)5, (byte)3);
+		BlockAddress spillBlock = new BlockAddress((byte)5, (byte)6, (byte)3);
+		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, waterSource.number());
+		cuboid.setData15(AspectRegistry.BLOCK, flowBlock, waterWeak.number());
+		cuboid.setData15(AspectRegistry.BLOCK, bottomBlock, waterStrong.number());
+		cuboid.setData15(AspectRegistry.BLOCK, spillBlock, waterWeak.number());
+		
+		Set<BlockAddress> positiveYZ = new HashSet<>();
+		Set<BlockAddress> negativeYZ = new HashSet<>();
+		Set<BlockAddress> positiveXZ = new HashSet<>();
+		Set<BlockAddress> negativeXZ = new HashSet<>();
+		Set<BlockAddress> positiveXY = new HashSet<>();
+		Set<BlockAddress> negativeXY = new HashSet<>();
+		FaceBuilder builder = new FaceBuilder();
+		builder.populateMasks(cuboid, (Short value) -> true);
+		builder.buildFaces(cuboid, new FaceBuilder.IWriter() {
+			@Override
+			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			{
+				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				BlockAddress address = new BlockAddress(baseX, baseY, baseZ);
+				if (isPositiveNormal)
+				{
+					Assert.assertTrue(positiveYZ.add(address));
+				}
+				else
+				{
+					Assert.assertTrue(negativeYZ.add(address));
+				}
+			}
+			@Override
+			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			{
+				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				BlockAddress address = new BlockAddress(baseX, baseY, baseZ);
+				if (isPositiveNormal)
+				{
+					Assert.assertTrue(positiveXZ.add(address));
+				}
+				else
+				{
+					Assert.assertTrue(negativeXZ.add(address));
+				}
+			}
+			@Override
+			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			{
+				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				BlockAddress address = new BlockAddress(baseX, baseY, baseZ);
+				if (isPositiveNormal)
+				{
+					Assert.assertTrue(positiveXY.add(address));
+				}
+				else
+				{
+					Assert.assertTrue(negativeXY.add(address));
+				}
+			}
+			@Override
+			public boolean shouldInclude(short value)
+			{
+				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				return true;
+			}
+		});
+		// We should see only the external faces but the internal ones will be skipped.
+		Assert.assertEquals(4, positiveYZ.size());
+		Assert.assertEquals(4, negativeYZ.size());
+		Assert.assertEquals(3, positiveXZ.size());
+		Assert.assertEquals(3, negativeXZ.size());
+		Assert.assertEquals(2, positiveXY.size());
+		Assert.assertEquals(2, negativeXY.size());
 	}
 
 
