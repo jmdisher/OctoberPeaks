@@ -127,6 +127,10 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 		for (byte z = 0; z < Encoding.CUBOID_EDGE_SIZE; ++z)
 		{
 			byte[] layer = _zLayers[z];
+			byte[] above = ((z + 1) < Encoding.CUBOID_EDGE_SIZE)
+					? _zLayers[z + 1]
+					: null
+			;
 			if (null != layer)
 			{
 				for (byte y = 0; y < Encoding.CUBOID_EDGE_SIZE; ++y)
@@ -141,22 +145,26 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 							byte south = (byte)(y - 1);
 							byte east = (byte)(x + 1);
 							byte west = (byte)(x - 1);
-							float hC = _mapToHeight(value);
-							float hN = _getSurfaceHeight(layer, x, north, hC);
-							float hNE = _getSurfaceHeight(layer, east, north, hC);
-							float hE = _getSurfaceHeight(layer, east, y, hC);
-							float hSE = _getSurfaceHeight(layer, east, south, hC);
-							float hS = _getSurfaceHeight(layer, x, south, hC);
-							float hSW = _getSurfaceHeight(layer, west, south, hC);
-							float hW = _getSurfaceHeight(layer, west, y, hC);
-							float hNW = _getSurfaceHeight(layer, west, north, hC);
+							boolean liquidAbove = ((null != above) && (BYTE_NONE != above[_getIndex(x, y)]));
+							float hC = liquidAbove
+									? 1.0f
+									: _mapToHeight(value)
+							;
+							float hN = _getSurfaceHeight(layer, above, x, north, hC);
+							float hNE = _getSurfaceHeight(layer, above, east, north, hC);
+							float hE = _getSurfaceHeight(layer, above, east, y, hC);
+							float hSE = _getSurfaceHeight(layer, above, east, south, hC);
+							float hS = _getSurfaceHeight(layer, above, x, south, hC);
+							float hSW = _getSurfaceHeight(layer, above, west, south, hC);
+							float hW = _getSurfaceHeight(layer, above, west, y, hC);
+							float hNW = _getSurfaceHeight(layer, above, west, north, hC);
 							
 							float topLeft = Math.max(Math.max(hNW, hN), Math.max(hW, hC));
 							float bottomLeft = Math.max(Math.max(hW, hC), Math.max(hSW, hS));
 							float bottomRight = Math.max(Math.max(hC, hE), Math.max(hS, hSE));
 							float topRight = Math.max(Math.max(hN, hNE), Math.max(hC, hE));
 							
-							if (hC > 0.0f)
+							if (!liquidAbove && (hC > 0.0f))
 							{
 								float[][] vertices = new float[][] {
 									{(float)x, (float)y + 1.0f, (float)z + topLeft},
@@ -262,13 +270,20 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 		layer[index] = (byte)(old | value);
 	}
 
-	private static float _getSurfaceHeight(byte[] layer, byte x, byte y, float missingHeight)
+	private static float _getSurfaceHeight(byte[] layer, byte[] above, byte x, byte y, float missingHeight)
 	{
 		float height;
 		if ((x >= 0) && (x < Encoding.CUBOID_EDGE_SIZE) && (y >= 0) && (y < Encoding.CUBOID_EDGE_SIZE))
 		{
-			byte value = layer[_getIndex(x, y)];
-			height = _mapToHeight(value);
+			if ((null != above) && (BYTE_NONE != above[_getIndex(x, y)]))
+			{
+				height = 1.0f;
+			}
+			else
+			{
+				byte value = layer[_getIndex(x, y)];
+				height = _mapToHeight(value);
+			}
 		}
 		else
 		{

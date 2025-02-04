@@ -94,14 +94,62 @@ public class TestWaterSurfaceBuilder
 		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
 		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, waterWeak);
 		
-		_NormalCounter counter = new _NormalCounter();
-		surface.writeVertices(counter);
-		Assert.assertEquals(2, counter.up);
-		Assert.assertEquals(2, counter.down);
-		Assert.assertEquals(3, counter.north);
-		Assert.assertEquals(3, counter.south);
-		Assert.assertEquals(4, counter.east);
-		Assert.assertEquals(4, counter.west);
+		int[] counters = new int[6];
+		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {
+			@Override
+			public void writeQuad(BlockAddress address, BlockAddress externalBlock, float[][] counterClockWiseVertices, float[] normal)
+			{
+				if (1.0f == normal[2])
+				{
+					// Up.
+					counters[0] += 1;
+				}
+				else if (-1.0f == normal[2])
+				{
+					// Down.
+					counters[1] += 1;
+				}
+				else if (1.0f == normal[1])
+				{
+					// North.
+					counters[2] += 1;
+					if (address.equals(flowBlock))
+					{
+						// Verify this side to make sure we render the sides of water flows.
+						Assert.assertArrayEquals(new float[] {6.0f, 6.0f, 5.0f}, counterClockWiseVertices[0], 0.01f);
+						Assert.assertArrayEquals(new float[] {6.0f, 6.0f, 4.0f}, counterClockWiseVertices[1], 0.01f);
+						Assert.assertArrayEquals(new float[] {5.0f, 6.0f, 4.0f}, counterClockWiseVertices[2], 0.01f);
+						Assert.assertArrayEquals(new float[] {5.0f, 6.0f, 5.0f}, counterClockWiseVertices[3], 0.01f);
+					}
+				}
+				else if (-1.0f == normal[1])
+				{
+					// South.
+					counters[3] += 1;
+				}
+				else if (1.0f == normal[0])
+				{
+					// East.
+					counters[4] += 1;
+				}
+				else if (-1.0f == normal[0])
+				{
+					// West.
+					counters[5] += 1;
+				}
+				else
+				{
+					// We currently don't use any angular normals.
+					Assert.fail();
+				}
+			}
+		});
+		Assert.assertEquals(2, counters[0]);
+		Assert.assertEquals(2, counters[1]);
+		Assert.assertEquals(3, counters[2]);
+		Assert.assertEquals(3, counters[3]);
+		Assert.assertEquals(4, counters[4]);
+		Assert.assertEquals(4, counters[5]);
 	}
 
 
