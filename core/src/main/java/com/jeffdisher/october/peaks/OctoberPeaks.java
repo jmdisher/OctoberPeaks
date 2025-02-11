@@ -177,7 +177,11 @@ public class OctoberPeaks extends ApplicationAdapter
 					@Override
 					public void otherEntityKilled(int id, AbsoluteLocation location)
 					{
-						_audioManager.otherEntityKilled(location, id);
+						// NOTE:  ServerStateManager will always notify us of entity death, but only sends the location if we have seen them (to notify us that a player died, for example).
+						if (null != location)
+						{
+							_audioManager.otherEntityKilled(location, id);
+						}
 					}
 					@Override
 					public void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression)
