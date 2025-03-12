@@ -34,9 +34,6 @@ import com.jeffdisher.october.mutations.MutationEntityPushItems;
 import com.jeffdisher.october.mutations.MutationEntityRequestItemPickUp;
 import com.jeffdisher.october.mutations.MutationEntitySelectItem;
 import com.jeffdisher.october.mutations.MutationPlaceSelectedBlock;
-import com.jeffdisher.october.persistence.BasicWorldGenerator;
-import com.jeffdisher.october.persistence.FlatWorldGenerator;
-import com.jeffdisher.october.persistence.IWorldGenerator;
 import com.jeffdisher.october.persistence.ResourceLoader;
 import com.jeffdisher.october.process.ClientProcess;
 import com.jeffdisher.october.process.ServerProcess;
@@ -64,6 +61,9 @@ import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
+import com.jeffdisher.october.worldgen.BasicWorldGenerator;
+import com.jeffdisher.october.worldgen.FlatWorldGenerator;
+import com.jeffdisher.october.worldgen.IWorldGenerator;
 
 
 public class ClientWrapper
