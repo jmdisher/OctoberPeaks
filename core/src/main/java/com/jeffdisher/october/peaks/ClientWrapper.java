@@ -12,6 +12,7 @@ import java.util.function.Function;
 import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
@@ -21,6 +22,7 @@ import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.mutations.EntityChangeAttackEntity;
 import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
 import com.jeffdisher.october.mutations.EntityChangeJump;
+import com.jeffdisher.october.mutations.EntityChangePlaceMultiBlock;
 import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
 import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
 import com.jeffdisher.october.mutations.EntityChangeSetOrientation;
@@ -432,10 +434,40 @@ public class ClientWrapper
 		boolean didAttemptPlace = false;
 		if (Entity.NO_SELECTION != selectedKey)
 		{
-			long currentTimeMillis = System.currentTimeMillis();
-			IMutationEntity<IMutablePlayerEntity> change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
-			_client.sendAction(change, currentTimeMillis);
-			didAttemptPlace = true;
+			// Check this type to see if it is a block and, if so, if it is a multi-block.
+			Item type;
+			if (_thisEntity.isCreativeMode())
+			{
+				CreativeInventory inv = new CreativeInventory();
+				Items stack = inv.getStackForKey(selectedKey);
+				NonStackableItem nonStack = inv.getNonStackableForKey(selectedKey);
+				type = (null != stack) ? stack.type() : nonStack.type();
+			}
+			else
+			{
+				Items stack = _thisEntity.inventory().getStackForKey(selectedKey);
+				NonStackableItem nonStack = _thisEntity.inventory().getNonStackableForKey(selectedKey);
+				type = (null != stack) ? stack.type() : nonStack.type();
+			}
+			Block block = _environment.blocks.fromItem(type);
+			if (null != block)
+			{
+				long currentTimeMillis = System.currentTimeMillis();
+				IMutationEntity<IMutablePlayerEntity> change;
+				if (_environment.blocks.isMultiBlock(block))
+				{
+					// We will place the multi-block in the same orientation as this user.
+					byte yaw = _thisEntity.yaw();
+					OrientationAspect.Direction direction = OrientationHelpers.getYawDirection(yaw);
+					change = new EntityChangePlaceMultiBlock(emptyBlock, direction);
+				}
+				else
+				{
+					change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
+				}
+				_client.sendAction(change, currentTimeMillis);
+				didAttemptPlace = true;
+			}
 		}
 		return didAttemptPlace;
 	}
