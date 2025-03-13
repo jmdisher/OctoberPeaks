@@ -53,4 +53,9 @@ public class SparseShortProjection<T>
 	{
 		return _values.getOrDefault(address, _defaultValue);
 	}
+
+	public void set(BlockAddress address, T value)
+	{
+		_values.put(address, value);
+	}
 }

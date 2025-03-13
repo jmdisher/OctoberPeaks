@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.aspects.LightAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -52,6 +53,7 @@ public class SceneMeshHelpers
 
 	public static SparseShortProjection<SceneMeshHelpers.AuxVariant> buildAuxProjection(Environment env, IReadOnlyCuboidData cuboid)
 	{
+		// First, we will use the short callbacks based on damage.
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SparseShortProjection.fromAspect(cuboid, AspectRegistry.DAMAGE, (short)0, SceneMeshHelpers.AuxVariant.NONE, (BlockAddress blockAddress, Short value) -> {
 			short damage = value;
 			// We will favour showing cracks at a low damage, so the feedback is obvious
@@ -73,6 +75,14 @@ public class SceneMeshHelpers
 			}
 			return aux;
 		});
+		
+		// Then, we will do a pass on the flags to override anything burning.
+		cuboid.walkData(AspectRegistry.FLAGS, (BlockAddress base, byte size, Byte value) -> {
+			if (FlagsAspect.isSet(value, FlagsAspect.FLAG_BURNING))
+			{
+				variantProjection.set(base, SceneMeshHelpers.AuxVariant.BURNING);
+			}
+		}, (byte) 0);
 		return variantProjection;
 	}
 
@@ -648,6 +658,7 @@ public class SceneMeshHelpers
 		BREAK_LOW,
 		BREAK_MEDIUM,
 		BREAK_HIGH,
+		BURNING,
 	}
 
 	private static record _PrismVertices(float[] v001
