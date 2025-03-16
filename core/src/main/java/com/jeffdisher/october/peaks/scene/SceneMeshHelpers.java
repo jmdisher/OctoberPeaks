@@ -119,6 +119,7 @@ public class SceneMeshHelpers
 		FaceBuilder faces = new FaceBuilder();
 		_preSeed(faces
 				, shouldInclude
+				, null
 				, inputData
 		);
 		faces.populateMasks(inputData.cuboid, shouldInclude);
@@ -232,13 +233,21 @@ public class SceneMeshHelpers
 		Predicate<Short> shouldInclude = (Short value) -> {
 			return water.contains(value);
 		};
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(shouldInclude, sourceNumber, strongNumber, weakNumber);
 		FaceBuilder faces = new FaceBuilder();
 		_preSeed(faces
 				, shouldInclude
+				, new FaceBuilder.IEdgeWriter()
+				{
+					@Override
+					public void writeEdgeValue(byte baseX, byte baseY, byte baseZ, short value)
+					{
+						surface.setEdgeValue(baseX, baseY, baseZ, value);
+					}
+				}
 				, inputData
 		);
 		faces.populateMasks(inputData.cuboid, shouldInclude);
-		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(shouldInclude, sourceNumber, strongNumber, weakNumber);
 		faces.buildFaces(inputData.cuboid, surface);
 		
 		// For now, just use the same image for all faces.
@@ -452,6 +461,7 @@ public class SceneMeshHelpers
 
 	private static void _preSeed(FaceBuilder faces
 			, Predicate<Short> shouldInclude
+			, FaceBuilder.IEdgeWriter edgeWriter
 			, MeshInputData inputData
 	)
 	{
@@ -460,27 +470,27 @@ public class SceneMeshHelpers
 		byte edge = Encoding.CUBOID_EDGE_SIZE;
 		if (null != inputData.up)
 		{
-			faces.preSeedMasks(inputData.up, shouldInclude, zero, omit, omit, omit, omit, omit);
+			faces.preSeedMasks(inputData.up, shouldInclude, edgeWriter, zero, omit, omit, omit, omit, omit);
 		}
 		if (null != inputData.down)
 		{
-			faces.preSeedMasks(inputData.down, shouldInclude, omit, edge, omit, omit, omit, omit);
+			faces.preSeedMasks(inputData.down, shouldInclude, edgeWriter, omit, edge, omit, omit, omit, omit);
 		}
 		if (null != inputData.north)
 		{
-			faces.preSeedMasks(inputData.north, shouldInclude, omit, omit, zero, omit, omit, omit);
+			faces.preSeedMasks(inputData.north, shouldInclude, edgeWriter, omit, omit, zero, omit, omit, omit);
 		}
 		if (null != inputData.south)
 		{
-			faces.preSeedMasks(inputData.south, shouldInclude, omit, omit, omit, edge, omit, omit);
+			faces.preSeedMasks(inputData.south, shouldInclude, edgeWriter, omit, omit, omit, edge, omit, omit);
 		}
 		if (null != inputData.east)
 		{
-			faces.preSeedMasks(inputData.east, shouldInclude, omit, omit, omit, omit, zero, omit);
+			faces.preSeedMasks(inputData.east, shouldInclude, edgeWriter, omit, omit, omit, omit, zero, omit);
 		}
 		if (null != inputData.west)
 		{
-			faces.preSeedMasks(inputData.west, shouldInclude, omit, omit, omit, omit, omit, edge);
+			faces.preSeedMasks(inputData.west, shouldInclude, edgeWriter, omit, omit, omit, omit, omit, edge);
 		}
 	}
 

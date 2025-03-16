@@ -139,7 +139,7 @@ public class TestFaceBuilder
 		Predicate<Short> always = (Short value) -> true;
 		
 		FaceBuilder builder = new FaceBuilder();
-		builder.preSeedMasks(highCuboid, always, zero, omit, omit, omit, omit, omit);
+		builder.preSeedMasks(highCuboid, always, null, zero, omit, omit, omit, omit, omit);
 		builder.populateMasks(lowCuboid, always);
 		_CountingWriter counter = new _CountingWriter();
 		builder.buildFaces(lowCuboid, counter);
@@ -148,7 +148,7 @@ public class TestFaceBuilder
 		Assert.assertEquals(8, counter.yz);
 		
 		builder = new FaceBuilder();
-		builder.preSeedMasks(lowCuboid, always, omit, edge, omit, omit, omit, omit);
+		builder.preSeedMasks(lowCuboid, always, null, omit, edge, omit, omit, omit, omit);
 		builder.populateMasks(highCuboid, always);
 		counter = new _CountingWriter();
 		builder.buildFaces(highCuboid, counter);

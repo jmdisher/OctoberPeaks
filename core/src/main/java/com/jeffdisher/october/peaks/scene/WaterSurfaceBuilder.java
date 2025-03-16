@@ -18,15 +18,14 @@ import com.jeffdisher.october.utils.Encoding;
  * -we will store a special value for vertical surfaces (and bottom) as other flags in the byte as a bitfield
  * -when we build the mesh, we will look at the 3x3 grid around each block to determine the height of the water on each
  *  of the four corners
- * 
- * NOTE:  The cuboid edges could be wrong in this algorithm in the case where a strong flow borders a weak flow since
- * neither would be able to know where the other side will place its corners.
- * TODO:  Fix this in the future by capturing edge blocks from neighbouring cuboids (knowing if there is edge isn't good
- * enough).
  */
 public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 {
-	public static final int LAYER_SIZE = Encoding.CUBOID_EDGE_SIZE * Encoding.CUBOID_EDGE_SIZE;
+	/**
+	 * We need to reserve an extra 2 spots so we can peek into the neighbouring cuboids.
+	 */
+	public static final int EDGE_SIZE = Encoding.CUBOID_EDGE_SIZE + 2;
+	public static final int LAYER_SIZE = EDGE_SIZE * EDGE_SIZE;
 	public static final float QUAD_HEIGHT_SOURCE = 0.9f;
 	public static final float QUAD_HEIGHT_STRONG = 0.5f;
 	public static final float QUAD_HEIGHT_WEAK = 0.1f;
@@ -68,7 +67,7 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 		_valueSource = valueSource;
 		_valueStrong = valueStrong;
 		_valueWeak = valueWeak;
-		_zLayers = new byte[Encoding.CUBOID_EDGE_SIZE][];
+		_zLayers = new byte[EDGE_SIZE][];
 	}
 
 	@Override
@@ -122,15 +121,36 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 		_writeValue(baseX, baseY, baseZ, toWrite);
 	}
 
+	public void setEdgeValue(byte baseX, byte baseY, byte baseZ, short value)
+	{
+		byte toWrite;
+		if (_valueSource == value)
+		{
+			toWrite = BYTE_SOURCE;
+		}
+		else if (_valueStrong == value)
+		{
+			toWrite = BYTE_STRONG;
+		}
+		else if (_valueWeak == value)
+		{
+			toWrite = BYTE_WEAK;
+		}
+		else
+		{
+			// We are only expecting water flow values here.
+			throw Assert.unreachable();
+		}
+		_writeValue(baseX, baseY, baseZ, toWrite);
+	}
+
 	public void writeVertices(IQuadWriter writer)
 	{
 		for (byte z = 0; z < Encoding.CUBOID_EDGE_SIZE; ++z)
 		{
-			byte[] layer = _zLayers[z];
-			byte[] above = ((z + 1) < Encoding.CUBOID_EDGE_SIZE)
-					? _zLayers[z + 1]
-					: null
-			;
+			// Adjust for the extra z-value for the down peek.
+			byte[] layer = _zLayers[z + 1];
+			byte[] above = _zLayers[z + 2];
 			if (null != layer)
 			{
 				for (byte y = 0; y < Encoding.CUBOID_EDGE_SIZE; ++y)
@@ -138,7 +158,7 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 					for (byte x = 0; x < Encoding.CUBOID_EDGE_SIZE; ++x)
 					{
 						byte value = layer[_getIndex(x, y)];
-						if (0 != value)
+						if (BYTE_NONE != value)
 						{
 							BlockAddress address = new BlockAddress(x, y, z);
 							byte north = (byte)(y + 1);
@@ -260,11 +280,11 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 	private void _writeValue(byte baseX, byte baseY, byte baseZ, byte value)
 	{
 		int index = _getIndex(baseX, baseY);
-		byte[] layer = _zLayers[baseZ];
+		byte[] layer = _zLayers[baseZ + 1];
 		if (null == layer)
 		{
 			layer = new byte[LAYER_SIZE];
-			_zLayers[baseZ] = layer;
+			_zLayers[baseZ + 1] = layer;
 		}
 		byte old = layer[index];
 		layer[index] = (byte)(old | value);
@@ -273,21 +293,14 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 	private static float _getSurfaceHeight(byte[] layer, byte[] above, byte x, byte y, float missingHeight)
 	{
 		float height;
-		if ((x >= 0) && (x < Encoding.CUBOID_EDGE_SIZE) && (y >= 0) && (y < Encoding.CUBOID_EDGE_SIZE))
+		if ((null != above) && (BYTE_NONE != above[_getIndex(x, y)]))
 		{
-			if ((null != above) && (BYTE_NONE != above[_getIndex(x, y)]))
-			{
-				height = 1.0f;
-			}
-			else
-			{
-				byte value = layer[_getIndex(x, y)];
-				height = _mapToHeight(value);
-			}
+			height = 1.0f;
 		}
 		else
 		{
-			height = missingHeight;
+			byte value = layer[_getIndex(x, y)];
+			height = _mapToHeight(value);
 		}
 		return height;
 	}
@@ -318,7 +331,7 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 
 	private static int _getIndex(byte x, byte y)
 	{
-		return y * Encoding.CUBOID_EDGE_SIZE + x;
+		return (y + 1) * Encoding.CUBOID_EDGE_SIZE + (x + 1);
 	}
 
 

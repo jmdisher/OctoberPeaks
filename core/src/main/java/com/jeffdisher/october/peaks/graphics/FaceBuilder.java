@@ -21,6 +21,7 @@ public class FaceBuilder
 
 	public void preSeedMasks(IReadOnlyCuboidData cuboid
 			, Predicate<Short> shouldInclude
+			, IEdgeWriter edgeWriter
 			, byte lowZ
 			, byte highZ
 			, byte lowY
@@ -32,12 +33,15 @@ public class FaceBuilder
 		// We we match at the high end, we need to set 0, and the low end, we need to set 32 (since the local addresses are from the other cuboid, not the target one).
 		byte low = 0;
 		byte high = Encoding.CUBOID_EDGE_SIZE;
+		byte lowNeighbour = -1;
+		byte highNeighbour = Encoding.CUBOID_EDGE_SIZE;
 		cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
 			@Override
 			public void visit(BlockAddress base, byte size, Short object)
 			{
 				if (shouldInclude.test(object))
 				{
+					short value = object.shortValue();
 					byte baseX = base.x();
 					byte baseY = base.y();
 					byte baseZ = base.z();
@@ -55,6 +59,10 @@ public class FaceBuilder
 							{
 								byte thisX = (byte)(baseX + x);
 								_xyColumn.toggle(thisX, thisY, high);
+								if (null != edgeWriter)
+								{
+									edgeWriter.writeEdgeValue(thisX, thisY, highNeighbour, value);
+								}
 							}
 						}
 					}
@@ -67,6 +75,10 @@ public class FaceBuilder
 							{
 								byte thisX = (byte)(baseX + x);
 								_xyColumn.toggle(thisX, thisY, low);
+								if (null != edgeWriter)
+								{
+									edgeWriter.writeEdgeValue(thisX, thisY, lowNeighbour, value);
+								}
 							}
 						}
 					}
@@ -81,6 +93,10 @@ public class FaceBuilder
 							{
 								byte thisX = (byte)(baseX + x);
 								_xzColumn.toggle(thisX, thisZ, high);
+								if (null != edgeWriter)
+								{
+									edgeWriter.writeEdgeValue(thisX, highNeighbour, thisZ, value);
+								}
 							}
 						}
 					}
@@ -93,6 +109,10 @@ public class FaceBuilder
 							{
 								byte thisX = (byte)(baseX + x);
 								_xzColumn.toggle(thisX, thisZ, low);
+								if (null != edgeWriter)
+								{
+									edgeWriter.writeEdgeValue(thisX, lowNeighbour, thisZ, value);
+								}
 							}
 						}
 					}
@@ -107,6 +127,10 @@ public class FaceBuilder
 							{
 								byte thisY = (byte)(baseY + y);
 								_yzColumn.toggle(thisY, thisZ, high);
+								if (null != edgeWriter)
+								{
+									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value);
+								}
 							}
 						}
 					}
@@ -119,6 +143,10 @@ public class FaceBuilder
 							{
 								byte thisY = (byte)(baseY + y);
 								_yzColumn.toggle(thisY, thisZ, low);
+								if (null != edgeWriter)
+								{
+									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value);
+								}
 							}
 						}
 					}
@@ -262,6 +290,16 @@ public class FaceBuilder
 		void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value);
 		void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value);
 		void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value);
+	}
+
+	/**
+	 * The edge writer is used to listen in on the calls to update faces for the edges of the cuboid, in order to see
+	 * what value is on the other side.
+	 * This is used by the water surface builder to figure out to manage liquid surface heights on cuboid boundaries.
+	 */
+	public interface IEdgeWriter
+	{
+		void writeEdgeValue(byte baseX, byte baseY, byte baseZ, short value);
 	}
 
 	private class _ColumnBits

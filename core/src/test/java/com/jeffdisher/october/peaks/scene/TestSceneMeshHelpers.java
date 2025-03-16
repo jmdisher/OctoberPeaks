@@ -142,17 +142,21 @@ public class TestSceneMeshHelpers
 		Assert.assertEquals(10, _countQuadsInBuffer(waterBuffer));
 		Set<_Vertex> vertices = _collectVerticesInBuffer(waterBuffer);
 		Assert.assertEquals(8, vertices.size());
-		// We will just check the z locations for instances of 0.5 since that is the interesting case.
-		int matchCount = 0;
+		int matchCountSource = 0;
+		int matchCountStrong = 0;
 		for (_Vertex vertex : vertices)
 		{
-			if (0.5f == vertex.z)
+			if (0.9f == vertex.z)
 			{
-				matchCount += 1;
+				matchCountSource += 1;
+			}
+			else if (0.5f == vertex.z)
+			{
+				matchCountStrong += 1;
 			}
 		}
-		// TODO:  Change this check once we fix the cross-cuboid stitching of water levels.
-		Assert.assertEquals(4, matchCount);
+		Assert.assertEquals(2, matchCountSource);
+		Assert.assertEquals(2, matchCountStrong);
 	}
 
 	@Test
@@ -168,8 +172,24 @@ public class TestSceneMeshHelpers
 		// We should see 5 quads, double-sided, since the other neighbour will cause one side not to generate.
 		Assert.assertEquals(10, _countQuadsInBuffer(waterBuffer));
 		Set<_Vertex> vertices = _collectVerticesInBuffer(waterBuffer);
-		// TODO:  This is currently a bug caused by the top surface being eliminated by the liquid above it so change this when it is fixed.
-		Assert.assertEquals(4, vertices.size());
+		Assert.assertEquals(8, vertices.size());
+		
+		// Verify that these will render the full cube.
+		int matchLow = 0;
+		int matchHigh = 0;
+		for (_Vertex vertex : vertices)
+		{
+			if (31.0f == vertex.z)
+			{
+				matchLow += 1;
+			}
+			else if (32.0f == vertex.z)
+			{
+				matchHigh += 1;
+			}
+		}
+		Assert.assertEquals(4, matchLow);
+		Assert.assertEquals(4, matchHigh);
 	}
 
 
