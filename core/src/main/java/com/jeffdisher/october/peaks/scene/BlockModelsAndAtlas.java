@@ -131,6 +131,14 @@ public class BlockModelsAndAtlas
 			short index = elt.getValue();
 			ModelBuffer buffer = _models[index];
 			Prism bounds = _buildBounds(buffer);
+			// For now, we don't want to bother with orientation of multi-blocks so we will just default to single-block checks.
+			if (((bounds.east() - bounds.west()) > 1.0f)
+					|| ((bounds.north() - bounds.south()) > 1.0f)
+					|| ((bounds.top() - bounds.bottom()) > 1.0f)
+			)
+			{
+				bounds = new Prism(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+			}
 			boxes.put(block, bounds);
 		}
 		return Collections.unmodifiableMap(boxes);

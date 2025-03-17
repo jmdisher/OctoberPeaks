@@ -12,6 +12,7 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.aspects.LightAspect;
+import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
@@ -162,47 +163,23 @@ public class SceneMeshHelpers
 								byte baseX = (byte)(base.x() + x);
 								byte baseY = (byte)(base.y() + y);
 								byte baseZ = (byte)(base.z() + z);
-								float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
-								// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
-								float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
-								// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
-								float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + 1), SKY_LIGHT_PARTIAL) };
-								float offsetX = baseX;
-								float offsetY = baseY;
-								float offsetZ = baseZ;
-								for (int i = 0; i < bufferForType.vertexCount; ++i)
+								// Multi-blocks with complex models should only render at the root.
+								BlockAddress thisAddress = new BlockAddress(baseX, baseY, baseZ);
+								if (null == inputData.cuboid.getDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, thisAddress))
 								{
-									// Each element is:
-									// vx, vy, vz
-									// nx, ny, nz
-									// u, v
-									// otherU, otherV
-									// blockLight
-									float[] positions = new float[] {
-											offsetX + bufferForType.positionValues[3 * i + 0],
-											offsetY + bufferForType.positionValues[3 * i + 1],
-											offsetZ + bufferForType.positionValues[3 * i + 2],
-									};
-									float[] normals = new float[] {
-											bufferForType.normalValues[3 * i + 0],
-											bufferForType.normalValues[3 * i + 1],
-											bufferForType.normalValues[3 * i + 2],
-									};
-									float[] textures = new float[] {
-											uv[0] + (uvCoordinateSize * bufferForType.textureValues[2 * i + 0]),
-											uv[1] + (uvCoordinateSize * bufferForType.textureValues[2 * i + 1]),
-									};
-									float[] otherTextures = new float[] {
-											auxUv[0] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 0]),
-											auxUv[1] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 1]),
-									};
-									
-									builder.appendVertex(positions
-											, normals
-											, textures
-											, otherTextures
-											, blockLight
-											, skyLight
+									OrientationAspect.Direction multiBlockDirection = OrientationAspect.byteToDirection(inputData.cuboid.getData7(AspectRegistry.ORIENTATION, thisAddress));
+									_renderModel(builder
+											, projection
+											, auxAtlas
+											, inputData
+											, uvCoordinateSize
+											, auxCoordinateSize
+											, uv
+											, bufferForType
+											, baseX
+											, baseY
+											, baseZ
+											, multiBlockDirection
 									);
 								}
 							}
@@ -1084,6 +1061,78 @@ public class SceneMeshHelpers
 				? (LightAspect.OPAQUE ==  env.lighting.getOpacity(blockType))
 				: false
 		;
+	}
+
+	private static void _renderModel(BufferBuilder builder
+			, SparseShortProjection<AuxVariant> projection
+			, TextureAtlas<AuxVariant> auxAtlas
+			, MeshInputData inputData
+			, float uvCoordinateSize
+			, float auxCoordinateSize
+			, float[] uv
+			, ModelBuffer bufferForType
+			, byte baseX
+			, byte baseY
+			, byte baseZ
+			, OrientationAspect.Direction multiBlockDirection
+	)
+	{
+		float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
+		// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
+		float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
+		// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
+		float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + 1), SKY_LIGHT_PARTIAL) };
+		float offsetX = baseX;
+		float offsetY = baseY;
+		float offsetZ = baseZ;
+		// The models are based in the 0-1 unit cube but we want to rotate around the centre so translate by X/Y.
+		float centreX = 0.5f;
+		float centreY = 0.5f;
+		for (int i = 0; i < bufferForType.vertexCount; ++i)
+		{
+			float x = bufferForType.positionValues[3 * i + 0];
+			float y = bufferForType.positionValues[3 * i + 1];
+			float z = bufferForType.positionValues[3 * i + 2];
+			if (OrientationAspect.Direction.NORTH != multiBlockDirection)
+			{
+				float[] out = multiBlockDirection.rotateXYTupleAboutZ(new float[] { x - centreX, y - centreY });
+				x = out[0] + centreY;
+				y = out[1] + centreY;
+			}
+			
+			// Each element is:
+			// vx, vy, vz
+			// nx, ny, nz
+			// u, v
+			// otherU, otherV
+			// blockLight
+			float[] positions = new float[] {
+					offsetX + x,
+					offsetY + y,
+					offsetZ + z,
+			};
+			float[] normals = new float[] {
+					bufferForType.normalValues[3 * i + 0],
+					bufferForType.normalValues[3 * i + 1],
+					bufferForType.normalValues[3 * i + 2],
+			};
+			float[] textures = new float[] {
+					uv[0] + (uvCoordinateSize * bufferForType.textureValues[2 * i + 0]),
+					uv[1] + (uvCoordinateSize * bufferForType.textureValues[2 * i + 1]),
+			};
+			float[] otherTextures = new float[] {
+					auxUv[0] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 0]),
+					auxUv[1] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 1]),
+			};
+			
+			builder.appendVertex(positions
+					, normals
+					, textures
+					, otherTextures
+					, blockLight
+					, skyLight
+			);
+		}
 	}
 
 	/**

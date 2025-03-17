@@ -14,13 +14,18 @@ import org.junit.Test;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.BlockVariant;
+import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
@@ -192,6 +197,58 @@ public class TestSceneMeshHelpers
 		Assert.assertEquals(4, matchHigh);
 	}
 
+	@Test
+	public void rotatedMultiBlock() throws Throwable
+	{
+		// Verify the rendering of a rotated multi-block model.
+		Item multiDoor = ENV.items.getItemById("op.double_door_closed_base");
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		AbsoluteLocation root = cuboid.getCuboidAddress().getBase().getRelative(5, 5, 5);
+		cuboid.setData15(AspectRegistry.BLOCK, root.getBlockAddress(), multiDoor.number());
+		cuboid.setData7(AspectRegistry.ORIENTATION, root.getBlockAddress(), OrientationAspect.directionToByte(OrientationAspect.Direction.WEST));
+		cuboid.setData15(AspectRegistry.BLOCK, root.getRelative(0, 1, 0).getBlockAddress(), multiDoor.number());
+		cuboid.setDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, root.getRelative(0, 1, 0).getBlockAddress(), root);
+		cuboid.setData15(AspectRegistry.BLOCK, root.getRelative(0, 1, 1).getBlockAddress(), multiDoor.number());
+		cuboid.setDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, root.getRelative(0, 1, 1).getBlockAddress(), root);
+		cuboid.setData15(AspectRegistry.BLOCK, root.getRelative(0, 0, 1).getBlockAddress(), multiDoor.number());
+		cuboid.setDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, root.getRelative(0, 0, 1).getBlockAddress(), root);
+		
+		// We will just use a single triangle as the model, to keep this simple.
+		String string = "v 0.0 0.0 0.0\n"
+				+ "v 2.0 0.0 0.0\n"
+				+ "v 2.0 1.0 0.0\n"
+				+ "vn -0.0000 -0.0000 1.0000\n"
+				+ "vt 0.0 0.0\n"
+				+ "vt 0.0 1.0\n"
+				+ "vt 1.0 1.0\n"
+				+ "f 1/1/1 2/2/1 3/3/1\n"
+		;
+		Map<Block, Short> blockToIndex = Map.of(ENV.blocks.fromItem(multiDoor), (short)0);
+		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
+		TextureAtlas<ItemVariant> atlas = TextureHelpers.testBuildAtlas(1, ItemVariant.class);
+		BlockModelsAndAtlas modelsAndAtlas = BlockModelsAndAtlas.testInstance(blockToIndex, models, atlas);
+		
+		FloatBuffer buffer = FloatBuffer.allocate(4096);
+		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
+		SparseShortProjection<SceneMeshHelpers.AuxVariant> projection = new SparseShortProjection<>(SceneMeshHelpers.AuxVariant.NONE, Map.of());
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(1, 1, 1);
+		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
+				, null, null
+				, null, null
+				, null, null
+				, null, null
+				, null, null
+				, null, null
+		);
+		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builder, modelsAndAtlas, projection, auxAtlas, inputData);
+		BufferBuilder.Buffer finished = builder.finishOne();
+		Set<_Vertex> vertices = _collectVerticesInBuffer(finished);
+		Assert.assertEquals(3, vertices.size());
+		Assert.assertTrue(vertices.contains(new _Vertex(6.0f, 5.0f, 5.0f)));
+		Assert.assertTrue(vertices.contains(new _Vertex(6.0f, 7.0f, 5.0f)));
+		Assert.assertTrue(vertices.contains(new _Vertex(5.0f, 7.0f, 5.0f)));
+	}
+
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
@@ -247,13 +304,11 @@ public class TestSceneMeshHelpers
 	{
 		// We also want to look at the shape of the vertices to see how this is joining between cuboids.
 		int floatsPerVertex = Arrays.stream(ATTRIBUTES).collect(Collectors.summingInt((Attribute attr) -> attr.floats()));
-		int verticesPerQuad = 6;
-		int quads = 10;
-		float[] vertexData = new float[floatsPerVertex * verticesPerQuad * quads];
+		float[] vertexData = new float[floatsPerVertex * waterBuffer.vertexCount];
 		waterBuffer.testGetFloats(vertexData);
 		// Extract this position data as vertices.
 		Set<_Vertex> vertices = new HashSet<>();
-		for (int offset = 0; offset < (verticesPerQuad * quads); ++offset)
+		for (int offset = 0; offset < waterBuffer.vertexCount; ++offset)
 		{
 			int fromIndex = offset * floatsPerVertex;
 			float x = vertexData[fromIndex + 0];
