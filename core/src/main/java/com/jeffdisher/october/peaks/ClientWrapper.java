@@ -449,7 +449,7 @@ public class ClientWrapper
 				NonStackableItem nonStack = _thisEntity.inventory().getNonStackableForKey(selectedKey);
 				type = (null != stack) ? stack.type() : nonStack.type();
 			}
-			Block block = _environment.blocks.fromItem(type);
+			Block block = _environment.blocks.getAsPlaceableBlock(type);
 			if (null != block)
 			{
 				long currentTimeMillis = System.currentTimeMillis();
