@@ -154,6 +154,10 @@ public class SceneMeshHelpers
 				{
 					float[] uv = blockModels.baseOfModelTexture(includedBlock);
 					ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock);
+					int blockHeight = env.blocks.isMultiBlock(includedBlock)
+							? env.multiBlocks.getDefaultVolume(includedBlock).z()
+							: 1
+					;
 					for (byte z = 0; z < size; ++z)
 					{
 						for (byte y = 0; y < size; ++y)
@@ -180,6 +184,7 @@ public class SceneMeshHelpers
 											, baseY
 											, baseZ
 											, multiBlockDirection
+											, blockHeight
 									);
 								}
 							}
@@ -1075,13 +1080,14 @@ public class SceneMeshHelpers
 			, byte baseY
 			, byte baseZ
 			, OrientationAspect.Direction multiBlockDirection
+			, int blockHeight
 	)
 	{
 		float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
 		// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
 		float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
 		// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
-		float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + 1), SKY_LIGHT_PARTIAL) };
+		float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), SKY_LIGHT_PARTIAL) };
 		float offsetX = baseX;
 		float offsetY = baseY;
 		float offsetZ = baseZ;
