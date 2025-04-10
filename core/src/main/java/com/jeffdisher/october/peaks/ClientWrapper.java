@@ -12,6 +12,7 @@ import java.util.function.Function;
 import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -89,6 +90,7 @@ public class ClientWrapper
 
 	// Local state information to avoid redundant events, etc.
 	private boolean _didJump;
+	private int _currentViewDistance;
 
 	public ClientWrapper(Environment environment
 			, IUpdateConsumer updateConsumer
@@ -171,6 +173,7 @@ public class ClientWrapper
 		}
 		
 		_cuboids = new HashMap<>();
+		_currentViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 	}
 
 	public void finishStartup()
@@ -702,6 +705,16 @@ public class ClientWrapper
 		{
 			_monitoringAgent.getCommandSink().resumeTickProcessing();
 			_isPaused = false;
+		}
+	}
+
+	public void tryChangeViewDistance(int change)
+	{
+		// We will only change the view distance if it is valid and something we could change to.
+		int updated = _currentViewDistance + change;
+		if ((updated >= 0) && _client.updateOptions(updated))
+		{
+			_currentViewDistance = updated;
 		}
 	}
 

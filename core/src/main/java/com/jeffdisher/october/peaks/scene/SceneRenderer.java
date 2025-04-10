@@ -50,7 +50,7 @@ public class SceneRenderer
 	public void rebuildProjection(int width, int height)
 	{
 		float xMajorAspect = (float)width / (float)height;
-		_projectionMatrix = Matrix.perspective(90.0f, xMajorAspect, 0.1f, 100.0f);
+		_projectionMatrix = Matrix.perspective(90.0f, xMajorAspect, 0.1f, 200.0f);
 	}
 
 	public Map<Block, Prism> getModelBoundingBoxes()

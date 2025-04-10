@@ -693,6 +693,15 @@ public class UiStateManager
 		}
 	}
 
+	public void handleScaleChange(int change)
+	{
+		// For now, we only want to change the scale in play mode.
+		if (_UiState.PLAY == _uiState)
+		{
+			_client.tryChangeViewDistance(change);
+		}
+	}
+
 
 	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{
