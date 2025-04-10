@@ -88,6 +88,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			);
 			
 			_scene = new SceneRenderer(_environment, _gl, _itemAtlas);
+			_scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		}
 		catch (IOException e)
 		{
@@ -245,6 +246,12 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+	}
+
+	@Override
+	public void resize(int width, int height)
+	{
+		_scene.rebuildProjection(width, height);
 	}
 
 	@Override

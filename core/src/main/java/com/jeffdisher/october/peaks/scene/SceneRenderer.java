@@ -32,7 +32,7 @@ public class SceneRenderer
 	private final SkyBox _skyBox;
 
 	private Matrix _viewMatrix;
-	private final Matrix _projectionMatrix;
+	private Matrix _projectionMatrix;
 	private Vector _eye;
 	private float _skyLightMultiplier;
 
@@ -44,8 +44,13 @@ public class SceneRenderer
 		_skyBox = new SkyBox(gl);
 		
 		_viewMatrix = Matrix.identity();
-		_projectionMatrix = Matrix.perspective(90.0f, 1.0f, 0.1f, 100.0f);
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
+	}
+
+	public void rebuildProjection(int width, int height)
+	{
+		float xMajorAspect = (float)width / (float)height;
+		_projectionMatrix = Matrix.perspective(90.0f, xMajorAspect, 0.1f, 100.0f);
 	}
 
 	public Map<Block, Prism> getModelBoundingBoxes()
