@@ -37,6 +37,8 @@ public class InputManager
 	private boolean _didHandleKeyEsc;
 	private boolean _didHandleKeyI;
 	private boolean _didHandleKeyF;
+	private boolean _didHandleEnterFullScreen;
+	private boolean _didHandleEnterWindowMode;
 
 	public InputManager()
 	{
@@ -124,6 +126,16 @@ public class InputManager
 				case Keys.D:
 					_moveRight = true;
 					break;
+				case Keys.NUMPAD_ENTER:
+					// Enter full screen.
+					_didHandleEnterFullScreen = false;
+					_didHandleEnterWindowMode = true;
+					break;
+				case Keys.NUMPAD_DOT:
+					// Enter window mode.
+					_didHandleEnterWindowMode = false;
+					_didHandleEnterFullScreen = true;
+					break;
 				}
 				return true;
 			}
@@ -209,6 +221,8 @@ public class InputManager
 		_didHandleKeyEsc = true;
 		_didHandleKeyI = true;
 		_didHandleKeyF = true;
+		_didHandleEnterFullScreen = true;
+		_didHandleEnterWindowMode = true;
 	}
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
@@ -296,6 +310,16 @@ public class InputManager
 		{
 			uiManager.handleKeyF();
 			_didHandleKeyF = true;
+		}
+		if (!_didHandleEnterFullScreen)
+		{
+			uiManager.changeScreenMode(true);
+			_didHandleEnterFullScreen = true;
+		}
+		else if (!_didHandleEnterWindowMode)
+		{
+			uiManager.changeScreenMode(false);
+			_didHandleEnterWindowMode = true;
 		}
 	}
 

@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
@@ -677,6 +678,19 @@ public class UiStateManager
 		}
 		_continuousInInventory = null;
 		_continuousInBlock = null;
+	}
+
+	public void changeScreenMode(boolean fullScreen)
+	{
+		if (fullScreen)
+		{
+			// We will just use the full screen of the current display mode.
+			Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+		}
+		else
+		{
+			Gdx.graphics.setWindowedMode(1280, 960);
+		}
 	}
 
 
