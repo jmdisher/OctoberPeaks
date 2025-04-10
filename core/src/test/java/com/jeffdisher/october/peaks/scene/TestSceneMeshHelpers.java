@@ -36,6 +36,7 @@ import com.jeffdisher.october.utils.CuboidGenerator;
 public class TestSceneMeshHelpers
 {
 	private static Environment ENV;
+	private static Item STONE;
 	private static Item WATER_SOURCE;
 	private static Item WATER_STRONG;
 	private static Item WATER_WEAK;
@@ -44,6 +45,7 @@ public class TestSceneMeshHelpers
 	public static void setup()
 	{
 		ENV = Environment.createSharedInstance();
+		STONE = ENV.items.getItemById("op.stone");
 		WATER_SOURCE = ENV.items.getItemById("op.water_source");
 		WATER_STRONG = ENV.items.getItemById("op.water_strong");
 		WATER_WEAK = ENV.items.getItemById("op.water_weak");
@@ -247,6 +249,34 @@ public class TestSceneMeshHelpers
 		Assert.assertTrue(vertices.contains(new _Vertex(6.0f, 5.0f, 5.0f)));
 		Assert.assertTrue(vertices.contains(new _Vertex(6.0f, 7.0f, 5.0f)));
 		Assert.assertTrue(vertices.contains(new _Vertex(5.0f, 7.0f, 5.0f)));
+	}
+
+	@Test
+	public void waterSourceUnderBlock() throws Throwable
+	{
+		// Check the callbacks we get for a water block with a solid block above it.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress sourceBlock = new BlockAddress((byte)5, (byte)5, (byte)5);
+		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, WATER_SOURCE.number());
+		BlockAddress stoneBlock = sourceBlock.getRelativeInt(0, 0, 1);
+		cuboid.setData15(AspectRegistry.BLOCK, stoneBlock, STONE.number());
+		
+		BufferBuilder.Buffer waterBuffer = _buildWaterBuffer(cuboid, null, null);
+		int quadsWritten = _countQuadsInBuffer(waterBuffer);
+		// We should see 6 quads, double-sided.
+		Assert.assertEquals(12, quadsWritten);
+		
+		Set<_Vertex> vertices = _collectVerticesInBuffer(waterBuffer);
+		Assert.assertEquals(8, vertices.size());
+		int matchCount = 0;
+		for (_Vertex vertex : vertices)
+		{
+			if (5.9f == vertex.z)
+			{
+				matchCount += 1;
+			}
+		}
+		Assert.assertEquals(4, matchCount);
 	}
 
 

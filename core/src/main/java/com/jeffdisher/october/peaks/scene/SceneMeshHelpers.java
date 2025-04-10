@@ -244,7 +244,8 @@ public class SceneMeshHelpers
 			public void writeQuad(BlockAddress address, BlockAddress externalBlock, float[][] counterClockWiseVertices, float[] normal)
 			{
 				// We want to check the opacity since we won't draw the internal faces of the water if there is something opaque on the other side.
-				if (!_isBlockOpaque(env, inputData, externalBlock))
+				// The exception to this rule is that we want to draw the top face of a liquid block.
+				if ((1.0f == normal[2]) || !_isBlockOpaque(env, inputData, externalBlock))
 				{
 					float blockLightMultiplier = _mapBlockLight(_getBlockLight(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z()));
 					float skyLightMultiplier = _getSkyLightMultiplier(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z(), SKY_LIGHT_DIRECT);
