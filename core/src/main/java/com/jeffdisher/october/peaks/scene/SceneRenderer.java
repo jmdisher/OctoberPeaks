@@ -26,6 +26,7 @@ import com.jeffdisher.october.types.PartialEntity;
  */
 public class SceneRenderer
 {
+	private final GL20 _gl;
 	private final BlockRenderer _blockRenderer;
 	private final EntityRenderer _entityRenderer;
 	private final SkyBox _skyBox;
@@ -37,6 +38,7 @@ public class SceneRenderer
 
 	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas<ItemVariant> itemAtlas) throws IOException
 	{
+		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, itemAtlas);
 		_entityRenderer = new EntityRenderer(environment, gl);
 		_skyBox = new SkyBox(gl);
@@ -64,8 +66,12 @@ public class SceneRenderer
 		_skyBox.render(_projectionMatrix);
 		
 		// Now we can render the world, opaque blocks first, transparent ones last.
+		// Note that we NEVER want to blend against the background when rendering opaque vertices since we don't want to
+		// see the background bleed through when the triangles become small in the distance.
+		_gl.glDisable(GL20.GL_BLEND);
 		_blockRenderer.renderOpaqueBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
+		_gl.glEnable(GL20.GL_BLEND);
 		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
