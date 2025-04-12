@@ -12,6 +12,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
+import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -56,8 +57,7 @@ public class UiStateManager
 	private boolean _mouseHeld1;
 	private boolean _mouseClicked0;
 	private boolean _mouseClicked1;
-	private float _normalGlX;
-	private float _normalGlY;
+	private Point _cursor;
 
 	// Variables related to the window overlay mode.
 	private boolean _leftClick;
@@ -243,7 +243,7 @@ public class UiStateManager
 					windowManager.renderNonStackable.drawItem(left, bottom, right, top, item.nonStackable, isMouseOver);
 				}
 			};
-			WindowManager.HoverRenderer<_InventoryEntry> hover = (float glX, float glY, _InventoryEntry item) -> {
+			WindowManager.HoverRenderer<_InventoryEntry> hover = (Point cursor, _InventoryEntry item) -> {
 				Item type;
 				if (null != item.stackable)
 				{
@@ -253,7 +253,7 @@ public class UiStateManager
 				{
 					type = item.nonStackable.type();
 				}
-				windowManager.hoverItem.drawHoverAtPoint(glX, glY, type);
+				windowManager.hoverItem.drawHoverAtPoint(cursor, type);
 			};
 			
 			// Determine if we can handle manual crafting selection callbacks.
@@ -347,12 +347,12 @@ public class UiStateManager
 					? null
 					: topLeft
 			;
-			windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), armourEvent, _normalGlX, _normalGlY);
+			windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), armourEvent, _cursor);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, null, _normalGlX, _normalGlY);
+			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, null, _cursor);
 		}
 	}
 
@@ -574,10 +574,9 @@ public class UiStateManager
 		_client.jumpOrSwim();
 	}
 
-	public void normalMouseMoved(float glX, float glY)
+	public void normalMouseMoved(Point cursor)
 	{
-		_normalGlX = glX;
-		_normalGlY = glY;
+		_cursor = cursor;
 	}
 
 	public void normalMouse0Clicked(boolean leftShiftDown)

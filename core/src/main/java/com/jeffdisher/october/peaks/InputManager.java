@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
+import com.jeffdisher.october.peaks.ui.Point;
 import com.badlogic.gdx.Input.Keys;
 
 
@@ -287,9 +288,8 @@ public class InputManager
 		else
 		{
 			// When we are not capturing, we are just interested in knowing where the mouse is and if there are any clicks.
-			float glX = _getGlX();
-			float glY = _getGlY();
-			uiManager.normalMouseMoved(glX, glY);
+			Point cursor = _getGlCursor();
+			uiManager.normalMouseMoved(cursor);
 			if (!_didHandleButton0)
 			{
 				uiManager.normalMouse0Clicked(_leftShiftDown);
@@ -355,19 +355,18 @@ public class InputManager
 		Gdx.input.setCursorCatched(state);
 	}
 
-	private static float _getGlX()
+	private static Point _getGlCursor()
 	{
+		// We want to return the 2D location of the cursor, in GL coordinates.
+		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
 		float screenWidth = Gdx.graphics.getWidth();
 		float mouseX = (float)Gdx.input.getX();
-		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
-		return (2.0f * mouseX / screenWidth) - 1.0f;
-	}
-
-	private static float _getGlY()
-	{
+		float x = (2.0f * mouseX / screenWidth) - 1.0f;
+		
 		float screenHeight = Gdx.graphics.getHeight();
 		float mouseY = (float)Gdx.input.getY();
 		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
-		return (2.0f * (screenHeight - mouseY) / screenHeight) - 1.0f;
+		float y = (2.0f * (screenHeight - mouseY) / screenHeight) - 1.0f;
+		return new Point(x, y);
 	}
 }

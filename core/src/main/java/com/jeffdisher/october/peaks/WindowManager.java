@@ -15,6 +15,7 @@ import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.ui.GlUi;
+import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -120,12 +121,12 @@ public class WindowManager
 			;
 			_renderItem(left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, item.canBeSelected ? isMouseOver : false);
 		};
-		this.hoverItem = (float glX, float glY, Item item) -> {
+		this.hoverItem = (Point cursor, Item item) -> {
 			// Just draw the name.
 			String name = item.name();
-			_drawTextInFrame(glX, glY - GENERAL_TEXT_HEIGHT, name);
+			_drawTextInFrame(cursor.x(), cursor.y() - GENERAL_TEXT_HEIGHT, name);
 		};
-		this.hoverCraftOperation = (float glX, float glY, CraftDescription item) -> {
+		this.hoverCraftOperation = (Point cursor, CraftDescription item) -> {
 			String name = item.craft.name;
 			
 			// Calculate the dimensions (we have a title and then a list of input items below this).
@@ -133,6 +134,8 @@ public class WindowManager
 			float widthOfItems = (float)item.input.length * WINDOW_ITEM_SIZE + (float)(item.input.length + 1) * WINDOW_MARGIN;
 			float widthOfHover = Math.max(widthOfTitle, widthOfItems);
 			float heightOfHover = WINDOW_TITLE_HEIGHT + WINDOW_ITEM_SIZE + 3 * WINDOW_MARGIN;
+			float glX = cursor.x();
+			float glY = cursor.y();
 			
 			// We can now draw the frame.
 			_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
@@ -165,8 +168,7 @@ public class WindowManager
 			, WindowData<C> bottom
 			, NonStackableItem[] armourSlots
 			, Consumer<BodyPart> eventHoverBodyPart
-			, float glX
-			, float glY
+			, Point cursor
 	)
 	{
 		_ui.enterUiRenderMode();
@@ -202,7 +204,7 @@ public class WindowManager
 		boolean didDrawWindows = false;
 		if (null != topLeft)
 		{
-			Runnable hover = _drawWindow(topLeft, WINDOW_TOP_LEFT, glX, glY);
+			Runnable hover = _drawWindow(topLeft, WINDOW_TOP_LEFT, cursor);
 			if (null != hover)
 			{
 				hoverRunnable = hover;
@@ -211,7 +213,7 @@ public class WindowManager
 		}
 		if (null != topRight)
 		{
-			Runnable hover = _drawWindow(topRight, WINDOW_TOP_RIGHT, glX, glY);
+			Runnable hover = _drawWindow(topRight, WINDOW_TOP_RIGHT, cursor);
 			if (null != hover)
 			{
 				hoverRunnable = hover;
@@ -220,7 +222,7 @@ public class WindowManager
 		}
 		if (null != bottom)
 		{
-			Runnable hover = _drawWindow(bottom, WINDOW_BOTTOM, glX, glY);
+			Runnable hover = _drawWindow(bottom, WINDOW_BOTTOM, cursor);
 			if (null != hover)
 			{
 				hoverRunnable = hover;
@@ -231,7 +233,7 @@ public class WindowManager
 		if (didDrawWindows)
 		{
 			// We are in windowed mode so also draw the armour slots.
-			_drawArmourSlots(armourSlots, eventHoverBodyPart, glX, glY);
+			_drawArmourSlots(armourSlots, eventHoverBodyPart, cursor);
 		}
 		else
 		{
@@ -384,7 +386,7 @@ public class WindowManager
 	}
 
 	// Returns a Runnable to draw the hover, if it was detected here.
-	private <T> Runnable _drawWindow(WindowData<T> data, _WindowDimensions dimensions, float glX, float glY)
+	private <T> Runnable _drawWindow(WindowData<T> data, _WindowDimensions dimensions, Point cursor)
 	{
 		// Draw the window outline.
 		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
@@ -442,7 +444,7 @@ public class WindowManager
 			float bottom = top - WINDOW_ITEM_SIZE;
 			float right = left + WINDOW_ITEM_SIZE;
 			// We only handle the mouse-over if there is a handler we will notify.
-			boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
+			boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
 			data.renderItem.drawItem(left, bottom, right, top, elt, isMouseOver);
 			if (isMouseOver)
 			{
@@ -474,7 +476,7 @@ public class WindowManager
 			if (canPageBack)
 			{
 				float left = dimensions.rightX - 0.25f;
-				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, "<", glX, glY);
+				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, "<", cursor);
 				if (isMouseOver)
 				{
 					data.eventHoverChangePage.accept(currentPage - 1);
@@ -485,7 +487,7 @@ public class WindowManager
 			if (canPageForward)
 			{
 				float left = dimensions.rightX - 0.1f;
-				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, ">", glX, glY);
+				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, ">", cursor);
 				if (isMouseOver)
 				{
 					data.eventHoverChangePage.accept(currentPage + 1);
@@ -496,7 +498,7 @@ public class WindowManager
 		// Capture the hover render operation, if applicable.
 		final T finalHoverOver = hoverOver;
 		return (null != finalHoverOver)
-				? () -> data.renderHover.drawHoverAtPoint(glX, glY, finalHoverOver)
+				? () -> data.renderHover.drawHoverAtPoint(cursor, finalHoverOver)
 				: null
 		;
 	}
@@ -549,7 +551,7 @@ public class WindowManager
 		}
 	}
 
-	private void _drawArmourSlots(NonStackableItem[] armourSlots, Consumer<BodyPart> eventHoverBodyPart, float glX, float glY)
+	private void _drawArmourSlots(NonStackableItem[] armourSlots, Consumer<BodyPart> eventHoverBodyPart, Point cursor)
 	{
 		float nextTopSlot = ARMOUR_SLOT_TOP_EDGE;
 		for (int i = 0; i < 4; ++i)
@@ -558,7 +560,7 @@ public class WindowManager
 			float bottom = nextTopSlot - ARMOUR_SLOT_SCALE;
 			float right = ARMOUR_SLOT_RIGHT_EDGE;
 			float top = nextTopSlot;
-			boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
+			boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
 			
 			// See if there is an item for this slot.
 			NonStackableItem armour = armourSlots[i];
@@ -589,17 +591,16 @@ public class WindowManager
 
 	private void _drawTextInFrame(float left, float bottom, String text)
 	{
-		float outOfRange = -2.0f;
-		_drawTextInFrameWithHoverCheck(left, bottom, text, outOfRange, outOfRange);
+		_drawTextInFrameWithHoverCheck(left, bottom, text, null);
 	}
 
-	private boolean _drawTextInFrameWithHoverCheck(float left, float bottom, String text, float glX, float glY)
+	private boolean _drawTextInFrameWithHoverCheck(float left, float bottom, String text, Point cursor)
 	{
 		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
 		float top = bottom + GENERAL_TEXT_HEIGHT;
 		float right = left + element.aspectRatio() * (top - bottom);
 		
-		boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
+		boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
 		int backgroundTexture = isMouseOver
 				? _ui.pixelLightGrey
 				: _ui.pixelDarkGreyAlpha
@@ -617,9 +618,20 @@ public class WindowManager
 		_ui.drawWholeTextureRect(backgroundTexture, left, bottom, right, top);
 	}
 
-	private static boolean _isMouseOver(float left, float bottom, float right, float top, float glX, float glY)
+	private static boolean _isMouseOver(float left, float bottom, float right, float top, Point cursor)
 	{
-		return ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
+		boolean isOver;
+		if (null != cursor)
+		{
+			float glX = cursor.x();
+			float glY = cursor.y();
+			isOver = ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
+		}
+		else
+		{
+			isOver = false;
+		}
+		return isOver;
 	}
 
 	private Inventory _getEntityInventory()
@@ -639,7 +651,7 @@ public class WindowManager
 
 	public static interface HoverRenderer<T>
 	{
-		void drawHoverAtPoint(float glX, float glY, T item);
+		void drawHoverAtPoint(Point cursor, T item);
 	}
 
 	public static record WindowData<T>(String name
