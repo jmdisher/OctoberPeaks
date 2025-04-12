@@ -1,10 +1,5 @@
 package com.jeffdisher.october.peaks;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,19 +7,14 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
-import java.util.stream.Collectors;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.peaks.graphics.Attribute;
-import com.jeffdisher.october.peaks.graphics.BufferBuilder;
-import com.jeffdisher.october.peaks.graphics.Program;
-import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -70,26 +60,9 @@ public class WindowManager
 	public static final float RETICLE_SIZE = 0.05f;
 
 	private final Environment _env;
-	private final GL20 _gl;
-	private final TextureAtlas<ItemVariant> _itemAtlas;
+	private final GlUi _ui;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
-	private final TextManager _textManager;
 	private final Map<Integer, String> _otherPlayersById;
-	private final Program _program;
-	private final int _uOffset;
-	private final int _uScale;
-	private final int _uTexture;
-	private final int _uTextureBaseOffset;
-	private final VertexArray _verticesUnitSquare;
-	private final VertexArray _verticesItemSquare;
-	private final VertexArray _verticesReticleLines;
-	private final int _pixelLightGrey;
-	private final int _pixelDarkGreyAlpha;
-	private final int _pixelRed;
-	private final int _pixelGreen;
-	private final int _pixelGreenAlpha;
-	private final int _pixelBlueAlpha;
-	private final int _pixelOrangeLava;
 	private final Set<Block> _waterBlockTypes;
 	private final Set<Block> _lavaBlockTypes;
 	private Entity _projectedEntity;
@@ -106,70 +79,9 @@ public class WindowManager
 	public WindowManager(Environment env, GL20 gl, TextureAtlas<ItemVariant> itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
 		_env = env;
-		_gl = gl;
-		_itemAtlas = itemAtlas;
+		_ui = new GlUi(gl, itemAtlas);
 		_blockLookup = blockLookup;
-		_textManager = new TextManager(_gl);
 		_otherPlayersById = new HashMap<>();
-		
-		// Create the program we will use for the window overlays.
-		// The overlays are all rectangular tiles representing windows, graphic tiles, or text tiles.
-		// This means that the only mesh we will use is a unit square and we will apply a scaling factor and offset
-		// location to place and size it correctly.
-		// In order to simplify the usage, we will assume that all colour data originates in textures (but some of the
-		// textures may just be single-pixel colour data).
-		_program = Program.fullyLinkedProgram(_gl
-				, _readUtf8Asset("windows.vert")
-				, _readUtf8Asset("windows.frag")
-				, new String[] {
-						"aPosition",
-						"aTexture",
-				}
-		);
-		_uOffset = _program.getUniformLocation("uOffset");
-		_uScale = _program.getUniformLocation("uScale");
-		_uTexture = _program.getUniformLocation("uTexture");
-		_uTextureBaseOffset = _program.getUniformLocation("uTextureBaseOffset");
-		
-		// Create the scratch buffer we will use for out graphics data (short-lived).
-		int floatsPerVertex = Arrays.stream(_program.attributes)
-				.map((Attribute attribute) -> attribute.floats())
-				.collect(Collectors.summingInt((Integer i) -> i))
-		;
-		int vertexCount = 6;
-		ByteBuffer buffer = ByteBuffer.allocateDirect(vertexCount * floatsPerVertex * Float.BYTES);
-		buffer.order(ByteOrder.nativeOrder());
-		FloatBuffer meshBuffer = buffer.asFloatBuffer();
-		// Create the unit square we will use for common vertices.
-		_verticesUnitSquare = _defineCommonVertices(_gl, _program, meshBuffer, 1.0f);
-		// Create the unit square we can configure for item drawing
-		_verticesItemSquare = _defineCommonVertices(_gl, _program, meshBuffer, _itemAtlas.coordinateSize);
-		_verticesReticleLines = _defineReticleVertices(_gl, _program, meshBuffer);
-		
-		// Build the initial pixel textures.
-		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(4);
-		textureBufferData.order(ByteOrder.nativeOrder());
-		
-		// We use a light grey pixel for a window "frame".
-		_pixelLightGrey = _makePixelRgba(_gl, textureBufferData, (byte)180, (byte)180, (byte)180, (byte)255);
-		
-		// We use a dark grey pixel, with partial alpha, for a window "background".
-		_pixelDarkGreyAlpha = _makePixelRgba(_gl, textureBufferData, (byte)32, (byte)32, (byte)32, (byte)196);
-		
-		// We use the Red/Green pixels for outlines of frames in a few cases.
-		_pixelRed = _makePixelRgba(_gl, textureBufferData, (byte)255, (byte)0, (byte)0, (byte)255);
-		_pixelGreen = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)255);
-		
-		// We use the semi-transparent green for "progress" overlays.
-		_pixelGreenAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)100);
-		
-		// We use the semi-transparent blue for "under water" overlay layer.
-		_pixelBlueAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)0, (byte)255, (byte)100);
-		
-		// We use a mostly-opaque orange for "under lava" overlay layer.
-		_pixelOrangeLava = _makePixelRgba(_gl, textureBufferData, (byte)255, (byte)69, (byte)0, (byte)220);
-		
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Find the set of water block types we will use to determine when to draw the water overlay.
 		_waterBlockTypes = Set.of(env.blocks.fromItem(env.items.getItemById("op.water_source"))
@@ -185,10 +97,10 @@ public class WindowManager
 		
 		// Set up our public rendering helpers.
 		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
-			_renderStackableItem(left, bottom, right, top, _pixelLightGrey, item, isMouseOver);
+			_renderStackableItem(left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
 		};
 		this.renderNonStackable = (float left, float bottom, float right, float top, NonStackableItem item, boolean isMouseOver) -> {
-			_renderNonStackableItem(left, bottom, right, top, _pixelLightGrey, item, isMouseOver);
+			_renderNonStackableItem(left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
 		};
 		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftDescription item, boolean isMouseOver) -> {
 			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
@@ -203,8 +115,8 @@ public class WindowManager
 				}
 			}
 			int outlineTexture = isValid
-					? _pixelGreen
-					: _pixelRed
+					? _ui.pixelGreen
+					: _ui.pixelRed
 			;
 			_renderItem(left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, item.canBeSelected ? isMouseOver : false);
 		};
@@ -223,7 +135,7 @@ public class WindowManager
 			float heightOfHover = WINDOW_TITLE_HEIGHT + WINDOW_ITEM_SIZE + 3 * WINDOW_MARGIN;
 			
 			// We can now draw the frame.
-			_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
+			_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
 			
 			// Draw the title.
 			_drawLabel(glX, glY - WINDOW_TITLE_HEIGHT, glY, name);
@@ -237,8 +149,8 @@ public class WindowManager
 				float noProgress = 0.0f;
 				boolean isMouseOver = false;
 				int outlineTexture = (items.available >= items.required)
-						? _pixelGreen
-						: _pixelRed
+						? _ui.pixelGreen
+						: _ui.pixelRed
 				;
 				_renderItem(inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, outlineTexture, items.type, items.required, noProgress, isMouseOver);
 				inputLeft += WINDOW_ITEM_SIZE + WINDOW_MARGIN;
@@ -258,11 +170,11 @@ public class WindowManager
 	)
 	{
 		// We use the orthographic projection and no depth buffer for all overlay windows.
-		_gl.glDisable(GL20.GL_DEPTH_TEST);
-		_gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
-		_program.useProgram();
-		_gl.glUniform1i(_uTexture, 0);
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		_ui.gl.glDisable(GL20.GL_DEPTH_TEST);
+		_ui.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
+		_ui.program.useProgram();
+		_ui.gl.glUniform1i(_ui.uTexture, 0);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _ui.gl.glGetError());
 		
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
 		if (null != _eyeBlockLocation)
@@ -273,14 +185,14 @@ public class WindowManager
 				Block blockType = eyeProxy.getBlock();
 				if (_waterBlockTypes.contains(blockType))
 				{
-					_gl.glActiveTexture(GL20.GL_TEXTURE0);
-					_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelBlueAlpha);
+					_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
+					_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelBlueAlpha);
 					_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
 				}
 				else if (_lavaBlockTypes.contains(blockType))
 				{
-					_gl.glActiveTexture(GL20.GL_TEXTURE0);
-					_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelOrangeLava);
+					_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
+					_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelOrangeLava);
 					_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
 				}
 			}
@@ -291,7 +203,7 @@ public class WindowManager
 		{
 			_drawHotbar();
 			_drawEntityMetaData();
-			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+			Assert.assertTrue(GL20.GL_NO_ERROR == _ui.gl.glGetError());
 		}
 		
 		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
@@ -362,8 +274,8 @@ public class WindowManager
 			}
 			
 			// We will use the highlight texture for the reticle.
-			_gl.glActiveTexture(GL20.GL_TEXTURE0);
-			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelLightGrey);
+			_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
+			_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelLightGrey);
 			_drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		}
 		
@@ -377,8 +289,8 @@ public class WindowManager
 		if (_isPaused)
 		{
 			// Draw the overlay to dim the window.
-			_gl.glActiveTexture(GL20.GL_TEXTURE0);
-			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelDarkGreyAlpha);
+			_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
+			_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelDarkGreyAlpha);
 			_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
 			
 			// Draw the paused text.
@@ -386,7 +298,7 @@ public class WindowManager
 		}
 		
 		// Allow any periodic cleanup.
-		_textManager.allowTexturePurge();
+		_ui.textManager.allowTexturePurge();
 	}
 
 	public void setThisEntity(Entity projectedEntity)
@@ -418,71 +330,9 @@ public class WindowManager
 
 	public void shutdown()
 	{
-		// We don't own _itemAtlas.
-		_textManager.shutdown();
-		_program.delete();
-		_verticesUnitSquare.delete(_gl);
-		_verticesItemSquare.delete(_gl);
-		_verticesReticleLines.delete(_gl);
+		_ui.shutdown();
 	}
 
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
-	}
-
-	private static VertexArray _defineCommonVertices(GL20 gl, Program program, FloatBuffer meshBuffer, float textureSize)
-	{
-		float height = 1.0f;
-		float width = 1.0f;
-		float textureBaseU = 0.0f;
-		float textureBaseV = 0.0f;
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-		builder.appendVertex(new float[] {0.0f, 0.0f}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {0.0f, height}
-				, new float[] {textureBaseU, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {0.0f, 0.0f}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, 0.0f}
-				, new float[] {textureBaseU + textureSize, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		return builder.finishOne().flush(gl);
-	}
-
-	private static VertexArray _defineReticleVertices(GL20 gl, Program program, FloatBuffer meshBuffer)
-	{
-		// We always draw the reticle at the full size of the screen and scale it in the shader.
-		float origin = 0.0f;
-		float sizeFromOrigin = 1.0f;
-		float textureBaseU = 0.0f;
-		float textureBaseV = 0.0f;
-		float textureSize = 1.0f;
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-		builder.appendVertex(new float[] {origin, -sizeFromOrigin}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {origin, sizeFromOrigin}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {-sizeFromOrigin, origin}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {sizeFromOrigin, origin}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		return builder.finishOne().flush(gl);
-	}
 
 	private void _drawHotbar()
 	{
@@ -494,14 +344,14 @@ public class WindowManager
 		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 		{
 			int outline = (activeIndex == i)
-					? _pixelGreen
-					: _pixelLightGrey
+					? _ui.pixelGreen
+					: _ui.pixelLightGrey
 			;
 			int thisKey = hotbarKeys[i];
 			if (0 == thisKey)
 			{
 				// No item so just draw the frame.
-				_drawOverlayFrame(_pixelDarkGreyAlpha, outline, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
+				_drawOverlayFrame(_ui.pixelDarkGreyAlpha, outline, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
 			}
 			else
 			{
@@ -523,7 +373,7 @@ public class WindowManager
 
 	private void _drawEntityMetaData()
 	{
-		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * SMALL_TEXT_HEIGHT);
+		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * SMALL_TEXT_HEIGHT);
 		
 		float valueMargin = META_DATA_BOX_LEFT + META_DATA_LABEL_WIDTH;
 		
@@ -552,7 +402,7 @@ public class WindowManager
 	private <T> Runnable _drawWindow(WindowData<T> data, _WindowDimensions dimensions, float glX, float glY)
 	{
 		// Draw the window outline.
-		_drawOverlayFrame(_pixelDarkGreyAlpha, _pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
+		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
 		
 		// Draw the title.
 		float labelRight = _drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
@@ -570,7 +420,7 @@ public class WindowManager
 		{
 			float right = rightEdgeOfTitle + WINDOW_MARGIN;
 			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			_renderItem(right, bottom, right + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE, _pixelGreen, optionalFuel.fuel, 0, optionalFuel.remainingFraction, false);
+			_renderItem(right, bottom, right + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE, _ui.pixelGreen, optionalFuel.fuel, 0, optionalFuel.remainingFraction, false);
 		}
 		
 		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
@@ -688,8 +538,8 @@ public class WindowManager
 	{
 		// Draw the background.
 		int backgroundTexture = isMouseOver
-				? _pixelLightGrey
-				: _pixelDarkGreyAlpha
+				? _ui.pixelLightGrey
+				: _ui.pixelDarkGreyAlpha
 		;
 		_drawOverlayFrame(backgroundTexture, outlineTexture, left, bottom, right, top);
 		
@@ -699,7 +549,7 @@ public class WindowManager
 		// Draw the number in the corner (only if it is non-zero).
 		if (count > 0)
 		{
-			TextManager.Element element = _textManager.lazilyLoadStringTexture(Integer.toString(count));
+			TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(Integer.toString(count));
 			// We want to draw the text in the bottom-left of the box, at half-height.
 			float vDelta = (top - bottom) / 2.0f;
 			float hDelta = vDelta * element.aspectRatio();
@@ -709,7 +559,7 @@ public class WindowManager
 		// If there is a progress bar, draw it on top.
 		if (progress > 0.0f)
 		{
-			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _pixelGreenAlpha);
+			_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelGreenAlpha);
 			float progressTop = bottom + (top - bottom) * progress;
 			_drawCommonRect(left, bottom, right, progressTop);
 		}
@@ -732,17 +582,17 @@ public class WindowManager
 			if (null != armour)
 			{
 				// Draw this item.
-				_renderNonStackableItem(left, bottom, right, top, _pixelLightGrey, armour, isMouseOver);
+				_renderNonStackableItem(left, bottom, right, top, _ui.pixelLightGrey, armour, isMouseOver);
 			}
 			else
 			{
 				// Just draw the background.
 				int backgroundTexture = isMouseOver
-						? _pixelLightGrey
-						: _pixelDarkGreyAlpha
+						? _ui.pixelLightGrey
+						: _ui.pixelDarkGreyAlpha
 				;
 				
-				_drawOverlayFrame(backgroundTexture, _pixelLightGrey, left, bottom, right, top);
+				_drawOverlayFrame(backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
 			}
 			if (isMouseOver)
 			{
@@ -761,24 +611,24 @@ public class WindowManager
 
 	private boolean _drawTextInFrameWithHoverCheck(float left, float bottom, String text, float glX, float glY)
 	{
-		TextManager.Element element = _textManager.lazilyLoadStringTexture(text.toUpperCase());
+		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
 		float top = bottom + GENERAL_TEXT_HEIGHT;
 		float right = left + element.aspectRatio() * (top - bottom);
 		
 		boolean isMouseOver = _isMouseOver(left, bottom, right, top, glX, glY);
 		int backgroundTexture = isMouseOver
-				? _pixelLightGrey
-				: _pixelDarkGreyAlpha
+				? _ui.pixelLightGrey
+				: _ui.pixelDarkGreyAlpha
 		;
 		
-		_drawOverlayFrame(backgroundTexture, _pixelLightGrey, left, bottom, right, top);
+		_drawOverlayFrame(backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
 		_drawTextElement(left, bottom, right, top, element.textureObject());
 		return isMouseOver;
 	}
 
 	private float _drawLabel(float left, float bottom, float top, String label)
 	{
-		TextManager.Element element = _textManager.lazilyLoadStringTexture(label);
+		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(label);
 		float textureAspect = element.aspectRatio();
 		float right = left + textureAspect * (top - bottom);
 		_drawTextElement(left, bottom, right, top, element.textureObject());
@@ -787,25 +637,25 @@ public class WindowManager
 
 	private float _getLabelWidth(float height, String label)
 	{
-		TextManager.Element element = _textManager.lazilyLoadStringTexture(label);
+		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(label);
 		float textureAspect = element.aspectRatio();
 		return textureAspect * height;
 	}
 
 	private void _drawTextElement(float left, float bottom, float right, float top, int labelTexture)
 	{
-		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, labelTexture);
+		_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, labelTexture);
 		_drawCommonRect(left, bottom, right, top);
 	}
 
 	private void _drawOverlayFrame(int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{
 		// We want draw the frame and then the space on top of that.
-		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, outlineTexture);
+		_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, outlineTexture);
 		_drawCommonRect(left - OUTLINE_SIZE, bottom - OUTLINE_SIZE, right + OUTLINE_SIZE, top + OUTLINE_SIZE);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, backgroundTexture);
+		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, backgroundTexture);
 		_drawCommonRect(left, bottom, right, top);
 	}
 
@@ -815,10 +665,10 @@ public class WindowManager
 		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
 		float xScale = (right - left);
 		float yScale = (top - bottom);
-		_gl.glUniform2f(_uOffset, left, bottom);
-		_gl.glUniform2f(_uScale, xScale, yScale);
-		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
-		_verticesUnitSquare.drawAllTriangles(_gl);
+		_ui.gl.glUniform2f(_ui.uOffset, left, bottom);
+		_ui.gl.glUniform2f(_ui.uScale, xScale, yScale);
+		_ui.gl.glUniform2f(_ui.uTextureBaseOffset, 0.0f, 0.0f);
+		_ui.verticesUnitSquare.drawAllTriangles(_ui.gl);
 	}
 
 	private void _drawItemRect(float left, float bottom, float right, float top, Item item)
@@ -827,39 +677,27 @@ public class WindowManager
 		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
 		float xScale = (right - left);
 		float yScale = (top - bottom);
-		float[] itemTextureBase = _itemAtlas.baseOfTexture(item.number(), ItemVariant.NONE);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
-		_gl.glUniform2f(_uOffset, left, bottom);
-		_gl.glUniform2f(_uScale, xScale, yScale);
-		_gl.glUniform2f(_uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
-		_verticesItemSquare.drawAllTriangles(_gl);
+		float[] itemTextureBase = _ui.itemAtlas.baseOfTexture(item.number(), ItemVariant.NONE);
+		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.itemAtlas.texture);
+		_ui.gl.glUniform2f(_ui.uOffset, left, bottom);
+		_ui.gl.glUniform2f(_ui.uScale, xScale, yScale);
+		_ui.gl.glUniform2f(_ui.uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
+		_ui.verticesItemSquare.drawAllTriangles(_ui.gl);
 	}
 
 	private void _drawReticle(float xScale, float yScale)
 	{
 		// NOTE:  This assumes that texture unit 0 is already bound to the appropriate texture.
 		// The reticle is full-sized so scale it at the origin (where it started).
-		_gl.glUniform2f(_uOffset, 0.0f, 0.0f);
-		_gl.glUniform2f(_uScale, xScale, yScale);
-		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
-		_verticesReticleLines.drawAllLines(_gl);
+		_ui.gl.glUniform2f(_ui.uOffset, 0.0f, 0.0f);
+		_ui.gl.glUniform2f(_ui.uScale, xScale, yScale);
+		_ui.gl.glUniform2f(_ui.uTextureBaseOffset, 0.0f, 0.0f);
+		_ui.verticesReticleLines.drawAllLines(_ui.gl);
 	}
 
 	private static boolean _isMouseOver(float left, float bottom, float right, float top, float glX, float glY)
 	{
 		return ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
-	}
-
-	private static int _makePixelRgba(GL20 gl, ByteBuffer textureBufferData, byte r, byte g, byte b, byte a)
-	{
-		int texture = gl.glGenTexture();
-		textureBufferData.clear();
-		textureBufferData.put(new byte[] { r, g, b, a });
-		textureBufferData.flip();
-		gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
-		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGBA, 1, 1, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
-		return texture;
 	}
 
 	private Inventory _getEntityInventory()
