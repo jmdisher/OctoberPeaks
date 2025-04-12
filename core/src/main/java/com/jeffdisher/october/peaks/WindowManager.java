@@ -14,8 +14,12 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
+import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.Point;
+import com.jeffdisher.october.peaks.ui.Rect;
+import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -66,7 +70,6 @@ public class WindowManager
 	private final Map<Integer, String> _otherPlayersById;
 	private final Set<Block> _waterBlockTypes;
 	private final Set<Block> _lavaBlockTypes;
-	private Entity _projectedEntity;
 	private AbsoluteLocation _eyeBlockLocation;
 	private boolean _isPaused;
 
@@ -76,6 +79,12 @@ public class WindowManager
 	public final ItemRenderer<CraftDescription> renderCraftOperation;
 	public final HoverRenderer<Item> hoverItem;
 	public final HoverRenderer<CraftDescription> hoverCraftOperation;
+
+	// Data bindings populated by updates and read when rendering windows in the mode.
+	private final Binding<Entity> _entityBinding;
+
+	// The window definitions to be used when rendering specific modes.
+	private final Window<Entity> _metaDataWindow;
 
 	public WindowManager(Environment env, GL20 gl, TextureAtlas<ItemVariant> itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
@@ -159,6 +168,16 @@ public class WindowManager
 				inputLeft += WINDOW_ITEM_SIZE + WINDOW_MARGIN;
 			}
 		};
+		
+		// Define the data bindings used by the window system.
+		_entityBinding = new Binding<>();
+		
+		// Define the windows for different UI modes.
+		Rect metaDataLocation = new Rect(META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * SMALL_TEXT_HEIGHT);
+		IView<Entity> metaDataRender = (Rect location, Binding<Entity> binding) -> {
+			_drawEntityMetaData(location, binding);
+		};
+		_metaDataWindow = new Window<>(metaDataLocation, metaDataRender, _entityBinding);
 	}
 
 	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
@@ -192,10 +211,10 @@ public class WindowManager
 		}
 		
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _projectedEntity)
+		if (null != _entityBinding.data)
 		{
 			_drawHotbar();
-			_drawEntityMetaData();
+			_metaDataWindow.view().render(_metaDataWindow.location(), _metaDataWindow.binding());
 		}
 		
 		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
@@ -290,7 +309,7 @@ public class WindowManager
 
 	public void setThisEntity(Entity projectedEntity)
 	{
-		_projectedEntity = projectedEntity;
+		_entityBinding.data = projectedEntity;
 	}
 
 	public void otherPlayerJoined(int clientId, String name)
@@ -326,8 +345,8 @@ public class WindowManager
 		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
 		float nextLeftButton = - hotbarWidth / 2.0f;
 		Inventory entityInventory = _getEntityInventory();
-		int[] hotbarKeys = _projectedEntity.hotbarItems();
-		int activeIndex = _projectedEntity.hotbarIndex();
+		int[] hotbarKeys = _entityBinding.data.hotbarItems();
+		int activeIndex = _entityBinding.data.hotbarIndex();
 		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 		{
 			int outline = (activeIndex == i)
@@ -358,30 +377,30 @@ public class WindowManager
 		}
 	}
 
-	private void _drawEntityMetaData()
+	private void _drawEntityMetaData(Rect location, Binding<Entity> binding)
 	{
-		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * SMALL_TEXT_HEIGHT);
+		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 		
-		float valueMargin = META_DATA_BOX_LEFT + META_DATA_LABEL_WIDTH;
+		float valueMargin = location.leftX() + META_DATA_LABEL_WIDTH;
 		
 		// We will use the greater of authoritative and projected for most of these stats.
 		// That way, we get the stability of the authoritative numbers but the quick response to eating/breathing actions)
-		byte health = _projectedEntity.health();
-		float base = META_DATA_BOX_BOTTOM + 2.0f * SMALL_TEXT_HEIGHT;
+		byte health = binding.data.health();
+		float base = location.bottomY() + 2.0f * SMALL_TEXT_HEIGHT;
 		float top = base + SMALL_TEXT_HEIGHT;
-		_ui.drawLabel(META_DATA_BOX_LEFT, base, top, "Health");
+		_ui.drawLabel(location.leftX(), base, top, "Health");
 		_ui.drawLabel(valueMargin, base, top, Byte.toString(health));
 		
-		byte food = _projectedEntity.food();
-		base = META_DATA_BOX_BOTTOM + 1.0f * SMALL_TEXT_HEIGHT;
+		byte food = binding.data.food();
+		base = location.bottomY() + 1.0f * SMALL_TEXT_HEIGHT;
 		top = base + SMALL_TEXT_HEIGHT;
-		_ui.drawLabel(META_DATA_BOX_LEFT, base, top, "Food");
+		_ui.drawLabel(location.leftX(), base, top, "Food");
 		_ui.drawLabel(valueMargin, base, top, Byte.toString(food));
 		
-		int breath = _projectedEntity.breath();
-		base = META_DATA_BOX_BOTTOM + 0.0f * SMALL_TEXT_HEIGHT;
+		int breath = binding.data.breath();
+		base = location.bottomY() + 0.0f * SMALL_TEXT_HEIGHT;
 		top = base + SMALL_TEXT_HEIGHT;
-		_ui.drawLabel(META_DATA_BOX_LEFT, base, top, "Breath");
+		_ui.drawLabel(location.leftX(), base, top, "Breath");
 		_ui.drawLabel(valueMargin, base, top, Integer.toString(breath));
 	}
 
@@ -636,9 +655,9 @@ public class WindowManager
 
 	private Inventory _getEntityInventory()
 	{
-		Inventory inventory = _projectedEntity.isCreativeMode()
+		Inventory inventory = _entityBinding.data.isCreativeMode()
 				? CreativeInventory.fakeInventory()
-				: _projectedEntity.inventory()
+				: _entityBinding.data.inventory()
 		;
 		return inventory;
 	}
