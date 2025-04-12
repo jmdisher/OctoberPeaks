@@ -16,6 +16,7 @@ import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -27,17 +28,17 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class GlUi
 {
-	public final GL20 gl;
-	public final TextureAtlas<ItemVariant> itemAtlas;
+	private final GL20 _gl;
+	private final TextureAtlas<ItemVariant> _itemAtlas;
+	private final Program _program;
+	private final int _uOffset;
+	private final int _uScale;
+	private final int _uTexture;
+	private final int _uTextureBaseOffset;
+	private final VertexArray _verticesUnitSquare;
+	private final VertexArray _verticesItemSquare;
+	private final VertexArray _verticesReticleLines;
 	public final TextManager textManager;
-	public final Program program;
-	public final int uOffset;
-	public final int uScale;
-	public final int uTexture;
-	public final int uTextureBaseOffset;
-	public final VertexArray verticesUnitSquare;
-	public final VertexArray verticesItemSquare;
-	public final VertexArray verticesReticleLines;
 	public final int pixelLightGrey;
 	public final int pixelDarkGreyAlpha;
 	public final int pixelRed;
@@ -48,9 +49,8 @@ public class GlUi
 
 	public GlUi(GL20 gl, TextureAtlas<ItemVariant> itemAtlas)
 	{
-		this.gl = gl;
-		this.itemAtlas = itemAtlas;
-		this.textManager = new TextManager(this.gl);
+		_gl = gl;
+		_itemAtlas = itemAtlas;
 		
 		// Create the program we will use for the window overlays.
 		// The overlays are all rectangular tiles representing windows, graphic tiles, or text tiles.
@@ -58,7 +58,7 @@ public class GlUi
 		// location to place and size it correctly.
 		// In order to simplify the usage, we will assume that all colour data originates in textures (but some of the
 		// textures may just be single-pixel colour data).
-		this.program = Program.fullyLinkedProgram(this.gl
+		_program = Program.fullyLinkedProgram(_gl
 				, _readUtf8Asset("windows.vert")
 				, _readUtf8Asset("windows.frag")
 				, new String[] {
@@ -66,13 +66,13 @@ public class GlUi
 						"aTexture",
 				}
 		);
-		this.uOffset = this.program.getUniformLocation("uOffset");
-		this.uScale = this.program.getUniformLocation("uScale");
-		this.uTexture = this.program.getUniformLocation("uTexture");
-		this.uTextureBaseOffset = this.program.getUniformLocation("uTextureBaseOffset");
+		_uOffset = _program.getUniformLocation("uOffset");
+		_uScale = _program.getUniformLocation("uScale");
+		_uTexture = _program.getUniformLocation("uTexture");
+		_uTextureBaseOffset = _program.getUniformLocation("uTextureBaseOffset");
 		
 		// Create the scratch buffer we will use for out graphics data (short-lived).
-		int floatsPerVertex = Arrays.stream(this.program.attributes)
+		int floatsPerVertex = Arrays.stream(_program.attributes)
 				.map((Attribute attribute) -> attribute.floats())
 				.collect(Collectors.summingInt((Integer i) -> i))
 		;
@@ -81,45 +81,103 @@ public class GlUi
 		buffer.order(ByteOrder.nativeOrder());
 		FloatBuffer meshBuffer = buffer.asFloatBuffer();
 		// Create the unit square we will use for common vertices.
-		this.verticesUnitSquare = _defineCommonVertices(this.gl, this.program, meshBuffer, 1.0f);
+		_verticesUnitSquare = _defineCommonVertices(_gl, _program, meshBuffer, 1.0f);
 		// Create the unit square we can configure for item drawing
-		this.verticesItemSquare = _defineCommonVertices(this.gl, this.program, meshBuffer, this.itemAtlas.coordinateSize);
-		this.verticesReticleLines = _defineReticleVertices(this.gl, this.program, meshBuffer);
+		_verticesItemSquare = _defineCommonVertices(_gl, _program, meshBuffer, _itemAtlas.coordinateSize);
+		_verticesReticleLines = _defineReticleVertices(_gl, _program, meshBuffer);
+		
+		// The text manager is still public since some callers need to issue specific queries to it to mouse-over handling.
+		this.textManager = new TextManager(_gl);
 		
 		// Build the initial pixel textures.
 		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(4);
 		textureBufferData.order(ByteOrder.nativeOrder());
 		
 		// We use a light grey pixel for a window "frame".
-		this.pixelLightGrey = _makePixelRgba(this.gl, textureBufferData, (byte)180, (byte)180, (byte)180, (byte)255);
+		this.pixelLightGrey = _makePixelRgba(_gl, textureBufferData, (byte)180, (byte)180, (byte)180, (byte)255);
 		
 		// We use a dark grey pixel, with partial alpha, for a window "background".
-		this.pixelDarkGreyAlpha = _makePixelRgba(this.gl, textureBufferData, (byte)32, (byte)32, (byte)32, (byte)196);
+		this.pixelDarkGreyAlpha = _makePixelRgba(_gl, textureBufferData, (byte)32, (byte)32, (byte)32, (byte)196);
 		
 		// We use the Red/Green pixels for outlines of frames in a few cases.
-		this.pixelRed = _makePixelRgba(this.gl, textureBufferData, (byte)255, (byte)0, (byte)0, (byte)255);
-		this.pixelGreen = _makePixelRgba(this.gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)255);
+		this.pixelRed = _makePixelRgba(_gl, textureBufferData, (byte)255, (byte)0, (byte)0, (byte)255);
+		this.pixelGreen = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)255);
 		
 		// We use the semi-transparent green for "progress" overlays.
-		this.pixelGreenAlpha = _makePixelRgba(this.gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)100);
+		this.pixelGreenAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)255, (byte)0, (byte)100);
 		
 		// We use the semi-transparent blue for "under water" overlay layer.
-		this.pixelBlueAlpha = _makePixelRgba(this.gl, textureBufferData, (byte)0, (byte)0, (byte)255, (byte)100);
+		this.pixelBlueAlpha = _makePixelRgba(_gl, textureBufferData, (byte)0, (byte)0, (byte)255, (byte)100);
 		
 		// We use a mostly-opaque orange for "under lava" overlay layer.
-		this.pixelOrangeLava = _makePixelRgba(this.gl, textureBufferData, (byte)255, (byte)69, (byte)0, (byte)220);
+		this.pixelOrangeLava = _makePixelRgba(_gl, textureBufferData, (byte)255, (byte)69, (byte)0, (byte)220);
 		
-		Assert.assertTrue(GL20.GL_NO_ERROR == this.gl.glGetError());
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+	}
+
+	public void enterUiRenderMode()
+	{
+		// We use the orthographic projection and no depth buffer for all overlay windows.
+		_gl.glDisable(GL20.GL_DEPTH_TEST);
+		_gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
+		_program.useProgram();
+		_gl.glUniform1i(_uTexture, 0);
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+	}
+
+	public void drawWholeTextureRect(int texture, float left, float bottom, float right, float top)
+	{
+		_drawWholeTextureRect(texture, left, bottom, right, top);
+	}
+
+	public void drawReticle(float xScale, float yScale)
+	{
+		// We will use the highlight texture for the reticle.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, this.pixelLightGrey);
+		_gl.glUniform2f(_uOffset, 0.0f, 0.0f);
+		_gl.glUniform2f(_uScale, xScale, yScale);
+		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
+		_verticesReticleLines.drawAllLines(_gl);
+	}
+
+	public void drawItemTextureRect(Item item, float left, float bottom, float right, float top)
+	{
+		float[] itemTextureBase = _itemAtlas.baseOfTexture(item.number(), ItemVariant.NONE);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _itemAtlas.texture);
+		float xScale = (right - left);
+		float yScale = (top - bottom);
+		_gl.glUniform2f(_uOffset, left, bottom);
+		_gl.glUniform2f(_uScale, xScale, yScale);
+		_gl.glUniform2f(_uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
+		_verticesItemSquare.drawAllTriangles(_gl);
+	}
+
+	public float getLabelWidth(float height, String label)
+	{
+		TextManager.Element element = this.textManager.lazilyLoadStringTexture(label);
+		float textureAspect = element.aspectRatio();
+		return textureAspect * height;
+	}
+
+	public float drawLabel(float left, float bottom, float top, String label)
+	{
+		TextManager.Element element = this.textManager.lazilyLoadStringTexture(label);
+		float textureAspect = element.aspectRatio();
+		float right = left + textureAspect * (top - bottom);
+		_drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
+		return right;
 	}
 
 	public void shutdown()
 	{
 		// We don't own _itemAtlas.
 		this.textManager.shutdown();
-		this.program.delete();
-		this.verticesUnitSquare.delete(this.gl);
-		this.verticesItemSquare.delete(this.gl);
-		this.verticesReticleLines.delete(this.gl);
+		_program.delete();
+		_verticesUnitSquare.delete(_gl);
+		_verticesItemSquare.delete(_gl);
+		_verticesReticleLines.delete(_gl);
 	}
 
 
@@ -190,5 +248,18 @@ public class GlUi
 		gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGBA, 1, 1, 0, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
 		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
 		return texture;
+	}
+
+	private void _drawWholeTextureRect(int texture, float left, float bottom, float right, float top)
+	{
+		// This helper assumes that we are drawing the full texture (used for pixels and text, not item atlasses, etc).
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
+		float xScale = (right - left);
+		float yScale = (top - bottom);
+		_gl.glUniform2f(_uOffset, left, bottom);
+		_gl.glUniform2f(_uScale, xScale, yScale);
+		_gl.glUniform2f(_uTextureBaseOffset, 0.0f, 0.0f);
+		_verticesUnitSquare.drawAllTriangles(_gl);
 	}
 }

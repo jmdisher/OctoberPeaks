@@ -129,7 +129,7 @@ public class WindowManager
 			String name = item.craft.name;
 			
 			// Calculate the dimensions (we have a title and then a list of input items below this).
-			float widthOfTitle = _getLabelWidth(WINDOW_TITLE_HEIGHT, name);
+			float widthOfTitle = _ui.getLabelWidth(WINDOW_TITLE_HEIGHT, name);
 			float widthOfItems = (float)item.input.length * WINDOW_ITEM_SIZE + (float)(item.input.length + 1) * WINDOW_MARGIN;
 			float widthOfHover = Math.max(widthOfTitle, widthOfItems);
 			float heightOfHover = WINDOW_TITLE_HEIGHT + WINDOW_ITEM_SIZE + 3 * WINDOW_MARGIN;
@@ -138,7 +138,7 @@ public class WindowManager
 			_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
 			
 			// Draw the title.
-			_drawLabel(glX, glY - WINDOW_TITLE_HEIGHT, glY, name);
+			_ui.drawLabel(glX, glY - WINDOW_TITLE_HEIGHT, glY, name);
 			
 			// Draw the inputs.
 			float inputLeft = glX + WINDOW_MARGIN;
@@ -169,12 +169,7 @@ public class WindowManager
 			, float glY
 	)
 	{
-		// We use the orthographic projection and no depth buffer for all overlay windows.
-		_ui.gl.glDisable(GL20.GL_DEPTH_TEST);
-		_ui.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);
-		_ui.program.useProgram();
-		_ui.gl.glUniform1i(_ui.uTexture, 0);
-		Assert.assertTrue(GL20.GL_NO_ERROR == _ui.gl.glGetError());
+		_ui.enterUiRenderMode();
 		
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
 		if (null != _eyeBlockLocation)
@@ -185,15 +180,11 @@ public class WindowManager
 				Block blockType = eyeProxy.getBlock();
 				if (_waterBlockTypes.contains(blockType))
 				{
-					_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
-					_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelBlueAlpha);
-					_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 				}
 				else if (_lavaBlockTypes.contains(blockType))
 				{
-					_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
-					_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelOrangeLava);
-					_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
 				}
 			}
 		}
@@ -203,7 +194,6 @@ public class WindowManager
 		{
 			_drawHotbar();
 			_drawEntityMetaData();
-			Assert.assertTrue(GL20.GL_NO_ERROR == _ui.gl.glGetError());
 		}
 		
 		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
@@ -273,10 +263,7 @@ public class WindowManager
 				_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, textToShow);
 			}
 			
-			// We will use the highlight texture for the reticle.
-			_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
-			_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelLightGrey);
-			_drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+			_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		}
 		
 		// If we should be rendering a hover, do it here.
@@ -289,12 +276,10 @@ public class WindowManager
 		if (_isPaused)
 		{
 			// Draw the overlay to dim the window.
-			_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
-			_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelDarkGreyAlpha);
-			_drawCommonRect(-1.0f, -1.0f, 1.0f, 1.0f);
+			_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 			
 			// Draw the paused text.
-			_drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
+			_ui.drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
 		}
 		
 		// Allow any periodic cleanup.
@@ -382,20 +367,20 @@ public class WindowManager
 		byte health = _projectedEntity.health();
 		float base = META_DATA_BOX_BOTTOM + 2.0f * SMALL_TEXT_HEIGHT;
 		float top = base + SMALL_TEXT_HEIGHT;
-		_drawLabel(META_DATA_BOX_LEFT, base, top, "Health");
-		_drawLabel(valueMargin, base, top, Byte.toString(health));
+		_ui.drawLabel(META_DATA_BOX_LEFT, base, top, "Health");
+		_ui.drawLabel(valueMargin, base, top, Byte.toString(health));
 		
 		byte food = _projectedEntity.food();
 		base = META_DATA_BOX_BOTTOM + 1.0f * SMALL_TEXT_HEIGHT;
 		top = base + SMALL_TEXT_HEIGHT;
-		_drawLabel(META_DATA_BOX_LEFT, base, top, "Food");
-		_drawLabel(valueMargin, base, top, Byte.toString(food));
+		_ui.drawLabel(META_DATA_BOX_LEFT, base, top, "Food");
+		_ui.drawLabel(valueMargin, base, top, Byte.toString(food));
 		
 		int breath = _projectedEntity.breath();
 		base = META_DATA_BOX_BOTTOM + 0.0f * SMALL_TEXT_HEIGHT;
 		top = base + SMALL_TEXT_HEIGHT;
-		_drawLabel(META_DATA_BOX_LEFT, base, top, "Breath");
-		_drawLabel(valueMargin, base, top, Integer.toString(breath));
+		_ui.drawLabel(META_DATA_BOX_LEFT, base, top, "Breath");
+		_ui.drawLabel(valueMargin, base, top, Integer.toString(breath));
 	}
 
 	// Returns a Runnable to draw the hover, if it was detected here.
@@ -405,13 +390,13 @@ public class WindowManager
 		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
 		
 		// Draw the title.
-		float labelRight = _drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
+		float labelRight = _ui.drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
 		float rightEdgeOfTitle = labelRight;
 		if (data.maxSize > 0)
 		{
 			String extraTitle = String.format("(%d/%d)", data.usedSize, data.maxSize);
 			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			rightEdgeOfTitle = _drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
+			rightEdgeOfTitle = _ui.drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
 		}
 		
 		// If there is fuel, draw that item to the right of the title.
@@ -496,7 +481,7 @@ public class WindowManager
 				}
 			}
 			String label = (currentPage + 1) + " / " + pageCount;
-			_drawLabel(dimensions.rightX - 0.2f, buttonBase, buttonTop, label);
+			_ui.drawLabel(dimensions.rightX - 0.2f, buttonBase, buttonTop, label);
 			if (canPageForward)
 			{
 				float left = dimensions.rightX - 0.1f;
@@ -544,7 +529,7 @@ public class WindowManager
 		_drawOverlayFrame(backgroundTexture, outlineTexture, left, bottom, right, top);
 		
 		// Draw the item.
-		_drawItemRect(left, bottom, right, top, item);
+		_ui.drawItemTextureRect(item, left, bottom, right, top);
 		
 		// Draw the number in the corner (only if it is non-zero).
 		if (count > 0)
@@ -553,15 +538,14 @@ public class WindowManager
 			// We want to draw the text in the bottom-left of the box, at half-height.
 			float vDelta = (top - bottom) / 2.0f;
 			float hDelta = vDelta * element.aspectRatio();
-			_drawTextElement(left, bottom, left + hDelta, bottom + vDelta, element.textureObject());
+			_ui.drawWholeTextureRect(element.textureObject(), left, bottom, left + hDelta, bottom + vDelta);
 		}
 		
 		// If there is a progress bar, draw it on top.
 		if (progress > 0.0f)
 		{
-			_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.pixelGreenAlpha);
 			float progressTop = bottom + (top - bottom) * progress;
-			_drawCommonRect(left, bottom, right, progressTop);
+			_ui.drawWholeTextureRect(_ui.pixelGreenAlpha, left, bottom, right, progressTop);
 		}
 	}
 
@@ -622,77 +606,15 @@ public class WindowManager
 		;
 		
 		_drawOverlayFrame(backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
-		_drawTextElement(left, bottom, right, top, element.textureObject());
+		_ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 		return isMouseOver;
-	}
-
-	private float _drawLabel(float left, float bottom, float top, String label)
-	{
-		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(label);
-		float textureAspect = element.aspectRatio();
-		float right = left + textureAspect * (top - bottom);
-		_drawTextElement(left, bottom, right, top, element.textureObject());
-		return right;
-	}
-
-	private float _getLabelWidth(float height, String label)
-	{
-		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(label);
-		float textureAspect = element.aspectRatio();
-		return textureAspect * height;
-	}
-
-	private void _drawTextElement(float left, float bottom, float right, float top, int labelTexture)
-	{
-		_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, labelTexture);
-		_drawCommonRect(left, bottom, right, top);
 	}
 
 	private void _drawOverlayFrame(int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{
 		// We want draw the frame and then the space on top of that.
-		_ui.gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, outlineTexture);
-		_drawCommonRect(left - OUTLINE_SIZE, bottom - OUTLINE_SIZE, right + OUTLINE_SIZE, top + OUTLINE_SIZE);
-		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, backgroundTexture);
-		_drawCommonRect(left, bottom, right, top);
-	}
-
-	private void _drawCommonRect(float left, float bottom, float right, float top)
-	{
-		// NOTE:  This assumes that texture unit 0 is already bound to the appropriate texture.
-		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
-		float xScale = (right - left);
-		float yScale = (top - bottom);
-		_ui.gl.glUniform2f(_ui.uOffset, left, bottom);
-		_ui.gl.glUniform2f(_ui.uScale, xScale, yScale);
-		_ui.gl.glUniform2f(_ui.uTextureBaseOffset, 0.0f, 0.0f);
-		_ui.verticesUnitSquare.drawAllTriangles(_ui.gl);
-	}
-
-	private void _drawItemRect(float left, float bottom, float right, float top, Item item)
-	{
-		// Unlike _drawCommonRect, this will bind the texture for the item.
-		// The unit vertex buffer has 0.0 - 1.0 on both axes so scale within that.
-		float xScale = (right - left);
-		float yScale = (top - bottom);
-		float[] itemTextureBase = _ui.itemAtlas.baseOfTexture(item.number(), ItemVariant.NONE);
-		_ui.gl.glBindTexture(GL20.GL_TEXTURE_2D, _ui.itemAtlas.texture);
-		_ui.gl.glUniform2f(_ui.uOffset, left, bottom);
-		_ui.gl.glUniform2f(_ui.uScale, xScale, yScale);
-		_ui.gl.glUniform2f(_ui.uTextureBaseOffset, itemTextureBase[0], itemTextureBase[1]);
-		_ui.verticesItemSquare.drawAllTriangles(_ui.gl);
-	}
-
-	private void _drawReticle(float xScale, float yScale)
-	{
-		// NOTE:  This assumes that texture unit 0 is already bound to the appropriate texture.
-		// The reticle is full-sized so scale it at the origin (where it started).
-		_ui.gl.glUniform2f(_ui.uOffset, 0.0f, 0.0f);
-		_ui.gl.glUniform2f(_ui.uScale, xScale, yScale);
-		_ui.gl.glUniform2f(_ui.uTextureBaseOffset, 0.0f, 0.0f);
-		_ui.verticesReticleLines.drawAllLines(_ui.gl);
+		_ui.drawWholeTextureRect(outlineTexture, left - OUTLINE_SIZE, bottom - OUTLINE_SIZE, right + OUTLINE_SIZE, top + OUTLINE_SIZE);
+		_ui.drawWholeTextureRect(backgroundTexture, left, bottom, right, top);
 	}
 
 	private static boolean _isMouseOver(float left, float bottom, float right, float top, float glX, float glY)
