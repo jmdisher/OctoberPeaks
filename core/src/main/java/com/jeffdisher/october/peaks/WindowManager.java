@@ -85,6 +85,7 @@ public class WindowManager
 
 	// The window definitions to be used when rendering specific modes.
 	private final Window<Entity> _metaDataWindow;
+	private final Window<Entity> _hotbarWindow;
 
 	public WindowManager(Environment env, GL20 gl, TextureAtlas<ItemVariant> itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
 	{
@@ -178,6 +179,13 @@ public class WindowManager
 			_drawEntityMetaData(location, binding);
 		};
 		_metaDataWindow = new Window<>(metaDataLocation, metaDataRender, _entityBinding);
+		
+		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
+		Rect hotbarLocation = new Rect(- hotbarWidth / 2.0f, HOTBAR_BOTTOM_Y, hotbarWidth / 2.0f, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
+		IView<Entity> hotbarRender = (Rect location, Binding<Entity> binding) -> {
+			_drawHotbar(location, binding, HOTBAR_ITEM_SCALE, HOTBAR_ITEM_SPACING);
+		};
+		_hotbarWindow = new Window<>(hotbarLocation, hotbarRender, _entityBinding);
 	}
 
 	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
@@ -213,7 +221,7 @@ public class WindowManager
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.data)
 		{
-			_drawHotbar();
+			_hotbarWindow.view().render(_hotbarWindow.location(), _hotbarWindow.binding());
 			_metaDataWindow.view().render(_metaDataWindow.location(), _metaDataWindow.binding());
 		}
 		
@@ -340,13 +348,12 @@ public class WindowManager
 	}
 
 
-	private void _drawHotbar()
+	private void _drawHotbar(Rect location, Binding<Entity> binding, float itemScale, float itemSpacing)
 	{
-		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
-		float nextLeftButton = - hotbarWidth / 2.0f;
+		float nextLeftButton = location.leftX();
 		Inventory entityInventory = _getEntityInventory();
-		int[] hotbarKeys = _entityBinding.data.hotbarItems();
-		int activeIndex = _entityBinding.data.hotbarIndex();
+		int[] hotbarKeys = binding.data.hotbarItems();
+		int activeIndex = binding.data.hotbarIndex();
 		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 		{
 			int outline = (activeIndex == i)
@@ -357,7 +364,7 @@ public class WindowManager
 			if (0 == thisKey)
 			{
 				// No item so just draw the frame.
-				_drawOverlayFrame(_ui.pixelDarkGreyAlpha, outline, nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
+				_drawOverlayFrame(_ui.pixelDarkGreyAlpha, outline, nextLeftButton, location.bottomY(), nextLeftButton + itemScale, location.topY());
 			}
 			else
 			{
@@ -365,15 +372,15 @@ public class WindowManager
 				Items stack = entityInventory.getStackForKey(thisKey);
 				if (null != stack)
 				{
-					_renderStackableItem(nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE, outline, stack, false);
+					_renderStackableItem(nextLeftButton, location.bottomY(), nextLeftButton + itemScale, location.topY(), outline, stack, false);
 				}
 				else
 				{
 					NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-					_renderNonStackableItem(nextLeftButton, HOTBAR_BOTTOM_Y, nextLeftButton + HOTBAR_ITEM_SCALE, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE, outline, nonStack, false);
+					_renderNonStackableItem(nextLeftButton, location.bottomY(), nextLeftButton + itemScale, location.topY(), outline, nonStack, false);
 				}
 			}
-			nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
+			nextLeftButton += itemScale + itemSpacing;
 		}
 	}
 
