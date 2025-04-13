@@ -16,17 +16,16 @@ import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
-import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.Point;
-import com.jeffdisher.october.peaks.ui.Rect;
+import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
+import com.jeffdisher.october.peaks.ui.WindowHotbar;
+import com.jeffdisher.october.peaks.ui.WindowMetaData;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
-import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
-import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -40,15 +39,7 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class WindowManager
 {
-	public static final float OUTLINE_SIZE = 0.01f;
-	public static final float HOTBAR_ITEM_SCALE = 0.1f;
-	public static final float HOTBAR_ITEM_SPACING = 0.05f;
-	public static final float HOTBAR_BOTTOM_Y = -0.95f;
 	public static final float GENERAL_TEXT_HEIGHT = 0.1f;
-	public static final float SMALL_TEXT_HEIGHT = 0.05f;
-	public static final float META_DATA_LABEL_WIDTH = 0.1f;
-	public static final float META_DATA_BOX_LEFT = 0.8f;
-	public static final float META_DATA_BOX_BOTTOM = -0.95f;
 	public static final float SELECTED_BOX_LEFT = 0.05f;
 	public static final float SELECTED_BOX_BOTTOM = 0.90f;
 	public static final float ARMOUR_SLOT_SCALE = 0.1f;
@@ -108,10 +99,10 @@ public class WindowManager
 		
 		// Set up our public rendering helpers.
 		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
-			_renderStackableItem(left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
+			UiIdioms.renderStackableItem(_ui, left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
 		};
 		this.renderNonStackable = (float left, float bottom, float right, float top, NonStackableItem item, boolean isMouseOver) -> {
-			_renderNonStackableItem(left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
+			UiIdioms.renderNonStackableItem(_ui, left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
 		};
 		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftDescription item, boolean isMouseOver) -> {
 			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
@@ -129,7 +120,7 @@ public class WindowManager
 					? _ui.pixelGreen
 					: _ui.pixelRed
 			;
-			_renderItem(left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, item.canBeSelected ? isMouseOver : false);
+			UiIdioms.renderItem(_ui, left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, item.canBeSelected ? isMouseOver : false);
 		};
 		this.hoverItem = (Point cursor, Item item) -> {
 			// Just draw the name.
@@ -148,7 +139,7 @@ public class WindowManager
 			float glY = cursor.y();
 			
 			// We can now draw the frame.
-			_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
+			UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
 			
 			// Draw the title.
 			_ui.drawLabel(glX, glY - WINDOW_TITLE_HEIGHT, glY, name);
@@ -165,7 +156,7 @@ public class WindowManager
 						? _ui.pixelGreen
 						: _ui.pixelRed
 				;
-				_renderItem(inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, outlineTexture, items.type, items.required, noProgress, isMouseOver);
+				UiIdioms.renderItem(_ui, inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, outlineTexture, items.type, items.required, noProgress, isMouseOver);
 				inputLeft += WINDOW_ITEM_SIZE + WINDOW_MARGIN;
 			}
 		};
@@ -174,18 +165,8 @@ public class WindowManager
 		_entityBinding = new Binding<>();
 		
 		// Define the windows for different UI modes.
-		Rect metaDataLocation = new Rect(META_DATA_BOX_LEFT, META_DATA_BOX_BOTTOM, META_DATA_BOX_LEFT + 1.5f * META_DATA_LABEL_WIDTH, META_DATA_BOX_BOTTOM + 3.0f * SMALL_TEXT_HEIGHT);
-		IView<Entity> metaDataRender = (Rect location, Binding<Entity> binding) -> {
-			_drawEntityMetaData(location, binding);
-		};
-		_metaDataWindow = new Window<>(metaDataLocation, metaDataRender, _entityBinding);
-		
-		float hotbarWidth = ((float)Entity.HOTBAR_SIZE * HOTBAR_ITEM_SCALE) + ((float)(Entity.HOTBAR_SIZE - 1) * HOTBAR_ITEM_SPACING);
-		Rect hotbarLocation = new Rect(- hotbarWidth / 2.0f, HOTBAR_BOTTOM_Y, hotbarWidth / 2.0f, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
-		IView<Entity> hotbarRender = (Rect location, Binding<Entity> binding) -> {
-			_drawHotbar(location, binding, HOTBAR_ITEM_SCALE, HOTBAR_ITEM_SPACING);
-		};
-		_hotbarWindow = new Window<>(hotbarLocation, hotbarRender, _entityBinding);
+		_metaDataWindow = new Window<>(WindowMetaData.LOCATION, WindowMetaData.buildRenderer(_ui), _entityBinding);
+		_hotbarWindow = new Window<>(WindowHotbar.LOCATION, WindowHotbar.buildRenderer(_ui), _entityBinding);
 	}
 
 	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
@@ -348,74 +329,11 @@ public class WindowManager
 	}
 
 
-	private void _drawHotbar(Rect location, Binding<Entity> binding, float itemScale, float itemSpacing)
-	{
-		float nextLeftButton = location.leftX();
-		Inventory entityInventory = _getEntityInventory();
-		int[] hotbarKeys = binding.data.hotbarItems();
-		int activeIndex = binding.data.hotbarIndex();
-		for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
-		{
-			int outline = (activeIndex == i)
-					? _ui.pixelGreen
-					: _ui.pixelLightGrey
-			;
-			int thisKey = hotbarKeys[i];
-			if (0 == thisKey)
-			{
-				// No item so just draw the frame.
-				_drawOverlayFrame(_ui.pixelDarkGreyAlpha, outline, nextLeftButton, location.bottomY(), nextLeftButton + itemScale, location.topY());
-			}
-			else
-			{
-				// There is something here so render it.
-				Items stack = entityInventory.getStackForKey(thisKey);
-				if (null != stack)
-				{
-					_renderStackableItem(nextLeftButton, location.bottomY(), nextLeftButton + itemScale, location.topY(), outline, stack, false);
-				}
-				else
-				{
-					NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-					_renderNonStackableItem(nextLeftButton, location.bottomY(), nextLeftButton + itemScale, location.topY(), outline, nonStack, false);
-				}
-			}
-			nextLeftButton += itemScale + itemSpacing;
-		}
-	}
-
-	private void _drawEntityMetaData(Rect location, Binding<Entity> binding)
-	{
-		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
-		
-		float valueMargin = location.leftX() + META_DATA_LABEL_WIDTH;
-		
-		// We will use the greater of authoritative and projected for most of these stats.
-		// That way, we get the stability of the authoritative numbers but the quick response to eating/breathing actions)
-		byte health = binding.data.health();
-		float base = location.bottomY() + 2.0f * SMALL_TEXT_HEIGHT;
-		float top = base + SMALL_TEXT_HEIGHT;
-		_ui.drawLabel(location.leftX(), base, top, "Health");
-		_ui.drawLabel(valueMargin, base, top, Byte.toString(health));
-		
-		byte food = binding.data.food();
-		base = location.bottomY() + 1.0f * SMALL_TEXT_HEIGHT;
-		top = base + SMALL_TEXT_HEIGHT;
-		_ui.drawLabel(location.leftX(), base, top, "Food");
-		_ui.drawLabel(valueMargin, base, top, Byte.toString(food));
-		
-		int breath = binding.data.breath();
-		base = location.bottomY() + 0.0f * SMALL_TEXT_HEIGHT;
-		top = base + SMALL_TEXT_HEIGHT;
-		_ui.drawLabel(location.leftX(), base, top, "Breath");
-		_ui.drawLabel(valueMargin, base, top, Integer.toString(breath));
-	}
-
 	// Returns a Runnable to draw the hover, if it was detected here.
 	private <T> Runnable _drawWindow(WindowData<T> data, _WindowDimensions dimensions, Point cursor)
 	{
 		// Draw the window outline.
-		_drawOverlayFrame(_ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
+		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
 		
 		// Draw the title.
 		float labelRight = _ui.drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
@@ -433,7 +351,7 @@ public class WindowManager
 		{
 			float right = rightEdgeOfTitle + WINDOW_MARGIN;
 			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			_renderItem(right, bottom, right + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE, _ui.pixelGreen, optionalFuel.fuel, 0, optionalFuel.remainingFraction, false);
+			UiIdioms.renderItem(_ui, right, bottom, right + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE, _ui.pixelGreen, optionalFuel.fuel, 0, optionalFuel.remainingFraction, false);
 		}
 		
 		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
@@ -529,54 +447,6 @@ public class WindowManager
 		;
 	}
 
-	private void _renderStackableItem(float left, float bottom, float right, float top, int outlineTexture, Items item, boolean isMouseOver)
-	{
-		float noProgress = 0.0f;
-		_renderItem(left, bottom, right, top, outlineTexture, item.type(), item.count(), noProgress, isMouseOver);
-	}
-
-	private void _renderNonStackableItem(float left, float bottom, float right, float top, int outlineTexture, NonStackableItem item, boolean isMouseOver)
-	{
-		Item type = item.type();
-		int maxDurability = _env.durability.getDurability(type);
-		int count = 0;
-		float progress = (maxDurability > 0)
-				? (float)item.durability() / (float)maxDurability
-				: 0.0f
-		;
-		_renderItem(left, bottom, right, top, outlineTexture, type, count, progress, isMouseOver);
-	}
-
-	private void _renderItem(float left, float bottom, float right, float top, int outlineTexture, Item item, int count, float progress, boolean isMouseOver)
-	{
-		// Draw the background.
-		int backgroundTexture = isMouseOver
-				? _ui.pixelLightGrey
-				: _ui.pixelDarkGreyAlpha
-		;
-		_drawOverlayFrame(backgroundTexture, outlineTexture, left, bottom, right, top);
-		
-		// Draw the item.
-		_ui.drawItemTextureRect(item, left, bottom, right, top);
-		
-		// Draw the number in the corner (only if it is non-zero).
-		if (count > 0)
-		{
-			TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(Integer.toString(count));
-			// We want to draw the text in the bottom-left of the box, at half-height.
-			float vDelta = (top - bottom) / 2.0f;
-			float hDelta = vDelta * element.aspectRatio();
-			_ui.drawWholeTextureRect(element.textureObject(), left, bottom, left + hDelta, bottom + vDelta);
-		}
-		
-		// If there is a progress bar, draw it on top.
-		if (progress > 0.0f)
-		{
-			float progressTop = bottom + (top - bottom) * progress;
-			_ui.drawWholeTextureRect(_ui.pixelGreenAlpha, left, bottom, right, progressTop);
-		}
-	}
-
 	private void _drawArmourSlots(NonStackableItem[] armourSlots, Consumer<BodyPart> eventHoverBodyPart, Point cursor)
 	{
 		float nextTopSlot = ARMOUR_SLOT_TOP_EDGE;
@@ -594,7 +464,7 @@ public class WindowManager
 			if (null != armour)
 			{
 				// Draw this item.
-				_renderNonStackableItem(left, bottom, right, top, _ui.pixelLightGrey, armour, isMouseOver);
+				UiIdioms.renderNonStackableItem(_ui, left, bottom, right, top, _ui.pixelLightGrey, armour, isMouseOver);
 			}
 			else
 			{
@@ -604,7 +474,7 @@ public class WindowManager
 						: _ui.pixelDarkGreyAlpha
 				;
 				
-				_drawOverlayFrame(backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
+				UiIdioms.drawOverlayFrame(_ui, backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
 			}
 			if (isMouseOver)
 			{
@@ -632,16 +502,9 @@ public class WindowManager
 				: _ui.pixelDarkGreyAlpha
 		;
 		
-		_drawOverlayFrame(backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
+		UiIdioms.drawOverlayFrame(_ui, backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
 		_ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 		return isMouseOver;
-	}
-
-	private void _drawOverlayFrame(int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
-	{
-		// We want draw the frame and then the space on top of that.
-		_ui.drawWholeTextureRect(outlineTexture, left - OUTLINE_SIZE, bottom - OUTLINE_SIZE, right + OUTLINE_SIZE, top + OUTLINE_SIZE);
-		_ui.drawWholeTextureRect(backgroundTexture, left, bottom, right, top);
 	}
 
 	private static boolean _isMouseOver(float left, float bottom, float right, float top, Point cursor)
@@ -658,15 +521,6 @@ public class WindowManager
 			isOver = false;
 		}
 		return isOver;
-	}
-
-	private Inventory _getEntityInventory()
-	{
-		Inventory inventory = _entityBinding.data.isCreativeMode()
-				? CreativeInventory.fakeInventory()
-				: _entityBinding.data.inventory()
-		;
-		return inventory;
 	}
 
 
