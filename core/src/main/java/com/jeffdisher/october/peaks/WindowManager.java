@@ -73,12 +73,18 @@ public class WindowManager
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
+	private final Consumer<BodyPart> _eventHoverArmourBodyPart;
 
 	// The window definitions to be used when rendering specific modes.
 	private final Window<Entity> _metaDataWindow;
 	private final Window<Entity> _hotbarWindow;
 
-	public WindowManager(Environment env, GL20 gl, TextureAtlas<ItemVariant> itemAtlas, Function<AbsoluteLocation, BlockProxy> blockLookup)
+	public WindowManager(Environment env
+			, GL20 gl
+			, TextureAtlas<ItemVariant> itemAtlas
+			, Function<AbsoluteLocation, BlockProxy> blockLookup
+			, Consumer<BodyPart> eventHoverArmourBodyPart
+	)
 	{
 		_env = env;
 		_ui = new GlUi(gl, itemAtlas);
@@ -167,6 +173,7 @@ public class WindowManager
 		// Define the windows for different UI modes.
 		_metaDataWindow = new Window<>(WindowMetaData.LOCATION, WindowMetaData.buildRenderer(_ui), _entityBinding);
 		_hotbarWindow = new Window<>(WindowHotbar.LOCATION, WindowHotbar.buildRenderer(_ui), _entityBinding);
+		_eventHoverArmourBodyPart = eventHoverArmourBodyPart;
 	}
 
 	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
@@ -175,7 +182,6 @@ public class WindowManager
 			, WindowData<B> topRight
 			, WindowData<C> bottom
 			, NonStackableItem[] armourSlots
-			, Consumer<BodyPart> eventHoverBodyPart
 			, Point cursor
 	)
 	{
@@ -241,7 +247,7 @@ public class WindowManager
 		if (didDrawWindows)
 		{
 			// We are in windowed mode so also draw the armour slots.
-			_drawArmourSlots(armourSlots, eventHoverBodyPart, cursor);
+			_drawArmourSlots(armourSlots, cursor);
 		}
 		else
 		{
@@ -447,7 +453,7 @@ public class WindowManager
 		;
 	}
 
-	private void _drawArmourSlots(NonStackableItem[] armourSlots, Consumer<BodyPart> eventHoverBodyPart, Point cursor)
+	private void _drawArmourSlots(NonStackableItem[] armourSlots, Point cursor)
 	{
 		float nextTopSlot = ARMOUR_SLOT_TOP_EDGE;
 		for (int i = 0; i < 4; ++i)
@@ -478,7 +484,7 @@ public class WindowManager
 			}
 			if (isMouseOver)
 			{
-				eventHoverBodyPart.accept(BodyPart.values()[i]);
+				_eventHoverArmourBodyPart.accept(BodyPart.values()[i]);
 			}
 			
 			nextTopSlot -= ARMOUR_SLOT_SCALE + ARMOUR_SLOT_SPACING;

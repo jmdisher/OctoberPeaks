@@ -25,6 +25,7 @@ import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
@@ -95,7 +96,9 @@ public class OctoberPeaks extends ApplicationAdapter
 			throw new AssertionError("Startup scene", e);
 		}
 		_eyeEffect = new EyeEffect(_gl);
-		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup);
+		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup, (BodyPart hoverPart) -> {
+			_uiState.swapArmour(hoverPart);
+		});
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
 		

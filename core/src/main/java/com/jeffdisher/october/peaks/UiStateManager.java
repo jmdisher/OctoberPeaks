@@ -334,25 +334,18 @@ public class UiStateManager
 					}
 					, fuelSlot
 			);
-			Consumer<BodyPart> armourEvent = (BodyPart part) -> {
-				if (_leftClick)
-				{
-					// Note that we ignore the result since this will be reflected in the UI, if valid.
-					_client.swapArmour(part);
-				}
-			};
 			
 			// Determine if we even want the crafting window since it doesn't apply to all stations.
 			WindowManager.WindowData<WindowManager.CraftDescription> applicableCrafting = convertedCrafts.isEmpty()
 					? null
 					: topLeft
 			;
-			windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), armourEvent, _cursor);
+			windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), _cursor);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, null, _cursor);
+			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, _cursor);
 		}
 	}
 
@@ -698,6 +691,15 @@ public class UiStateManager
 		if (_UiState.PLAY == _uiState)
 		{
 			_client.tryChangeViewDistance(change);
+		}
+	}
+
+	public void swapArmour(BodyPart hoverPart)
+	{
+		if (_leftClick)
+		{
+			// Note that we ignore the result since this will be reflected in the UI, if valid.
+			_client.swapArmour(hoverPart);
 		}
 	}
 
