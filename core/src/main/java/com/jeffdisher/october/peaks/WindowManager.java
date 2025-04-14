@@ -19,6 +19,7 @@ import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
+import com.jeffdisher.october.peaks.ui.WindowArmour;
 import com.jeffdisher.october.peaks.ui.WindowHotbar;
 import com.jeffdisher.october.peaks.ui.WindowMetaData;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -42,16 +43,12 @@ public class WindowManager
 	public static final float GENERAL_TEXT_HEIGHT = 0.1f;
 	public static final float SELECTED_BOX_LEFT = 0.05f;
 	public static final float SELECTED_BOX_BOTTOM = 0.90f;
-	public static final float ARMOUR_SLOT_SCALE = 0.1f;
-	public static final float ARMOUR_SLOT_SPACING = 0.05f;
-	public static final float ARMOUR_SLOT_RIGHT_EDGE = 0.95f;
-	public static final float ARMOUR_SLOT_TOP_EDGE = 0.95f;
 	public static final float WINDOW_ITEM_SIZE = 0.1f;
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
 	public static final float WINDOW_PAGE_BUTTON_HEIGHT = 0.05f;
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
-	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE - ARMOUR_SLOT_SPACING, 0.95f);
+	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, WindowArmour.ARMOUR_SLOT_RIGHT_EDGE - WindowArmour.ARMOUR_SLOT_SCALE - WindowArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final float RETICLE_SIZE = 0.05f;
 
@@ -73,11 +70,11 @@ public class WindowManager
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
-	private final Consumer<BodyPart> _eventHoverArmourBodyPart;
 
 	// The window definitions to be used when rendering specific modes.
 	private final Window<Entity> _metaDataWindow;
 	private final Window<Entity> _hotbarWindow;
+	private final Window<Entity> _armourWindow;
 
 	public WindowManager(Environment env
 			, GL20 gl
@@ -173,7 +170,7 @@ public class WindowManager
 		// Define the windows for different UI modes.
 		_metaDataWindow = new Window<>(WindowMetaData.LOCATION, WindowMetaData.buildRenderer(_ui), _entityBinding);
 		_hotbarWindow = new Window<>(WindowHotbar.LOCATION, WindowHotbar.buildRenderer(_ui), _entityBinding);
-		_eventHoverArmourBodyPart = eventHoverArmourBodyPart;
+		_armourWindow = new Window<>(WindowArmour.LOCATION, WindowArmour.buildRenderer(_ui, eventHoverArmourBodyPart), _entityBinding);
 	}
 
 	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
@@ -247,7 +244,7 @@ public class WindowManager
 		if (didDrawWindows)
 		{
 			// We are in windowed mode so also draw the armour slots.
-			_drawArmourSlots(armourSlots, cursor);
+			_armourWindow.doRender(cursor);
 		}
 		else
 		{
@@ -394,7 +391,7 @@ public class WindowManager
 			float bottom = top - WINDOW_ITEM_SIZE;
 			float right = left + WINDOW_ITEM_SIZE;
 			// We only handle the mouse-over if there is a handler we will notify.
-			boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
+			boolean isMouseOver = UiIdioms.isMouseOver(left, bottom, right, top, cursor);
 			data.renderItem.drawItem(left, bottom, right, top, elt, isMouseOver);
 			if (isMouseOver)
 			{
@@ -453,44 +450,6 @@ public class WindowManager
 		;
 	}
 
-	private void _drawArmourSlots(NonStackableItem[] armourSlots, Point cursor)
-	{
-		float nextTopSlot = ARMOUR_SLOT_TOP_EDGE;
-		for (int i = 0; i < 4; ++i)
-		{
-			float left = ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE;
-			float bottom = nextTopSlot - ARMOUR_SLOT_SCALE;
-			float right = ARMOUR_SLOT_RIGHT_EDGE;
-			float top = nextTopSlot;
-			boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
-			
-			// See if there is an item for this slot.
-			NonStackableItem armour = armourSlots[i];
-			
-			if (null != armour)
-			{
-				// Draw this item.
-				UiIdioms.renderNonStackableItem(_ui, left, bottom, right, top, _ui.pixelLightGrey, armour, isMouseOver);
-			}
-			else
-			{
-				// Just draw the background.
-				int backgroundTexture = isMouseOver
-						? _ui.pixelLightGrey
-						: _ui.pixelDarkGreyAlpha
-				;
-				
-				UiIdioms.drawOverlayFrame(_ui, backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
-			}
-			if (isMouseOver)
-			{
-				_eventHoverArmourBodyPart.accept(BodyPart.values()[i]);
-			}
-			
-			nextTopSlot -= ARMOUR_SLOT_SCALE + ARMOUR_SLOT_SPACING;
-		}
-	}
-
 	private void _drawTextInFrame(float left, float bottom, String text)
 	{
 		_drawTextInFrameWithHoverCheck(left, bottom, text, null);
@@ -502,7 +461,7 @@ public class WindowManager
 		float top = bottom + GENERAL_TEXT_HEIGHT;
 		float right = left + element.aspectRatio() * (top - bottom);
 		
-		boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
+		boolean isMouseOver = UiIdioms.isMouseOver(left, bottom, right, top, cursor);
 		int backgroundTexture = isMouseOver
 				? _ui.pixelLightGrey
 				: _ui.pixelDarkGreyAlpha
@@ -511,22 +470,6 @@ public class WindowManager
 		UiIdioms.drawOverlayFrame(_ui, backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
 		_ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 		return isMouseOver;
-	}
-
-	private static boolean _isMouseOver(float left, float bottom, float right, float top, Point cursor)
-	{
-		boolean isOver;
-		if (null != cursor)
-		{
-			float glX = cursor.x();
-			float glY = cursor.y();
-			isOver = ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
-		}
-		else
-		{
-			isOver = false;
-		}
-		return isOver;
 	}
 
 

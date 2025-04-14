@@ -46,6 +46,22 @@ public class UiIdioms
 		_renderItem(ui, left, bottom, right, top, outlineTexture, item, count, progress, isMouseOver);
 	}
 
+	public static boolean isMouseOver(float left, float bottom, float right, float top, Point cursor)
+	{
+		boolean isOver;
+		if (null != cursor)
+		{
+			float glX = cursor.x();
+			float glY = cursor.y();
+			isOver = ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
+		}
+		else
+		{
+			isOver = false;
+		}
+		return isOver;
+	}
+
 
 	private static void _drawOverlayFrame(GlUi gl, int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{
