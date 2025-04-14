@@ -17,7 +17,7 @@ public class WindowMetaData
 
 	public static IView<Entity> buildRenderer(GlUi ui)
 	{
-		return (Rect location, Binding<Entity> binding) -> {
+		return (Rect location, Binding<Entity> binding, Point cursor) -> {
 			UiIdioms.drawOverlayFrame(ui, ui.pixelDarkGreyAlpha, ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 			
 			float valueMargin = location.leftX() + META_DATA_LABEL_WIDTH;

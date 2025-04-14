@@ -10,4 +10,13 @@ public record Window<T>(Rect location
 		, Binding<T> binding
 )
 {
+	/**
+	 * Since the fields of the record are all used together, this helper turns that into one simple call.
+	 * 
+	 * @param cursor The current location of the mouse on screen (can be null).
+	 */
+	public void doRender(Point cursor)
+	{
+		this.view().render(this.location(), this.binding(), cursor);
+	}
 }

@@ -21,7 +21,7 @@ public class WindowHotbar
 
 	public static IView<Entity> buildRenderer(GlUi ui)
 	{
-		return (Rect location, Binding<Entity> binding) -> {
+		return (Rect location, Binding<Entity> binding, Point cursor) -> {
 			float nextLeftButton = location.leftX();
 			Inventory entityInventory = _getEntityInventory(binding);
 			int[] hotbarKeys = binding.data.hotbarItems();

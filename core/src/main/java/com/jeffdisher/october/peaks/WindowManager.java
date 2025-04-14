@@ -208,8 +208,8 @@ public class WindowManager
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.data)
 		{
-			_hotbarWindow.view().render(_hotbarWindow.location(), _hotbarWindow.binding());
-			_metaDataWindow.view().render(_metaDataWindow.location(), _metaDataWindow.binding());
+			_hotbarWindow.doRender(cursor);
+			_metaDataWindow.doRender(cursor);
 		}
 		
 		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
