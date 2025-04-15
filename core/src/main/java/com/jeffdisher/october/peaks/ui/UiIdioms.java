@@ -1,6 +1,10 @@
 package com.jeffdisher.october.peaks.ui;
 
+import java.util.List;
+import java.util.function.IntConsumer;
+
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.WindowManager.ItemRenderer;
 import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
@@ -17,6 +21,7 @@ public class UiIdioms
 	 */
 	public static final float OUTLINE_SIZE = 0.01f;
 	public static final float GENERAL_TEXT_HEIGHT = 0.1f;
+	public static final float WINDOW_PAGE_BUTTON_HEIGHT = 0.05f;
 
 	public static void drawOverlayFrame(GlUi gl, int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{
@@ -65,6 +70,83 @@ public class UiIdioms
 	public static boolean drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
 	{
 		return _drawTextInFrameWithHoverCheck(ui, left, bottom, text, cursor);
+	}
+
+	public static <T> void drawPageButtons(GlUi ui, IntConsumer eventHoverChangePage, float rightX, float topY, Point cursor, int pageCount, int currentPage)
+	{
+		boolean canPageBack = (currentPage > 0);
+		boolean canPageForward = (currentPage < (pageCount - 1));
+		float buttonTop = topY - WINDOW_PAGE_BUTTON_HEIGHT;
+		float buttonBase = buttonTop - WINDOW_PAGE_BUTTON_HEIGHT;
+		if (canPageBack)
+		{
+			float left = rightX - 0.25f;
+			boolean isMouseOver = _drawTextInFrameWithHoverCheck(ui, left, buttonBase, "<", cursor);
+			if (isMouseOver)
+			{
+				eventHoverChangePage.accept(currentPage - 1);
+			}
+		}
+		String label = (currentPage + 1) + " / " + pageCount;
+		ui.drawLabel(rightX - 0.2f, buttonBase, buttonTop, label);
+		if (canPageForward)
+		{
+			float left = rightX - 0.1f;
+			boolean isMouseOver = _drawTextInFrameWithHoverCheck(ui, left, buttonBase, ">", cursor);
+			if (isMouseOver)
+			{
+				eventHoverChangePage.accept(currentPage + 1);
+			}
+		}
+	}
+
+	public static <T> T drawItemGrid(List<T> data
+			, ItemRenderer<T> renderer
+			, Point cursor
+			, float spacePerElement
+			, float sizePerElement
+			, int itemsPerRow
+			, int itemsPerPage
+			, float leftMargin
+			, float topMargin
+			, int totalItems
+			, int currentPage
+	)
+	{
+		int startingIndex = currentPage * itemsPerPage;
+		int firstIndexBeyondPage = startingIndex + itemsPerPage;
+		if (firstIndexBeyondPage > totalItems)
+		{
+			firstIndexBeyondPage = totalItems;
+		}
+		
+		T hoverOver = null;
+		int xElement = 0;
+		int yElement = 0;
+		for (T elt : data.subList(startingIndex, firstIndexBeyondPage))
+		{
+			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
+			float left = leftMargin + (xElement * spacePerElement);
+			float top = topMargin - (yElement * spacePerElement);
+			float bottom = top - sizePerElement;
+			float right = left + sizePerElement;
+			// We only handle the mouse-over if there is a handler we will notify.
+			boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
+			renderer.drawItem(left, bottom, right, top, elt, isMouseOver);
+			if (isMouseOver)
+			{
+				hoverOver = elt;
+			}
+			
+			// On to the next item.
+			xElement += 1;
+			if (xElement >= itemsPerRow)
+			{
+				xElement = 0;
+				yElement += 1;
+			}
+		}
+		return hoverOver;
 	}
 
 

@@ -44,7 +44,6 @@ public class WindowManager
 	public static final float WINDOW_ITEM_SIZE = 0.1f;
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
-	public static final float WINDOW_PAGE_BUTTON_HEIGHT = 0.05f;
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, WindowArmour.ARMOUR_SLOT_RIGHT_EDGE - WindowArmour.ARMOUR_SLOT_SCALE - WindowArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
@@ -352,8 +351,6 @@ public class WindowManager
 		int itemsPerRow = (int) Math.round(Math.floor(xSpace / spacePerElement));
 		int rowsPerPage = (int) Math.round(Math.floor(ySpace / spacePerElement));
 		int itemsPerPage = itemsPerRow * rowsPerPage;
-		int xElement = 0;
-		int yElement = 0;
 		
 		float leftMargin = dimensions.leftX + WINDOW_MARGIN;
 		// Leave space for top margin and title.
@@ -362,66 +359,14 @@ public class WindowManager
 		int pageCount = ((totalItems - 1) / itemsPerPage) + 1;
 		// Be aware that this may have changed without the caller knowing it.
 		int currentPage = Math.min(data.currentPage, pageCount - 1);
-		int startingIndex = currentPage * itemsPerPage;
-		int firstIndexBeyondPage = startingIndex + itemsPerPage;
-		if (firstIndexBeyondPage > totalItems)
-		{
-			firstIndexBeyondPage = totalItems;
-		}
-		
-		T hoverOver = null;
-		for (T elt : data.items.subList(startingIndex, firstIndexBeyondPage))
-		{
-			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
-			float left = leftMargin + (xElement * spacePerElement);
-			float top = topMargin - (yElement * spacePerElement);
-			float bottom = top - WINDOW_ITEM_SIZE;
-			float right = left + WINDOW_ITEM_SIZE;
-			// We only handle the mouse-over if there is a handler we will notify.
-			boolean isMouseOver = UiIdioms.isMouseOver(left, bottom, right, top, cursor);
-			data.renderItem.drawItem(left, bottom, right, top, elt, isMouseOver);
-			if (isMouseOver)
-			{
-				hoverOver = elt;
-			}
-			
-			// On to the next item.
-			xElement += 1;
-			if (xElement >= itemsPerRow)
-			{
-				xElement = 0;
-				yElement += 1;
-			}
-		}
 		
 		// Draw our pagination buttons if they make sense.
 		if (pageCount > 1)
 		{
-			boolean canPageBack = (currentPage > 0);
-			boolean canPageForward = (currentPage < (pageCount - 1));
-			float buttonTop = dimensions.topY - WINDOW_PAGE_BUTTON_HEIGHT;
-			float buttonBase = buttonTop - WINDOW_PAGE_BUTTON_HEIGHT;
-			if (canPageBack)
-			{
-				float left = dimensions.rightX - 0.25f;
-				boolean isMouseOver = UiIdioms.drawTextInFrameWithHoverCheck(_ui, left, buttonBase, "<", cursor);
-				if (isMouseOver)
-				{
-					data.eventHoverChangePage.accept(currentPage - 1);
-				}
-			}
-			String label = (currentPage + 1) + " / " + pageCount;
-			_ui.drawLabel(dimensions.rightX - 0.2f, buttonBase, buttonTop, label);
-			if (canPageForward)
-			{
-				float left = dimensions.rightX - 0.1f;
-				boolean isMouseOver = UiIdioms.drawTextInFrameWithHoverCheck(_ui, left, buttonBase, ">", cursor);
-				if (isMouseOver)
-				{
-					data.eventHoverChangePage.accept(currentPage + 1);
-				}
-			}
+			UiIdioms.drawPageButtons(_ui, data.eventHoverChangePage, dimensions.rightX, dimensions.topY, cursor, pageCount, currentPage);
 		}
+		
+		T hoverOver = UiIdioms.drawItemGrid(data.items, data.renderItem, cursor, spacePerElement, WINDOW_ITEM_SIZE, itemsPerRow, itemsPerPage, leftMargin, topMargin, totalItems, currentPage);
 		
 		IAction action = null;
 		if (null != hoverOver)
