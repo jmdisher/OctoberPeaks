@@ -14,9 +14,10 @@ public record Window<T>(Rect location
 	 * Since the fields of the record are all used together, this helper turns that into one simple call.
 	 * 
 	 * @param cursor The current location of the mouse on screen (can be null).
+	 * @return The action associated with hovering over this (null if not hovering or no action).
 	 */
-	public void doRender(Point cursor)
+	public IAction doRender(Point cursor)
 	{
-		this.view().render(this.location(), this.binding(), cursor);
+		return this.view().render(this.location(), this.binding(), cursor);
 	}
 }

@@ -15,6 +15,7 @@ import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
+import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
@@ -175,7 +176,7 @@ public class WindowManager
 		_selectionWindow = new Window<>(WindowSelection.LOCATION, WindowSelection.buildRenderer(_ui, _env, _blockLookup, _otherPlayersById), _selectionBinding);
 	}
 
-	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
+	public <A, B, C> IAction drawActiveWindows(AbsoluteLocation selectedBlock
 			, PartialEntity selectedEntity
 			, WindowData<A> topLeft
 			, WindowData<B> topRight
@@ -207,8 +208,10 @@ public class WindowManager
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.data)
 		{
-			_hotbarWindow.doRender(cursor);
-			_metaDataWindow.doRender(cursor);
+			IAction noAction = _hotbarWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
 		}
 		
 		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
@@ -243,16 +246,18 @@ public class WindowManager
 			didDrawWindows = true;
 		}
 		
+		IAction action = null;
 		if (didDrawWindows)
 		{
 			// We are in windowed mode so also draw the armour slots.
-			_armourWindow.doRender(cursor);
+			action = _armourWindow.doRender(cursor);
 		}
 		else
 		{
 			// We are not in windowed mode so draw the selection (if any) and crosshairs.
 			_selectionBinding.data = new WindowSelection.Selection(selectedBlock, selectedEntity);
-			_selectionWindow.doRender(cursor);
+			IAction noAction = _selectionWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
 			
 			_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		}
@@ -261,6 +266,10 @@ public class WindowManager
 		if (null != hoverRunnable)
 		{
 			hoverRunnable.run();
+		}
+		else if (null != action)
+		{
+			action.renderHover(cursor);
 		}
 		
 		// If we are paused, show the pause overlay.
@@ -275,6 +284,9 @@ public class WindowManager
 		
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
+		
+		// Return any action so that the caller can run the action now that rendering is finished.
+		return action;
 	}
 
 	public void setThisEntity(Entity projectedEntity)

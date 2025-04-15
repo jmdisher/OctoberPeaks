@@ -22,6 +22,7 @@ public class WindowArmour
 	public static IView<Entity> buildRenderer(GlUi ui, Consumer<BodyPart> eventHoverBodyPart)
 	{
 		return (Rect location, Binding<Entity> binding, Point cursor) -> {
+			BodyPart selectedPart = null;
 			NonStackableItem[] armourSlots = binding.data.armourSlots();
 			float nextTopSlot = location.topY();
 			for (int i = 0; i < 4; ++i)
@@ -52,11 +53,29 @@ public class WindowArmour
 				}
 				if (isMouseOver)
 				{
-					eventHoverBodyPart.accept(BodyPart.values()[i]);
+					selectedPart = BodyPart.values()[i];
 				}
 				
 				nextTopSlot -= ARMOUR_SLOT_SCALE + ARMOUR_SLOT_SPACING;
 			}
+			
+			// We need to return a handler to invoke this action if something is selected.
+			final BodyPart finalPart = selectedPart;
+			return (null != finalPart)
+					? new IAction() {
+						@Override
+						public void renderHover(Point cursor)
+						{
+							// No render.
+						}
+						@Override
+						public void takeAction()
+						{
+							eventHoverBodyPart.accept(finalPart);
+						}
+					}
+					: null
+			;
 		};
 	}
 }

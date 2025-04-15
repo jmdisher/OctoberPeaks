@@ -54,6 +54,9 @@ public class WindowHotbar
 				}
 				nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
 			}
+			
+			// No hover or action.
+			return null;
 		};
 	}
 

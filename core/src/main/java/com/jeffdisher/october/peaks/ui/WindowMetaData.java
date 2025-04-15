@@ -41,6 +41,9 @@ public class WindowMetaData
 			top = base + SMALL_TEXT_HEIGHT;
 			ui.drawLabel(location.leftX(), base, top, "Breath");
 			ui.drawLabel(valueMargin, base, top, Integer.toString(breath));
+			
+			// No hover or action.
+			return null;
 		};
 	}
 }

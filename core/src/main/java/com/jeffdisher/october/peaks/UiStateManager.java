@@ -12,6 +12,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
+import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -106,6 +107,7 @@ public class UiStateManager
 
 	public void drawRelevantWindows(WindowManager windowManager, AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
 	{
+		IAction action = null;
 		if (_UiState.INVENTORY == _uiState)
 		{
 			Environment env = Environment.getShared();
@@ -340,12 +342,18 @@ public class UiStateManager
 					? null
 					: topLeft
 			;
-			windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), _cursor);
+			action = windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), _cursor);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, _cursor);
+			action = windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, _cursor);
+		}
+		
+		// Run any actions based on clicking on the UI.
+		if (null != action)
+		{
+			action.takeAction();
 		}
 	}
 

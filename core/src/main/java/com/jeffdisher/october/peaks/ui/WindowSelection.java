@@ -55,6 +55,9 @@ public class WindowSelection
 				}
 				UiIdioms.drawTextInFrame(ui, location.leftX(), location.bottomY(), textToShow);
 			}
+			
+			// No hover or action.
+			return null;
 		};
 	}
 
