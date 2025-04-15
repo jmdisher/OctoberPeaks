@@ -214,43 +214,45 @@ public class WindowManager
 			Assert.assertTrue(null == noAction);
 		}
 		
-		// We need to draw the hover last so we track the Runnable to do that (avoids needing to re-associate with the correct type by leaving the action opaque).
-		Runnable hoverRunnable = null;
+		IAction action = null;
 		// We will disable the handling of any selection if we draw any overlay windows (they should be null in that case, anyway).
 		boolean didDrawWindows = false;
 		if (null != topLeft)
 		{
-			Runnable hover = _drawWindow(topLeft, WINDOW_TOP_LEFT, cursor);
+			IAction hover = _drawWindow(topLeft, WINDOW_TOP_LEFT, cursor);
 			if (null != hover)
 			{
-				hoverRunnable = hover;
+				action = hover;
 			}
 			didDrawWindows = true;
 		}
 		if (null != topRight)
 		{
-			Runnable hover = _drawWindow(topRight, WINDOW_TOP_RIGHT, cursor);
+			IAction hover = _drawWindow(topRight, WINDOW_TOP_RIGHT, cursor);
 			if (null != hover)
 			{
-				hoverRunnable = hover;
+				action = hover;
 			}
 			didDrawWindows = true;
 		}
 		if (null != bottom)
 		{
-			Runnable hover = _drawWindow(bottom, WINDOW_BOTTOM, cursor);
+			IAction hover = _drawWindow(bottom, WINDOW_BOTTOM, cursor);
 			if (null != hover)
 			{
-				hoverRunnable = hover;
+				action = hover;
 			}
 			didDrawWindows = true;
 		}
 		
-		IAction action = null;
 		if (didDrawWindows)
 		{
 			// We are in windowed mode so also draw the armour slots.
-			action = _armourWindow.doRender(cursor);
+			IAction hover = _armourWindow.doRender(cursor);
+			if (null != hover)
+			{
+				action = hover;
+			}
 		}
 		else
 		{
@@ -263,11 +265,7 @@ public class WindowManager
 		}
 		
 		// If we should be rendering a hover, do it here.
-		if (null != hoverRunnable)
-		{
-			hoverRunnable.run();
-		}
-		else if (null != action)
+		if (null != action)
 		{
 			action.renderHover(cursor);
 		}
@@ -322,8 +320,7 @@ public class WindowManager
 	}
 
 
-	// Returns a Runnable to draw the hover, if it was detected here.
-	private <T> Runnable _drawWindow(WindowData<T> data, _WindowDimensions dimensions, Point cursor)
+	private <T> IAction _drawWindow(WindowData<T> data, _WindowDimensions dimensions, Point cursor)
 	{
 		// Draw the window outline.
 		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
@@ -388,12 +385,6 @@ public class WindowManager
 				hoverOver = elt;
 			}
 			
-			// We also want to call the associated handler.
-			if (isMouseOver && (null != data.eventHoverOverItem))
-			{
-				data.eventHoverOverItem.accept(elt);
-			}
-			
 			// On to the next item.
 			xElement += 1;
 			if (xElement >= itemsPerRow)
@@ -432,12 +423,43 @@ public class WindowManager
 			}
 		}
 		
-		// Capture the hover render operation, if applicable.
-		final T finalHoverOver = hoverOver;
-		return (null != finalHoverOver)
-				? () -> data.renderHover.drawHoverAtPoint(cursor, finalHoverOver)
-				: null
-		;
+		IAction action = null;
+		if (null != hoverOver)
+		{
+			// There is something to hover over so determine which action implementation to use.
+			final T finalHoverOver = hoverOver;
+			if (null != data.eventHoverOverItem())
+			{
+				action = new IAction() {
+					@Override
+					public void renderHover(Point cursor)
+					{
+						data.renderHover.drawHoverAtPoint(cursor, finalHoverOver);
+					}
+					@Override
+					public void takeAction()
+					{
+						data.eventHoverOverItem.accept(finalHoverOver);
+					}
+				};
+			}
+			else
+			{
+				action = new IAction() {
+					@Override
+					public void renderHover(Point cursor)
+					{
+						data.renderHover.drawHoverAtPoint(cursor, finalHoverOver);
+					}
+					@Override
+					public void takeAction()
+					{
+						// No action in this case.
+					}
+				};
+			}
+		}
+		return action;
 	}
 
 
