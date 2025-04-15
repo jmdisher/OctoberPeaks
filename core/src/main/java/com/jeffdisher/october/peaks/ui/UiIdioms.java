@@ -16,6 +16,7 @@ public class UiIdioms
 	 * The outline thickness around a pane in the UI.
 	 */
 	public static final float OUTLINE_SIZE = 0.01f;
+	public static final float GENERAL_TEXT_HEIGHT = 0.1f;
 
 	public static void drawOverlayFrame(GlUi gl, int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{
@@ -48,18 +49,22 @@ public class UiIdioms
 
 	public static boolean isMouseOver(float left, float bottom, float right, float top, Point cursor)
 	{
-		boolean isOver;
-		if (null != cursor)
-		{
-			float glX = cursor.x();
-			float glY = cursor.y();
-			isOver = ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
-		}
-		else
-		{
-			isOver = false;
-		}
-		return isOver;
+		return _isMouseOver(left, bottom, right, top, cursor);
+	}
+
+	public static void drawTextInFrame(GlUi ui, float left, float bottom, String text)
+	{
+		_drawTextInFrameWithHoverCheck(ui, left, bottom, text, null);
+	}
+
+	public static void drawTextRootedAtTop(GlUi ui, float left, float top, String text)
+	{
+		_drawTextInFrameWithHoverCheck(ui, left, top - GENERAL_TEXT_HEIGHT, text, null);
+	}
+
+	public static boolean drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
+	{
+		return _drawTextInFrameWithHoverCheck(ui, left, bottom, text, cursor);
 	}
 
 
@@ -98,5 +103,38 @@ public class UiIdioms
 			float progressTop = bottom + (top - bottom) * progress;
 			ui.drawWholeTextureRect(ui.pixelGreenAlpha, left, bottom, right, progressTop);
 		}
+	}
+
+	private static boolean _isMouseOver(float left, float bottom, float right, float top, Point cursor)
+	{
+		boolean isOver;
+		if (null != cursor)
+		{
+			float glX = cursor.x();
+			float glY = cursor.y();
+			isOver = ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
+		}
+		else
+		{
+			isOver = false;
+		}
+		return isOver;
+	}
+
+	private static boolean _drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
+	{
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		float top = bottom + GENERAL_TEXT_HEIGHT;
+		float right = left + element.aspectRatio() * (top - bottom);
+		
+		boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
+		int backgroundTexture = isMouseOver
+				? ui.pixelLightGrey
+				: ui.pixelDarkGreyAlpha
+		;
+		
+		_drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, left, bottom, right, top);
+		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
+		return isMouseOver;
 	}
 }

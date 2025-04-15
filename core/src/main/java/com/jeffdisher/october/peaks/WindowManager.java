@@ -11,7 +11,6 @@ import java.util.function.IntConsumer;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -22,6 +21,7 @@ import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.ui.WindowArmour;
 import com.jeffdisher.october.peaks.ui.WindowHotbar;
 import com.jeffdisher.october.peaks.ui.WindowMetaData;
+import com.jeffdisher.october.peaks.ui.WindowSelection;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -40,9 +40,6 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class WindowManager
 {
-	public static final float GENERAL_TEXT_HEIGHT = 0.1f;
-	public static final float SELECTED_BOX_LEFT = 0.05f;
-	public static final float SELECTED_BOX_BOTTOM = 0.90f;
 	public static final float WINDOW_ITEM_SIZE = 0.1f;
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
@@ -70,11 +67,13 @@ public class WindowManager
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
+	private final Binding<WindowSelection.Selection> _selectionBinding;
 
 	// The window definitions to be used when rendering specific modes.
 	private final Window<Entity> _metaDataWindow;
 	private final Window<Entity> _hotbarWindow;
 	private final Window<Entity> _armourWindow;
+	private final Window<WindowSelection.Selection> _selectionWindow;
 
 	public WindowManager(Environment env
 			, GL20 gl
@@ -128,7 +127,7 @@ public class WindowManager
 		this.hoverItem = (Point cursor, Item item) -> {
 			// Just draw the name.
 			String name = item.name();
-			_drawTextInFrame(cursor.x(), cursor.y() - GENERAL_TEXT_HEIGHT, name);
+			UiIdioms.drawTextRootedAtTop(_ui, cursor.x(), cursor.y(), name);
 		};
 		this.hoverCraftOperation = (Point cursor, CraftDescription item) -> {
 			String name = item.craft.name;
@@ -166,11 +165,14 @@ public class WindowManager
 		
 		// Define the data bindings used by the window system.
 		_entityBinding = new Binding<>();
+		_selectionBinding = new Binding<>();
+		_selectionBinding.data = new WindowSelection.Selection(null, null);
 		
 		// Define the windows for different UI modes.
 		_metaDataWindow = new Window<>(WindowMetaData.LOCATION, WindowMetaData.buildRenderer(_ui), _entityBinding);
 		_hotbarWindow = new Window<>(WindowHotbar.LOCATION, WindowHotbar.buildRenderer(_ui), _entityBinding);
 		_armourWindow = new Window<>(WindowArmour.LOCATION, WindowArmour.buildRenderer(_ui, eventHoverArmourBodyPart), _entityBinding);
+		_selectionWindow = new Window<>(WindowSelection.LOCATION, WindowSelection.buildRenderer(_ui, _env, _blockLookup, _otherPlayersById), _selectionBinding);
 	}
 
 	public <A, B, C> void drawActiveWindows(AbsoluteLocation selectedBlock
@@ -249,32 +251,8 @@ public class WindowManager
 		else
 		{
 			// We are not in windowed mode so draw the selection (if any) and crosshairs.
-			// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
-			if (null != selectedBlock)
-			{
-				// Draw the block information.
-				BlockProxy proxy = _blockLookup.apply(selectedBlock);
-				if (null != proxy)
-				{
-					Block blockUnderMouse = proxy.getBlock();
-					if (_env.special.AIR != blockUnderMouse)
-					{
-						Item itemUnderMouse = blockUnderMouse.item();
-						_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, itemUnderMouse.name());
-					}
-				}
-			}
-			else if (null != selectedEntity)
-			{
-				// Draw the entity information.
-				// If this matches a player, show the name instead of the type name.
-				String textToShow = _otherPlayersById.get(selectedEntity.id());
-				if (null == textToShow)
-				{
-					textToShow = selectedEntity.type().name();
-				}
-				_drawTextInFrame(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, textToShow);
-			}
+			_selectionBinding.data = new WindowSelection.Selection(selectedBlock, selectedEntity);
+			_selectionWindow.doRender(cursor);
 			
 			_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		}
@@ -423,7 +401,7 @@ public class WindowManager
 			if (canPageBack)
 			{
 				float left = dimensions.rightX - 0.25f;
-				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, "<", cursor);
+				boolean isMouseOver = UiIdioms.drawTextInFrameWithHoverCheck(_ui, left, buttonBase, "<", cursor);
 				if (isMouseOver)
 				{
 					data.eventHoverChangePage.accept(currentPage - 1);
@@ -434,7 +412,7 @@ public class WindowManager
 			if (canPageForward)
 			{
 				float left = dimensions.rightX - 0.1f;
-				boolean isMouseOver = _drawTextInFrameWithHoverCheck(left, buttonBase, ">", cursor);
+				boolean isMouseOver = UiIdioms.drawTextInFrameWithHoverCheck(_ui, left, buttonBase, ">", cursor);
 				if (isMouseOver)
 				{
 					data.eventHoverChangePage.accept(currentPage + 1);
@@ -448,28 +426,6 @@ public class WindowManager
 				? () -> data.renderHover.drawHoverAtPoint(cursor, finalHoverOver)
 				: null
 		;
-	}
-
-	private void _drawTextInFrame(float left, float bottom, String text)
-	{
-		_drawTextInFrameWithHoverCheck(left, bottom, text, null);
-	}
-
-	private boolean _drawTextInFrameWithHoverCheck(float left, float bottom, String text, Point cursor)
-	{
-		TextManager.Element element = _ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
-		float top = bottom + GENERAL_TEXT_HEIGHT;
-		float right = left + element.aspectRatio() * (top - bottom);
-		
-		boolean isMouseOver = UiIdioms.isMouseOver(left, bottom, right, top, cursor);
-		int backgroundTexture = isMouseOver
-				? _ui.pixelLightGrey
-				: _ui.pixelDarkGreyAlpha
-		;
-		
-		UiIdioms.drawOverlayFrame(_ui, backgroundTexture, _ui.pixelLightGrey, left, bottom, right, top);
-		_ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
-		return isMouseOver;
 	}
 
 
