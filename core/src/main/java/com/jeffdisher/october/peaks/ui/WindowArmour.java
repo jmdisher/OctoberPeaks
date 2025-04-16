@@ -21,8 +21,32 @@ public class WindowArmour
 
 	public static IView<Entity> buildRenderer(GlUi ui, Consumer<BodyPart> eventHoverBodyPart)
 	{
+		// The armour is composed over ComplexItemView, with no render hover.
+		ComplexItemView.IBindOptions<BodyPart> options = new ComplexItemView.IBindOptions<BodyPart>()
+		{
+			@Override
+			public int getOutlineTexture(ItemTuple<BodyPart> context)
+			{
+				// We always just use the light grey, no matter.
+				return ui.pixelLightGrey;
+			}
+			@Override
+			public void hoverRender(Point cursor, ItemTuple<BodyPart> context)
+			{
+				// Nothing.
+			}
+			@Override
+			public void hoverAction(ItemTuple<BodyPart> context)
+			{
+				// We pass this back to our consumer, since it knows how to invoke an actual action.
+				eventHoverBodyPart.accept(context.context());
+			}
+		};
+		IView<ItemTuple<BodyPart>> itemView = ComplexItemView.buildRenderer(ui, options, false);
+		Binding<ItemTuple<BodyPart>> innerBinding = new Binding<>();
+		
 		return (Rect location, Binding<Entity> binding, Point cursor) -> {
-			BodyPart selectedPart = null;
+			IAction action = null;
 			NonStackableItem[] armourSlots = binding.data.armourSlots();
 			float nextTopSlot = location.topY();
 			for (int i = 0; i < 4; ++i)
@@ -31,51 +55,20 @@ public class WindowArmour
 				float bottom = nextTopSlot - ARMOUR_SLOT_SCALE;
 				float right = location.rightX();
 				float top = nextTopSlot;
-				boolean isMouseOver = new Rect(left, bottom, right, top).containsPoint(cursor);
-				
-				// See if there is an item for this slot.
 				NonStackableItem armour = armourSlots[i];
 				
-				if (null != armour)
+				// We use our composed view.
+				innerBinding.data = new ItemTuple<>(null, armour, BodyPart.values()[i]);
+				IAction thisAction = itemView.render(new Rect(left, bottom, right, top), innerBinding, cursor);
+				if (null != thisAction)
 				{
-					// Draw this item.
-					UiIdioms.renderNonStackableItem(ui, left, bottom, right, top, ui.pixelLightGrey, armour, isMouseOver);
-				}
-				else
-				{
-					// Just draw the background.
-					int backgroundTexture = isMouseOver
-							? ui.pixelLightGrey
-							: ui.pixelDarkGreyAlpha
-					;
-					
-					UiIdioms.drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, left, bottom, right, top);
-				}
-				if (isMouseOver)
-				{
-					selectedPart = BodyPart.values()[i];
+					action = thisAction;
 				}
 				
 				nextTopSlot -= ARMOUR_SLOT_SCALE + ARMOUR_SLOT_SPACING;
 			}
 			
-			// We need to return a handler to invoke this action if something is selected.
-			final BodyPart finalPart = selectedPart;
-			return (null != finalPart)
-					? new IAction() {
-						@Override
-						public void renderHover(Point cursor)
-						{
-							// No render.
-						}
-						@Override
-						public void takeAction()
-						{
-							eventHoverBodyPart.accept(finalPart);
-						}
-					}
-					: null
-			;
+			return action;
 		};
 	}
 }

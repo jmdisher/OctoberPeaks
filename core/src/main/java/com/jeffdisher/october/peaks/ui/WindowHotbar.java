@@ -21,6 +21,31 @@ public class WindowHotbar
 
 	public static IView<Entity> buildRenderer(GlUi ui)
 	{
+		// We only care about whether or not this is selected so we will pass in a boolean.
+		ComplexItemView.IBindOptions<Boolean> options = new ComplexItemView.IBindOptions<Boolean>()
+		{
+			@Override
+			public int getOutlineTexture(ItemTuple<Boolean> context)
+			{
+				return context.context()
+						? ui.pixelGreen
+						: ui.pixelLightGrey
+				;
+			}
+			@Override
+			public void hoverRender(Point cursor, ItemTuple<Boolean> context)
+			{
+				// Nothing.
+			}
+			@Override
+			public void hoverAction(ItemTuple<Boolean> context)
+			{
+				// No action.
+			}
+		};
+		IView<ItemTuple<Boolean>> itemView = ComplexItemView.buildRenderer(ui, options, false);
+		Binding<ItemTuple<Boolean>> innerBinding = new Binding<>();
+		
 		return (Rect location, Binding<Entity> binding, Point cursor) -> {
 			float nextLeftButton = location.leftX();
 			Inventory entityInventory = _getEntityInventory(binding);
@@ -28,30 +53,24 @@ public class WindowHotbar
 			int activeIndex = binding.data.hotbarIndex();
 			for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 			{
-				int outline = (activeIndex == i)
-						? ui.pixelGreen
-						: ui.pixelLightGrey
-				;
+				boolean isActive = (activeIndex == i);
 				int thisKey = hotbarKeys[i];
 				if (0 == thisKey)
 				{
 					// No item so just draw the frame.
-					UiIdioms.drawOverlayFrame(ui, ui.pixelDarkGreyAlpha, outline, nextLeftButton, location.bottomY(), nextLeftButton + HOTBAR_ITEM_SCALE, location.topY());
+					innerBinding.data = new ItemTuple<>(null, null, isActive);
 				}
 				else
 				{
 					// There is something here so render it.
 					Items stack = entityInventory.getStackForKey(thisKey);
-					if (null != stack)
-					{
-						UiIdioms.renderStackableItem(ui, nextLeftButton, location.bottomY(), nextLeftButton + HOTBAR_ITEM_SCALE, location.topY(), outline, stack, false);
-					}
-					else
-					{
-						NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-						UiIdioms.renderNonStackableItem(ui, nextLeftButton, location.bottomY(), nextLeftButton + HOTBAR_ITEM_SCALE, location.topY(), outline, nonStack, false);
-					}
+					NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
+					innerBinding.data = new ItemTuple<>(stack, nonStack, isActive);
 				}
+				
+				// Use the composed item - we ignore the response since it doesn't do anything.
+				itemView.render(new Rect(nextLeftButton, location.bottomY(), nextLeftButton + HOTBAR_ITEM_SCALE, location.topY()), innerBinding, cursor);
+				
 				nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
 			}
 			
