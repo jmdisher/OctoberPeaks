@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -16,10 +17,13 @@ import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
+import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.Point;
+import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.ui.WindowArmour;
+import com.jeffdisher.october.peaks.ui.WindowEntityInventory;
 import com.jeffdisher.october.peaks.ui.WindowHotbar;
 import com.jeffdisher.october.peaks.ui.WindowMetaData;
 import com.jeffdisher.october.peaks.ui.WindowSelection;
@@ -28,6 +32,7 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -45,7 +50,7 @@ public class WindowManager
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
-	public static final _WindowDimensions WINDOW_TOP_RIGHT = new _WindowDimensions(0.05f, 0.05f, WindowArmour.ARMOUR_SLOT_RIGHT_EDGE - WindowArmour.ARMOUR_SLOT_SCALE - WindowArmour.ARMOUR_SLOT_SPACING, 0.95f);
+	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, WindowArmour.ARMOUR_SLOT_RIGHT_EDGE - WindowArmour.ARMOUR_SLOT_SCALE - WindowArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final float RETICLE_SIZE = 0.05f;
 
@@ -178,7 +183,8 @@ public class WindowManager
 	public <A, B, C> IAction drawActiveWindows(AbsoluteLocation selectedBlock
 			, PartialEntity selectedEntity
 			, WindowData<A> topLeft
-			, WindowData<B> topRight
+			, IView<Inventory> thisEntityInventoryView
+			, Binding<Inventory> thisEntityInventoryBinding
 			, WindowData<C> bottom
 			, NonStackableItem[] armourSlots
 			, Point cursor
@@ -225,9 +231,9 @@ public class WindowManager
 			}
 			didDrawWindows = true;
 		}
-		if (null != topRight)
+		if (null != thisEntityInventoryView)
 		{
-			IAction hover = _drawWindow(topRight, WINDOW_TOP_RIGHT, cursor);
+			IAction hover = thisEntityInventoryView.render(WINDOW_TOP_RIGHT, thisEntityInventoryBinding, cursor);
 			if (null != hover)
 			{
 				action = hover;
@@ -311,6 +317,11 @@ public class WindowManager
 	public void setPaused(boolean isPaused)
 	{
 		_isPaused = isPaused;
+	}
+
+	public IView<Inventory> buildTopRightView(String title, IntConsumer mouseOverKeyConsumer, BooleanSupplier shouldChangePage)
+	{
+		return WindowEntityInventory.buildRenderer(_ui, title, WINDOW_TOP_RIGHT, mouseOverKeyConsumer, shouldChangePage);
 	}
 
 	public void shutdown()

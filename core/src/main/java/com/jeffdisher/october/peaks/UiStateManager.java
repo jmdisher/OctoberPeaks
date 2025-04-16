@@ -3,8 +3,10 @@ package com.jeffdisher.october.peaks;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.aspects.CraftAspect;
@@ -12,7 +14,9 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.IAction;
+import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -69,7 +73,6 @@ public class UiStateManager
 	private _UiState _uiState;
 	private AbsoluteLocation _openStationLocation;
 	private int _topLeftPage;
-	private int _topRightPage;
 	private int _bottomPage;
 	private boolean _viewingFuelInventory;
 	private Craft _continuousInInventory;
@@ -86,7 +89,10 @@ public class UiStateManager
 	private boolean _shouldPause;
 	private boolean _shouldResume;
 
-	public UiStateManager(Environment environment, MovementControl movement, ClientWrapper client, AudioManager audioManager, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState)
+	// Views for rendering parts of the UI in specific modes.
+	private final IView<Inventory> _thisEntityInventoryView;
+
+	public UiStateManager(Environment environment, MovementControl movement, ClientWrapper client, AudioManager audioManager, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState, WindowManager windowManager)
 	{
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_movement = movement;
@@ -97,6 +103,25 @@ public class UiStateManager
 		
 		// We start up in the play state.
 		_uiState = _UiState.PLAY;
+		
+		// Create our views.
+		IntConsumer mouseOverKeyConsumer = (int key) -> {
+			AbsoluteLocation relevantBlock;
+			if (null != _openStationLocation)
+			{
+				relevantBlock = _openStationLocation;
+			}
+			else
+			{
+				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
+				relevantBlock = feetBlock;
+			}
+			_handleHoverOverEntityInventoryItem(relevantBlock, key);
+		};
+		BooleanSupplier shouldChangePage = () -> {
+			return _leftClick;
+		};
+		_thisEntityInventoryView = windowManager.buildTopRightView("Inventory", mouseOverKeyConsumer, shouldChangePage);
 	}
 
 	public boolean canSelectInScene()
@@ -202,7 +227,6 @@ public class UiStateManager
 			
 			Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
 			List<_InventoryEntry> relevantInventoryList = _inventoryToList(relevantInventory);
-			List<_InventoryEntry> entityInventoryList = _inventoryToList(entityInventory);
 			final AbsoluteLocation finalRelevantBlock = relevantBlock;
 			final CraftOperation finalCraftOperation = currentOperation;
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
@@ -300,24 +324,6 @@ public class UiStateManager
 					, craftHoverOverItem
 					, null
 			);
-			WindowManager.WindowData<_InventoryEntry> topRight = new WindowManager.WindowData<>("Inventory"
-					, entityInventory.currentEncumbrance
-					, entityInventory.maxEncumbrance
-					, _topRightPage
-					, (int page) -> {
-						if (_leftClick)
-						{
-							_topRightPage = page;
-						}
-					}
-					, entityInventoryList
-					, renderer
-					, hover
-					, (_InventoryEntry elt) -> {
-						_handleHoverOverEntityInventoryItem(finalRelevantBlock, elt.key);
-					}
-					, null
-			);
 			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>(stationName
 					, relevantInventory.currentEncumbrance
 					, relevantInventory.maxEncumbrance
@@ -342,12 +348,14 @@ public class UiStateManager
 					? null
 					: topLeft
 			;
-			action = windowManager.drawActiveWindows(null, null, applicableCrafting, topRight, bottom, _thisEntity.armourSlots(), _cursor);
+			Binding<Inventory> thisEntityInventoryBinding = new Binding<>();
+			thisEntityInventoryBinding.data = _getEntityInventory();
+			action = windowManager.drawActiveWindows(null, null, applicableCrafting, _thisEntityInventoryView, thisEntityInventoryBinding, bottom, _thisEntity.armourSlots(), _cursor);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			action = windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, _cursor);
+			action = windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, null, _cursor);
 		}
 		
 		// Run any actions based on clicking on the UI.
@@ -650,7 +658,7 @@ public class UiStateManager
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = null;
 			_topLeftPage = 0;
-			_topRightPage = 0;
+			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView?
 			_bottomPage = 0;
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
@@ -755,7 +763,7 @@ public class UiStateManager
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = blockLocation;
 			_topLeftPage = 0;
-			_topRightPage = 0;
+			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView?
 			_bottomPage = 0;
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);

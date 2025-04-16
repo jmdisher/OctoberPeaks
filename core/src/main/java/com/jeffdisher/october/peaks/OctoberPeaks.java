@@ -244,7 +244,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				}
 				_windowManager.setPaused(didPause);
 			}
-		});
+		}, _windowManager);
 		
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
