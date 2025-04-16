@@ -52,11 +52,6 @@ public class UiIdioms
 		_renderItem(ui, left, bottom, right, top, outlineTexture, item, count, progress, isMouseOver);
 	}
 
-	public static boolean isMouseOver(float left, float bottom, float right, float top, Point cursor)
-	{
-		return _isMouseOver(left, bottom, right, top, cursor);
-	}
-
 	public static void drawTextInFrame(GlUi ui, float left, float bottom, String text)
 	{
 		_drawTextInFrameWithHoverCheck(ui, left, bottom, text, null);
@@ -131,7 +126,7 @@ public class UiIdioms
 			float bottom = top - sizePerElement;
 			float right = left + sizePerElement;
 			// We only handle the mouse-over if there is a handler we will notify.
-			boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
+			boolean isMouseOver = new Rect(left, bottom, right, top).containsPoint(cursor);
 			renderer.drawItem(left, bottom, right, top, elt, isMouseOver);
 			if (isMouseOver)
 			{
@@ -187,29 +182,13 @@ public class UiIdioms
 		}
 	}
 
-	private static boolean _isMouseOver(float left, float bottom, float right, float top, Point cursor)
-	{
-		boolean isOver;
-		if (null != cursor)
-		{
-			float glX = cursor.x();
-			float glY = cursor.y();
-			isOver = ((left <= glX) && (glX <= right) && (bottom <= glY) && (glY <= top));
-		}
-		else
-		{
-			isOver = false;
-		}
-		return isOver;
-	}
-
 	private static boolean _drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
 	{
 		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
 		float top = bottom + GENERAL_TEXT_HEIGHT;
 		float right = left + element.aspectRatio() * (top - bottom);
 		
-		boolean isMouseOver = _isMouseOver(left, bottom, right, top, cursor);
+		boolean isMouseOver = new Rect(left, bottom, right, top).containsPoint(cursor);
 		int backgroundTexture = isMouseOver
 				? ui.pixelLightGrey
 				: ui.pixelDarkGreyAlpha

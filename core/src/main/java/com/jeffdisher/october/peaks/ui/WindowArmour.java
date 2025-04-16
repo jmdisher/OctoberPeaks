@@ -31,7 +31,7 @@ public class WindowArmour
 				float bottom = nextTopSlot - ARMOUR_SLOT_SCALE;
 				float right = location.rightX();
 				float top = nextTopSlot;
-				boolean isMouseOver = UiIdioms.isMouseOver(left, bottom, right, top, cursor);
+				boolean isMouseOver = new Rect(left, bottom, right, top).containsPoint(cursor);
 				
 				// See if there is an item for this slot.
 				NonStackableItem armour = armourSlots[i];
