@@ -21,15 +21,21 @@ import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.ui.SubBinding;
+import com.jeffdisher.october.peaks.ui.WindowSelection;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.BodyPart;
+import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.MutableEntity;
+import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -95,10 +101,24 @@ public class OctoberPeaks extends ApplicationAdapter
 		{
 			throw new AssertionError("Startup scene", e);
 		}
+		
+		// Define the bindings which UI components need.
+		// TODO:  Move this to UiStateManager once WindowManager is removed.
+		Binding<Entity> entityBinding = new Binding<>();
+		Binding<WindowSelection.Selection> selectionBinding = new Binding<>();
+		Binding<Inventory> thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> {
+			Inventory inventory = entity.isCreativeMode()
+					? CreativeInventory.fakeInventory()
+					: entity.inventory()
+			;
+			return inventory;
+		});
+		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(entityBinding, (Entity entity) -> entity.armourSlots());
+		
 		_eyeEffect = new EyeEffect(_gl);
 		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup, (BodyPart hoverPart) -> {
 			_uiState.swapArmour(hoverPart);
-		});
+		}, entityBinding, selectionBinding, armourBinding);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
 		
@@ -136,11 +156,13 @@ public class OctoberPeaks extends ApplicationAdapter
 						Vector upVector = _movement.computeUpVector();
 						_scene.updatePosition(eye, target, upVector);
 						_selectionManager.updatePosition(eye, target);
-						_windowManager.setThisEntity(projectedEntity);
 						_uiState.setThisEntity(projectedEntity);
 						_selectionManager.setThisEntity(projectedEntity);
 						_eyeEffect.setThisEntity(projectedEntity);
 						_audioManager.setThisEntity(authoritativeEntity, projectedEntity);
+						
+						// Update the UI bindings.
+						entityBinding.set(projectedEntity);
 					}
 					@Override
 					public void thisEntityHurt()
@@ -244,7 +266,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				}
 				_windowManager.setPaused(didPause);
 			}
-		}, _windowManager);
+		}, _windowManager, selectionBinding, thisEntityInventoryBinding);
 		
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();

@@ -24,19 +24,20 @@ public class WindowMetaData
 			
 			// We will use the greater of authoritative and projected for most of these stats.
 			// That way, we get the stability of the authoritative numbers but the quick response to eating/breathing actions)
-			byte health = binding.data.health();
+			Entity entity = binding.get();
+			byte health = entity.health();
 			float base = location.bottomY() + 2.0f * SMALL_TEXT_HEIGHT;
 			float top = base + SMALL_TEXT_HEIGHT;
 			ui.drawLabel(location.leftX(), base, top, "Health");
 			ui.drawLabel(valueMargin, base, top, Byte.toString(health));
 			
-			byte food = binding.data.food();
+			byte food = entity.food();
 			base = location.bottomY() + 1.0f * SMALL_TEXT_HEIGHT;
 			top = base + SMALL_TEXT_HEIGHT;
 			ui.drawLabel(location.leftX(), base, top, "Food");
 			ui.drawLabel(valueMargin, base, top, Byte.toString(food));
 			
-			int breath = binding.data.breath();
+			int breath = entity.breath();
 			base = location.bottomY() + 0.0f * SMALL_TEXT_HEIGHT;
 			top = base + SMALL_TEXT_HEIGHT;
 			ui.drawLabel(location.leftX(), base, top, "Breath");

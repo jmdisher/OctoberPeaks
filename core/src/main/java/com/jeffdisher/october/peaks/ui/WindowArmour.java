@@ -3,7 +3,6 @@ package com.jeffdisher.october.peaks.ui;
 import java.util.function.Consumer;
 
 import com.jeffdisher.october.types.BodyPart;
-import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.NonStackableItem;
 
 
@@ -19,7 +18,7 @@ public class WindowArmour
 
 	public static final Rect LOCATION = new Rect(ARMOUR_SLOT_RIGHT_EDGE - ARMOUR_SLOT_SCALE, ARMOUR_SLOT_TOP_EDGE - (4.0f * ARMOUR_SLOT_SCALE + 3.0f * ARMOUR_SLOT_SPACING), ARMOUR_SLOT_RIGHT_EDGE, ARMOUR_SLOT_TOP_EDGE);
 
-	public static IView<Entity> buildRenderer(GlUi ui, Consumer<BodyPart> eventHoverBodyPart)
+	public static IView<NonStackableItem[]> buildRenderer(GlUi ui, Consumer<BodyPart> eventHoverBodyPart)
 	{
 		// The armour is composed over ComplexItemView, with no render hover.
 		ComplexItemView.IBindOptions<BodyPart> options = new ComplexItemView.IBindOptions<BodyPart>()
@@ -45,9 +44,9 @@ public class WindowArmour
 		IView<ItemTuple<BodyPart>> itemView = ComplexItemView.buildRenderer(ui, options, false);
 		Binding<ItemTuple<BodyPart>> innerBinding = new Binding<>();
 		
-		return (Rect location, Binding<Entity> binding, Point cursor) -> {
+		return (Rect location, Binding<NonStackableItem[]> binding, Point cursor) -> {
 			IAction action = null;
-			NonStackableItem[] armourSlots = binding.data.armourSlots();
+			NonStackableItem[] armourSlots = binding.get();
 			float nextTopSlot = location.topY();
 			for (int i = 0; i < 4; ++i)
 			{
@@ -58,7 +57,7 @@ public class WindowArmour
 				NonStackableItem armour = armourSlots[i];
 				
 				// We use our composed view.
-				innerBinding.data = new ItemTuple<>(null, armour, BodyPart.values()[i]);
+				innerBinding.set(new ItemTuple<>(null, armour, BodyPart.values()[i]));
 				IAction thisAction = itemView.render(new Rect(left, bottom, right, top), innerBinding, cursor);
 				if (null != thisAction)
 				{

@@ -36,7 +36,6 @@ import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
-import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -72,12 +71,11 @@ public class WindowManager
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
-	private final Binding<WindowSelection.Selection> _selectionBinding;
 
 	// The window definitions to be used when rendering specific modes.
 	private final Window<Entity> _metaDataWindow;
 	private final Window<Entity> _hotbarWindow;
-	private final Window<Entity> _armourWindow;
+	private final Window<NonStackableItem[]> _armourWindow;
 	private final Window<WindowSelection.Selection> _selectionWindow;
 
 	public WindowManager(Environment env
@@ -85,6 +83,9 @@ public class WindowManager
 			, TextureAtlas<ItemVariant> itemAtlas
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, Consumer<BodyPart> eventHoverArmourBodyPart
+			, Binding<Entity> entityBinding
+			, Binding<WindowSelection.Selection> selectionBinding
+			, Binding<NonStackableItem[]> armourBinding
 	)
 	{
 		_env = env;
@@ -169,20 +170,16 @@ public class WindowManager
 		};
 		
 		// Define the data bindings used by the window system.
-		_entityBinding = new Binding<>();
-		_selectionBinding = new Binding<>();
-		_selectionBinding.data = new WindowSelection.Selection(null, null);
+		_entityBinding = entityBinding;
 		
 		// Define the windows for different UI modes.
 		_metaDataWindow = new Window<>(WindowMetaData.LOCATION, WindowMetaData.buildRenderer(_ui), _entityBinding);
 		_hotbarWindow = new Window<>(WindowHotbar.LOCATION, WindowHotbar.buildRenderer(_ui), _entityBinding);
-		_armourWindow = new Window<>(WindowArmour.LOCATION, WindowArmour.buildRenderer(_ui, eventHoverArmourBodyPart), _entityBinding);
-		_selectionWindow = new Window<>(WindowSelection.LOCATION, WindowSelection.buildRenderer(_ui, _env, _blockLookup, _otherPlayersById), _selectionBinding);
+		_armourWindow = new Window<>(WindowArmour.LOCATION, WindowArmour.buildRenderer(_ui, eventHoverArmourBodyPart), armourBinding);
+		_selectionWindow = new Window<>(WindowSelection.LOCATION, WindowSelection.buildRenderer(_ui, _env, _blockLookup, _otherPlayersById), selectionBinding);
 	}
 
-	public <A, B, C> IAction drawActiveWindows(AbsoluteLocation selectedBlock
-			, PartialEntity selectedEntity
-			, WindowData<A> topLeft
+	public <A, B, C> IAction drawActiveWindows(WindowData<A> topLeft
 			, IView<Inventory> thisEntityInventoryView
 			, Binding<Inventory> thisEntityInventoryBinding
 			, WindowData<C> bottom
@@ -211,7 +208,7 @@ public class WindowManager
 		}
 		
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _entityBinding.data)
+		if (null != _entityBinding.get())
 		{
 			IAction noAction = _hotbarWindow.doRender(cursor);
 			Assert.assertTrue(null == noAction);
@@ -262,7 +259,6 @@ public class WindowManager
 		else
 		{
 			// We are not in windowed mode so draw the selection (if any) and crosshairs.
-			_selectionBinding.data = new WindowSelection.Selection(selectedBlock, selectedEntity);
 			IAction noAction = _selectionWindow.doRender(cursor);
 			Assert.assertTrue(null == noAction);
 			
@@ -290,11 +286,6 @@ public class WindowManager
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
 		return action;
-	}
-
-	public void setThisEntity(Entity projectedEntity)
-	{
-		_entityBinding.data = projectedEntity;
 	}
 
 	public void otherPlayerJoined(int clientId, String name)

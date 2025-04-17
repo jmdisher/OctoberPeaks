@@ -48,9 +48,10 @@ public class WindowHotbar
 		
 		return (Rect location, Binding<Entity> binding, Point cursor) -> {
 			float nextLeftButton = location.leftX();
-			Inventory entityInventory = _getEntityInventory(binding);
-			int[] hotbarKeys = binding.data.hotbarItems();
-			int activeIndex = binding.data.hotbarIndex();
+			Entity entity = binding.get();
+			Inventory entityInventory = _getEntityInventory(entity);
+			int[] hotbarKeys = entity.hotbarItems();
+			int activeIndex = entity.hotbarIndex();
 			for (int i = 0; i < Entity.HOTBAR_SIZE; ++i)
 			{
 				boolean isActive = (activeIndex == i);
@@ -58,14 +59,14 @@ public class WindowHotbar
 				if (0 == thisKey)
 				{
 					// No item so just draw the frame.
-					innerBinding.data = new ItemTuple<>(null, null, isActive);
+					innerBinding.set(new ItemTuple<>(null, null, isActive));
 				}
 				else
 				{
 					// There is something here so render it.
 					Items stack = entityInventory.getStackForKey(thisKey);
 					NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-					innerBinding.data = new ItemTuple<>(stack, nonStack, isActive);
+					innerBinding.set(new ItemTuple<>(stack, nonStack, isActive));
 				}
 				
 				// Use the composed item - we ignore the response since it doesn't do anything.
@@ -80,11 +81,11 @@ public class WindowHotbar
 	}
 
 
-	private static Inventory _getEntityInventory(Binding<Entity> entityBinding)
+	private static Inventory _getEntityInventory(Entity entity)
 	{
-		Inventory inventory = entityBinding.data.isCreativeMode()
+		Inventory inventory = entity.isCreativeMode()
 				? CreativeInventory.fakeInventory()
-				: entityBinding.data.inventory()
+				: entity.inventory()
 		;
 		return inventory;
 	}

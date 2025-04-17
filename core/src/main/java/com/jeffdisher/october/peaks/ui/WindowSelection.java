@@ -30,10 +30,10 @@ public class WindowSelection
 		return (Rect location, Binding<Selection> binding, Point cursor) -> {
 			// If there is anything selected, draw its description at the top of the screen (we always prioritize the block, but at most one of these can be non-null).
 			// Note that the binding.data is assumed to be never null, but may be empty.
-			if (null != binding.data.selectedBlock)
+			if (null != binding.get().selectedBlock)
 			{
 				// Draw the block information.
-				BlockProxy proxy = blockLookup.apply(binding.data.selectedBlock);
+				BlockProxy proxy = blockLookup.apply(binding.get().selectedBlock);
 				if (null != proxy)
 				{
 					Block blockUnderMouse = proxy.getBlock();
@@ -44,14 +44,14 @@ public class WindowSelection
 					}
 				}
 			}
-			else if (null != binding.data.selectedEntity)
+			else if (null != binding.get().selectedEntity)
 			{
 				// Draw the entity information.
 				// If this matches a player, show the name instead of the type name.
-				String textToShow = otherPlayersById.get(binding.data.selectedEntity.id());
+				String textToShow = otherPlayersById.get(binding.get().selectedEntity.id());
 				if (null == textToShow)
 				{
-					textToShow = binding.data.selectedEntity.type().name();
+					textToShow = binding.get().selectedEntity.type().name();
 				}
 				UiIdioms.drawTextInFrame(ui, location.leftX(), location.bottomY(), textToShow);
 			}

@@ -28,7 +28,7 @@ public class ComplexItemView
 			float bottom = location.bottomY();
 			float right = location.rightX();
 			float top = location.topY();
-			ItemTuple<T> tuple = binding.data;
+			ItemTuple<T> tuple = binding.get();
 			Items stack = tuple.stackable();
 			NonStackableItem nonStack = tuple.nonStackable();
 			int outlineTexture = options.getOutlineTexture(tuple);

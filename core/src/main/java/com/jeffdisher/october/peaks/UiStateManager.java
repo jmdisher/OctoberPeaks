@@ -18,13 +18,13 @@ import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.Point;
+import com.jeffdisher.october.peaks.ui.WindowSelection;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
-import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.FuelState;
@@ -89,10 +89,23 @@ public class UiStateManager
 	private boolean _shouldPause;
 	private boolean _shouldResume;
 
+	// Bindings defined/owned here and referenced by various UI components.
+	private final Binding<WindowSelection.Selection> _selectionBinding;
+	private final Binding<Inventory> _thisEntityInventoryBinding;
+	
 	// Views for rendering parts of the UI in specific modes.
 	private final IView<Inventory> _thisEntityInventoryView;
 
-	public UiStateManager(Environment environment, MovementControl movement, ClientWrapper client, AudioManager audioManager, Function<AbsoluteLocation, BlockProxy> blockLookup, IInputStateChanger captureState, WindowManager windowManager)
+	public UiStateManager(Environment environment
+			, MovementControl movement
+			, ClientWrapper client
+			, AudioManager audioManager
+			, Function<AbsoluteLocation, BlockProxy> blockLookup
+			, IInputStateChanger captureState
+			, WindowManager windowManager
+			, Binding<WindowSelection.Selection> selectionBinding
+			, Binding<Inventory> thisEntityInventoryBinding
+	)
 	{
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_movement = movement;
@@ -121,6 +134,8 @@ public class UiStateManager
 		BooleanSupplier shouldChangePage = () -> {
 			return _leftClick;
 		};
+		_selectionBinding = selectionBinding;
+		_thisEntityInventoryBinding = thisEntityInventoryBinding;
 		_thisEntityInventoryView = windowManager.buildTopRightView("Inventory", mouseOverKeyConsumer, shouldChangePage);
 	}
 
@@ -132,6 +147,9 @@ public class UiStateManager
 
 	public void drawRelevantWindows(WindowManager windowManager, AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
 	{
+		// Update the selection binding for the UI.
+		_selectionBinding.set(new WindowSelection.Selection(selectedBlock, selectedEntity));
+		
 		IAction action = null;
 		if (_UiState.INVENTORY == _uiState)
 		{
@@ -208,7 +226,7 @@ public class UiStateManager
 				}
 			}
 			
-			Inventory entityInventory = _getEntityInventory();
+			Inventory entityInventory = _thisEntityInventoryBinding.get();
 			if (null == _openStationLocation)
 			{
 				// We are just looking at the floor at our feet.
@@ -348,14 +366,12 @@ public class UiStateManager
 					? null
 					: topLeft
 			;
-			Binding<Inventory> thisEntityInventoryBinding = new Binding<>();
-			thisEntityInventoryBinding.data = _getEntityInventory();
-			action = windowManager.drawActiveWindows(null, null, applicableCrafting, _thisEntityInventoryView, thisEntityInventoryBinding, bottom, _thisEntity.armourSlots(), _cursor);
+			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, _thisEntityInventoryBinding, bottom, _thisEntity.armourSlots(), _cursor);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			action = windowManager.drawActiveWindows(selectedBlock, selectedEntity, null, null, null, null, null, _cursor);
+			action = windowManager.drawActiveWindows(null, null, null, null, null, _cursor);
 		}
 		
 		// Run any actions based on clicking on the UI.
@@ -791,15 +807,6 @@ public class UiStateManager
 			})
 			.toList()
 		;
-	}
-
-	private Inventory _getEntityInventory()
-	{
-		Inventory inventory = _thisEntity.isCreativeMode()
-				? CreativeInventory.fakeInventory()
-				: _thisEntity.inventory()
-		;
-		return inventory;
 	}
 
 	private boolean _canAct(AbsoluteLocation selectedBlock)

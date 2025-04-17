@@ -56,7 +56,7 @@ public class WindowEntityInventory
 			@Override
 			public IAction render(Rect location, Binding<Inventory> binding, Point cursor)
 			{
-				Inventory data = binding.data;
+				Inventory data = binding.get();
 				
 				// Draw the window outline.
 				UiIdioms.drawOverlayFrame(ui, ui.pixelDarkGreyAlpha, ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
@@ -103,7 +103,7 @@ public class WindowEntityInventory
 				IAction[] out_action = new IAction[1];
 				ItemRenderer<Integer> renderer = (float left, float bottom, float right, float top, Integer item, boolean isMouseOver) -> {
 					int itemKey = item;
-					innerBinding.data = new ItemTuple<>(data.getStackForKey(itemKey), data.getNonStackableForKey(itemKey), item);
+					innerBinding.set(new ItemTuple<>(data.getStackForKey(itemKey), data.getNonStackableForKey(itemKey), item));
 					Rect itemRect = new Rect(left, bottom, right, top);
 					IAction innerAction = itemView.render(itemRect, innerBinding, cursor);
 					if (null != innerAction)
