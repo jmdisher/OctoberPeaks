@@ -14,6 +14,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
@@ -76,7 +77,7 @@ public class WindowManager
 	private final Window<Entity> _metaDataWindow;
 	private final Window<Entity> _hotbarWindow;
 	private final Window<NonStackableItem[]> _armourWindow;
-	private final Window<WindowSelection.Selection> _selectionWindow;
+	private final Window<WorldSelection> _selectionWindow;
 
 	public WindowManager(Environment env
 			, GL20 gl
@@ -84,7 +85,7 @@ public class WindowManager
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, Consumer<BodyPart> eventHoverArmourBodyPart
 			, Binding<Entity> entityBinding
-			, Binding<WindowSelection.Selection> selectionBinding
+			, Binding<WorldSelection> selectionBinding
 			, Binding<NonStackableItem[]> armourBinding
 	)
 	{

@@ -14,11 +14,11 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
+import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.Point;
-import com.jeffdisher.october.peaks.ui.WindowSelection;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -90,7 +90,7 @@ public class UiStateManager
 	private boolean _shouldResume;
 
 	// Bindings defined/owned here and referenced by various UI components.
-	private final Binding<WindowSelection.Selection> _selectionBinding;
+	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Inventory> _thisEntityInventoryBinding;
 	
 	// Views for rendering parts of the UI in specific modes.
@@ -103,7 +103,7 @@ public class UiStateManager
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, IInputStateChanger captureState
 			, WindowManager windowManager
-			, Binding<WindowSelection.Selection> selectionBinding
+			, Binding<WorldSelection> selectionBinding
 			, Binding<Inventory> thisEntityInventoryBinding
 	)
 	{
@@ -145,10 +145,10 @@ public class UiStateManager
 		return _UiState.PLAY == _uiState;
 	}
 
-	public void drawRelevantWindows(WindowManager windowManager, AbsoluteLocation selectedBlock, PartialEntity selectedEntity)
+	public void drawRelevantWindows(WindowManager windowManager, WorldSelection selection)
 	{
 		// Update the selection binding for the UI.
-		_selectionBinding.set(new WindowSelection.Selection(selectedBlock, selectedEntity));
+		_selectionBinding.set(selection);
 		
 		IAction action = null;
 		if (_UiState.INVENTORY == _uiState)

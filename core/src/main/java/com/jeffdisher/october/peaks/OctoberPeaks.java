@@ -21,9 +21,9 @@ import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.SubBinding;
-import com.jeffdisher.october.peaks.ui.WindowSelection;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -105,7 +105,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Define the bindings which UI components need.
 		// TODO:  Move this to UiStateManager once WindowManager is removed.
 		Binding<Entity> entityBinding = new Binding<>();
-		Binding<WindowSelection.Selection> selectionBinding = new Binding<>();
+		Binding<WorldSelection> selectionBinding = new Binding<>();
 		Binding<Inventory> thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> {
 			Inventory inventory = entity.isCreativeMode()
 					? CreativeInventory.fakeInventory()
@@ -286,6 +286,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		_input.flushEventsToStateManager(_uiState);
 		
 		// Find the selection, if the mode supports this.
+		WorldSelection selection = null;
 		PartialEntity entity = null;
 		AbsoluteLocation stopBlock = null;
 		Block stopBlockType = null;
@@ -304,7 +305,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			}
 			
 			// Capture whatever is selected.
-			SelectionManager.SelectionTuple selection = _selectionManager.findSelection();
+			selection = _selectionManager.findSelection();
 			if (null != selection)
 			{
 				entity = selection.entity();
@@ -335,7 +336,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		_eyeEffect.drawEyeEffect();
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
-		_uiState.drawRelevantWindows(_windowManager, stopBlock, entity);
+		_uiState.drawRelevantWindows(_windowManager, selection);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Finalize the event processing with this selection and accounting for inter-frame time.

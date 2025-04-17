@@ -10,6 +10,7 @@ import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -113,7 +114,7 @@ public class SelectionManager
 		_isEmptyBucketSelected = isEmptyBucket;
 	}
 
-	public SelectionTuple findSelection()
+	public WorldSelection findSelection()
 	{
 		// Find any selected entity or block.
 		Vector delta = Vector.delta(_eye, _target).normalize();
@@ -158,16 +159,16 @@ public class SelectionManager
 		});
 		
 		// We will return a tuple if we matched either of these - prioritize the block since the entity will restrict the block check distance.
-		SelectionTuple tuple;
+		WorldSelection tuple;
 		if (null != selectedBlock)
 		{
-			tuple = new SelectionTuple(null, selectedBlock.stopBlock(), selectedBlock.preStopBlock());
+			tuple = new WorldSelection(null, selectedBlock.stopBlock(), selectedBlock.preStopBlock());
 		}
 		else if (null != selectedEntity)
 		{
 			// Here, we will impose the limits of the entity selection range.
 			tuple = (selectedEntity.distance() <= MiscConstants.REACH_ENTITY)
-					? new SelectionTuple(selectedEntity.entity(), null, null)
+					? new WorldSelection(selectedEntity.entity(), null, null)
 					: null
 			;
 		}
@@ -178,11 +179,4 @@ public class SelectionManager
 		}
 		return tuple;
 	}
-
-
-	// Either the entity or the blocks are non-null, never both.
-	public static record SelectionTuple(PartialEntity entity
-			, AbsoluteLocation stopBlock
-			, AbsoluteLocation preStopBlock
-	) {}
 }
