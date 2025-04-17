@@ -7,7 +7,6 @@ package com.jeffdisher.october.peaks.ui;
  */
 public record Window<T>(Rect location
 		, IView<T> view
-		, Binding<T> binding
 )
 {
 	/**
@@ -18,6 +17,6 @@ public record Window<T>(Rect location
 	 */
 	public IAction doRender(Point cursor)
 	{
-		return this.view().render(this.location(), this.binding(), cursor);
+		return this.view().render(this.location(), cursor);
 	}
 }

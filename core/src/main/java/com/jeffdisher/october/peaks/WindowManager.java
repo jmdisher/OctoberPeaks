@@ -23,11 +23,11 @@ import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
-import com.jeffdisher.october.peaks.ui.WindowArmour;
-import com.jeffdisher.october.peaks.ui.WindowEntityInventory;
-import com.jeffdisher.october.peaks.ui.WindowHotbar;
-import com.jeffdisher.october.peaks.ui.WindowMetaData;
-import com.jeffdisher.october.peaks.ui.WindowSelection;
+import com.jeffdisher.october.peaks.ui.ViewArmour;
+import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
+import com.jeffdisher.october.peaks.ui.ViewHotbar;
+import com.jeffdisher.october.peaks.ui.ViewMetaData;
+import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
@@ -50,7 +50,7 @@ public class WindowManager
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
-	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, WindowArmour.ARMOUR_SLOT_RIGHT_EDGE - WindowArmour.ARMOUR_SLOT_SCALE - WindowArmour.ARMOUR_SLOT_SPACING, 0.95f);
+	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final float RETICLE_SIZE = 0.05f;
 
@@ -174,15 +174,14 @@ public class WindowManager
 		_entityBinding = entityBinding;
 		
 		// Define the windows for different UI modes.
-		_metaDataWindow = new Window<>(WindowMetaData.LOCATION, WindowMetaData.buildRenderer(_ui), _entityBinding);
-		_hotbarWindow = new Window<>(WindowHotbar.LOCATION, WindowHotbar.buildRenderer(_ui), _entityBinding);
-		_armourWindow = new Window<>(WindowArmour.LOCATION, WindowArmour.buildRenderer(_ui, eventHoverArmourBodyPart), armourBinding);
-		_selectionWindow = new Window<>(WindowSelection.LOCATION, WindowSelection.buildRenderer(_ui, _env, _blockLookup, _otherPlayersById), selectionBinding);
+		_metaDataWindow = new Window<>(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
+		_hotbarWindow = new Window<>(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
+		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
+		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, selectionBinding, _blockLookup, _otherPlayersById));
 	}
 
 	public <A, B, C> IAction drawActiveWindows(WindowData<A> topLeft
 			, IView<Inventory> thisEntityInventoryView
-			, Binding<Inventory> thisEntityInventoryBinding
 			, WindowData<C> bottom
 			, NonStackableItem[] armourSlots
 			, Point cursor
@@ -231,7 +230,7 @@ public class WindowManager
 		}
 		if (null != thisEntityInventoryView)
 		{
-			IAction hover = thisEntityInventoryView.render(WINDOW_TOP_RIGHT, thisEntityInventoryBinding, cursor);
+			IAction hover = thisEntityInventoryView.render(WINDOW_TOP_RIGHT, cursor);
 			if (null != hover)
 			{
 				action = hover;
@@ -311,9 +310,9 @@ public class WindowManager
 		_isPaused = isPaused;
 	}
 
-	public IView<Inventory> buildTopRightView(String title, IntConsumer mouseOverKeyConsumer, BooleanSupplier shouldChangePage)
+	public IView<Inventory> buildTopRightView(String title, Binding<Inventory> binding, IntConsumer mouseOverKeyConsumer, BooleanSupplier shouldChangePage)
 	{
-		return WindowEntityInventory.buildRenderer(_ui, title, WINDOW_TOP_RIGHT, mouseOverKeyConsumer, shouldChangePage);
+		return new ViewEntityInventory(_ui, title, binding, mouseOverKeyConsumer, shouldChangePage);
 	}
 
 	public void shutdown()

@@ -7,5 +7,5 @@ package com.jeffdisher.october.peaks.ui;
  */
 public interface IView<T>
 {
-	public IAction render(Rect location, Binding<T> binding, Point cursor);
+	public IAction render(Rect location, Point cursor);
 }

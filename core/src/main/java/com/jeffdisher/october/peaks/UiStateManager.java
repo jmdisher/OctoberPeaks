@@ -136,7 +136,7 @@ public class UiStateManager
 		};
 		_selectionBinding = selectionBinding;
 		_thisEntityInventoryBinding = thisEntityInventoryBinding;
-		_thisEntityInventoryView = windowManager.buildTopRightView("Inventory", mouseOverKeyConsumer, shouldChangePage);
+		_thisEntityInventoryView = windowManager.buildTopRightView("Inventory", _thisEntityInventoryBinding, mouseOverKeyConsumer, shouldChangePage);
 	}
 
 	public boolean canSelectInScene()
@@ -366,12 +366,12 @@ public class UiStateManager
 					? null
 					: topLeft
 			;
-			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, _thisEntityInventoryBinding, bottom, _thisEntity.armourSlots(), _cursor);
+			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, bottom, _thisEntity.armourSlots(), _cursor);
 		}
 		else
 		{
 			// In this case, just draw the common UI elements.
-			action = windowManager.drawActiveWindows(null, null, null, null, null, _cursor);
+			action = windowManager.drawActiveWindows(null, null, null, null, _cursor);
 		}
 		
 		// Run any actions based on clicking on the UI.
