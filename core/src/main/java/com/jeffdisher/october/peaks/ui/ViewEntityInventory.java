@@ -15,24 +15,29 @@ public class ViewEntityInventory implements IView<Inventory>
 {
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
+	public static final float WINDOW_ITEM_SIZE = 0.1f;
 
 	private final GlUi _ui;
-	private final String _upperCaseTitle;
+	private final Binding<String> _titleBinding;
 	private final Binding<Inventory> _binding;
+	private final ViewItemTypeProgress _optionalProgress;
 
 	private final Binding<List<ItemTuple<Integer>>> _internalGridBinding;
 	private final IView<List<ItemTuple<Integer>>> _itemGrid;
 
 	public ViewEntityInventory(GlUi ui
-			, String title
+			, Binding<String> titleBinding
 			, Binding<Inventory> binding
+			, ViewItemTypeProgress optionalProgress
 			, IntConsumer mouseOverKeyConsumer
 			, BooleanSupplier shouldChangePage
 	)
 	{
 		_ui = ui;
-		_upperCaseTitle = title.toUpperCase();
+		_titleBinding = titleBinding;
 		_binding = binding;
+		_optionalProgress = optionalProgress;
+		
 		ComplexItemView.IBindOptions<Integer> options = new ComplexItemView.IBindOptions<>()
 		{
 			@Override
@@ -74,12 +79,22 @@ public class ViewEntityInventory implements IView<Inventory>
 		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 		
 		// Draw the title.
-		float labelRight = _ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), _upperCaseTitle);
+		String upperCaseTitle = _titleBinding.get().toUpperCase();
+		float labelRight = _ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), upperCaseTitle);
 		
 		// Draw the capacity.
 		String extraTitle = String.format("(%d/%d)", data.currentEncumbrance, data.maxEncumbrance);
 		float bottomY = location.topY() - WINDOW_TITLE_HEIGHT;
-		_ui.drawLabel(labelRight + WINDOW_MARGIN, bottomY, bottomY + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
+		float rightEdgeOfTitle = _ui.drawLabel(labelRight + WINDOW_MARGIN, bottomY, bottomY + WINDOW_TITLE_HEIGHT, extraTitle);
+		
+		// Draw any additional information we need:
+		if (null != _optionalProgress)
+		{
+			float left = rightEdgeOfTitle + WINDOW_MARGIN;
+			float bottom = location.topY() - WINDOW_TITLE_HEIGHT;
+			Rect progressLocation = new Rect(left, bottom, left + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE);
+			_optionalProgress.render(progressLocation, cursor);
+		}
 		
 		// Draw the actual sub-view (which will handle pagination, itself).
 		// We need to populate the internal binding since it is based on what we have.

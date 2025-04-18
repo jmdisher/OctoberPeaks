@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -24,7 +23,6 @@ import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
-import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
@@ -51,7 +49,7 @@ public class WindowManager
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
 	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
-	public static final _WindowDimensions WINDOW_BOTTOM = new _WindowDimensions(-0.95f, -0.80f, 0.95f, -0.05f);
+	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final float RETICLE_SIZE = 0.05f;
 
 	private final Environment _env;
@@ -182,7 +180,7 @@ public class WindowManager
 
 	public <A, B, C> IAction drawActiveWindows(WindowData<A> topLeft
 			, IView<Inventory> thisEntityInventoryView
-			, WindowData<C> bottom
+			, IView<Inventory> bottomPaneInventoryView
 			, NonStackableItem[] armourSlots
 			, Point cursor
 	)
@@ -237,9 +235,9 @@ public class WindowManager
 			}
 			didDrawWindows = true;
 		}
-		if (null != bottom)
+		if (null != bottomPaneInventoryView)
 		{
-			IAction hover = _drawWindow(bottom, WINDOW_BOTTOM, cursor);
+			IAction hover = bottomPaneInventoryView.render(WINDOW_BOTTOM, cursor);
 			if (null != hover)
 			{
 				action = hover;
@@ -310,9 +308,9 @@ public class WindowManager
 		_isPaused = isPaused;
 	}
 
-	public IView<Inventory> buildTopRightView(String title, Binding<Inventory> binding, IntConsumer mouseOverKeyConsumer, BooleanSupplier shouldChangePage)
+	public GlUi getUi()
 	{
-		return new ViewEntityInventory(_ui, title, binding, mouseOverKeyConsumer, shouldChangePage);
+		return _ui;
 	}
 
 	public void shutdown()
@@ -328,21 +326,11 @@ public class WindowManager
 		
 		// Draw the title.
 		float labelRight = _ui.drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
-		float rightEdgeOfTitle = labelRight;
 		if (data.maxSize > 0)
 		{
 			String extraTitle = String.format("(%d/%d)", data.usedSize, data.maxSize);
 			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			rightEdgeOfTitle = _ui.drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
-		}
-		
-		// If there is fuel, draw that item to the right of the title.
-		FuelSlot optionalFuel = data.optionalFuel;
-		if (null != optionalFuel)
-		{
-			float right = rightEdgeOfTitle + WINDOW_MARGIN;
-			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			UiIdioms.renderItem(_ui, right, bottom, right + WINDOW_ITEM_SIZE, bottom + WINDOW_ITEM_SIZE, _ui.pixelGreen, optionalFuel.fuel, 0, optionalFuel.remainingFraction, false);
+			_ui.drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
 		}
 		
 		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
@@ -429,7 +417,6 @@ public class WindowManager
 			, ItemRenderer<T> renderItem
 			, HoverRenderer<T> renderHover
 			, Consumer<T> eventHoverOverItem
-			, FuelSlot optionalFuel
 	) {}
 
 	public static record CraftDescription(Craft craft
@@ -442,10 +429,6 @@ public class WindowManager
 	public static record ItemRequirement(Item type
 			, int required
 			, int available
-	) {}
-
-	public static record FuelSlot(Item fuel
-			, float remainingFraction
 	) {}
 
 	private static record _WindowDimensions(float leftX

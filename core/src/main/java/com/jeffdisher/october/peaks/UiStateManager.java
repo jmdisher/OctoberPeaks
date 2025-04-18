@@ -16,9 +16,13 @@ import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
+import com.jeffdisher.october.peaks.ui.ItemTypeAndProgress;
 import com.jeffdisher.october.peaks.ui.Point;
+import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
+import com.jeffdisher.october.peaks.ui.ViewItemTypeProgress;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -31,7 +35,6 @@ import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
-import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 
 
@@ -73,7 +76,6 @@ public class UiStateManager
 	private _UiState _uiState;
 	private AbsoluteLocation _openStationLocation;
 	private int _topLeftPage;
-	private int _bottomPage;
 	private boolean _viewingFuelInventory;
 	private Craft _continuousInInventory;
 	private Craft _continuousInBlock;
@@ -92,9 +94,13 @@ public class UiStateManager
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Inventory> _thisEntityInventoryBinding;
+	private final Binding<Inventory> _bottomWindowInventoryBinding;
+	private final Binding<String> _bottomWindowTitleBinding;
+	private final Binding<ItemTypeAndProgress> _bottomWindowFuelBinding;
 	
 	// Views for rendering parts of the UI in specific modes.
 	private final IView<Inventory> _thisEntityInventoryView;
+	private final IView<Inventory> _bottomInventoryView;
 
 	public UiStateManager(Environment environment
 			, MovementControl movement
@@ -118,7 +124,8 @@ public class UiStateManager
 		_uiState = _UiState.PLAY;
 		
 		// Create our views.
-		IntConsumer mouseOverKeyConsumer = (int key) -> {
+		GlUi ui = windowManager.getUi();
+		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
 			AbsoluteLocation relevantBlock;
 			if (null != _openStationLocation)
 			{
@@ -131,12 +138,33 @@ public class UiStateManager
 			}
 			_handleHoverOverEntityInventoryItem(relevantBlock, key);
 		};
-		BooleanSupplier shouldChangePage = () -> {
+		IntConsumer mouseOverBottomKeyConsumer = (int key) -> {
+			AbsoluteLocation relevantBlock;
+			if (null != _openStationLocation)
+			{
+				relevantBlock = _openStationLocation;
+			}
+			else
+			{
+				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
+				relevantBlock = feetBlock;
+			}
+			_pullFromBlockToEntityInventory(relevantBlock, key);
+		};
+		BooleanSupplier commonPageChangeCheck = () -> {
 			return _leftClick;
 		};
 		_selectionBinding = selectionBinding;
 		_thisEntityInventoryBinding = thisEntityInventoryBinding;
-		_thisEntityInventoryView = windowManager.buildTopRightView("Inventory", _thisEntityInventoryBinding, mouseOverKeyConsumer, shouldChangePage);
+		_bottomWindowInventoryBinding = new Binding<>();
+		_bottomWindowTitleBinding = new Binding<>();
+		_bottomWindowFuelBinding = new Binding<>();
+		
+		Binding<String> inventoryTitleBinding = new Binding<>();
+		inventoryTitleBinding.set("Inventory");
+		_thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
+		ViewItemTypeProgress fuelProgress = new ViewItemTypeProgress(ui, _bottomWindowFuelBinding);
+		_bottomInventoryView = new ViewEntityInventory(ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
 	}
 
 	public boolean canSelectInScene()
@@ -156,13 +184,12 @@ public class UiStateManager
 			Environment env = Environment.getShared();
 			
 			// We are in inventory mode but we will need to handle station/floor cases differently.
-			AbsoluteLocation relevantBlock = null;
 			Inventory relevantInventory = null;
 			Inventory inventoryToCraftFrom = null;
 			List<Craft> validCrafts = null;
 			CraftOperation currentOperation = null;
 			String stationName = "Floor";
-			WindowManager.FuelSlot fuelSlot = null;
+			ItemTypeAndProgress fuelSlot = null;
 			boolean isAutomaticCrafting = false;
 			if (null != _openStationLocation)
 			{
@@ -188,7 +215,7 @@ public class UiStateManager
 							long totalFuel = env.fuel.millisOfFuel(currentFuel);
 							long remainingFuel = fuel.millisFuelled();
 							float fuelRemaining = (float)remainingFuel / (float) totalFuel;
-							fuelSlot = new WindowManager.FuelSlot(currentFuel, fuelRemaining);
+							fuelSlot = new ItemTypeAndProgress(currentFuel, fuelRemaining);
 						}
 					}
 					else
@@ -200,7 +227,6 @@ public class UiStateManager
 					// Find the crafts for this station type.
 					Set<String> classifications = env.stations.getCraftingClasses(stationType);
 					
-					relevantBlock = _openStationLocation;
 					relevantInventory = stationInventory;
 					validCrafts = env.crafting.craftsForClassifications(classifications);
 					// We will convert these into CraftOperation instances so we can splice in the current craft.
@@ -222,7 +248,6 @@ public class UiStateManager
 					_continuousInInventory = null;
 					_continuousInBlock = null;
 					_topLeftPage = 0;
-					_bottomPage = 0;
 				}
 			}
 			
@@ -234,7 +259,6 @@ public class UiStateManager
 				BlockProxy thisBlock = _blockLookup.apply(feetBlock);
 				Inventory floorInventory = thisBlock.getInventory();
 				
-				relevantBlock = feetBlock;
 				relevantInventory = floorInventory;
 				inventoryToCraftFrom = entityInventory;
 				// We are just looking at the entity inventory so find the built-in crafting recipes.
@@ -244,8 +268,6 @@ public class UiStateManager
 			}
 			
 			Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
-			List<_InventoryEntry> relevantInventoryList = _inventoryToList(relevantInventory);
-			final AbsoluteLocation finalRelevantBlock = relevantBlock;
 			final CraftOperation finalCraftOperation = currentOperation;
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
 			boolean canBeManuallySelected = !isAutomaticCrafting;
@@ -275,30 +297,6 @@ public class UiStateManager
 					})
 					.toList()
 			;
-			
-			WindowManager.ItemRenderer<_InventoryEntry> renderer = (float left, float bottom, float right, float top, _InventoryEntry item, boolean isMouseOver) -> {
-				Items items = item.stackable;
-				if (null != items)
-				{
-					windowManager.renderItemStack.drawItem(left, bottom, right, top, items, isMouseOver);
-				}
-				else
-				{
-					windowManager.renderNonStackable.drawItem(left, bottom, right, top, item.nonStackable, isMouseOver);
-				}
-			};
-			WindowManager.HoverRenderer<_InventoryEntry> hover = (Point cursor, _InventoryEntry item) -> {
-				Item type;
-				if (null != item.stackable)
-				{
-					type = item.stackable.type();
-				}
-				else
-				{
-					type = item.nonStackable.type();
-				}
-				windowManager.hoverItem.drawHoverAtPoint(cursor, type);
-			};
 			
 			// Determine if we can handle manual crafting selection callbacks.
 			Consumer<WindowManager.CraftDescription> craftHoverOverItem = canBeManuallySelected
@@ -340,25 +338,6 @@ public class UiStateManager
 					, windowManager.renderCraftOperation
 					, windowManager.hoverCraftOperation
 					, craftHoverOverItem
-					, null
-			);
-			WindowManager.WindowData<_InventoryEntry> bottom = new WindowManager.WindowData<>(stationName
-					, relevantInventory.currentEncumbrance
-					, relevantInventory.maxEncumbrance
-					, _bottomPage
-					, (int page) -> {
-						if (_leftClick)
-						{
-							_bottomPage = page;
-						}
-					}
-					, relevantInventoryList
-					, renderer
-					, hover
-					, (_InventoryEntry elt) -> {
-						_pullFromBlockToEntityInventory(finalRelevantBlock, elt.key);
-					}
-					, fuelSlot
 			);
 			
 			// Determine if we even want the crafting window since it doesn't apply to all stations.
@@ -366,7 +345,12 @@ public class UiStateManager
 					? null
 					: topLeft
 			;
-			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, bottom, _thisEntity.armourSlots(), _cursor);
+			
+			// We need to update our bindings BEFORE rendering anything.
+			_bottomWindowInventoryBinding.set(relevantInventory);
+			_bottomWindowTitleBinding.set(stationName);
+			_bottomWindowFuelBinding.set(fuelSlot);
+			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, _bottomInventoryView, _thisEntity.armourSlots(), _cursor);
 		}
 		else
 		{
@@ -674,8 +658,7 @@ public class UiStateManager
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = null;
 			_topLeftPage = 0;
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView?
-			_bottomPage = 0;
+			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView and _bottomInventoryView?
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
 			break;
@@ -779,34 +762,12 @@ public class UiStateManager
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = blockLocation;
 			_topLeftPage = 0;
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView?
-			_bottomPage = 0;
+			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView and _bottomInventoryView?
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
 			didOpen = true;
 		}
 		return didOpen;
-	}
-
-	private List<_InventoryEntry> _inventoryToList(Inventory inventory)
-	{
-		return inventory.sortedKeys().stream()
-			.map((Integer key) -> {
-				Items stack = inventory.getStackForKey(key);
-				_InventoryEntry entry;
-				if (null != stack)
-				{
-					entry = new _InventoryEntry(key, stack, null);
-				}
-				else
-				{
-					NonStackableItem nonStack = inventory.getNonStackableForKey(key);
-					entry = new _InventoryEntry(key, null, nonStack);
-				}
-				return entry;
-			})
-			.toList()
-		;
 	}
 
 	private boolean _canAct(AbsoluteLocation selectedBlock)
@@ -886,8 +847,6 @@ public class UiStateManager
 		 */
 		INVENTORY,
 	}
-
-	private static record _InventoryEntry(int key, Items stackable, NonStackableItem nonStackable) {}
 
 	public static interface IInputStateChanger
 	{
