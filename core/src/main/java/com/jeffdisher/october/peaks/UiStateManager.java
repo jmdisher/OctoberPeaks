@@ -38,6 +38,7 @@ import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -221,150 +222,24 @@ public class UiStateManager
 
 	public void drawRelevantWindows(WindowManager windowManager, WorldSelection selection)
 	{
-		// Update the selection binding for the UI.
+		// Update common bindings.
 		_selectionBinding.set(selection);
 		
-		IAction action = null;
-		if (_UiState.INVENTORY == _uiState)
+		// Perform state-specific drawing.
+		IAction action;
+		switch (_uiState)
 		{
-			// We are in inventory mode but we will need to handle station/floor cases differently.
-			Inventory relevantInventory = null;
-			Inventory inventoryToCraftFrom = null;
-			List<Craft> validCrafts = null;
-			CraftOperation currentOperation = null;
-			String stationName = "Floor";
-			ItemTuple<Void> fuelSlot = null;
-			boolean isAutomaticCrafting = false;
-			if (null != _openStationLocation)
-			{
-				// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
-				BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
-				Block stationType = stationBlock.getBlock();
-				
-				if (_env.stations.getNormalInventorySize(stationType) > 0)
-				{
-					Inventory stationInventory = stationBlock.getInventory();
-					inventoryToCraftFrom = stationInventory;
-					// If we are viewing the fuel inventory, we want to use that, instead.
-					FuelState fuel = stationBlock.getFuel();
-					if (null != fuel)
-					{
-						if (_viewingFuelInventory)
-						{
-							stationInventory = fuel.fuelInventory();
-						}
-						Item currentFuel = fuel.currentFuel();
-						if (null != currentFuel)
-						{
-							long totalFuel = _env.fuel.millisOfFuel(currentFuel);
-							long remainingFuel = fuel.millisFuelled();
-							float fuelRemaining = (float)remainingFuel / (float) totalFuel;
-							fuelSlot = new ItemTuple<>(currentFuel, 0, fuelRemaining, null);
-						}
-					}
-					else
-					{
-						// This is invalid so just clear it.
-						_viewingFuelInventory = false;
-					}
-					
-					// Find the crafts for this station type.
-					Set<String> classifications = _env.stations.getCraftingClasses(stationType);
-					
-					relevantInventory = stationInventory;
-					validCrafts = _env.crafting.craftsForClassifications(classifications);
-					// We will convert these into CraftOperation instances so we can splice in the current craft.
-					currentOperation = stationBlock.getCrafting();
-					if (0 == _env.stations.getManualMultiplier(stationType))
-					{
-						isAutomaticCrafting = true;
-					}
-					stationName = stationType.item().name();
-					if (_viewingFuelInventory)
-					{
-						stationName += " Fuel";
-					}
-				}
-				else
-				{
-					// This is no longer a station.
-					_openStationLocation = null;
-					_continuousInInventory = null;
-					_continuousInBlock = null;
-				}
-			}
-			
-			Inventory entityInventory = _thisEntityInventoryBinding.get();
-			if (null == _openStationLocation)
-			{
-				// We are just looking at the floor at our feet.
-				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
-				BlockProxy thisBlock = _blockLookup.apply(feetBlock);
-				Inventory floorInventory = thisBlock.getInventory();
-				
-				relevantInventory = floorInventory;
-				inventoryToCraftFrom = entityInventory;
-				// We are just looking at the entity inventory so find the built-in crafting recipes.
-				validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
-				// We will convert these into CraftOperation instances so we can splice in the current craft.
-				currentOperation = _thisEntity.localCraftOperation();
-			}
-			
-			Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
-			final CraftOperation finalCraftOperation = currentOperation;
-			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
-			boolean canBeManuallySelected = !isAutomaticCrafting;
-			List<CraftDescription> convertedCrafts = validCrafts.stream()
-					.map((Craft craft) -> {
-						long progressMillis = 0L;
-						if (craft == currentCraft)
-						{
-							progressMillis = finalCraftOperation.completedMillis();
-						}
-						float progress = (float)progressMillis / (float)craft.millisPerCraft;
-						CraftDescription.ItemRequirement[] requirements = Arrays.stream(craft.input)
-								.map((Items input) -> {
-									Item type = input.type();
-									int available = finalInventoryToCraftFrom.getCount(type);
-									return new CraftDescription.ItemRequirement(type, input.count(), available);
-								})
-								.toArray((int size) -> new CraftDescription.ItemRequirement[size])
-						;
-						// Note that we are assuming that there is only one output type.
-						return new CraftDescription(craft
-								, new Items(craft.output[0], craft.output.length)
-								, requirements
-								, progress
-								, canBeManuallySelected
-						);
-					})
-					.toList()
-			;
-			
-			String craftingType = isAutomaticCrafting
-					? "Automatic Crafting"
-					: "Manual Crafting"
-			;
-			
-			// Determine if we even want the crafting window since it doesn't apply to all stations.
-			ViewCraftingPanel applicableCrafting = convertedCrafts.isEmpty()
-					? null
-					: _craftingPanelView
-			;
-			
-			// We need to update our bindings BEFORE rendering anything.
-			_bottomWindowInventoryBinding.set(relevantInventory);
-			_bottomWindowTitleBinding.set(stationName);
-			_bottomWindowFuelBinding.set(fuelSlot);
-			_craftingPanelTitleBinding.set(craftingType);
-			_craftingPanelBinding.set(convertedCrafts);
-			_isManualCraftingStation = canBeManuallySelected;
-			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, _bottomInventoryView, _thisEntity.armourSlots(), _cursor);
-		}
-		else
-		{
-			// In this case, just draw the common UI elements.
-			action = windowManager.drawActiveWindows(null, null, null, null, _cursor);
+		case INVENTORY:
+			action = _drawInventoryStateWindows(windowManager);
+			break;
+		case MENU:
+			action = _drawMenuStateWindows(windowManager);
+			break;
+		case PLAY:
+			action = _drawPlayStateWindows(windowManager);
+			break;
+		default:
+			throw Assert.unreachable();
 		}
 		
 		// Run any actions based on clicking on the UI.
@@ -829,6 +704,156 @@ public class UiStateManager
 	{
 		_lastActionBlock = null;
 		_lastActionMillis = System.currentTimeMillis();
+	}
+
+	private IAction _drawInventoryStateWindows(WindowManager windowManager)
+	{
+		// We are in inventory mode but we will need to handle station/floor cases differently.
+		Inventory relevantInventory = null;
+		Inventory inventoryToCraftFrom = null;
+		List<Craft> validCrafts = null;
+		CraftOperation currentOperation = null;
+		String stationName = "Floor";
+		ItemTuple<Void> fuelSlot = null;
+		boolean isAutomaticCrafting = false;
+		if (null != _openStationLocation)
+		{
+			// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
+			BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
+			Block stationType = stationBlock.getBlock();
+			
+			if (_env.stations.getNormalInventorySize(stationType) > 0)
+			{
+				Inventory stationInventory = stationBlock.getInventory();
+				inventoryToCraftFrom = stationInventory;
+				// If we are viewing the fuel inventory, we want to use that, instead.
+				FuelState fuel = stationBlock.getFuel();
+				if (null != fuel)
+				{
+					if (_viewingFuelInventory)
+					{
+						stationInventory = fuel.fuelInventory();
+					}
+					Item currentFuel = fuel.currentFuel();
+					if (null != currentFuel)
+					{
+						long totalFuel = _env.fuel.millisOfFuel(currentFuel);
+						long remainingFuel = fuel.millisFuelled();
+						float fuelRemaining = (float)remainingFuel / (float) totalFuel;
+						fuelSlot = new ItemTuple<>(currentFuel, 0, fuelRemaining, null);
+					}
+				}
+				else
+				{
+					// This is invalid so just clear it.
+					_viewingFuelInventory = false;
+				}
+				
+				// Find the crafts for this station type.
+				Set<String> classifications = _env.stations.getCraftingClasses(stationType);
+				
+				relevantInventory = stationInventory;
+				validCrafts = _env.crafting.craftsForClassifications(classifications);
+				// We will convert these into CraftOperation instances so we can splice in the current craft.
+				currentOperation = stationBlock.getCrafting();
+				if (0 == _env.stations.getManualMultiplier(stationType))
+				{
+					isAutomaticCrafting = true;
+				}
+				stationName = stationType.item().name();
+				if (_viewingFuelInventory)
+				{
+					stationName += " Fuel";
+				}
+			}
+			else
+			{
+				// This is no longer a station.
+				_openStationLocation = null;
+				_continuousInInventory = null;
+				_continuousInBlock = null;
+			}
+		}
+		
+		Inventory entityInventory = _thisEntityInventoryBinding.get();
+		if (null == _openStationLocation)
+		{
+			// We are just looking at the floor at our feet.
+			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
+			BlockProxy thisBlock = _blockLookup.apply(feetBlock);
+			Inventory floorInventory = thisBlock.getInventory();
+			
+			relevantInventory = floorInventory;
+			inventoryToCraftFrom = entityInventory;
+			// We are just looking at the entity inventory so find the built-in crafting recipes.
+			validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
+			// We will convert these into CraftOperation instances so we can splice in the current craft.
+			currentOperation = _thisEntity.localCraftOperation();
+		}
+		
+		Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
+		final CraftOperation finalCraftOperation = currentOperation;
+		Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
+		boolean canBeManuallySelected = !isAutomaticCrafting;
+		List<CraftDescription> convertedCrafts = validCrafts.stream()
+				.map((Craft craft) -> {
+					long progressMillis = 0L;
+					if (craft == currentCraft)
+					{
+						progressMillis = finalCraftOperation.completedMillis();
+					}
+					float progress = (float)progressMillis / (float)craft.millisPerCraft;
+					CraftDescription.ItemRequirement[] requirements = Arrays.stream(craft.input)
+							.map((Items input) -> {
+								Item type = input.type();
+								int available = finalInventoryToCraftFrom.getCount(type);
+								return new CraftDescription.ItemRequirement(type, input.count(), available);
+							})
+							.toArray((int size) -> new CraftDescription.ItemRequirement[size])
+					;
+					// Note that we are assuming that there is only one output type.
+					return new CraftDescription(craft
+							, new Items(craft.output[0], craft.output.length)
+							, requirements
+							, progress
+							, canBeManuallySelected
+					);
+				})
+				.toList()
+		;
+		
+		String craftingType = isAutomaticCrafting
+				? "Automatic Crafting"
+				: "Manual Crafting"
+		;
+		
+		// Determine if we even want the crafting window since it doesn't apply to all stations.
+		ViewCraftingPanel applicableCrafting = convertedCrafts.isEmpty()
+				? null
+				: _craftingPanelView
+		;
+		
+		// We need to update our bindings BEFORE rendering anything.
+		_bottomWindowInventoryBinding.set(relevantInventory);
+		_bottomWindowTitleBinding.set(stationName);
+		_bottomWindowFuelBinding.set(fuelSlot);
+		_craftingPanelTitleBinding.set(craftingType);
+		_craftingPanelBinding.set(convertedCrafts);
+		_isManualCraftingStation = canBeManuallySelected;
+		return windowManager.drawInventoryMode(applicableCrafting, _thisEntityInventoryView, _bottomInventoryView, _cursor);
+	
+	}
+
+	private IAction _drawMenuStateWindows(WindowManager windowManager)
+	{
+		// In this case, just draw the common UI elements and pause screen overlay.
+		return windowManager.drawMenuMode(_cursor);
+	}
+
+	private IAction _drawPlayStateWindows(WindowManager windowManager)
+	{
+		// In this case, just draw the common UI elements.
+		return windowManager.drawPlayMode(_cursor);
 	}
 
 

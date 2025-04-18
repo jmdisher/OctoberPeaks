@@ -256,17 +256,14 @@ public class OctoberPeaks extends ApplicationAdapter
 			@Override
 			public void trySetPaused(boolean isPaused)
 			{
-				boolean didPause;
 				if (isPaused)
 				{
-					didPause = _client.pauseGame();
+					_client.pauseGame();
 				}
 				else
 				{
 					_client.resumeGame();
-					didPause = false;
 				}
-				_windowManager.setPaused(didPause);
 			}
 		}, selectionBinding, thisEntityInventoryBinding);
 		

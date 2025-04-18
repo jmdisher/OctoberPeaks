@@ -52,7 +52,6 @@ public class WindowManager
 	private final Set<Block> _waterBlockTypes;
 	private final Set<Block> _lavaBlockTypes;
 	private AbsoluteLocation _eyeBlockLocation;
-	private boolean _isPaused;
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
@@ -98,12 +97,7 @@ public class WindowManager
 		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, env, selectionBinding, _blockLookup, _otherPlayersById));
 	}
 
-	public IAction drawActiveWindows(IView<List<ItemTuple<CraftDescription>>> craftingPanelView
-			, IView<Inventory> thisEntityInventoryView
-			, IView<Inventory> bottomPaneInventoryView
-			, NonStackableItem[] armourSlots
-			, Point cursor
-	)
+	public IAction drawPlayMode(Point cursor)
 	{
 		_ui.enterUiRenderMode();
 		
@@ -134,9 +128,105 @@ public class WindowManager
 			Assert.assertTrue(null == noAction);
 		}
 		
+		// We are not in windowed mode so draw the selection (if any) and crosshairs.
+		IAction noAction = _selectionWindow.doRender(cursor);
+		Assert.assertTrue(null == noAction);
+		
+		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+		
+		// Allow any periodic cleanup.
+		_ui.textManager.allowTexturePurge();
+		
+		return null;
+	}
+
+	public IAction drawMenuMode(Point cursor)
+	{
+		_ui.enterUiRenderMode();
+		
+		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
+		if (null != _eyeBlockLocation)
+		{
+			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
+			if (null != eyeProxy)
+			{
+				Block blockType = eyeProxy.getBlock();
+				if (_waterBlockTypes.contains(blockType))
+				{
+					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+				}
+				else if (_lavaBlockTypes.contains(blockType))
+				{
+					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
+				}
+			}
+		}
+		
+		// Once we have loaded the entity, we can draw the hotbar and meta-data.
+		if (null != _entityBinding.get())
+		{
+			IAction noAction = _hotbarWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
+		}
+		
+		// We are not in windowed mode so draw the selection (if any) and crosshairs.
+		IAction noAction = _selectionWindow.doRender(cursor);
+		Assert.assertTrue(null == noAction);
+		
+		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+		
+		// Draw the overlay to dim the window.
+		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+		
+		// Draw the paused text.
+		_ui.drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
+		
+		// Allow any periodic cleanup.
+		_ui.textManager.allowTexturePurge();
+		
+		return null;
+	}
+
+	public IAction drawInventoryMode(IView<List<ItemTuple<CraftDescription>>> craftingPanelView
+			, IView<Inventory> thisEntityInventoryView
+			, IView<Inventory> bottomPaneInventoryView
+			, Point cursor
+	)
+	{
+		Assert.assertTrue(null != thisEntityInventoryView);
+		Assert.assertTrue(null != bottomPaneInventoryView);
+		_ui.enterUiRenderMode();
+		
+		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
+		if (null != _eyeBlockLocation)
+		{
+			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
+			if (null != eyeProxy)
+			{
+				Block blockType = eyeProxy.getBlock();
+				if (_waterBlockTypes.contains(blockType))
+				{
+					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+				}
+				else if (_lavaBlockTypes.contains(blockType))
+				{
+					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
+				}
+			}
+		}
+		
+		// Once we have loaded the entity, we can draw the hotbar and meta-data.
+		if (null != _entityBinding.get())
+		{
+			IAction noAction = _hotbarWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(cursor);
+			Assert.assertTrue(null == noAction);
+		}
+		
 		IAction action = null;
-		// We will disable the handling of any selection if we draw any overlay windows (they should be null in that case, anyway).
-		boolean didDrawWindows = false;
 		if (null != craftingPanelView)
 		{
 			IAction hover = craftingPanelView.render(WINDOW_TOP_LEFT, cursor);
@@ -144,59 +234,29 @@ public class WindowManager
 			{
 				action = hover;
 			}
-			didDrawWindows = true;
 		}
-		if (null != thisEntityInventoryView)
+		IAction hover = thisEntityInventoryView.render(WINDOW_TOP_RIGHT, cursor);
+		if (null != hover)
 		{
-			IAction hover = thisEntityInventoryView.render(WINDOW_TOP_RIGHT, cursor);
-			if (null != hover)
-			{
-				action = hover;
-			}
-			didDrawWindows = true;
+			action = hover;
 		}
-		if (null != bottomPaneInventoryView)
+		hover = bottomPaneInventoryView.render(WINDOW_BOTTOM, cursor);
+		if (null != hover)
 		{
-			IAction hover = bottomPaneInventoryView.render(WINDOW_BOTTOM, cursor);
-			if (null != hover)
-			{
-				action = hover;
-			}
-			didDrawWindows = true;
+			action = hover;
 		}
 		
-		if (didDrawWindows)
+		// We are in windowed mode so also draw the armour slots.
+		hover = _armourWindow.doRender(cursor);
+		if (null != hover)
 		{
-			// We are in windowed mode so also draw the armour slots.
-			IAction hover = _armourWindow.doRender(cursor);
-			if (null != hover)
-			{
-				action = hover;
-			}
-		}
-		else
-		{
-			// We are not in windowed mode so draw the selection (if any) and crosshairs.
-			IAction noAction = _selectionWindow.doRender(cursor);
-			Assert.assertTrue(null == noAction);
-			
-			_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+			action = hover;
 		}
 		
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
 			action.renderHover(cursor);
-		}
-		
-		// If we are paused, show the pause overlay.
-		if (_isPaused)
-		{
-			// Draw the overlay to dim the window.
-			_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-			
-			// Draw the paused text.
-			_ui.drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
 		}
 		
 		// Allow any periodic cleanup.
@@ -221,11 +281,6 @@ public class WindowManager
 	public void updateEyeBlock(AbsoluteLocation eyeBlockLocation)
 	{
 		_eyeBlockLocation = eyeBlockLocation;
-	}
-
-	public void setPaused(boolean isPaused)
-	{
-		_isPaused = isPaused;
 	}
 
 	public void shutdown()
