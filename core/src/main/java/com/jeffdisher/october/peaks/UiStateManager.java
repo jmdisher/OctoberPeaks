@@ -22,7 +22,6 @@ import com.jeffdisher.october.peaks.ui.ComplexItemView;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
@@ -78,7 +77,6 @@ public class UiStateManager
 	private final IInputStateChanger _captureState;
 	private final Map<Integer, String> _otherPlayersById;
 
-	private Entity _thisEntity;
 	private boolean _rotationDidUpdate;
 	private boolean _didAccountForTimeInFrame;
 	private boolean _didWalkInFrame;
@@ -123,9 +121,9 @@ public class UiStateManager
 	private final Binding<List<CraftDescription>> _craftingPanelBinding;
 	
 	// Views for rendering parts of the UI in specific modes.
-	private final IView<Inventory> _thisEntityInventoryView;
-	private final IView<Inventory> _bottomInventoryView;
-	private final ViewCraftingPanel _craftingPanelView;
+	private final Window<Inventory> _thisEntityInventoryWindow;
+	private final Window<Inventory> _bottomInventoryWindow;
+	private final Window<List<ItemTuple<CraftDescription>>> _craftingWindow;
 	private final Window<Entity> _metaDataWindow;
 	private final Window<Entity> _hotbarWindow;
 	private final Window<NonStackableItem[]> _armourWindow;
@@ -143,8 +141,6 @@ public class UiStateManager
 			, AudioManager audioManager
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, IInputStateChanger captureState
-			, Binding<WorldSelection> selectionBinding
-			, Binding<Entity> entityBinding
 	)
 	{
 		_env = environment;
@@ -160,6 +156,23 @@ public class UiStateManager
 		// We start up in the play state.
 		_uiState = _UiState.PLAY;
 		
+		// Define all of our bindings.
+		_selectionBinding = new Binding<>();
+		_entityBinding = new Binding<>();
+		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> {
+			Inventory inventory = entity.isCreativeMode()
+					? CreativeInventory.fakeInventory()
+					: entity.inventory()
+			;
+			return inventory;
+		});
+		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(_entityBinding, (Entity entity) -> entity.armourSlots());
+		_bottomWindowInventoryBinding = new Binding<>();
+		_bottomWindowTitleBinding = new Binding<>();
+		_bottomWindowFuelBinding = new Binding<>();
+		_craftingPanelTitleBinding = new Binding<>();
+		_craftingPanelBinding = new Binding<>();
+		
 		// Create our views.
 		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
 			AbsoluteLocation relevantBlock;
@@ -169,7 +182,7 @@ public class UiStateManager
 			}
 			else
 			{
-				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
+				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_entityBinding.get(), _playerVolume);
 				relevantBlock = feetBlock;
 			}
 			_handleHoverOverEntityInventoryItem(relevantBlock, key);
@@ -182,7 +195,7 @@ public class UiStateManager
 			}
 			else
 			{
-				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
+				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_entityBinding.get(), _playerVolume);
 				relevantBlock = feetBlock;
 			}
 			_pullFromBlockToEntityInventory(relevantBlock, key);
@@ -208,25 +221,10 @@ public class UiStateManager
 		BooleanSupplier commonPageChangeCheck = () -> {
 			return _leftClick;
 		};
-		_selectionBinding = selectionBinding;
-		_entityBinding = entityBinding;
-		_thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> {
-			Inventory inventory = entity.isCreativeMode()
-					? CreativeInventory.fakeInventory()
-					: entity.inventory()
-			;
-			return inventory;
-		});
-		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(entityBinding, (Entity entity) -> entity.armourSlots());
-		_bottomWindowInventoryBinding = new Binding<>();
-		_bottomWindowTitleBinding = new Binding<>();
-		_bottomWindowFuelBinding = new Binding<>();
-		_craftingPanelTitleBinding = new Binding<>();
-		_craftingPanelBinding = new Binding<>();
 		
 		Binding<String> inventoryTitleBinding = new Binding<>();
 		inventoryTitleBinding.set("Inventory");
-		_thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
+		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
 		ComplexItemView.IBindOptions<Void> fuelViewOptions = new ComplexItemView.IBindOptions<Void>()
 		{
 			@Override
@@ -246,16 +244,23 @@ public class UiStateManager
 				// There is no fuel slot action.
 			}
 		};
+		_thisEntityInventoryWindow = new Window<>(WINDOW_TOP_RIGHT, thisEntityInventoryView);
 		ComplexItemView<Void> fuelProgress = new ComplexItemView<>(ui, _bottomWindowFuelBinding, fuelViewOptions);
-		_bottomInventoryView = new ViewEntityInventory(ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
-		_craftingPanelView = new ViewCraftingPanel(ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
+		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
+		_bottomInventoryWindow = new Window<>(WINDOW_BOTTOM, bottomInventoryView);
+		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
+		_craftingWindow = new Window<>(WINDOW_TOP_LEFT, craftingPanelView);
 		_metaDataWindow = new Window<>(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
 		_hotbarWindow = new Window<>(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
-			this.swapArmour(hoverPart);
+			if (_leftClick)
+			{
+				// Note that we ignore the result since this will be reflected in the UI, if valid.
+				_client.swapArmour(hoverPart);
+			}
 		};
 		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
-		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, selectionBinding, _blockLookup, _otherPlayersById));
+		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, _blockLookup, _otherPlayersById));
 		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
@@ -301,6 +306,9 @@ public class UiStateManager
 		{
 			action.takeAction();
 		}
+		
+		// Allow any periodic cleanup.
+		_ui.textManager.allowTexturePurge();
 	}
 
 	public boolean didViewPerspectiveChange()
@@ -432,7 +440,7 @@ public class UiStateManager
 			_captureState.trySetPaused(true);
 			_shouldPause = false;
 		}
-		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _thisEntity.location(), _playerVolume))
+		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _entityBinding.get().location(), _playerVolume))
 		{
 			_audioManager.setWalking();
 		}
@@ -456,7 +464,7 @@ public class UiStateManager
 
 	public void setThisEntity(Entity projectedEntity)
 	{
-		_thisEntity = projectedEntity;
+		_entityBinding.set(projectedEntity);
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
@@ -643,15 +651,6 @@ public class UiStateManager
 		if (_UiState.PLAY == _uiState)
 		{
 			_client.tryChangeViewDistance(change);
-		}
-	}
-
-	public void swapArmour(BodyPart hoverPart)
-	{
-		if (_leftClick)
-		{
-			// Note that we ignore the result since this will be reflected in the UI, if valid.
-			_client.swapArmour(hoverPart);
 		}
 	}
 
@@ -855,7 +854,8 @@ public class UiStateManager
 		if (null == _openStationLocation)
 		{
 			// We are just looking at the floor at our feet.
-			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_thisEntity, _playerVolume);
+			Entity thisEntity = _entityBinding.get();
+			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(thisEntity, _playerVolume);
 			BlockProxy thisBlock = _blockLookup.apply(feetBlock);
 			Inventory floorInventory = thisBlock.getInventory();
 			
@@ -864,7 +864,7 @@ public class UiStateManager
 			// We are just looking at the entity inventory so find the built-in crafting recipes.
 			validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
 			// We will convert these into CraftOperation instances so we can splice in the current craft.
-			currentOperation = _thisEntity.localCraftOperation();
+			currentOperation = thisEntity.localCraftOperation();
 		}
 		
 		Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
@@ -903,12 +903,6 @@ public class UiStateManager
 				: "Manual Crafting"
 		;
 		
-		// Determine if we even want the crafting window since it doesn't apply to all stations.
-		ViewCraftingPanel applicableCrafting = convertedCrafts.isEmpty()
-				? null
-				: _craftingPanelView
-		;
-		
 		// We need to update our bindings BEFORE rendering anything.
 		_bottomWindowInventoryBinding.set(relevantInventory);
 		_bottomWindowTitleBinding.set(stationName);
@@ -920,23 +914,7 @@ public class UiStateManager
 		// Now, do the actual drawing.
 		_ui.enterUiRenderMode();
 		
-		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
-		if (null != _eyeBlockLocation)
-		{
-			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
-			if (null != eyeProxy)
-			{
-				Block blockType = eyeProxy.getBlock();
-				if (_waterBlockTypes.contains(blockType))
-				{
-					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-				else if (_lavaBlockTypes.contains(blockType))
-				{
-					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-			}
-		}
+		_handleEyeFilter();
 		
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.get())
@@ -948,20 +926,21 @@ public class UiStateManager
 		}
 		
 		IAction action = null;
-		if (null != applicableCrafting)
+		// We will show the crafting panel as long as there are any valid crafts.
+		if (!convertedCrafts.isEmpty())
 		{
-			IAction hover = applicableCrafting.render(WINDOW_TOP_LEFT, _cursor);
+			IAction hover = _craftingWindow.doRender(_cursor);
 			if (null != hover)
 			{
 				action = hover;
 			}
 		}
-		IAction hover = _thisEntityInventoryView.render(WINDOW_TOP_RIGHT, _cursor);
+		IAction hover = _thisEntityInventoryWindow.doRender(_cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
-		hover = _bottomInventoryView.render(WINDOW_BOTTOM, _cursor);
+		hover = _bottomInventoryWindow.doRender(_cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -980,9 +959,6 @@ public class UiStateManager
 			action.renderHover(_cursor);
 		}
 		
-		// Allow any periodic cleanup.
-		_ui.textManager.allowTexturePurge();
-		
 		// Return any action so that the caller can run the action now that rendering is finished.
 		return action;
 	}
@@ -992,23 +968,7 @@ public class UiStateManager
 		// In this case, just draw the common UI elements and pause screen overlay.
 		_ui.enterUiRenderMode();
 		
-		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
-		if (null != _eyeBlockLocation)
-		{
-			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
-			if (null != eyeProxy)
-			{
-				Block blockType = eyeProxy.getBlock();
-				if (_waterBlockTypes.contains(blockType))
-				{
-					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-				else if (_lavaBlockTypes.contains(blockType))
-				{
-					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-			}
-		}
+		_handleEyeFilter();
 		
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.get())
@@ -1031,9 +991,6 @@ public class UiStateManager
 		// Draw the paused text.
 		_ui.drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
 		
-		// Allow any periodic cleanup.
-		_ui.textManager.allowTexturePurge();
-		
 		return null;
 	}
 
@@ -1042,6 +999,28 @@ public class UiStateManager
 		// In this case, just draw the common UI elements.
 		_ui.enterUiRenderMode();
 		
+		_handleEyeFilter();
+		
+		// Once we have loaded the entity, we can draw the hotbar and meta-data.
+		if (null != _entityBinding.get())
+		{
+			IAction noAction = _hotbarWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+		}
+		
+		// We are not in windowed mode so draw the selection (if any) and crosshairs.
+		IAction noAction = _selectionWindow.doRender(_cursor);
+		Assert.assertTrue(null == noAction);
+		
+		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+		
+		return null;
+	}
+
+	private void _handleEyeFilter()
+	{
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
 		if (null != _eyeBlockLocation)
 		{
@@ -1059,26 +1038,6 @@ public class UiStateManager
 				}
 			}
 		}
-		
-		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _entityBinding.get())
-		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-		}
-		
-		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _selectionWindow.doRender(_cursor);
-		Assert.assertTrue(null == noAction);
-		
-		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
-		
-		// Allow any periodic cleanup.
-		_ui.textManager.allowTexturePurge();
-		
-		return null;
 	}
 
 

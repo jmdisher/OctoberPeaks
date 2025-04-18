@@ -22,7 +22,6 @@ import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
-import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -97,11 +96,6 @@ public class OctoberPeaks extends ApplicationAdapter
 			throw new AssertionError("Startup scene", e);
 		}
 		
-		// Define the bindings which UI components need.
-		// TODO:  Move this to UiStateManager once WindowManager is removed.
-		Binding<Entity> entityBinding = new Binding<>();
-		Binding<WorldSelection> selectionBinding = new Binding<>();
-		
 		_eyeEffect = new EyeEffect(_gl);
 		GlUi ui = new GlUi(_gl, _itemAtlas);
 		_movement = new MovementControl();
@@ -145,9 +139,6 @@ public class OctoberPeaks extends ApplicationAdapter
 						_selectionManager.setThisEntity(projectedEntity);
 						_eyeEffect.setThisEntity(projectedEntity);
 						_audioManager.setThisEntity(authoritativeEntity, projectedEntity);
-						
-						// Update the UI bindings.
-						entityBinding.set(projectedEntity);
 					}
 					@Override
 					public void thisEntityHurt()
@@ -248,7 +239,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					_client.resumeGame();
 				}
 			}
-		}, selectionBinding, entityBinding);
+		});
 		
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
