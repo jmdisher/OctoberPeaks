@@ -17,11 +17,13 @@ import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.ComplexItemView;
+import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
+import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -75,10 +77,10 @@ public class UiStateManager
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
 	private AbsoluteLocation _openStationLocation;
-	private int _topLeftPage;
 	private boolean _viewingFuelInventory;
 	private Craft _continuousInInventory;
 	private Craft _continuousInBlock;
+	private boolean _isManualCraftingStation;
 
 	// Tracking related to delayed actions when switching targets.
 	private AbsoluteLocation _lastActionBlock;
@@ -97,10 +99,13 @@ public class UiStateManager
 	private final Binding<Inventory> _bottomWindowInventoryBinding;
 	private final Binding<String> _bottomWindowTitleBinding;
 	private final Binding<ItemTuple<Void>> _bottomWindowFuelBinding;
+	private final Binding<String> _craftingPanelTitleBinding;
+	private final Binding<List<CraftDescription>> _craftingPanelBinding;
 	
 	// Views for rendering parts of the UI in specific modes.
 	private final IView<Inventory> _thisEntityInventoryView;
 	private final IView<Inventory> _bottomInventoryView;
+	private final ViewCraftingPanel _craftingPanelView;
 
 	public UiStateManager(Environment environment
 			, MovementControl movement
@@ -151,6 +156,24 @@ public class UiStateManager
 			}
 			_pullFromBlockToEntityInventory(relevantBlock, key);
 		};
+		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
+			if (_isManualCraftingStation && (_leftClick || _leftShiftClick))
+			{
+				Craft craft = desc.craft();
+				if (null != _openStationLocation)
+				{
+					_continuousInBlock = _leftShiftClick ? craft : null;
+					_client.beginCraftInBlock(_openStationLocation, craft);
+				}
+				else
+				{
+					_continuousInInventory = _leftShiftClick ? craft : null;
+					_client.beginCraftInInventory(craft);
+				}
+				_didAccountForTimeInFrame = true;
+			}
+		};
+		
 		BooleanSupplier commonPageChangeCheck = () -> {
 			return _leftClick;
 		};
@@ -159,6 +182,8 @@ public class UiStateManager
 		_bottomWindowInventoryBinding = new Binding<>();
 		_bottomWindowTitleBinding = new Binding<>();
 		_bottomWindowFuelBinding = new Binding<>();
+		_craftingPanelTitleBinding = new Binding<>();
+		_craftingPanelBinding = new Binding<>();
 		
 		Binding<String> inventoryTitleBinding = new Binding<>();
 		inventoryTitleBinding.set("Inventory");
@@ -184,6 +209,7 @@ public class UiStateManager
 		};
 		ComplexItemView<Void> fuelProgress = new ComplexItemView<>(ui, _bottomWindowFuelBinding, fuelViewOptions);
 		_bottomInventoryView = new ViewEntityInventory(ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
+		_craftingPanelView = new ViewCraftingPanel(ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
 	}
 
 	public boolean canSelectInScene()
@@ -266,7 +292,6 @@ public class UiStateManager
 					_openStationLocation = null;
 					_continuousInInventory = null;
 					_continuousInBlock = null;
-					_topLeftPage = 0;
 				}
 			}
 			
@@ -290,7 +315,7 @@ public class UiStateManager
 			final CraftOperation finalCraftOperation = currentOperation;
 			Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
 			boolean canBeManuallySelected = !isAutomaticCrafting;
-			List<WindowManager.CraftDescription> convertedCrafts = validCrafts.stream()
+			List<CraftDescription> convertedCrafts = validCrafts.stream()
 					.map((Craft craft) -> {
 						long progressMillis = 0L;
 						if (craft == currentCraft)
@@ -298,16 +323,16 @@ public class UiStateManager
 							progressMillis = finalCraftOperation.completedMillis();
 						}
 						float progress = (float)progressMillis / (float)craft.millisPerCraft;
-						WindowManager.ItemRequirement[] requirements = Arrays.stream(craft.input)
+						CraftDescription.ItemRequirement[] requirements = Arrays.stream(craft.input)
 								.map((Items input) -> {
 									Item type = input.type();
 									int available = finalInventoryToCraftFrom.getCount(type);
-									return new WindowManager.ItemRequirement(type, input.count(), available);
+									return new CraftDescription.ItemRequirement(type, input.count(), available);
 								})
-								.toArray((int size) -> new WindowManager.ItemRequirement[size])
+								.toArray((int size) -> new CraftDescription.ItemRequirement[size])
 						;
 						// Note that we are assuming that there is only one output type.
-						return new WindowManager.CraftDescription(craft
+						return new CraftDescription(craft
 								, new Items(craft.output[0], craft.output.length)
 								, requirements
 								, progress
@@ -317,58 +342,24 @@ public class UiStateManager
 					.toList()
 			;
 			
-			// Determine if we can handle manual crafting selection callbacks.
-			Consumer<WindowManager.CraftDescription> craftHoverOverItem = canBeManuallySelected
-					? (WindowManager.CraftDescription elt) -> {
-						if (_leftClick || _leftShiftClick)
-						{
-							Craft craft = elt.craft();
-							if (null != _openStationLocation)
-							{
-								_continuousInBlock = _leftShiftClick ? craft : null;
-								_client.beginCraftInBlock(_openStationLocation, craft);
-							}
-							else
-							{
-								_continuousInInventory = _leftShiftClick ? craft : null;
-								_client.beginCraftInInventory(craft);
-							}
-							_didAccountForTimeInFrame = true;
-						}
-					}
-					: (WindowManager.CraftDescription elt) -> {}
-			;
-			
 			String craftingType = isAutomaticCrafting
 					? "Automatic Crafting"
 					: "Manual Crafting"
 			;
-			WindowManager.WindowData<WindowManager.CraftDescription> topLeft = new WindowManager.WindowData<>(craftingType
-					, 0
-					, 0
-					, _topLeftPage
-					, (int page) -> {
-						if (_leftClick)
-						{
-							_topLeftPage = page;
-						}
-					}
-					, convertedCrafts
-					, windowManager.renderCraftOperation
-					, windowManager.hoverCraftOperation
-					, craftHoverOverItem
-			);
 			
 			// Determine if we even want the crafting window since it doesn't apply to all stations.
-			WindowManager.WindowData<WindowManager.CraftDescription> applicableCrafting = convertedCrafts.isEmpty()
+			ViewCraftingPanel applicableCrafting = convertedCrafts.isEmpty()
 					? null
-					: topLeft
+					: _craftingPanelView
 			;
 			
 			// We need to update our bindings BEFORE rendering anything.
 			_bottomWindowInventoryBinding.set(relevantInventory);
 			_bottomWindowTitleBinding.set(stationName);
 			_bottomWindowFuelBinding.set(fuelSlot);
+			_craftingPanelTitleBinding.set(craftingType);
+			_craftingPanelBinding.set(convertedCrafts);
+			_isManualCraftingStation = canBeManuallySelected;
 			action = windowManager.drawActiveWindows(applicableCrafting, _thisEntityInventoryView, _bottomInventoryView, _thisEntity.armourSlots(), _cursor);
 		}
 		else
@@ -676,8 +667,7 @@ public class UiStateManager
 		case PLAY:
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = null;
-			_topLeftPage = 0;
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView and _bottomInventoryView?
+			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
 			break;
@@ -780,8 +770,7 @@ public class UiStateManager
 			// We are at least some kind of station with an inventory.
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = blockLocation;
-			_topLeftPage = 0;
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView and _bottomInventoryView?
+			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
 			didOpen = true;

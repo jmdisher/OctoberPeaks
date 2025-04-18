@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
@@ -15,9 +14,11 @@ import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
+import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
@@ -29,10 +30,8 @@ import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
-import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
-import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.utils.Assert;
@@ -47,7 +46,7 @@ public class WindowManager
 	public static final float WINDOW_ITEM_SIZE = 0.1f;
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
-	public static final _WindowDimensions WINDOW_TOP_LEFT = new _WindowDimensions(-0.95f, 0.05f, -0.05f, 0.95f);
+	public static final Rect WINDOW_TOP_LEFT = new Rect(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final float RETICLE_SIZE = 0.05f;
@@ -65,8 +64,6 @@ public class WindowManager
 	public final ItemRenderer<Items> renderItemStack;
 	public final ItemRenderer<NonStackableItem> renderNonStackable;
 	public final ItemRenderer<CraftDescription> renderCraftOperation;
-	public final HoverRenderer<Item> hoverItem;
-	public final HoverRenderer<CraftDescription> hoverCraftOperation;
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
@@ -115,9 +112,9 @@ public class WindowManager
 			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
 			// NOTE:  We are assuming only a single output type.
 			boolean isValid = true;
-			for (ItemRequirement input : item.input)
+			for (CraftDescription.ItemRequirement input : item.input())
 			{
-				if (input.available < input.required)
+				if (input.available() < input.required())
 				{
 					isValid = false;
 					break;
@@ -127,45 +124,7 @@ public class WindowManager
 					? _ui.pixelGreen
 					: _ui.pixelRed
 			;
-			UiIdioms.renderItem(_ui, left, bottom, right, top, outlineTexture, item.output.type(), item.output.count(), item.progress, item.canBeSelected ? isMouseOver : false);
-		};
-		this.hoverItem = (Point cursor, Item item) -> {
-			// Just draw the name.
-			String name = item.name();
-			UiIdioms.drawTextRootedAtTop(_ui, cursor.x(), cursor.y(), name);
-		};
-		this.hoverCraftOperation = (Point cursor, CraftDescription item) -> {
-			String name = item.craft.name;
-			
-			// Calculate the dimensions (we have a title and then a list of input items below this).
-			float widthOfTitle = _ui.getLabelWidth(WINDOW_TITLE_HEIGHT, name);
-			float widthOfItems = (float)item.input.length * WINDOW_ITEM_SIZE + (float)(item.input.length + 1) * WINDOW_MARGIN;
-			float widthOfHover = Math.max(widthOfTitle, widthOfItems);
-			float heightOfHover = WINDOW_TITLE_HEIGHT + WINDOW_ITEM_SIZE + 3 * WINDOW_MARGIN;
-			float glX = cursor.x();
-			float glY = cursor.y();
-			
-			// We can now draw the frame.
-			UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, glX, glY - heightOfHover, glX + widthOfHover, glY);
-			
-			// Draw the title.
-			_ui.drawLabel(glX, glY - WINDOW_TITLE_HEIGHT, glY, name);
-			
-			// Draw the inputs.
-			float inputLeft = glX + WINDOW_MARGIN;
-			float inputTop = glY - 2 * WINDOW_MARGIN - WINDOW_TITLE_HEIGHT;
-			float inputBottom = inputTop - WINDOW_ITEM_SIZE;
-			for (ItemRequirement items : item.input)
-			{
-				float noProgress = 0.0f;
-				boolean isMouseOver = false;
-				int outlineTexture = (items.available >= items.required)
-						? _ui.pixelGreen
-						: _ui.pixelRed
-				;
-				UiIdioms.renderItem(_ui, inputLeft, inputBottom, inputLeft + WINDOW_ITEM_SIZE, inputBottom + WINDOW_ITEM_SIZE, outlineTexture, items.type, items.required, noProgress, isMouseOver);
-				inputLeft += WINDOW_ITEM_SIZE + WINDOW_MARGIN;
-			}
+			UiIdioms.renderItem(_ui, left, bottom, right, top, outlineTexture, item.output().type(), item.output().count(), item.progress(), item.canBeSelected() ? isMouseOver : false);
 		};
 		
 		// Define the data bindings used by the window system.
@@ -178,7 +137,7 @@ public class WindowManager
 		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, selectionBinding, _blockLookup, _otherPlayersById));
 	}
 
-	public <A, B, C> IAction drawActiveWindows(WindowData<A> topLeft
+	public IAction drawActiveWindows(IView<List<ItemTuple<CraftDescription>>> craftingPanelView
 			, IView<Inventory> thisEntityInventoryView
 			, IView<Inventory> bottomPaneInventoryView
 			, NonStackableItem[] armourSlots
@@ -217,9 +176,9 @@ public class WindowManager
 		IAction action = null;
 		// We will disable the handling of any selection if we draw any overlay windows (they should be null in that case, anyway).
 		boolean didDrawWindows = false;
-		if (null != topLeft)
+		if (null != craftingPanelView)
 		{
-			IAction hover = _drawWindow(topLeft, WINDOW_TOP_LEFT, cursor);
+			IAction hover = craftingPanelView.render(WINDOW_TOP_LEFT, cursor);
 			if (null != hover)
 			{
 				action = hover;
@@ -319,85 +278,6 @@ public class WindowManager
 	}
 
 
-	private <T> IAction _drawWindow(WindowData<T> data, _WindowDimensions dimensions, Point cursor)
-	{
-		// Draw the window outline.
-		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, dimensions.leftX, dimensions.bottomY, dimensions.rightX, dimensions.topY);
-		
-		// Draw the title.
-		float labelRight = _ui.drawLabel(dimensions.leftX, dimensions.topY - WINDOW_TITLE_HEIGHT, dimensions.topY, data.name.toUpperCase());
-		if (data.maxSize > 0)
-		{
-			String extraTitle = String.format("(%d/%d)", data.usedSize, data.maxSize);
-			float bottom = dimensions.topY - WINDOW_TITLE_HEIGHT;
-			_ui.drawLabel(labelRight + WINDOW_MARGIN, bottom, bottom + WINDOW_TITLE_HEIGHT, extraTitle.toUpperCase());
-		}
-		
-		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
-		float xSpace = dimensions.rightX - dimensions.leftX - WINDOW_MARGIN;
-		float ySpace = dimensions.topY - dimensions.bottomY - WINDOW_MARGIN;
-		// The size of each item is the margin before the element and the element itself.
-		float spacePerElement = WINDOW_ITEM_SIZE + WINDOW_MARGIN;
-		int itemsPerRow = (int) Math.round(Math.floor(xSpace / spacePerElement));
-		int rowsPerPage = (int) Math.round(Math.floor(ySpace / spacePerElement));
-		int itemsPerPage = itemsPerRow * rowsPerPage;
-		
-		float leftMargin = dimensions.leftX + WINDOW_MARGIN;
-		// Leave space for top margin and title.
-		float topMargin = dimensions.topY - WINDOW_TITLE_HEIGHT - WINDOW_MARGIN;
-		int totalItems = data.items.size();
-		int pageCount = ((totalItems - 1) / itemsPerPage) + 1;
-		// Be aware that this may have changed without the caller knowing it.
-		int currentPage = Math.min(data.currentPage, pageCount - 1);
-		
-		// Draw our pagination buttons if they make sense.
-		if (pageCount > 1)
-		{
-			UiIdioms.drawPageButtons(_ui, data.eventHoverChangePage, dimensions.rightX, dimensions.topY, cursor, pageCount, currentPage);
-		}
-		
-		T hoverOver = UiIdioms.drawItemGrid(data.items, data.renderItem, cursor, spacePerElement, WINDOW_ITEM_SIZE, itemsPerRow, itemsPerPage, leftMargin, topMargin, totalItems, currentPage);
-		
-		IAction action = null;
-		if (null != hoverOver)
-		{
-			// There is something to hover over so determine which action implementation to use.
-			final T finalHoverOver = hoverOver;
-			if (null != data.eventHoverOverItem())
-			{
-				action = new IAction() {
-					@Override
-					public void renderHover(Point cursor)
-					{
-						data.renderHover.drawHoverAtPoint(cursor, finalHoverOver);
-					}
-					@Override
-					public void takeAction()
-					{
-						data.eventHoverOverItem.accept(finalHoverOver);
-					}
-				};
-			}
-			else
-			{
-				action = new IAction() {
-					@Override
-					public void renderHover(Point cursor)
-					{
-						data.renderHover.drawHoverAtPoint(cursor, finalHoverOver);
-					}
-					@Override
-					public void takeAction()
-					{
-						// No action in this case.
-					}
-				};
-			}
-		}
-		return action;
-	}
-
-
 	public static interface ItemRenderer<T>
 	{
 		void drawItem(float left, float bottom, float right, float top, T item, boolean isMouseOver);
@@ -407,33 +287,4 @@ public class WindowManager
 	{
 		void drawHoverAtPoint(Point cursor, T item);
 	}
-
-	public static record WindowData<T>(String name
-			, int usedSize
-			, int maxSize
-			, int currentPage
-			, IntConsumer eventHoverChangePage
-			, List<T> items
-			, ItemRenderer<T> renderItem
-			, HoverRenderer<T> renderHover
-			, Consumer<T> eventHoverOverItem
-	) {}
-
-	public static record CraftDescription(Craft craft
-			, Items output
-			, ItemRequirement[] input
-			, float progress
-			, boolean canBeSelected
-	) {}
-
-	public static record ItemRequirement(Item type
-			, int required
-			, int available
-	) {}
-
-	private static record _WindowDimensions(float leftX
-			, float bottomY
-			, float rightX
-			, float topY
-	) {}
 }
