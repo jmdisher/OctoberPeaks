@@ -52,6 +52,7 @@ public class UiStateManager
 	 */
 	public static final long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
 
+	private final Environment _env;
 	private final EntityVolume _playerVolume;
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
@@ -108,16 +109,17 @@ public class UiStateManager
 	private final ViewCraftingPanel _craftingPanelView;
 
 	public UiStateManager(Environment environment
+			, GlUi ui
 			, MovementControl movement
 			, ClientWrapper client
 			, AudioManager audioManager
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, IInputStateChanger captureState
-			, WindowManager windowManager
 			, Binding<WorldSelection> selectionBinding
 			, Binding<Inventory> thisEntityInventoryBinding
 	)
 	{
+		_env = environment;
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_movement = movement;
 		_client = client;
@@ -129,7 +131,6 @@ public class UiStateManager
 		_uiState = _UiState.PLAY;
 		
 		// Create our views.
-		GlUi ui = windowManager.getUi();
 		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
 			AbsoluteLocation relevantBlock;
 			if (null != _openStationLocation)
@@ -226,8 +227,6 @@ public class UiStateManager
 		IAction action = null;
 		if (_UiState.INVENTORY == _uiState)
 		{
-			Environment env = Environment.getShared();
-			
 			// We are in inventory mode but we will need to handle station/floor cases differently.
 			Inventory relevantInventory = null;
 			Inventory inventoryToCraftFrom = null;
@@ -242,7 +241,7 @@ public class UiStateManager
 				BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
 				Block stationType = stationBlock.getBlock();
 				
-				if (env.stations.getNormalInventorySize(stationType) > 0)
+				if (_env.stations.getNormalInventorySize(stationType) > 0)
 				{
 					Inventory stationInventory = stationBlock.getInventory();
 					inventoryToCraftFrom = stationInventory;
@@ -257,7 +256,7 @@ public class UiStateManager
 						Item currentFuel = fuel.currentFuel();
 						if (null != currentFuel)
 						{
-							long totalFuel = env.fuel.millisOfFuel(currentFuel);
+							long totalFuel = _env.fuel.millisOfFuel(currentFuel);
 							long remainingFuel = fuel.millisFuelled();
 							float fuelRemaining = (float)remainingFuel / (float) totalFuel;
 							fuelSlot = new ItemTuple<>(currentFuel, 0, fuelRemaining, null);
@@ -270,13 +269,13 @@ public class UiStateManager
 					}
 					
 					// Find the crafts for this station type.
-					Set<String> classifications = env.stations.getCraftingClasses(stationType);
+					Set<String> classifications = _env.stations.getCraftingClasses(stationType);
 					
 					relevantInventory = stationInventory;
-					validCrafts = env.crafting.craftsForClassifications(classifications);
+					validCrafts = _env.crafting.craftsForClassifications(classifications);
 					// We will convert these into CraftOperation instances so we can splice in the current craft.
 					currentOperation = stationBlock.getCrafting();
-					if (0 == env.stations.getManualMultiplier(stationType))
+					if (0 == _env.stations.getManualMultiplier(stationType))
 					{
 						isAutomaticCrafting = true;
 					}
@@ -306,7 +305,7 @@ public class UiStateManager
 				relevantInventory = floorInventory;
 				inventoryToCraftFrom = entityInventory;
 				// We are just looking at the entity inventory so find the built-in crafting recipes.
-				validCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
+				validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
 				// We will convert these into CraftOperation instances so we can splice in the current craft.
 				currentOperation = _thisEntity.localCraftOperation();
 			}
@@ -765,7 +764,7 @@ public class UiStateManager
 		BlockProxy proxy = _blockLookup.apply(blockLocation);
 		boolean didOpen = false;
 		Block block = proxy.getBlock();
-		if (Environment.getShared().stations.getNormalInventorySize(block) > 0)
+		if (_env.stations.getNormalInventorySize(block) > 0)
 		{
 			// We are at least some kind of station with an inventory.
 			_uiState = _UiState.INVENTORY;

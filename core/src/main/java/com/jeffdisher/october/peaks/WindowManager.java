@@ -7,11 +7,8 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
@@ -21,7 +18,6 @@ import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
-import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
@@ -32,7 +28,6 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
-import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.utils.Assert;
 
@@ -51,7 +46,6 @@ public class WindowManager
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final float RETICLE_SIZE = 0.05f;
 
-	private final Environment _env;
 	private final GlUi _ui;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final Map<Integer, String> _otherPlayersById;
@@ -59,11 +53,6 @@ public class WindowManager
 	private final Set<Block> _lavaBlockTypes;
 	private AbsoluteLocation _eyeBlockLocation;
 	private boolean _isPaused;
-
-	// We define these public rendering helpers in order to avoid adding special public interfaces or spreading rendering logic around.
-	public final ItemRenderer<Items> renderItemStack;
-	public final ItemRenderer<NonStackableItem> renderNonStackable;
-	public final ItemRenderer<CraftDescription> renderCraftOperation;
 
 	// Data bindings populated by updates and read when rendering windows in the mode.
 	private final Binding<Entity> _entityBinding;
@@ -75,8 +64,7 @@ public class WindowManager
 	private final Window<WorldSelection> _selectionWindow;
 
 	public WindowManager(Environment env
-			, GL20 gl
-			, TextureAtlas<ItemVariant> itemAtlas
+			, GlUi ui
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, Consumer<BodyPart> eventHoverArmourBodyPart
 			, Binding<Entity> entityBinding
@@ -84,8 +72,7 @@ public class WindowManager
 			, Binding<NonStackableItem[]> armourBinding
 	)
 	{
-		_env = env;
-		_ui = new GlUi(gl, itemAtlas);
+		_ui = ui;
 		_blockLookup = blockLookup;
 		_otherPlayersById = new HashMap<>();
 		
@@ -101,32 +88,6 @@ public class WindowManager
 				, env.blocks.fromItem(env.items.getItemById("op.lava_weak"))
 		);
 		
-		// Set up our public rendering helpers.
-		this.renderItemStack = (float left, float bottom, float right, float top, Items item, boolean isMouseOver) -> {
-			UiIdioms.renderStackableItem(_ui, left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
-		};
-		this.renderNonStackable = (float left, float bottom, float right, float top, NonStackableItem item, boolean isMouseOver) -> {
-			UiIdioms.renderNonStackableItem(_ui, left, bottom, right, top, _ui.pixelLightGrey, item, isMouseOver);
-		};
-		this.renderCraftOperation = (float left, float bottom, float right, float top, CraftDescription item, boolean isMouseOver) -> {
-			// Note that this is often used to render non-operations, just as a generic craft rendering helper.
-			// NOTE:  We are assuming only a single output type.
-			boolean isValid = true;
-			for (CraftDescription.ItemRequirement input : item.input())
-			{
-				if (input.available() < input.required())
-				{
-					isValid = false;
-					break;
-				}
-			}
-			int outlineTexture = isValid
-					? _ui.pixelGreen
-					: _ui.pixelRed
-			;
-			UiIdioms.renderItem(_ui, left, bottom, right, top, outlineTexture, item.output().type(), item.output().count(), item.progress(), item.canBeSelected() ? isMouseOver : false);
-		};
-		
 		// Define the data bindings used by the window system.
 		_entityBinding = entityBinding;
 		
@@ -134,7 +95,7 @@ public class WindowManager
 		_metaDataWindow = new Window<>(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
 		_hotbarWindow = new Window<>(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
 		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
-		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, selectionBinding, _blockLookup, _otherPlayersById));
+		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, env, selectionBinding, _blockLookup, _otherPlayersById));
 	}
 
 	public IAction drawActiveWindows(IView<List<ItemTuple<CraftDescription>>> craftingPanelView
@@ -267,24 +228,8 @@ public class WindowManager
 		_isPaused = isPaused;
 	}
 
-	public GlUi getUi()
-	{
-		return _ui;
-	}
-
 	public void shutdown()
 	{
 		_ui.shutdown();
-	}
-
-
-	public static interface ItemRenderer<T>
-	{
-		void drawItem(float left, float bottom, float right, float top, T item, boolean isMouseOver);
-	}
-
-	public static interface HoverRenderer<T>
-	{
-		void drawHoverAtPoint(Point cursor, T item);
 	}
 }

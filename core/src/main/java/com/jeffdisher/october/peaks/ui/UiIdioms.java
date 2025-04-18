@@ -3,12 +3,8 @@ package com.jeffdisher.october.peaks.ui;
 import java.util.List;
 import java.util.function.IntConsumer;
 
-import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.peaks.WindowManager.ItemRenderer;
 import com.jeffdisher.october.peaks.textures.TextManager;
 import com.jeffdisher.october.types.Item;
-import com.jeffdisher.october.types.Items;
-import com.jeffdisher.october.types.NonStackableItem;
 
 
 /**
@@ -28,25 +24,6 @@ public class UiIdioms
 		_drawOverlayFrame(gl, backgroundTexture, outlineTexture, left, bottom, right, top);
 	}
 
-	public static void renderStackableItem(GlUi ui, float left, float bottom, float right, float top, int outlineTexture, Items item, boolean isMouseOver)
-	{
-		float noProgress = 0.0f;
-		_renderItem(ui, left, bottom, right, top, outlineTexture, item.type(), item.count(), noProgress, isMouseOver);
-	}
-
-	public static void renderNonStackableItem(GlUi ui, float left, float bottom, float right, float top, int outlineTexture, NonStackableItem item, boolean isMouseOver)
-	{
-		Environment env = Environment.getShared();
-		Item type = item.type();
-		int maxDurability = env.durability.getDurability(type);
-		int count = 0;
-		float progress = (maxDurability > 0)
-				? (float)item.durability() / (float)maxDurability
-				: 0.0f
-		;
-		_renderItem(ui, left, bottom, right, top, outlineTexture, type, count, progress, isMouseOver);
-	}
-
 	public static void renderItem(GlUi ui, float left, float bottom, float right, float top, int outlineTexture, Item item, int count, float progress, boolean isMouseOver)
 	{
 		_renderItem(ui, left, bottom, right, top, outlineTexture, item, count, progress, isMouseOver);
@@ -60,11 +37,6 @@ public class UiIdioms
 	public static void drawTextRootedAtTop(GlUi ui, float left, float top, String text)
 	{
 		_drawTextInFrameWithHoverCheck(ui, left, top - GENERAL_TEXT_HEIGHT, text, null);
-	}
-
-	public static boolean drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
-	{
-		return _drawTextInFrameWithHoverCheck(ui, left, bottom, text, cursor);
 	}
 
 	public static <T> void drawPageButtons(GlUi ui, IntConsumer eventHoverChangePage, float rightX, float topY, Point cursor, int pageCount, int currentPage)
@@ -197,5 +169,11 @@ public class UiIdioms
 		_drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, left, bottom, right, top);
 		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 		return isMouseOver;
+	}
+
+
+	public static interface ItemRenderer<T>
+	{
+		void drawItem(float left, float bottom, float right, float top, T item, boolean isMouseOver);
 	}
 }

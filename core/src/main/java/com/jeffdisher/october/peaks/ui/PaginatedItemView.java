@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 
-import com.jeffdisher.october.peaks.WindowManager.ItemRenderer;
-
 
 /**
  * Renders a list of items.  Note that the rect for this still needs to include the entire area of the window since it
@@ -76,7 +74,7 @@ public class PaginatedItemView<T> implements IView<List<ItemTuple<T>>>
 		
 		// TODO:  This out-param hack can be removed once all consumers call this directly and we no longer need to preserve the old call shape.
 		IAction[] out_action = new IAction[1];
-		ItemRenderer<ItemTuple<T>> renderer = (float left, float bottom, float right, float top, ItemTuple<T> item, boolean isMouseOver) -> {
+		UiIdioms.ItemRenderer<ItemTuple<T>> renderer = (float left, float bottom, float right, float top, ItemTuple<T> item, boolean isMouseOver) -> {
 			_innerBinding.set(item);
 			Rect itemRect = new Rect(left, bottom, right, top);
 			IAction innerAction = _itemView.render(itemRect, cursor);

@@ -23,6 +23,7 @@ import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -116,7 +117,8 @@ public class OctoberPeaks extends ApplicationAdapter
 		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(entityBinding, (Entity entity) -> entity.armourSlots());
 		
 		_eyeEffect = new EyeEffect(_gl);
-		_windowManager = new WindowManager(_environment, _gl, _itemAtlas, _blockLookup, (BodyPart hoverPart) -> {
+		GlUi ui = new GlUi(_gl, _itemAtlas);
+		_windowManager = new WindowManager(_environment, ui, _blockLookup, (BodyPart hoverPart) -> {
 			_uiState.swapArmour(hoverPart);
 		}, entityBinding, selectionBinding, armourBinding);
 		_movement = new MovementControl();
@@ -245,7 +247,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		_input = new InputManager();
-		_uiState = new UiStateManager(_environment, _movement, _client, _audioManager, _blockLookup, new UiStateManager.IInputStateChanger() {
+		_uiState = new UiStateManager(_environment, ui, _movement, _client, _audioManager, _blockLookup, new UiStateManager.IInputStateChanger() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{
@@ -266,7 +268,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				}
 				_windowManager.setPaused(didPause);
 			}
-		}, _windowManager, selectionBinding, thisEntityInventoryBinding);
+		}, selectionBinding, thisEntityInventoryBinding);
 		
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
