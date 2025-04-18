@@ -24,19 +24,14 @@ import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
-import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
-import com.jeffdisher.october.types.BodyPart;
-import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
-import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.MutableEntity;
-import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -53,7 +48,6 @@ public class OctoberPeaks extends ApplicationAdapter
 	private TextureAtlas<ItemVariant> _itemAtlas;
 	private SceneRenderer _scene;
 	private EyeEffect _eyeEffect;
-	private WindowManager _windowManager;
 	private MovementControl _movement;
 	private SelectionManager _selectionManager;
 	private ClientWrapper _client;
@@ -107,20 +101,9 @@ public class OctoberPeaks extends ApplicationAdapter
 		// TODO:  Move this to UiStateManager once WindowManager is removed.
 		Binding<Entity> entityBinding = new Binding<>();
 		Binding<WorldSelection> selectionBinding = new Binding<>();
-		Binding<Inventory> thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> {
-			Inventory inventory = entity.isCreativeMode()
-					? CreativeInventory.fakeInventory()
-					: entity.inventory()
-			;
-			return inventory;
-		});
-		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(entityBinding, (Entity entity) -> entity.armourSlots());
 		
 		_eyeEffect = new EyeEffect(_gl);
 		GlUi ui = new GlUi(_gl, _itemAtlas);
-		_windowManager = new WindowManager(_environment, ui, _blockLookup, (BodyPart hoverPart) -> {
-			_uiState.swapArmour(hoverPart);
-		}, entityBinding, selectionBinding, armourBinding);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
 		
@@ -175,12 +158,12 @@ public class OctoberPeaks extends ApplicationAdapter
 					@Override
 					public void otherClientJoined(int clientId, String name)
 					{
-						_windowManager.otherPlayerJoined(clientId, name);
+						_uiState.otherPlayerJoined(clientId, name);
 					}
 					@Override
 					public void otherClientLeft(int clientId)
 					{
-						_windowManager.otherPlayerLeft(clientId);
+						_uiState.otherPlayerLeft(clientId);
 					}
 					@Override
 					public void otherEntityUpdated(PartialEntity entity)
@@ -265,7 +248,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					_client.resumeGame();
 				}
 			}
-		}, selectionBinding, thisEntityInventoryBinding);
+		}, selectionBinding, entityBinding);
 		
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
@@ -300,7 +283,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				Vector upVector = _movement.computeUpVector();
 				_selectionManager.updatePosition(eye, target);
 				_scene.updatePosition(eye, target, upVector);
-				_windowManager.updateEyeBlock(GeometryHelpers.locationFromVector(eye));
+				_uiState.updateEyeBlock(GeometryHelpers.locationFromVector(eye));
 			}
 			
 			// Capture whatever is selected.
@@ -335,7 +318,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		_eyeEffect.drawEyeEffect();
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
-		_uiState.drawRelevantWindows(_windowManager, selection);
+		_uiState.drawRelevantWindows(selection);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// Finalize the event processing with this selection and accounting for inter-frame time.
@@ -352,7 +335,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Shut down the other components.
 		_itemAtlas.shutdown(_gl);
 		_scene.shutdown();
-		_windowManager.shutdown();
+		_uiState.shutdown();
 		
 		// Tear-down the shared environment.
 		Environment.clearSharedInstance();
