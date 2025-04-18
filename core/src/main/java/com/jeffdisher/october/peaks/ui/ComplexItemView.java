@@ -1,8 +1,6 @@
 package com.jeffdisher.october.peaks.ui;
 
-import com.jeffdisher.october.types.Items;
-import com.jeffdisher.october.types.NonStackableItem;
-import com.jeffdisher.october.utils.Assert;
+import com.jeffdisher.october.types.Item;
 
 
 /**
@@ -28,32 +26,36 @@ public class ComplexItemView<T> implements IView<ItemTuple<T>>
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
-		// There are essentially 4 modes:
-		// 1) No item and NOT highlighted
-		// 2) No item and IS highlighted
-		// 3) Stackable (needs number)
-		// 4) Non-stackable (needs durability)
-		
-		boolean isMouseOver = location.containsPoint(cursor);
+		// We first want to get the binding since it being null means that this item slot shouldn't even be rendered.
+		ItemTuple<T> tuple =_binding.get();
+		IAction action;
+		if (null != tuple)
+		{
+			boolean isMouseOver = location.containsPoint(cursor);
+			action = _render(location, tuple, isMouseOver);
+		}
+		else
+		{
+			// Nothing here.
+			action = null;
+		}
+		return action;
+	}
+
+
+	private IAction _render(Rect location, ItemTuple<T> tuple, boolean isMouseOver)
+	{
 		float left = location.leftX();
 		float bottom = location.bottomY();
 		float right = location.rightX();
 		float top = location.topY();
-		ItemTuple<T> tuple =_binding.get();
-		Items stack = tuple.stackable();
-		NonStackableItem nonStack = tuple.nonStackable();
+		Item type = tuple.type();
 		int outlineTexture = _options.getOutlineTexture(tuple);
 		
-		if (null != stack)
+		if (null != type)
 		{
-			// There can be at most one of these set.
-			Assert.assertTrue(null == nonStack);
-			
-			UiIdioms.renderStackableItem(_ui, left, bottom, right, top, outlineTexture, stack, isMouseOver);
-		}
-		else if (null != nonStack)
-		{
-			UiIdioms.renderNonStackableItem(_ui, left, bottom, right, top, outlineTexture, nonStack, isMouseOver);
+			// There is an item here so draw it.
+			UiIdioms.renderItem(_ui, left, bottom, right, top, outlineTexture, type, tuple.count(), tuple.durability(), isMouseOver);
 		}
 		else
 		{

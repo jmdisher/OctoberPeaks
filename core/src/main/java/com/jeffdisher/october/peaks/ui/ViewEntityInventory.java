@@ -4,8 +4,11 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.NonStackableItem;
 
 
 /**
@@ -20,7 +23,7 @@ public class ViewEntityInventory implements IView<Inventory>
 	private final GlUi _ui;
 	private final Binding<String> _titleBinding;
 	private final Binding<Inventory> _binding;
-	private final ViewItemTypeProgress _optionalProgress;
+	private final ComplexItemView<Void> _optionalProgress;
 
 	private final Binding<List<ItemTuple<Integer>>> _internalGridBinding;
 	private final IView<List<ItemTuple<Integer>>> _itemGrid;
@@ -28,7 +31,7 @@ public class ViewEntityInventory implements IView<Inventory>
 	public ViewEntityInventory(GlUi ui
 			, Binding<String> titleBinding
 			, Binding<Inventory> binding
-			, ViewItemTypeProgress optionalProgress
+			, ComplexItemView<Void> optionalProgress
 			, IntConsumer mouseOverKeyConsumer
 			, BooleanSupplier shouldChangePage
 	)
@@ -50,7 +53,7 @@ public class ViewEntityInventory implements IView<Inventory>
 			public void hoverRender(Point cursor, ItemTuple<Integer> context)
 			{
 				// We just render the name of the item.
-				Item type = context.getItemType();
+				Item type = context.type();
 				String name = type.name();
 				UiIdioms.drawTextRootedAtTop(ui, cursor.x(), cursor.y(), name);
 			}
@@ -98,7 +101,12 @@ public class ViewEntityInventory implements IView<Inventory>
 		
 		// Draw the actual sub-view (which will handle pagination, itself).
 		// We need to populate the internal binding since it is based on what we have.
-		_internalGridBinding.set(data.sortedKeys().stream().map((Integer key) -> new ItemTuple<>(data.getStackForKey(key), data.getNonStackableForKey(key), key)).toList());
+		Environment env = Environment.getShared();
+		_internalGridBinding.set(data.sortedKeys().stream().map((Integer key) -> {
+			Items stack = data.getStackForKey(key);
+			NonStackableItem nonStack = data.getNonStackableForKey(key);
+			return ItemTuple.commonFromItems(env, stack, nonStack, key);
+		}).toList());
 		return _itemGrid.render(location, cursor);
 	}
 }

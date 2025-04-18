@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks.ui;
 
 import java.util.function.Consumer;
 
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.NonStackableItem;
 
@@ -54,6 +55,7 @@ public class ViewArmour implements IView<NonStackableItem[]>
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
+		Environment env = Environment.getShared();
 		IAction action = null;
 		NonStackableItem[] armourSlots = _binding.get();
 		float nextTopSlot = location.topY();
@@ -64,9 +66,11 @@ public class ViewArmour implements IView<NonStackableItem[]>
 			float right = location.rightX();
 			float top = nextTopSlot;
 			NonStackableItem armour = armourSlots[i];
+			BodyPart thisPart = BodyPart.values()[i];
+			ItemTuple<BodyPart> tuple = ItemTuple.commonFromItems(env, null, armour, thisPart);
 			
 			// We use our composed view.
-			_innerBinding.set(new ItemTuple<>(null, armour, BodyPart.values()[i]));
+			_innerBinding.set(tuple);
 			IAction thisAction = _itemView.render(new Rect(left, bottom, right, top), cursor);
 			if (null != thisAction)
 			{

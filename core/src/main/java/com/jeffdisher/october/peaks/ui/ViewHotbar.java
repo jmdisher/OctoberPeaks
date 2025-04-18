@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks.ui;
 
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
@@ -60,6 +61,7 @@ public class ViewHotbar implements IView<Entity>
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
+		Environment env = Environment.getShared();
 		float nextLeftButton = location.leftX();
 		Entity entity = _binding.get();
 		Inventory entityInventory = _getEntityInventory(entity);
@@ -72,14 +74,14 @@ public class ViewHotbar implements IView<Entity>
 			if (0 == thisKey)
 			{
 				// No item so just draw the frame.
-				_innerBinding.set(new ItemTuple<>(null, null, isActive));
+				_innerBinding.set(new ItemTuple<>(null, 0, 0.0f, isActive));
 			}
 			else
 			{
 				// There is something here so render it.
 				Items stack = entityInventory.getStackForKey(thisKey);
 				NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-				_innerBinding.set(new ItemTuple<>(stack, nonStack, isActive));
+				_innerBinding.set(ItemTuple.commonFromItems(env, stack, nonStack, isActive));
 			}
 			
 			// Use the composed item - we ignore the response since it doesn't do anything.

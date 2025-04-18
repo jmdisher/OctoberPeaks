@@ -1,31 +1,39 @@
 package com.jeffdisher.october.peaks.ui;
 
+import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
+import com.jeffdisher.october.utils.Assert;
 
 
 /**
- * This is just a convenient way of passing around an item which is either stackable or not.
- * Note that it is possible for both to be null if the context is only being used for some empty space event.
+ * Used to pass around information for describing how to render an item tile in the UI:
+ * -type: Can be null but normally is the type (either stackable or not)
+ * -count: The count of items (if 0, this shouldn't be drawn)
+ * -durability: A [0.0..1.0] value to show durability or a progress bar (if 0.0, not drawn).
  */
-public record ItemTuple<T>(Items stackable, NonStackableItem nonStackable, T context)
+public record ItemTuple<T>(Item type, int count, float durability, T context)
 {
-	public Item getItemType()
+	public static <T> ItemTuple<T> commonFromItems(Environment env, Items stack, NonStackableItem nonStack, T context)
 	{
-		Item type;
-		if (null != this.stackable)
+		ItemTuple<T> tuple;
+		if (null != stack)
 		{
-			type = this.stackable.type();
+			Assert.assertTrue(null == nonStack);
+			tuple = new ItemTuple<>(stack.type(), stack.count(), 0.0f, context);
 		}
-		else if (null != this.nonStackable)
+		else if (null != nonStack)
 		{
-			type = this.nonStackable.type();
+			Item type = nonStack.type();
+			float durability = ((float)nonStack.durability()) / (float)env.durability.getDurability(type);
+			tuple = new ItemTuple<>(type, 0, durability, context);
 		}
 		else
 		{
-			type = null;
+			tuple = new ItemTuple<>(null, 0, 0.0f, context);
+			
 		}
-		return type;
+		return tuple;
 	}
 }

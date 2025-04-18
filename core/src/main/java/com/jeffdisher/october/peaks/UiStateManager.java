@@ -16,13 +16,13 @@ import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.ui.ComplexItemView;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
-import com.jeffdisher.october.peaks.ui.ItemTypeAndProgress;
+import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
-import com.jeffdisher.october.peaks.ui.ViewItemTypeProgress;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -96,7 +96,7 @@ public class UiStateManager
 	private final Binding<Inventory> _thisEntityInventoryBinding;
 	private final Binding<Inventory> _bottomWindowInventoryBinding;
 	private final Binding<String> _bottomWindowTitleBinding;
-	private final Binding<ItemTypeAndProgress> _bottomWindowFuelBinding;
+	private final Binding<ItemTuple<Void>> _bottomWindowFuelBinding;
 	
 	// Views for rendering parts of the UI in specific modes.
 	private final IView<Inventory> _thisEntityInventoryView;
@@ -163,7 +163,26 @@ public class UiStateManager
 		Binding<String> inventoryTitleBinding = new Binding<>();
 		inventoryTitleBinding.set("Inventory");
 		_thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
-		ViewItemTypeProgress fuelProgress = new ViewItemTypeProgress(ui, _bottomWindowFuelBinding);
+		ComplexItemView.IBindOptions<Void> fuelViewOptions = new ComplexItemView.IBindOptions<Void>()
+		{
+			@Override
+			public int getOutlineTexture(ItemTuple<Void> context)
+			{
+				// We always just show the same background for fuel.
+				return ui.pixelLightGrey;
+			}
+			@Override
+			public void hoverRender(Point cursor, ItemTuple<Void> context)
+			{
+				// No fuel slot hover.
+			}
+			@Override
+			public void hoverAction(ItemTuple<Void> context)
+			{
+				// There is no fuel slot action.
+			}
+		};
+		ComplexItemView<Void> fuelProgress = new ComplexItemView<>(ui, _bottomWindowFuelBinding, fuelViewOptions);
 		_bottomInventoryView = new ViewEntityInventory(ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
 	}
 
@@ -189,7 +208,7 @@ public class UiStateManager
 			List<Craft> validCrafts = null;
 			CraftOperation currentOperation = null;
 			String stationName = "Floor";
-			ItemTypeAndProgress fuelSlot = null;
+			ItemTuple<Void> fuelSlot = null;
 			boolean isAutomaticCrafting = false;
 			if (null != _openStationLocation)
 			{
@@ -215,7 +234,7 @@ public class UiStateManager
 							long totalFuel = env.fuel.millisOfFuel(currentFuel);
 							long remainingFuel = fuel.millisFuelled();
 							float fuelRemaining = (float)remainingFuel / (float) totalFuel;
-							fuelSlot = new ItemTypeAndProgress(currentFuel, fuelRemaining);
+							fuelSlot = new ItemTuple<>(currentFuel, 0, fuelRemaining, null);
 						}
 					}
 					else
