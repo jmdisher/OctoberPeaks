@@ -26,6 +26,7 @@ import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
+import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
@@ -93,6 +94,7 @@ public class UiStateManager
 
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
+	private boolean _isRunningOnServer;
 	private AbsoluteLocation _openStationLocation;
 	private boolean _viewingFuelInventory;
 	private Craft _continuousInInventory;
@@ -153,8 +155,8 @@ public class UiStateManager
 		_captureState = captureState;
 		_otherPlayersById = new HashMap<>();
 		
-		// We start up in the play state.
-		_uiState = _UiState.PLAY;
+		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
+		_uiState = _UiState.START;
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>();
@@ -271,6 +273,13 @@ public class UiStateManager
 				, _env.blocks.fromItem(_env.items.getItemById("op.lava_strong"))
 				, _env.blocks.fromItem(_env.items.getItemById("op.lava_weak"))
 		);
+	}
+
+	public void startPlay(boolean onServer)
+	{
+		Assert.assertTrue(_UiState.START == _uiState);
+		_uiState = _UiState.PLAY;
+		_isRunningOnServer = onServer;
 	}
 
 	public boolean canSelectInScene()
@@ -555,6 +564,9 @@ public class UiStateManager
 	{
 		switch (_uiState)
 		{
+		case START:
+			// Not implemented yet.
+			throw Assert.unreachable();
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -579,6 +591,9 @@ public class UiStateManager
 	{
 		switch (_uiState)
 		{
+		case START:
+			// Not implemented yet.
+			throw Assert.unreachable();
 		case MENU:
 			// Just ignore this.
 			break;
@@ -593,6 +608,9 @@ public class UiStateManager
 	{
 		switch (_uiState)
 		{
+		case START:
+			// Not implemented yet.
+			throw Assert.unreachable();
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -988,8 +1006,9 @@ public class UiStateManager
 		// Draw the overlay to dim the window.
 		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 		
-		// Draw the paused text.
-		_ui.drawLabel(-0.2f, -0.0f, 0.1f, "Paused");
+		// Draw the title.
+		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		
 		return null;
 	}
@@ -1047,6 +1066,11 @@ public class UiStateManager
 	 */
 	private static enum _UiState
 	{
+		/**
+		 * This is the mode where the game starts.
+		 * Currently, this is just a placeholder in the state machine but will be used for other UI later.
+		 */
+		START,
 		/**
 		 * The mode where play is normal.  Cursor is captured and there is no open window.
 		 */

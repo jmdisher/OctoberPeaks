@@ -240,6 +240,8 @@ public class OctoberPeaks extends ApplicationAdapter
 				}
 			}
 		});
+		boolean onServer = (null != _serverSocketAddress);
+		_uiState.startPlay(onServer);
 		
 		// Finish the rest of the startup now that the pieces are in place.
 		_client.finishStartup();
