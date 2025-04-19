@@ -49,6 +49,15 @@ public class UiIdioms
 		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 	}
 
+	public static boolean drawButtonRootedAtTop(GlUi ui, float centreX, float top, String text, Point cursor)
+	{
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		float bottom = top - GENERAL_TEXT_HEIGHT;
+		float width = element.aspectRatio() * GENERAL_TEXT_HEIGHT;
+		float left = centreX - (width / 2.0f);
+		return _drawTextInFrameWithHoverCheck(ui, left, bottom, text, cursor);
+	}
+
 	public static <T> void drawPageButtons(GlUi ui, IntConsumer eventHoverChangePage, float rightX, float topY, Point cursor, int pageCount, int currentPage)
 	{
 		boolean canPageBack = (currentPage > 0);

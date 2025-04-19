@@ -33,6 +33,7 @@ import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
+import com.jeffdisher.october.peaks.ui.ViewTextButton;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -130,6 +131,10 @@ public class UiStateManager
 	private final Window<Entity> _hotbarWindow;
 	private final Window<NonStackableItem[]> _armourWindow;
 	private final Window<WorldSelection> _selectionWindow;
+
+	// UI for rendering the controls in the menu state.
+	private final Binding<String> _quitButtonBinding;
+	private final ViewTextButton _quitButton;
 
 	// Data related to the liquid overlay.
 	private final Set<Block> _waterBlockTypes;
@@ -264,6 +269,16 @@ public class UiStateManager
 		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
 		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, _blockLookup, _otherPlayersById));
 		
+		// Menu state controls.
+		_quitButtonBinding = new Binding<>();
+		_quitButton = new ViewTextButton(_ui, _quitButtonBinding, (ViewTextButton button) -> {
+			// This will need to be updated, later, to return to start state.
+			if (_leftClick)
+			{
+				Gdx.app.exit();
+			}
+		});
+		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
 				, _env.blocks.fromItem(_env.items.getItemById("op.water_strong"))
@@ -280,6 +295,7 @@ public class UiStateManager
 		Assert.assertTrue(_UiState.START == _uiState);
 		_uiState = _UiState.PLAY;
 		_isRunningOnServer = onServer;
+		_quitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Quit");
 	}
 
 	public boolean canSelectInScene()
@@ -1009,8 +1025,9 @@ public class UiStateManager
 		// Draw the title.
 		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		IAction action = _quitButton.render(new Rect(0.0f, -0.2f, 0.0f, -0.3f), _cursor);
 		
-		return null;
+		return action;
 	}
 
 	private IAction _drawPlayStateWindows()
