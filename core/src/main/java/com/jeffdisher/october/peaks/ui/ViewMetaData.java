@@ -6,7 +6,7 @@ import com.jeffdisher.october.types.Entity;
 /**
  * Rendering of the meta-data window.
  */
-public class ViewMetaData implements IView<Entity>
+public class ViewMetaData implements IView
 {
 	public static final float SMALL_TEXT_HEIGHT = 0.05f;
 	public static final float META_DATA_LABEL_WIDTH = 0.1f;

@@ -10,7 +10,7 @@ import com.jeffdisher.october.types.NonStackableItem;
 /**
  * Rendering of the armour slot "window".
  */
-public class ViewArmour implements IView<NonStackableItem[]>
+public class ViewArmour implements IView
 {
 	public static final float ARMOUR_SLOT_SCALE = 0.1f;
 	public static final float ARMOUR_SLOT_SPACING = 0.05f;
@@ -21,7 +21,7 @@ public class ViewArmour implements IView<NonStackableItem[]>
 
 	private final Binding<NonStackableItem[]> _binding;
 	private final Binding<ItemTuple<BodyPart>> _innerBinding;
-	private final IView<ItemTuple<BodyPart>> _itemView;
+	private final IView _itemView;
 
 	public ViewArmour(GlUi ui, Binding<NonStackableItem[]> binding, Consumer<BodyPart> eventHoverBodyPart)
 	{

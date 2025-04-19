@@ -11,7 +11,7 @@ import com.jeffdisher.october.types.Items;
  * Renders the panel with a list of possible crafting operations, also maintaining the pagination state in the IView
  * instance.
  */
-public class ViewCraftingPanel implements IView<List<ItemTuple<CraftDescription>>>
+public class ViewCraftingPanel implements IView
 {
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
@@ -22,7 +22,7 @@ public class ViewCraftingPanel implements IView<List<ItemTuple<CraftDescription>
 	private final Binding<List<CraftDescription>> _binding;
 
 	private final Binding<List<ItemTuple<CraftDescription>>> _internalGridBinding;
-	private final IView<List<ItemTuple<CraftDescription>>> _itemGrid;
+	private final IView _itemGrid;
 
 	public ViewCraftingPanel(GlUi ui
 			, Binding<String> titleBinding

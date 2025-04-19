@@ -9,7 +9,7 @@ import java.util.function.IntConsumer;
  * Renders a list of items.  Note that the rect for this still needs to include the entire area of the window since it
  * handles the page actions (logic being that it would handle scrolling, if there were a scroll bar).
  */
-public class PaginatedItemView<T> implements IView<List<ItemTuple<T>>>
+public class PaginatedItemView<T> implements IView
 {
 	public static final float WINDOW_ITEM_SIZE = 0.1f;
 	public static final float WINDOW_MARGIN = 0.05f;
@@ -20,7 +20,7 @@ public class PaginatedItemView<T> implements IView<List<ItemTuple<T>>>
 	private final BooleanSupplier _shouldChangePage;
 
 	private final Binding<ItemTuple<T>> _innerBinding;
-	private final IView<ItemTuple<T>> _itemView;
+	private final IView _itemView;
 	private int _currentPage;
 
 	public PaginatedItemView(GlUi ui

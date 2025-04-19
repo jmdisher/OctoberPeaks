@@ -11,7 +11,7 @@ import com.jeffdisher.october.types.NonStackableItem;
 /**
  * Rendering of the hotbar "window".
  */
-public class ViewHotbar implements IView<Entity>
+public class ViewHotbar implements IView
 {
 	public static final float HOTBAR_ITEM_SCALE = 0.1f;
 	public static final float HOTBAR_ITEM_SPACING = 0.05f;
@@ -22,7 +22,7 @@ public class ViewHotbar implements IView<Entity>
 
 	private final Binding<Entity> _binding;
 	private final Binding<ItemTuple<Boolean>> _innerBinding;
-	private final IView<ItemTuple<Boolean>> _itemView;
+	private final IView _itemView;
 
 	public ViewHotbar(GlUi ui
 			, Binding<Entity> binding

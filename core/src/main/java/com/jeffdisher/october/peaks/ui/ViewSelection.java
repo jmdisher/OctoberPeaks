@@ -16,7 +16,7 @@ import com.jeffdisher.october.utils.Assert;
 /**
  * Rendering of the "currently selected block/entity under reticle" window.
  */
-public class ViewSelection implements IView<WorldSelection>
+public class ViewSelection implements IView
 {
 	// Note that the size is variable for this window so we only know the location, not the width.
 	public static final float SELECTED_BOX_LEFT = 0.05f;

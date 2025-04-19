@@ -6,7 +6,7 @@ package com.jeffdisher.october.peaks.ui;
  * It is operated upon, from the outside, when rendering the forest of windows in a UI mode.
  */
 public record Window<T>(Rect location
-		, IView<T> view
+		, IView view
 )
 {
 	/**

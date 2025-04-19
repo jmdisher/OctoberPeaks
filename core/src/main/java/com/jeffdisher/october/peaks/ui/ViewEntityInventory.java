@@ -14,7 +14,7 @@ import com.jeffdisher.october.types.NonStackableItem;
 /**
  * Renders the panel with a list of items in an inventory, also maintaining the pagination state in the IView instance.
  */
-public class ViewEntityInventory implements IView<Inventory>
+public class ViewEntityInventory implements IView
 {
 	public static final float WINDOW_MARGIN = 0.05f;
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
@@ -26,7 +26,7 @@ public class ViewEntityInventory implements IView<Inventory>
 	private final ComplexItemView<Void> _optionalProgress;
 
 	private final Binding<List<ItemTuple<Integer>>> _internalGridBinding;
-	private final IView<List<ItemTuple<Integer>>> _itemGrid;
+	private final IView _itemGrid;
 
 	public ViewEntityInventory(GlUi ui
 			, Binding<String> titleBinding

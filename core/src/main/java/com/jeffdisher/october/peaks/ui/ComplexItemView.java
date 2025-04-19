@@ -7,7 +7,7 @@ import com.jeffdisher.october.types.Item;
  * An implementation of IView which can render Items or NonStackableItem with either the number in the stack or a
  * display of the durability.
  */
-public class ComplexItemView<T> implements IView<ItemTuple<T>>
+public class ComplexItemView<T> implements IView
 {
 	private final GlUi _ui;
 	private final Binding<ItemTuple<T>> _binding;
