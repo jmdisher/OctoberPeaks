@@ -22,6 +22,7 @@ import com.jeffdisher.october.peaks.ui.ComplexItemView;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
+import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
@@ -134,7 +135,9 @@ public class UiStateManager
 
 	// UI for rendering the controls in the menu state.
 	private final Binding<String> _quitButtonBinding;
-	private final ViewTextButton _quitButton;
+	private final ViewTextButton<String> _quitButton;
+	private final Binding<Boolean> _fullScreenBinding;
+	private final ViewTextButton<Boolean> _fullScreenButton;
 
 	// Data related to the liquid overlay.
 	private final Set<Block> _waterBlockTypes;
@@ -271,12 +274,36 @@ public class UiStateManager
 		
 		// Menu state controls.
 		_quitButtonBinding = new Binding<>();
-		_quitButton = new ViewTextButton(_ui, _quitButtonBinding, (ViewTextButton button) -> {
-			// This will need to be updated, later, to return to start state.
-			if (_leftClick)
-			{
-				Gdx.app.exit();
-			}
+		_quitButton = new ViewTextButton<>(_ui, _quitButtonBinding
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				// This will need to be updated, later, to return to start state.
+				if (_leftClick)
+				{
+					Gdx.app.exit();
+				}
+		});
+		_fullScreenBinding = new Binding<>();
+		_fullScreenBinding.set(Gdx.graphics.isFullscreen());
+		_fullScreenButton = new ViewTextButton<>(_ui, _fullScreenBinding
+			, (Boolean isFullScreen) -> isFullScreen ? "Change to Windowed" : "Change to Full Screen"
+			, (ViewTextButton<Boolean> button, Boolean isFullScreen) -> {
+				if (_leftClick)
+				{
+					// We will toggle the full screen and update the binding data.
+					boolean newFullScreen = !isFullScreen;
+					if (newFullScreen)
+					{
+						// We will just use the full screen of the current display mode.
+						Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+					}
+					else
+					{
+						// For now, we will always use this same default window size.
+						Gdx.graphics.setWindowedMode(1280, 960);
+					}
+					_fullScreenBinding.set(newFullScreen);
+				}
 		});
 		
 		// Look up the liquid overlay types.
@@ -666,19 +693,6 @@ public class UiStateManager
 		_continuousInBlock = null;
 	}
 
-	public void changeScreenMode(boolean fullScreen)
-	{
-		if (fullScreen)
-		{
-			// We will just use the full screen of the current display mode.
-			Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
-		}
-		else
-		{
-			Gdx.graphics.setWindowedMode(1280, 960);
-		}
-	}
-
 	public void handleScaleChange(int change)
 	{
 		// For now, we only want to change the scale in play mode.
@@ -1022,10 +1036,12 @@ public class UiStateManager
 		// Draw the overlay to dim the window.
 		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 		
-		// Draw the title.
+		// Draw the menu title and other UI.
 		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
-		IAction action = _quitButton.render(new Rect(0.0f, -0.2f, 0.0f, -0.3f), _cursor);
+		IAction action = null;
+		action = _renderViewChainAction(_fullScreenButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
 		
 		return action;
 	}
@@ -1074,6 +1090,15 @@ public class UiStateManager
 				}
 			}
 		}
+	}
+
+	private IAction _renderViewChainAction(IView view, Rect location, IAction existingAction)
+	{
+		IAction tempAction = view.render(location, _cursor);
+		return (null != tempAction)
+				? tempAction
+				: existingAction
+		;
 	}
 
 
