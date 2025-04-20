@@ -133,11 +133,16 @@ public class UiStateManager
 	private final Window<NonStackableItem[]> _armourWindow;
 	private final Window<WorldSelection> _selectionWindow;
 
-	// UI for rendering the controls in the menu state.
+	// UI for rendering the controls in the pause state.
 	private final Binding<String> _quitButtonBinding;
 	private final ViewTextButton<String> _quitButton;
+	private final ViewTextButton<String> _optionsButton;
+	private final ViewTextButton<String> _returnToGameButton;
+
+	// UI for rendering the options state.
 	private final Binding<Boolean> _fullScreenBinding;
 	private final ViewTextButton<Boolean> _fullScreenButton;
+	private final ViewTextButton<String> _returnToPauseButton;
 
 	// Data related to the liquid overlay.
 	private final Set<Block> _waterBlockTypes;
@@ -272,7 +277,7 @@ public class UiStateManager
 		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
 		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, _blockLookup, _otherPlayersById));
 		
-		// Menu state controls.
+		// Pause state controls.
 		_quitButtonBinding = new Binding<>();
 		_quitButton = new ViewTextButton<>(_ui, _quitButtonBinding
 			, (String text) -> text
@@ -283,6 +288,26 @@ public class UiStateManager
 					Gdx.app.exit();
 				}
 		});
+		_optionsButton = new ViewTextButton<>(_ui, _inlineBinding("Game Options")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					_uiState = _UiState.OPTIONS;
+				}
+		});
+		_returnToGameButton = new ViewTextButton<>(_ui, _inlineBinding("Return to Game")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					_uiState = _UiState.PLAY;
+					_captureState.shouldCaptureMouse(true);
+					_shouldResume = true;
+				}
+		});
+		
+		// Options state controls.
 		_fullScreenBinding = new Binding<>();
 		_fullScreenBinding.set(Gdx.graphics.isFullscreen());
 		_fullScreenButton = new ViewTextButton<>(_ui, _fullScreenBinding
@@ -303,6 +328,14 @@ public class UiStateManager
 						Gdx.graphics.setWindowedMode(1280, 960);
 					}
 					_fullScreenBinding.set(newFullScreen);
+				}
+		});
+		_returnToPauseButton = new ViewTextButton<>(_ui, _inlineBinding("Back")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					_uiState = _UiState.PAUSE;
 				}
 		});
 		
@@ -343,11 +376,14 @@ public class UiStateManager
 		case INVENTORY:
 			action = _drawInventoryStateWindows();
 			break;
-		case MENU:
-			action = _drawMenuStateWindows();
+		case PAUSE:
+			action = _drawPauseStateWindows();
 			break;
 		case PLAY:
 			action = _drawPlayStateWindows();
+			break;
+		case OPTIONS:
+			action = _drawOptionsStateWindows();
 			break;
 		default:
 			throw Assert.unreachable();
@@ -614,16 +650,19 @@ public class UiStateManager
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
 			break;
-		case MENU:
+		case PAUSE:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
 			_shouldResume = true;
 			break;
 		case PLAY:
-			_uiState = _UiState.MENU;
+			_uiState = _UiState.PAUSE;
 			_openStationLocation = null;
 			_captureState.shouldCaptureMouse(false);
 			_shouldPause = true;
+			break;
+		case OPTIONS:
+			_uiState = _UiState.PAUSE;
 			break;
 		}
 		_continuousInInventory = null;
@@ -637,7 +676,8 @@ public class UiStateManager
 		case START:
 			// Not implemented yet.
 			throw Assert.unreachable();
-		case MENU:
+		case PAUSE:
+		case OPTIONS:
 			// Just ignore this.
 			break;
 		case INVENTORY:
@@ -658,7 +698,8 @@ public class UiStateManager
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
 			break;
-		case MENU:
+		case PAUSE:
+		case OPTIONS:
 			// Just ignore this.
 			break;
 		case PLAY:
@@ -1011,36 +1052,16 @@ public class UiStateManager
 		return action;
 	}
 
-	private IAction _drawMenuStateWindows()
+	private IAction _drawPauseStateWindows()
 	{
-		// In this case, just draw the common UI elements and pause screen overlay.
-		_ui.enterUiRenderMode();
-		
-		_handleEyeFilter();
-		
-		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _entityBinding.get())
-		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-		}
-		
-		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _selectionWindow.doRender(_cursor);
-		Assert.assertTrue(null == noAction);
-		
-		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
-		
-		// Draw the overlay to dim the window.
-		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+		_drawCommonPauseBackground();
 		
 		// Draw the menu title and other UI.
 		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_fullScreenButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_returnToGameButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_optionsButton, new Rect(0.0f, 0.0f, 0.0f, 0.1f), action);
 		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
 		
 		return action;
@@ -1069,6 +1090,46 @@ public class UiStateManager
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		
 		return null;
+	}
+
+	private IAction _drawOptionsStateWindows()
+	{
+		_drawCommonPauseBackground();
+		
+		// Draw the menu title and other UI.
+		String menuTitle = "Game Options";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_fullScreenButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_returnToPauseButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
+		
+		return action;
+	}
+
+	private void _drawCommonPauseBackground()
+	{
+		// Draw whatever is common to states where we draw interactive buttons on top.
+		_ui.enterUiRenderMode();
+		
+		_handleEyeFilter();
+		
+		// Once we have loaded the entity, we can draw the hotbar and meta-data.
+		if (null != _entityBinding.get())
+		{
+			IAction noAction = _hotbarWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+		}
+		
+		// We are not in windowed mode so draw the selection (if any) and crosshairs.
+		IAction noAction = _selectionWindow.doRender(_cursor);
+		Assert.assertTrue(null == noAction);
+		
+		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+		
+		// Draw the overlay to dim the window.
+		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 	}
 
 	private void _handleEyeFilter()
@@ -1101,6 +1162,13 @@ public class UiStateManager
 		;
 	}
 
+	private Binding<String> _inlineBinding(String text)
+	{
+		Binding<String> binding = new Binding<>();
+		binding.set(text);
+		return binding;
+	}
+
 
 	/**
 	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
@@ -1120,10 +1188,14 @@ public class UiStateManager
 		/**
 		 * The mode where play is effectively "paused".  The cursor is released and buttons to change game setup will be
 		 * presented.
-		 * TODO:  Add a "pause" mode to the server, used here in single-player mode.
-		 * TODO:  Determine the required buttons for control and add them.
+		 * Note that we call the state "paused" even though servers are never "paused" (the title will reflect this
+		 * difference).
 		 */
-		MENU,
+		PAUSE,
+		/**
+		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
+		 */
+		OPTIONS,
 		/**
 		 * The mode where player control is largely disabled and the interface is mostly about clicking on buttons, etc.
 		 */
