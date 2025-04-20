@@ -17,6 +17,7 @@ import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
+import com.jeffdisher.october.peaks.types.MutableControls;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.ComplexItemView;
@@ -34,6 +35,7 @@ import com.jeffdisher.october.peaks.ui.ViewControlIntChanger;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
+import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.ViewTextButton;
@@ -78,6 +80,7 @@ public class UiStateManager
 	private final MovementControl _movement;
 	private final ClientWrapper _client;
 	private final AudioManager _audioManager;
+	private final MutableControls _mutableControls;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final IInputStateChanger _captureState;
 	private final Map<Integer, String> _otherPlayersById;
@@ -139,6 +142,7 @@ public class UiStateManager
 	private final Binding<String> _quitButtonBinding;
 	private final ViewTextButton<String> _quitButton;
 	private final ViewTextButton<String> _optionsButton;
+	private final ViewTextButton<String> _keyBindingsButton;
 	private final ViewTextButton<String> _returnToGameButton;
 
 	// UI for rendering the options state.
@@ -147,6 +151,11 @@ public class UiStateManager
 	private final Binding<Integer> _viewDistanceBinding;
 	private final ViewControlIntChanger _viewDistanceControl;
 	private final ViewTextButton<String> _returnToPauseButton;
+
+	// UI and state related to key bindings prefs.
+	private final ViewKeyControlSelector _keyBindingSelectorControl;
+	private MutableControls.Control _currentlyChangingControl;
+	// We also use _returnToPauseButton here.
 
 	// Data related to the liquid overlay.
 	private final Set<Block> _waterBlockTypes;
@@ -158,6 +167,7 @@ public class UiStateManager
 			, MovementControl movement
 			, ClientWrapper client
 			, AudioManager audioManager
+			, MutableControls mutableControls
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, IInputStateChanger captureState
 	)
@@ -168,6 +178,7 @@ public class UiStateManager
 		_movement = movement;
 		_client = client;
 		_audioManager = audioManager;
+		_mutableControls = mutableControls;
 		_blockLookup = blockLookup;
 		_captureState = captureState;
 		_otherPlayersById = new HashMap<>();
@@ -300,6 +311,15 @@ public class UiStateManager
 					_uiState = _UiState.OPTIONS;
 				}
 		});
+		_keyBindingsButton = new ViewTextButton<>(_ui, _inlineBinding("Key Bindings")
+				, (String text) -> text
+				, (ViewTextButton<String> button, String text) -> {
+					if (_leftClick)
+					{
+						_uiState = _UiState.KEY_BINDINGS;
+						_currentlyChangingControl = null;
+					}
+			});
 		_returnToGameButton = new ViewTextButton<>(_ui, _inlineBinding("Return to Game")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
@@ -355,6 +375,16 @@ public class UiStateManager
 				}
 		});
 		
+		// Key-binding prefs.
+		_keyBindingSelectorControl = new ViewKeyControlSelector(ui, _mutableControls
+			, (MutableControls.Control selectedControl) -> {
+				if (_leftClick)
+				{
+					_currentlyChangingControl = selectedControl;
+				}
+			}
+		);
+		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
 				, _env.blocks.fromItem(_env.items.getItemById("op.water_strong"))
@@ -400,6 +430,9 @@ public class UiStateManager
 			break;
 		case OPTIONS:
 			action = _drawOptionsStateWindows();
+			break;
+		case KEY_BINDINGS:
+			action = _drawKeyBindingStateWindows();
 			break;
 		default:
 			throw Assert.unreachable();
@@ -680,6 +713,16 @@ public class UiStateManager
 		case OPTIONS:
 			_uiState = _UiState.PAUSE;
 			break;
+		case KEY_BINDINGS:
+			if (null != _currentlyChangingControl)
+			{
+				_currentlyChangingControl = null;
+			}
+			else
+			{
+				_uiState = _UiState.PAUSE;
+			}
+			break;
 		}
 		_continuousInInventory = null;
 		_continuousInBlock = null;
@@ -694,6 +737,7 @@ public class UiStateManager
 			throw Assert.unreachable();
 		case PAUSE:
 		case OPTIONS:
+		case KEY_BINDINGS:
 			// Just ignore this.
 			break;
 		case INVENTORY:
@@ -716,6 +760,7 @@ public class UiStateManager
 			break;
 		case PAUSE:
 		case OPTIONS:
+		case KEY_BINDINGS:
 			// Just ignore this.
 			break;
 		case PLAY:
@@ -765,6 +810,15 @@ public class UiStateManager
 	{
 		Object old = _otherPlayersById.remove(clientId);
 		Assert.assertTrue(null != old);
+	}
+
+	public void keyCodeUp(int lastKeyUp)
+	{
+		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _currentlyChangingControl))
+		{
+			_mutableControls.setKeyForControl(_currentlyChangingControl, lastKeyUp);
+			_currentlyChangingControl = null;
+		}
 	}
 
 	public void shutdown()
@@ -1069,7 +1123,8 @@ public class UiStateManager
 		IAction action = null;
 		action = _renderViewChainAction(_returnToGameButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
 		action = _renderViewChainAction(_optionsButton, new Rect(0.0f, 0.0f, 0.0f, 0.1f), action);
-		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
+		action = _renderViewChainAction(_keyBindingsButton, new Rect(0.0f, -0.2f, 0.0f, -0.1f), action);
+		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.5f, 0.0f, -0.4f), action);
 		
 		return action;
 	}
@@ -1112,6 +1167,16 @@ public class UiStateManager
 		action = _renderViewChainAction(_returnToPauseButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
 		
 		return action;
+	}
+
+	private IAction _drawKeyBindingStateWindows()
+	{
+		_drawCommonPauseBackground();
+		
+		// Draw the menu title and other UI.
+		String menuTitle = "Key Bindings";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
+		return _renderViewChainAction(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f), null);
 	}
 
 	private void _drawCommonPauseBackground()
@@ -1204,6 +1269,10 @@ public class UiStateManager
 		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
 		 */
 		OPTIONS,
+		/**
+		 * The UI state under the PAUSE screen where the user can change key bindings.
+		 */
+		KEY_BINDINGS,
 		/**
 		 * The mode where player control is largely disabled and the interface is mostly about clicking on buttons, etc.
 		 */

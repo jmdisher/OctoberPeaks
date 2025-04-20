@@ -53,4 +53,16 @@ public class MutableControls
 	{
 		return _keyCodeToCommand.get(keyCode);
 	}
+
+	public void setKeyForControl(Control control, int keyCode)
+	{
+		_keyCodeToCommand.remove(control.keyCode);
+		control.keyCode = keyCode;
+		_keyCodeToCommand.put(control.keyCode, control);
+	}
+
+	public int getKeyCode(Control control)
+	{
+		return control.keyCode;
+	}
 }

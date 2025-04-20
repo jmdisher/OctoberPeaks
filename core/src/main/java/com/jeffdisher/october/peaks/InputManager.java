@@ -16,7 +16,8 @@ public class InputManager
 	// The mapping we use to check key codes.
 	private final MutableControls _controls;
 	private final boolean[] _activeControls;
-	
+	private int _lastKeyUp;
+
 	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
 	private boolean _shouldCaptureMouseMovements;
 	private boolean _didInitializeMouse;
@@ -37,10 +38,11 @@ public class InputManager
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
 
-	public InputManager()
+	public InputManager(MutableControls mutableControls)
 	{
-		_controls = new MutableControls();
+		_controls = mutableControls;
 		_activeControls = new boolean[MutableControls.Control.values().length];
+		_lastKeyUp = Keys.UNKNOWN;
 		
 		Gdx.input.setInputProcessor(new InputAdapter() {
 			@Override
@@ -57,6 +59,28 @@ public class InputManager
 			}
 			@Override
 			public boolean keyDown(int keycode)
+			{
+				switch(keycode)
+				{
+				case Keys.SHIFT_LEFT:
+					_leftShiftDown = true;
+					break;
+				default:
+					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
+					MutableControls.Control control = _controls.getCodeForKey(keycode);
+					if (null != control)
+					{
+						// We can actually do something here.
+						if (!control.isClickOnly)
+						{
+							_activeControls[control.ordinal()] = true;
+						}
+					}
+				}
+				return true;
+			}
+			@Override
+			public boolean keyUp(int keycode)
 			{
 				switch(keycode)
 				{
@@ -101,28 +125,6 @@ public class InputManager
 					_didHandlePressedNumber = false;
 					break;
 				case Keys.SHIFT_LEFT:
-					_leftShiftDown = true;
-					break;
-				default:
-					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
-					MutableControls.Control control = _controls.getCodeForKey(keycode);
-					if (null != control)
-					{
-						// We can actually do something here.
-						if (!control.isClickOnly)
-						{
-							_activeControls[control.ordinal()] = true;
-						}
-					}
-				}
-				return true;
-			}
-			@Override
-			public boolean keyUp(int keycode)
-			{
-				switch(keycode)
-				{
-				case Keys.SHIFT_LEFT:
 					_leftShiftDown = false;
 					break;
 				default:
@@ -133,6 +135,7 @@ public class InputManager
 						// Click only is only triggered on key up while hold are only set on key down and always cleared on up.
 						_activeControls[control.ordinal()] = control.isClickOnly;
 					}
+					_lastKeyUp = keycode;
 				}
 				return true;
 			}
@@ -276,6 +279,12 @@ public class InputManager
 		{
 			uiManager.handleKeyF();
 			_activeControls[MutableControls.Control.MOVE_FUEL.ordinal()] = false;
+		}
+		
+		if (Keys.UNKNOWN != _lastKeyUp)
+		{
+			uiManager.keyCodeUp(_lastKeyUp);
+			_lastKeyUp = Keys.UNKNOWN;
 		}
 	}
 
