@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
+import com.jeffdisher.october.peaks.types.MutableControls;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.badlogic.gdx.Input.Keys;
 
@@ -12,16 +13,15 @@ import com.badlogic.gdx.Input.Keys;
  */
 public class InputManager
 {
+	// The mapping we use to check key codes.
+	private final MutableControls _controls;
+	private final boolean[] _activeControls;
+	
 	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
 	private boolean _shouldCaptureMouseMovements;
 	private boolean _didInitializeMouse;
 
-	// These are the key states - we capture them in events and decode them when polling for a frame.
-	private boolean _moveUp;
-	private boolean _moveDown;
-	private boolean _moveRight;
-	private boolean _moveLeft;
-	private boolean _jumpSwim;
+	// State we need to capture from the input processor.
 	private int _mouseX;
 	private int _mouseY;
 	private boolean _buttonDown0;
@@ -36,11 +36,12 @@ public class InputManager
 	private boolean _didHandleButton0;
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
-	private boolean _didHandleKeyI;
-	private boolean _didHandleKeyF;
 
 	public InputManager()
 	{
+		_controls = new MutableControls();
+		_activeControls = new boolean[MutableControls.Control.values().length];
+		
 		Gdx.input.setInputProcessor(new InputAdapter() {
 			@Override
 			public boolean touchDragged(int screenX, int screenY, int pointer)
@@ -99,32 +100,20 @@ public class InputManager
 					_lastPressedNumber = 9;
 					_didHandlePressedNumber = false;
 					break;
-				case Keys.I:
-					// We just capture the click.
-					_didHandleKeyI = false;
-					break;
-				case Keys.F:
-					// We just capture the click.
-					_didHandleKeyF = false;
-					break;
-				case Keys.SPACE:
-					_jumpSwim = true;
-					break;
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = true;
 					break;
-				case Keys.W:
-					_moveUp = true;
-					break;
-				case Keys.A:
-					_moveLeft = true;
-					break;
-				case Keys.S:
-					_moveDown = true;
-					break;
-				case Keys.D:
-					_moveRight = true;
-					break;
+				default:
+					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
+					MutableControls.Control control = _controls.getCodeForKey(keycode);
+					if (null != control)
+					{
+						// We can actually do something here.
+						if (!control.isClickOnly)
+						{
+							_activeControls[control.ordinal()] = true;
+						}
+					}
 				}
 				return true;
 			}
@@ -133,24 +122,17 @@ public class InputManager
 			{
 				switch(keycode)
 				{
-				case Keys.SPACE:
-					_jumpSwim = false;
-					break;
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = false;
 					break;
-				case Keys.W:
-					_moveUp = false;
-					break;
-				case Keys.A:
-					_moveLeft = false;
-					break;
-				case Keys.S:
-					_moveDown = false;
-					break;
-				case Keys.D:
-					_moveRight = false;
-					break;
+				default:
+					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
+					MutableControls.Control control = _controls.getCodeForKey(keycode);
+					if (null != control)
+					{
+						// Click only is only triggered on key up while hold are only set on key down and always cleared on up.
+						_activeControls[control.ordinal()] = control.isClickOnly;
+					}
 				}
 				return true;
 			}
@@ -208,8 +190,6 @@ public class InputManager
 		_didHandleButton0 = true;
 		_didHandleButton1 = true;
 		_didHandleKeyEsc = true;
-		_didHandleKeyI = true;
-		_didHandleKeyF = true;
 	}
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
@@ -236,25 +216,25 @@ public class InputManager
 				_didHandleButton1 = true;
 			}
 			
-			// We will only pass one of the movement directions, for now.
-			if (_moveUp)
+			// Check out movement controls.
+			if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
 			{
 				uiManager.moveForward();
 			}
-			else if (_moveDown)
+			else if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
 			{
 				uiManager.moveBackward();
 			}
-			else if (_moveRight)
+			else if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
 			{
 				uiManager.strafeRight();
 			}
-			else if (_moveLeft)
+			else if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
 			{
 				uiManager.strafeLeft();
 			}
 			
-			if (_jumpSwim)
+			if (_activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])
 			{
 				uiManager.jumpOrSwim();
 			}
@@ -287,15 +267,15 @@ public class InputManager
 			uiManager.handleHotbarIndex(_lastPressedNumber - 1);
 			_didHandlePressedNumber = true;
 		}
-		if (!_didHandleKeyI)
+		if (_activeControls[MutableControls.Control.MOVE_INVENTORY.ordinal()])
 		{
 			uiManager.handleKeyI();
-			_didHandleKeyI = true;
+			_activeControls[MutableControls.Control.MOVE_INVENTORY.ordinal()] = false;
 		}
-		if (!_didHandleKeyF)
+		if (_activeControls[MutableControls.Control.MOVE_FUEL.ordinal()])
 		{
 			uiManager.handleKeyF();
-			_didHandleKeyF = true;
+			_activeControls[MutableControls.Control.MOVE_FUEL.ordinal()] = false;
 		}
 	}
 
