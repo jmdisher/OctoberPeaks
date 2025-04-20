@@ -13,6 +13,7 @@ import java.util.function.IntConsumer;
 import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
@@ -29,6 +30,7 @@ import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
+import com.jeffdisher.october.peaks.ui.ViewControlIntChanger;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
@@ -142,6 +144,8 @@ public class UiStateManager
 	// UI for rendering the options state.
 	private final Binding<Boolean> _fullScreenBinding;
 	private final ViewTextButton<Boolean> _fullScreenButton;
+	private final Binding<Integer> _viewDistanceBinding;
+	private final ViewControlIntChanger _viewDistanceControl;
 	private final ViewTextButton<String> _returnToPauseButton;
 
 	// Data related to the liquid overlay.
@@ -328,6 +332,18 @@ public class UiStateManager
 						Gdx.graphics.setWindowedMode(1280, 960);
 					}
 					_fullScreenBinding.set(newFullScreen);
+				}
+		});
+		_viewDistanceBinding = new Binding<>();
+		_viewDistanceBinding.set(MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE);
+		_viewDistanceControl = new ViewControlIntChanger(_ui, _viewDistanceBinding
+			, (Integer distance) -> distance + " cuboids"
+			, (ViewControlIntChanger button, Integer newDistance) -> {
+				if (_leftClick)
+				{
+					// We try changing this in the client and it will return the updated value.
+					int finalValue = _client.trySetViewDistance(newDistance);
+					_viewDistanceBinding.set(finalValue);
 				}
 		});
 		_returnToPauseButton = new ViewTextButton<>(_ui, _inlineBinding("Back")
@@ -734,15 +750,6 @@ public class UiStateManager
 		_continuousInBlock = null;
 	}
 
-	public void handleScaleChange(int change)
-	{
-		// For now, we only want to change the scale in play mode.
-		if (_UiState.PLAY == _uiState)
-		{
-			_client.tryChangeViewDistance(change);
-		}
-	}
-
 	public void updateEyeBlock(AbsoluteLocation eyeBlockLocation)
 	{
 		_eyeBlockLocation = eyeBlockLocation;
@@ -1101,6 +1108,7 @@ public class UiStateManager
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_fullScreenButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
 		action = _renderViewChainAction(_returnToPauseButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
 		
 		return action;

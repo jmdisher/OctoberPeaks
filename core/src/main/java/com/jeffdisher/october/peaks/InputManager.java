@@ -38,8 +38,6 @@ public class InputManager
 	private boolean _didHandleKeyEsc;
 	private boolean _didHandleKeyI;
 	private boolean _didHandleKeyF;
-	private boolean _didHandleKeyPlus;
-	private boolean _didHandleKeyMinus;
 
 	public InputManager()
 	{
@@ -127,14 +125,6 @@ public class InputManager
 				case Keys.D:
 					_moveRight = true;
 					break;
-				case Keys.NUMPAD_ADD:
-					_didHandleKeyPlus = false;
-					_didHandleKeyMinus = true;
-					break;
-				case Keys.NUMPAD_SUBTRACT:
-					_didHandleKeyMinus = false;
-					_didHandleKeyPlus = true;
-					break;
 				}
 				return true;
 			}
@@ -220,8 +210,6 @@ public class InputManager
 		_didHandleKeyEsc = true;
 		_didHandleKeyI = true;
 		_didHandleKeyF = true;
-		_didHandleKeyPlus = true;
-		_didHandleKeyMinus = true;
 	}
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
@@ -308,13 +296,6 @@ public class InputManager
 		{
 			uiManager.handleKeyF();
 			_didHandleKeyF = true;
-		}
-		if (!_didHandleKeyPlus || !_didHandleKeyMinus)
-		{
-			boolean isIncrease = !_didHandleKeyPlus;
-			uiManager.handleScaleChange(isIncrease ? 1 : -1);
-			_didHandleKeyPlus = true;
-			_didHandleKeyMinus = true;
 		}
 	}
 

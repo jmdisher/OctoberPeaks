@@ -708,14 +708,14 @@ public class ClientWrapper
 		}
 	}
 
-	public void tryChangeViewDistance(int change)
+	public int trySetViewDistance(int updated)
 	{
 		// We will only change the view distance if it is valid and something we could change to.
-		int updated = _currentViewDistance + change;
 		if ((updated >= 0) && _client.updateOptions(updated))
 		{
 			_currentViewDistance = updated;
 		}
+		return _currentViewDistance;
 	}
 
 	public void disconnect()

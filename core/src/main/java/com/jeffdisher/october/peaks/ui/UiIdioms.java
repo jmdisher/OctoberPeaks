@@ -58,6 +58,38 @@ public class UiIdioms
 		return _drawTextInFrameWithHoverCheck(ui, left, bottom, text, cursor);
 	}
 
+	/**
+	 * Draws a text button in the given bounds, drawing the text centred in the middle.  Automatically highlights the
+	 * button if the mouse is over it.
+	 * 
+	 * @param ui The UI system.
+	 * @param bounds The bounds of the button.
+	 * @param text The text to write.
+	 * @param cursor The cursor.
+	 * @return True if the cursor is within the bounds.
+	 */
+	public static boolean drawFixedButton(GlUi ui, Rect bounds, String text, Point cursor)
+	{
+		boolean isMouseOver = bounds.containsPoint(cursor);
+		int backgroundTexture = isMouseOver
+				? ui.pixelLightGrey
+				: ui.pixelDarkGreyAlpha
+		;
+		_drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, bounds.leftX(), bounds.bottomY(), bounds.rightX(), bounds.topY());
+		
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		float centreX = bounds.getCentreX();
+		float centreY = bounds.getCentreY();
+		float halfTextHeight = GENERAL_TEXT_HEIGHT / 2.0f;
+		float halfTextWidth = (element.aspectRatio() * bounds.getHeight()) / 2.0f;
+		float left = centreX - halfTextWidth;
+		float right = centreX + halfTextWidth;
+		float bottom = centreY - halfTextHeight;
+		float top = centreY + halfTextHeight;
+		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
+		return isMouseOver;
+	}
+
 	public static <T> void drawPageButtons(GlUi ui, IntConsumer eventHoverChangePage, float rightX, float topY, Point cursor, int pageCount, int currentPage)
 	{
 		boolean canPageBack = (currentPage > 0);

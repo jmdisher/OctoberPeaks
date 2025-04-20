@@ -21,4 +21,24 @@ public record Rect(float leftX, float bottomY, float rightX, float topY)
 		}
 		return contains;
 	}
+
+	public float getWidth()
+	{
+		return this.rightX - this.leftX;
+	}
+
+	public float getHeight()
+	{
+		return this.topY - this.bottomY;
+	}
+
+	public float getCentreX()
+	{
+		return (this.leftX + this.rightX) / 2.0f;
+	}
+
+	public float getCentreY()
+	{
+		return (this.bottomY + this.topY) / 2.0f;
+	}
 }
