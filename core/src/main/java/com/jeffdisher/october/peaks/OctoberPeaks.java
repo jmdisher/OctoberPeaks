@@ -97,12 +97,14 @@ public class OctoberPeaks extends ApplicationAdapter
 			SkyBox.Resources skyBox = new SkyBox.Resources(_gl);
 			EyeEffect.Resources eyeEffect = new EyeEffect.Resources(_gl);
 			GlUi.Resources glui = new GlUi.Resources(_gl, itemAtlas);
+			AudioManager.Resources audioManager = new AudioManager.Resources();
 			_resources = new LoadedResources(itemAtlas
 					, blockRenderer
 					, entityRenderer
 					, skyBox
 					, eyeEffect
 					, glui
+					, audioManager
 			);
 		}
 		catch (IOException e)
@@ -224,17 +226,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		);
 		
 		// Load the audio.
-		_audioManager = AudioManager.load(_environment, Map.of(AudioManager.Cue.WALK, "walking.ogg"
-				, AudioManager.Cue.TAKE_DAMAGE, "take_damage.ogg"
-				, AudioManager.Cue.BREAK_BLOCK, "break_block.ogg"
-				, AudioManager.Cue.PLACE_BLOCK, "place_block.ogg"
-				, AudioManager.Cue.COW_IDLE, "cow_idle.ogg"
-				, AudioManager.Cue.COW_DEATH, "cow_death.ogg"
-				, AudioManager.Cue.COW_INJURY, "cow_injury.ogg"
-				, AudioManager.Cue.ORC_IDLE, "orc_idle.ogg"
-				, AudioManager.Cue.ORC_INJURY, "orc_injury.ogg"
-				, AudioManager.Cue.ORC_DEATH, "orc_death.ogg"
-		));
+		_audioManager = new AudioManager(_environment, _resources);
 		
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls();
@@ -333,6 +325,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		// Shut down the other components which have any non-heap resources.
 		_scene.shutdown();
+		_audioManager.shutdown();
 		
 		// Shut down the long-lived resources.
 		_resources.shutdown(_gl);

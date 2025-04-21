@@ -18,6 +18,7 @@ public record LoadedResources(TextureAtlas<ItemVariant> itemAtlas
 		, SkyBox.Resources skyBox
 		, EyeEffect.Resources eyeEffect
 		, GlUi.Resources glui
+		, AudioManager.Resources audioManager
 )
 {
 	public void shutdown(GL20 gl)
@@ -28,5 +29,6 @@ public record LoadedResources(TextureAtlas<ItemVariant> itemAtlas
 		skyBox.shutdown(gl);
 		eyeEffect.shutdown(gl);
 		glui.shutdown(gl);
+		audioManager.shutdown();
 	}
 }

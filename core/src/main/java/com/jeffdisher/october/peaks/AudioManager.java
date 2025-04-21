@@ -29,85 +29,75 @@ public class AudioManager
 	// We randomly make a noise every 1000 ticks - so every 10 seconds.
 	public static int IDLE_SOUND_PER_TICK_DIVISOR = 1000;
 
-	public static AudioManager load(Environment environment, Map<Cue, String> audioFileNames)
+	public static class Resources
 	{
-		Sound walk = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.WALK)));
-		Sound takeDamage = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.TAKE_DAMAGE)));
-		Sound breakBlock = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.BREAK_BLOCK)));
-		Sound placeBlock = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.PLACE_BLOCK)));
-		Sound cowIdle = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.COW_IDLE)));
-		Sound cowInjury = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.COW_INJURY)));
-		Sound cowDeath = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.COW_DEATH)));
-		Sound orcIdle = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.ORC_IDLE)));
-		Sound orcInjury = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.ORC_INJURY)));
-		Sound orcDeath = Gdx.audio.newSound(Gdx.files.internal(audioFileNames.get(Cue.ORC_DEATH)));
-		return new AudioManager(environment
-				, walk
-				, takeDamage
-				, breakBlock
-				, placeBlock
-				, cowIdle
-				, cowInjury
-				, cowDeath
-				, orcIdle
-				, orcInjury
-				, orcDeath
-		);
+		private final Sound _walk;
+		private final Sound _takeDamage;
+		private final Sound _breakBlock;
+		private final Sound _placeBlock;
+		private final Sound _cowIdle;
+		private final Sound _cowInjury;
+		private final Sound _cowDeath;
+		private final Sound _orcIdle;
+		private final Sound _orcInjury;
+		private final Sound _orcDeath;
+		
+		public Resources()
+		{
+			_walk = Gdx.audio.newSound(Gdx.files.internal("walking.ogg"));
+			_takeDamage = Gdx.audio.newSound(Gdx.files.internal("take_damage.ogg"));
+			_breakBlock = Gdx.audio.newSound(Gdx.files.internal("break_block.ogg"));
+			_placeBlock = Gdx.audio.newSound(Gdx.files.internal("place_block.ogg"));
+			_cowIdle = Gdx.audio.newSound(Gdx.files.internal("cow_idle.ogg"));
+			_cowInjury = Gdx.audio.newSound(Gdx.files.internal("cow_injury.ogg"));
+			_cowDeath = Gdx.audio.newSound(Gdx.files.internal("cow_death.ogg"));
+			_orcIdle = Gdx.audio.newSound(Gdx.files.internal("orc_idle.ogg"));
+			_orcInjury = Gdx.audio.newSound(Gdx.files.internal("orc_injury.ogg"));
+			_orcDeath = Gdx.audio.newSound(Gdx.files.internal("orc_death.ogg"));
+		}
+		
+		public void shutdown()
+		{
+			_walk.dispose();
+			_takeDamage.dispose();
+			_breakBlock.dispose();
+			_placeBlock.dispose();
+			_cowIdle.dispose();
+			_cowInjury.dispose();
+			_cowDeath.dispose();
+			_orcIdle.dispose();
+			_orcInjury.dispose();
+			_orcDeath.dispose();
+		}
 	}
+
 
 	private final Random _random;
 	private final EntityType _player;
 	private final EntityType _cow;
 	private final EntityType _orc;
-	private final Sound _walk;
-	private final Sound _takeDamage;
-	private final Sound _breakBlock;
-	private final Sound _placeBlock;
-	private final Sound _cowIdle;
-	private final Sound _cowInjury;
-	private final Sound _cowDeath;
-	private final Sound _orcIdle;
-	private final Sound _orcInjury;
-	private final Sound _orcDeath;
+	private final Resources _resources;
 	private final long _walkingId;
 
 	private Entity _projectedEntity;
 	private final Map<Integer, PartialEntity> _otherEntities;
 	private boolean _isWalking;
 
-	private AudioManager(Environment environment
-			, Sound walk
-			, Sound takeDamage
-			, Sound breakBlock
-			, Sound placeBlock
-			, Sound cowIdle
-			, Sound cowInjury
-			, Sound cowDeath
-			, Sound orcIdle
-			, Sound orcInjury
-			, Sound orcDeath
+	public AudioManager(Environment environment
+			, LoadedResources resources
 	)
 	{
 		_random = new Random();
+		_resources = resources.audioManager();
 		_player = environment.creatures.PLAYER;
 		_cow = environment.creatures.getTypeById("op.cow");
 		_orc = environment.creatures.getTypeById("op.orc");
-		_walk = walk;
-		_takeDamage = takeDamage;
-		_breakBlock = breakBlock;
-		_placeBlock = placeBlock;
-		_cowIdle = cowIdle;
-		_cowInjury = cowInjury;
-		_cowDeath = cowDeath;
-		_orcIdle = orcIdle;
-		_orcInjury = orcInjury;
-		_orcDeath = orcDeath;
 		
 		_otherEntities = new HashMap<>();
 		
 		// We will start the walking sound as looping and pause it.
-		_walkingId = _walk.loop();
-		_walk.pause(_walkingId);
+		_walkingId = _resources._walk.loop();
+		_resources._walk.pause(_walkingId);
 	}
 
 	public void setThisEntity(Entity authoritativeEntity, Entity projectedEntity)
@@ -138,11 +128,11 @@ public class AudioManager
 			EntityType type = other.type();
 			if (_cow == type)
 			{
-				soundToPlay = _cowIdle;
+				soundToPlay = _resources._cowIdle;
 			}
 			else if (_orc == type)
 			{
-				soundToPlay = _orcIdle;
+				soundToPlay = _resources._orcIdle;
 			}
 			if (null != soundToPlay)
 			{
@@ -165,7 +155,7 @@ public class AudioManager
 	{
 		if (!_isWalking)
 		{
-			_walk.resume(_walkingId);
+			_resources._walk.resume(_walkingId);
 			_isWalking = true;
 		}
 	}
@@ -174,19 +164,19 @@ public class AudioManager
 	{
 		if (_isWalking)
 		{
-			_walk.pause(_walkingId);
+			_resources._walk.pause(_walkingId);
 			_isWalking = false;
 		}
 	}
 
 	public void blockBroken(AbsoluteLocation location)
 	{
-		_playSoundIfInRange(location, _breakBlock);
+		_playSoundIfInRange(location, _resources._breakBlock);
 	}
 
 	public void blockPlaced(AbsoluteLocation location)
 	{
-		_playSoundIfInRange(location, _placeBlock);
+		_playSoundIfInRange(location, _resources._placeBlock);
 	}
 
 	public void thisEntityHurt()
@@ -194,20 +184,25 @@ public class AudioManager
 		float fullVolume = 1.0f;
 		float defaultPitch = 1.0f;
 		float centreBalance = 0.0f;
-		_takeDamage.play(fullVolume, defaultPitch, centreBalance);
+		_resources._takeDamage.play(fullVolume, defaultPitch, centreBalance);
 	}
 
 	public void otherEntityHurt(AbsoluteLocation location, int entityTargetId)
 	{
-		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _orcInjury, _cowInjury, _takeDamage);
+		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._orcInjury, _resources._cowInjury, _resources._takeDamage);
 		_playSoundIfInRange(location, soundToPlay);
 	}
 
 	public void otherEntityKilled(AbsoluteLocation location, int entityTargetId)
 	{
 		// Entities don't have special death sounds so just play injury.
-		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _orcDeath, _cowDeath, _takeDamage);
+		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._orcDeath, _resources._cowDeath, _resources._takeDamage);
 		_playSoundIfInRange(location, soundToPlay);
+	}
+
+	public void shutdown()
+	{
+		_resources._walk.stop(_walkingId);
 	}
 
 
