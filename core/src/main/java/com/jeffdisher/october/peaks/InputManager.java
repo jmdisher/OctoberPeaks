@@ -38,7 +38,7 @@ public class InputManager
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
 
-	public InputManager(MutableControls mutableControls)
+	public InputManager(MutableControls mutableControls, boolean startInCaptureMode)
 	{
 		_controls = mutableControls;
 		_activeControls = new boolean[MutableControls.Control.values().length];
@@ -187,8 +187,7 @@ public class InputManager
 			}
 		});
 		
-		// We are starting in the mouse capture state.
-		_enterCaptureState(true);
+		_enterCaptureState(startInCaptureMode);
 		_didHandlePressedNumber = true;
 		_didHandleButton0 = true;
 		_didHandleButton1 = true;

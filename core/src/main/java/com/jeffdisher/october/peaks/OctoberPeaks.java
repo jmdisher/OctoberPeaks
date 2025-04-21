@@ -44,8 +44,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		else
 		{
 			// We were told to start up with an interactive UI to choose the mode.
-			// TODO:  Temporarily, this will default into single-player but should be changed later.
-			_clientName = "Local";
+			_clientName = null;
 			_serverSocketAddress = null;
 		}
 	}
@@ -90,7 +89,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls();
-		_input = new InputManager(mutableControls);
+		_input = new InputManager(mutableControls, (null != _clientName));
 		_uiState = new UiStateManager(_environment, _gl, _resources, mutableControls, new UiStateManager.ICallouts() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
@@ -99,14 +98,17 @@ public class OctoberPeaks extends ApplicationAdapter
 			}
 		});
 		
-		// Immediately transition into playing state.  This will become more complex later.
-		GameSession currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, _uiState);
-		boolean onServer = (null != _serverSocketAddress);
-		_uiState.startPlay(currentGameSession, onServer);
-		
-		// Finish the rest of the startup now that the pieces are in place.
-		currentGameSession.finishStartup();
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		if (null != _clientName)
+		{
+			// Immediately transition into playing state.  This will become more complex later.
+			GameSession currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, _uiState);
+			boolean onServer = (null != _serverSocketAddress);
+			_uiState.startPlay(currentGameSession, onServer);
+			
+			// Finish the rest of the startup now that the pieces are in place.
+			currentGameSession.finishStartup();
+			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		}
 	}
 
 	@Override

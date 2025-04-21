@@ -99,6 +99,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
+	private boolean _shouldQuitDirectly;
 	private boolean _isRunningOnServer;
 	private AbsoluteLocation _openStationLocation;
 	private boolean _viewingFuelInventory;
@@ -114,6 +115,11 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _orientationNeedsFlush;
 	private float _yawRadians;
 	private float _pitchRadians;
+
+	// UI for the start state when first launched with no args.
+	// TODO:  Temporarily, we only support entering/exiting the single-player world.
+	private final ViewTextButton<String> _singlePlayerButton;
+	private final ViewTextButton<String> _quitButton;
 
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
@@ -135,8 +141,8 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window<WorldSelection> _selectionWindow;
 
 	// UI for rendering the controls in the pause state.
-	private final Binding<String> _quitButtonBinding;
-	private final ViewTextButton<String> _quitButton;
+	private final Binding<String> _exitButtonBinding;
+	private final ViewTextButton<String> _exitButton;
 	private final ViewTextButton<String> _optionsButton;
 	private final ViewTextButton<String> _keyBindingsButton;
 	private final ViewTextButton<String> _returnToGameButton;
@@ -177,6 +183,34 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
 		_uiState = _UiState.START;
+		_exitButtonBinding = new Binding<>();
+		
+		_singlePlayerButton = new ViewTextButton<>(_ui, _inlineBinding("Single Player")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// We want to start a single-player game.
+					Assert.assertTrue(_UiState.START == _uiState);
+					_uiState = _UiState.PLAY;
+					_captureState.shouldCaptureMouse(true);
+					_currentGameSession = new GameSession(_env, gl, resources, "Local", null, UiStateManager.this);
+					// TODO:  Use an intermediate state for this delay.
+					_currentGameSession.finishStartup();
+					_isRunningOnServer = false;
+					// We can exit from here since we have a return-to state.
+					_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+				}
+		});
+		_quitButton = new ViewTextButton<>(_ui, _inlineBinding("Quit")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// From here, we quit directly, as this is top-level.
+					Gdx.app.exit();
+				}
+		});
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>();
@@ -287,14 +321,22 @@ public class UiStateManager implements GameSession.ICallouts
 		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
 		// Pause state controls.
-		_quitButtonBinding = new Binding<>();
-		_quitButton = new ViewTextButton<>(_ui, _quitButtonBinding
+		_exitButton = new ViewTextButton<>(_ui, _exitButtonBinding
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				// This will need to be updated, later, to return to start state.
 				if (_leftClick)
 				{
-					Gdx.app.exit();
+					// The exit button should default to quitting if we started up directly into play state.
+					if (_shouldQuitDirectly)
+					{
+						Gdx.app.exit();
+					}
+					else
+					{
+						_currentGameSession.shutdown();
+						_currentGameSession = null;
+						_uiState = _UiState.START;
+					}
 				}
 		});
 		_optionsButton = new ViewTextButton<>(_ui, _inlineBinding("Game Options")
@@ -416,18 +458,23 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.PLAY;
 		_currentGameSession = currentGameSession;
 		_isRunningOnServer = onServer;
-		_quitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Quit");
+		// We will quit directly from the entry-point, given that there is no return-to state.
+		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Quit");
+		_shouldQuitDirectly = true;
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
 	{
-		if ((0 != deltaX) || (0 != deltaY))
+		if (null != _currentGameSession)
 		{
-			_yawRadians = _currentGameSession.movement.rotateYaw(deltaX);
-			_pitchRadians = _currentGameSession.movement.rotatePitch(deltaY);
-			_orientationNeedsFlush = true;
+			if ((0 != deltaX) || (0 != deltaY))
+			{
+				_yawRadians = _currentGameSession.movement.rotateYaw(deltaX);
+				_pitchRadians = _currentGameSession.movement.rotatePitch(deltaY);
+				_orientationNeedsFlush = true;
+			}
+			_rotationDidUpdate = true;
 		}
-		_rotationDidUpdate = true;
 	}
 
 	public void captureMouse0Down(boolean justClicked)
@@ -508,8 +555,8 @@ public class UiStateManager implements GameSession.ICallouts
 		switch (_uiState)
 		{
 		case START:
-			// Not implemented yet.
-			throw Assert.unreachable();
+			// Key events are ignored in start state.
+			break;
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -548,8 +595,8 @@ public class UiStateManager implements GameSession.ICallouts
 		switch (_uiState)
 		{
 		case START:
-			// Not implemented yet.
-			throw Assert.unreachable();
+			// Key events are ignored in start state.
+			break;
 		case PAUSE:
 		case OPTIONS:
 		case KEY_BINDINGS:
@@ -567,8 +614,8 @@ public class UiStateManager implements GameSession.ICallouts
 		switch (_uiState)
 		{
 		case START:
-			// Not implemented yet.
-			throw Assert.unreachable();
+			// Key events are ignored in start state.
+			break;
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -666,18 +713,25 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		_selectionBinding.set(selection);
 		
-		// Draw the main scene first (since we only draw the other data on top of this).
-		_currentGameSession.scene.render(entity, stopBlock, stopBlockType);
-		
-		// Draw any eye effect overlay.
-		_currentGameSession.eyeEffect.drawEyeEffect();
+		if (null != _currentGameSession)
+		{
+			// Draw the main scene first (since we only draw the other data on top of this).
+			_currentGameSession.scene.render(entity, stopBlock, stopBlockType);
+			
+			// Draw any eye effect overlay.
+			_currentGameSession.eyeEffect.drawEyeEffect();
+		}
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_drawRelevantWindows();
 		
-		// Finalize the event processing with this selection and accounting for inter-frame time.
-		// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
-		_finalizeFrameEvents(entity, stopBlock, preStopBlock);
+		if (null != _currentGameSession)
+		{
+			// Finalize the event processing with this selection and accounting for inter-frame time.
+			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
+			_finalizeFrameEvents(entity, stopBlock, preStopBlock);
+		}
+		_clearEvents();
 		
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
@@ -802,6 +856,20 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_lastActionBlock = null;
 		_lastActionMillis = System.currentTimeMillis();
+	}
+
+	private IAction _drawStartStateWindows()
+	{
+		// Draw whatever is common to states where we draw interactive buttons on top.
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "October Project";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_singlePlayerButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
+		
+		return action;
 	}
 
 	private IAction _drawInventoryStateWindows()
@@ -997,7 +1065,7 @@ public class UiStateManager implements GameSession.ICallouts
 		action = _renderViewChainAction(_returnToGameButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
 		action = _renderViewChainAction(_optionsButton, new Rect(0.0f, 0.0f, 0.0f, 0.1f), action);
 		action = _renderViewChainAction(_keyBindingsButton, new Rect(0.0f, -0.2f, 0.0f, -0.1f), action);
-		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.5f, 0.0f, -0.4f), action);
+		action = _renderViewChainAction(_exitButton, new Rect(0.0f, -0.5f, 0.0f, -0.4f), action);
 		
 		return action;
 	}
@@ -1121,6 +1189,9 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action;
 		switch (_uiState)
 		{
+		case START:
+			action = _drawStartStateWindows();
+			break;
 		case INVENTORY:
 			action = _drawInventoryStateWindows();
 			break;
@@ -1263,10 +1334,12 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_currentGameSession.audioManager.setStanding();
 		}
-		
-		// And reset.
 		_didAccountForTimeInFrame = false;
 		_didWalkInFrame = false;
+	}
+
+	private void _clearEvents()
+	{
 		_mouseHeld0 = false;
 		_mouseHeld1 = false;
 		_mouseClicked0 = false;
