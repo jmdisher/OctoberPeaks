@@ -34,8 +34,23 @@ public class OctoberPeaks extends ApplicationAdapter
 	public OctoberPeaks(Options options)
 	{
 		_environment = Environment.createSharedInstance();
-		_clientName = options.clientName();
-		_serverSocketAddress = options.serverAddress();
+		if (null != options)
+		{
+			// We were told to start up in an explicit mode so use that.
+			String givenName = options.clientName();
+			_clientName = (null != givenName)
+					? givenName
+					: "Local"
+			;
+			_serverSocketAddress = options.serverAddress();
+		}
+		else
+		{
+			// We were told to start up with an interactive UI to choose the mode.
+			// TODO:  Temporarily, this will default into single-player but should be changed later.
+			_clientName = "Local";
+			_serverSocketAddress = null;
+		}
 	}
 
 	@Override

@@ -17,7 +17,9 @@ public record Options(String clientName
 		{
 			if ("--single".equals(commandLineArgs[0]))
 			{
-				options = new Options("Local", null);
+				// When running single-player, we don't have any options but we can't return null as we are explicitly
+				// single-player and should start into that immediately.
+				options = new Options(null, null);
 			}
 			else if ("--multi".equals(commandLineArgs[0]))
 			{
@@ -41,7 +43,11 @@ public record Options(String clientName
 		}
 		else
 		{
-			throw _usageError();
+			// Providing no options is what we expect from normal "double-click" invocation so we will return null as
+			// options so that we will start up in a state where the UI will present these options.
+			// In fact, this is the expected case, starting with version 1.3, as it is more user-friendly and allows for
+			// direct world management.
+			options = null;
 		}
 		return options;
 	}
@@ -49,7 +55,7 @@ public record Options(String clientName
 
 	private static RuntimeException _usageError()
 	{
-		System.err.println("Args:  (--single)|(--multi user_name host port)");
+		System.err.println("Args:  [(--single)|(--multi user_name host port)]");
 		System.exit(1);
 		return null;
 	}
