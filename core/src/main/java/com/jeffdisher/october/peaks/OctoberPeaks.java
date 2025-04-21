@@ -223,23 +223,11 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls();
 		_input = new InputManager(mutableControls);
-		_uiState = new UiStateManager(_environment, ui, _movement, _client, _audioManager, mutableControls, _blockLookup, new UiStateManager.IInputStateChanger() {
+		_uiState = new UiStateManager(_environment, ui, _movement, _client, _audioManager, mutableControls, _blockLookup, new UiStateManager.ICallouts() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{
 				_input.enterCaptureState(setCapture);
-			}
-			@Override
-			public void trySetPaused(boolean isPaused)
-			{
-				if (isPaused)
-				{
-					_client.pauseGame();
-				}
-				else
-				{
-					_client.resumeGame();
-				}
 			}
 		});
 		boolean onServer = (null != _serverSocketAddress);

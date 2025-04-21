@@ -82,7 +82,7 @@ public class UiStateManager
 	private final AudioManager _audioManager;
 	private final MutableControls _mutableControls;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
-	private final IInputStateChanger _captureState;
+	private final ICallouts _captureState;
 	private final Map<Integer, String> _otherPlayersById;
 
 	private boolean _rotationDidUpdate;
@@ -116,8 +116,6 @@ public class UiStateManager
 	private boolean _orientationNeedsFlush;
 	private float _yawRadians;
 	private float _pitchRadians;
-	private boolean _shouldPause;
-	private boolean _shouldResume;
 
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
@@ -169,7 +167,7 @@ public class UiStateManager
 			, AudioManager audioManager
 			, MutableControls mutableControls
 			, Function<AbsoluteLocation, BlockProxy> blockLookup
-			, IInputStateChanger captureState
+			, ICallouts captureState
 	)
 	{
 		_env = environment;
@@ -327,7 +325,7 @@ public class UiStateManager
 				{
 					_uiState = _UiState.PLAY;
 					_captureState.shouldCaptureMouse(true);
-					_shouldResume = true;
+					_client.resumeGame();
 				}
 		});
 		
@@ -458,13 +456,6 @@ public class UiStateManager
 
 	public void finalizeFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
-		// Make sure the client is in the right state.
-		if (_shouldResume)
-		{
-			_captureState.trySetPaused(false);
-			_shouldResume = false;
-		}
-		
 		// See if we need to update our orientation.
 		if (_orientationNeedsFlush)
 		{
@@ -571,12 +562,6 @@ public class UiStateManager
 			}
 		}
 		
-		// We handle resume and pause distinctly since we need to put the client into the right state before/after any actions.
-		if (_shouldPause)
-		{
-			_captureState.trySetPaused(true);
-			_shouldPause = false;
-		}
 		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _entityBinding.get().location(), _playerVolume))
 		{
 			_audioManager.setWalking();
@@ -702,13 +687,13 @@ public class UiStateManager
 		case PAUSE:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
-			_shouldResume = true;
+			_client.resumeGame();
 			break;
 		case PLAY:
 			_uiState = _UiState.PAUSE;
 			_openStationLocation = null;
 			_captureState.shouldCaptureMouse(false);
-			_shouldPause = true;
+			_client.pauseGame();
 			break;
 		case OPTIONS:
 			_uiState = _UiState.PAUSE;
@@ -1279,9 +1264,13 @@ public class UiStateManager
 		INVENTORY,
 	}
 
-	public static interface IInputStateChanger
+
+	/**
+	 * Methods passed in from a higher-level component to control other aspects of the native window manager environment
+	 * required by the internal logic.
+	 */
+	public static interface ICallouts
 	{
 		public void shouldCaptureMouse(boolean setCapture);
-		public void trySetPaused(boolean isPaused);
 	}
 }
