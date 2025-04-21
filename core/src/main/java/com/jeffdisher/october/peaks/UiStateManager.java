@@ -18,6 +18,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.types.MutableControls;
+import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.ComplexItemView;
@@ -61,7 +62,7 @@ import com.jeffdisher.october.utils.Assert;
 /**
  * Handles the current high-level state of the UI based on events from the InputManager.
  */
-public class UiStateManager
+public class UiStateManager implements GameSession.ICallouts
 {
 	/**
 	 * In order to avoid cases like placing blocks too quickly or aggressively breaking a block behind a target, we will
@@ -77,11 +78,7 @@ public class UiStateManager
 	private final Environment _env;
 	private final GlUi _ui;
 	private final EntityVolume _playerVolume;
-	private final MovementControl _movement;
-	private final ClientWrapper _client;
-	private final AudioManager _audioManager;
 	private final MutableControls _mutableControls;
-	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
 	private final ICallouts _captureState;
 	private final Map<Integer, String> _otherPlayersById;
 
@@ -160,24 +157,19 @@ public class UiStateManager
 	private final Set<Block> _lavaBlockTypes;
 	private AbsoluteLocation _eyeBlockLocation;
 
+	// The current game session (can be null if not in the right state).
+	private GameSession _currentGameSession;
+
 	public UiStateManager(Environment environment
 			, GlUi ui
-			, MovementControl movement
-			, ClientWrapper client
-			, AudioManager audioManager
 			, MutableControls mutableControls
-			, Function<AbsoluteLocation, BlockProxy> blockLookup
 			, ICallouts captureState
 	)
 	{
 		_env = environment;
 		_ui = ui;
 		_playerVolume = environment.creatures.PLAYER.volume();
-		_movement = movement;
-		_client = client;
-		_audioManager = audioManager;
 		_mutableControls = mutableControls;
-		_blockLookup = blockLookup;
 		_captureState = captureState;
 		_otherPlayersById = new HashMap<>();
 		
@@ -235,12 +227,12 @@ public class UiStateManager
 				if (null != _openStationLocation)
 				{
 					_continuousInBlock = _leftShiftClick ? craft : null;
-					_client.beginCraftInBlock(_openStationLocation, craft);
+					_currentGameSession.client.beginCraftInBlock(_openStationLocation, craft);
 				}
 				else
 				{
 					_continuousInInventory = _leftShiftClick ? craft : null;
-					_client.beginCraftInInventory(craft);
+					_currentGameSession.client.beginCraftInInventory(craft);
 				}
 				_didAccountForTimeInFrame = true;
 			}
@@ -284,11 +276,13 @@ public class UiStateManager
 			if (_leftClick)
 			{
 				// Note that we ignore the result since this will be reflected in the UI, if valid.
-				_client.swapArmour(hoverPart);
+				_currentGameSession.client.swapArmour(hoverPart);
 			}
 		};
 		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
-		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, _blockLookup, _otherPlayersById));
+		// The ViewSelection should only use block lookup during play state so the _currentGameSession should never be null.
+		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.apply(location);
+		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
 		// Pause state controls.
 		_quitButtonBinding = new Binding<>();
@@ -325,7 +319,7 @@ public class UiStateManager
 				{
 					_uiState = _UiState.PLAY;
 					_captureState.shouldCaptureMouse(true);
-					_client.resumeGame();
+					_currentGameSession.client.resumeGame();
 				}
 		});
 		
@@ -360,7 +354,7 @@ public class UiStateManager
 				if (_leftClick)
 				{
 					// We try changing this in the client and it will return the updated value.
-					int finalValue = _client.trySetViewDistance(newDistance);
+					int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
 					_viewDistanceBinding.set(finalValue);
 				}
 		});
@@ -394,207 +388,41 @@ public class UiStateManager
 		);
 	}
 
-	public void startPlay(boolean onServer)
+	@Override
+	public void thisEntityUpdated(Entity projectedEntity)
+	{
+		_entityBinding.set(projectedEntity);
+	}
+
+	@Override
+	public void otherClientJoined(int clientId, String name)
+	{
+		Object old = _otherPlayersById.put(clientId, name);
+		Assert.assertTrue(null == old);
+	}
+
+	@Override
+	public void otherClientLeft(int clientId)
+	{
+		Object old = _otherPlayersById.remove(clientId);
+		Assert.assertTrue(null != old);
+	}
+
+	public void startPlay(GameSession currentGameSession, boolean onServer)
 	{
 		Assert.assertTrue(_UiState.START == _uiState);
 		_uiState = _UiState.PLAY;
+		_currentGameSession = currentGameSession;
 		_isRunningOnServer = onServer;
 		_quitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Quit");
-	}
-
-	public boolean canSelectInScene()
-	{
-		// This just means whether or not we are in play mode.
-		return _UiState.PLAY == _uiState;
-	}
-
-	public void drawRelevantWindows(WorldSelection selection)
-	{
-		// Update common bindings.
-		_selectionBinding.set(selection);
-		
-		// Perform state-specific drawing.
-		IAction action;
-		switch (_uiState)
-		{
-		case INVENTORY:
-			action = _drawInventoryStateWindows();
-			break;
-		case PAUSE:
-			action = _drawPauseStateWindows();
-			break;
-		case PLAY:
-			action = _drawPlayStateWindows();
-			break;
-		case OPTIONS:
-			action = _drawOptionsStateWindows();
-			break;
-		case KEY_BINDINGS:
-			action = _drawKeyBindingStateWindows();
-			break;
-		default:
-			throw Assert.unreachable();
-		}
-		
-		// Run any actions based on clicking on the UI.
-		if (null != action)
-		{
-			action.takeAction();
-		}
-		
-		// Allow any periodic cleanup.
-		_ui.textManager.allowTexturePurge();
-	}
-
-	public boolean didViewPerspectiveChange()
-	{
-		// Return whether or not we changed the rotation.
-		boolean shouldUpdate = _rotationDidUpdate;
-		_rotationDidUpdate = false;
-		return shouldUpdate;
-	}
-
-	public void finalizeFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
-	{
-		// See if we need to update our orientation.
-		if (_orientationNeedsFlush)
-		{
-			_client.setOrientation(_yawRadians, _pitchRadians);
-			_orientationNeedsFlush = false;
-		}
-		
-		// See if the click refers to anything selected.
-		if (_mouseHeld0)
-		{
-			if (null != stopBlock)
-			{
-				if (_canAct(stopBlock))
-				{
-					_client.hitBlock(stopBlock);
-					_didAccountForTimeInFrame = true;
-				}
-			}
-			else if (null != entity)
-			{
-				if (_mouseClicked0)
-				{
-					_client.hitEntity(entity);
-					_updateLastActionMillis();
-				}
-			}
-		}
-		else if (_mouseHeld1)
-		{
-			boolean didAct = false;
-			if (null != stopBlock)
-			{
-				// First, see if we need to change the UI state if this is a station we just clicked on.
-				if (_mouseClicked1)
-				{
-					didAct = _didOpenStationInventory(stopBlock);
-				}
-			}
-			else if (null != entity)
-			{
-				if (_mouseClicked1)
-				{
-					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
-					_client.applyToEntity(entity);
-					_updateLastActionMillis();
-					didAct = true;
-				}
-			}
-			
-			// If we still didn't do anything, try clicks on the block or self.
-			if (!didAct && _mouseClicked1 && (null != stopBlock) && (null != preStopBlock))
-			{
-				didAct = _client.runRightClickOnBlock(stopBlock, preStopBlock);
-				if (didAct)
-				{
-					_updateLastActionMillis();
-				}
-			}
-			if (!didAct && _mouseClicked1)
-			{
-				didAct = _client.runRightClickOnSelf();
-				if (didAct)
-				{
-					_updateLastActionMillis();
-				}
-			}
-			if (!didAct && (null != stopBlock) && (null != preStopBlock))
-			{
-				if (_canAct(stopBlock))
-				{
-					// In this case, we either want to place a block or repair a block.
-					didAct = _client.runPlaceBlock(stopBlock, preStopBlock);
-					if (!didAct)
-					{
-						didAct = _client.runRepairBlock(stopBlock);
-					}
-				}
-				else
-				{
-					didAct = false;
-				}
-			}
-		}
-		
-		// See if we should continue any in-progress crafting operation.
-		if (!_didAccountForTimeInFrame && (null != _openStationLocation))
-		{
-			// The common code doesn't know we are looking at this block so it can't apply this for us (as it does for in-inventory crafting).
-			_client.beginCraftInBlock(_openStationLocation, _continuousInBlock);
-			// We don't account for time here since this usually doesn't do anything.
-		}
-		
-		// If we took no action, just tell the client to pass time.
-		if (!_didAccountForTimeInFrame)
-		{
-			// See if we are doing continuous in-inventory crafting.
-			if (null != _continuousInInventory)
-			{
-				_client.beginCraftInInventory(_continuousInInventory);
-			}
-			else
-			{
-				_client.doNothing();
-			}
-		}
-		
-		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_blockLookup, _entityBinding.get().location(), _playerVolume))
-		{
-			_audioManager.setWalking();
-		}
-		else
-		{
-			_audioManager.setStanding();
-		}
-		
-		// And reset.
-		_didAccountForTimeInFrame = false;
-		_didWalkInFrame = false;
-		_mouseHeld0 = false;
-		_mouseHeld1 = false;
-		_mouseClicked0 = false;
-		_mouseClicked1 = false;
-		
-		_leftClick = false;
-		_leftShiftClick = false;
-		_rightClick = false;
-	}
-
-	public void setThisEntity(Entity projectedEntity)
-	{
-		_entityBinding.set(projectedEntity);
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
 	{
 		if ((0 != deltaX) || (0 != deltaY))
 		{
-			_yawRadians = _movement.rotateYaw(deltaX);
-			_pitchRadians = _movement.rotatePitch(deltaY);
+			_yawRadians = _currentGameSession.movement.rotateYaw(deltaX);
+			_pitchRadians = _currentGameSession.movement.rotatePitch(deltaY);
 			_orientationNeedsFlush = true;
 		}
 		_rotationDidUpdate = true;
@@ -620,35 +448,35 @@ public class UiStateManager
 
 	public void moveForward()
 	{
-		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.FORWARD);
+		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.FORWARD);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void moveBackward()
 	{
-		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.BACKWARD);
+		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.BACKWARD);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void strafeRight()
 	{
-		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.RIGHT);
+		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.RIGHT);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void strafeLeft()
 	{
-		_client.accelerateHorizontal(EntityChangeAccelerate.Relative.LEFT);
+		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.LEFT);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void jumpOrSwim()
 	{
-		_client.jumpOrSwim();
+		_currentGameSession.client.jumpOrSwim();
 	}
 
 	public void normalMouseMoved(Point cursor)
@@ -687,13 +515,13 @@ public class UiStateManager
 		case PAUSE:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
-			_client.resumeGame();
+			_currentGameSession.client.resumeGame();
 			break;
 		case PLAY:
 			_uiState = _UiState.PAUSE;
 			_openStationLocation = null;
 			_captureState.shouldCaptureMouse(false);
-			_client.pauseGame();
+			_currentGameSession.client.pauseGame();
 			break;
 		case OPTIONS:
 			_uiState = _UiState.PAUSE;
@@ -727,7 +555,7 @@ public class UiStateManager
 			break;
 		case INVENTORY:
 		case PLAY:
-			_client.changeHotbarIndex(hotbarIndex);
+			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
 			break;
 		}
 	}
@@ -772,29 +600,12 @@ public class UiStateManager
 			}
 			else
 			{
-				BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
+				BlockProxy stationBlock = _currentGameSession.blockLookup.apply(_openStationLocation);
 				_viewingFuelInventory = (null != stationBlock.getFuel());
 			}
 		}
 		_continuousInInventory = null;
 		_continuousInBlock = null;
-	}
-
-	public void updateEyeBlock(AbsoluteLocation eyeBlockLocation)
-	{
-		_eyeBlockLocation = eyeBlockLocation;
-	}
-
-	public void otherPlayerJoined(int clientId, String name)
-	{
-		Object old = _otherPlayersById.put(clientId, name);
-		Assert.assertTrue(null == old);
-	}
-
-	public void otherPlayerLeft(int clientId)
-	{
-		Object old = _otherPlayersById.remove(clientId);
-		Assert.assertTrue(null != old);
 	}
 
 	public void keyCodeUp(int lastKeyUp)
@@ -806,21 +617,93 @@ public class UiStateManager
 		}
 	}
 
+	/**
+	 * Called after clearing the framebuffer in order to render the frame with whatever is required for in the current
+	 * UI state.
+	 * Internally, this is also an opportunity for the state manager to act on, flush, or reset any input events it has
+	 * received since the last frame.
+	 */
+	public void renderFrame()
+	{
+		// Find the selection, if the mode supports this.
+		WorldSelection selection = null;
+		PartialEntity entity = null;
+		AbsoluteLocation stopBlock = null;
+		Block stopBlockType = null;
+		AbsoluteLocation preStopBlock = null;
+		if (_UiState.PLAY == _uiState)
+		{
+			// See if the perspective changed.
+			if (_rotationDidUpdate)
+			{
+				_rotationDidUpdate = false;
+				Vector eye = _currentGameSession.movement.computeEye();
+				Vector target = _currentGameSession.movement.computeTarget();
+				Vector upVector = _currentGameSession.movement.computeUpVector();
+				_currentGameSession.selectionManager.updatePosition(eye, target);
+				_currentGameSession.scene.updatePosition(eye, target, upVector);
+				_eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
+			}
+			
+			// Capture whatever is selected.
+			selection = _currentGameSession.selectionManager.findSelection();
+			if (null != selection)
+			{
+				entity = selection.entity();
+				stopBlock = selection.stopBlock();
+				BlockProxy proxy = (null != stopBlock)
+						? _currentGameSession.blockLookup.apply(stopBlock)
+						: null
+				;
+				if (null != proxy)
+				{
+					stopBlockType = proxy.getBlock();
+				}
+				preStopBlock = selection.preStopBlock();
+			}
+		}
+		_selectionBinding.set(selection);
+		
+		// Draw the main scene first (since we only draw the other data on top of this).
+		_currentGameSession.scene.render(entity, stopBlock, stopBlockType);
+		
+		// Draw any eye effect overlay.
+		_currentGameSession.eyeEffect.drawEyeEffect();
+		
+		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
+		_drawRelevantWindows();
+		
+		// Finalize the event processing with this selection and accounting for inter-frame time.
+		// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
+		_finalizeFrameEvents(entity, stopBlock, preStopBlock);
+		
+		// Allow any periodic cleanup.
+		_ui.textManager.allowTexturePurge();
+	}
+
+	public void handleScreenResize(int width, int height)
+	{
+		if (null != _currentGameSession)
+		{
+			_currentGameSession.scene.rebuildProjection(width, height);
+		}
+	}
+
 
 	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{
 		if (_leftClick)
 		{
 			// Select this in the hotbar (this will clear if already set).
-			_client.setSelectedItemKeyOrClear(entityInventoryKey);
+			_currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
 		}
 		else if (_rightClick)
 		{
-			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
+			_currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
 		}
 		else if (_leftShiftClick)
 		{
-			_client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
+			_currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
 	}
 
@@ -829,11 +712,11 @@ public class UiStateManager
 		// Note that we ignore the result since this will be reflected in the UI, if valid.
 		if (_rightClick)
 		{
-			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
+			_currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
 		}
 		else if (_leftShiftClick)
 		{
-			_client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
+			_currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
 	}
 
@@ -841,7 +724,7 @@ public class UiStateManager
 	{
 		// See if there is an inventory we can open at the given block location.
 		// NOTE:  We don't use this mechanism to talk about air blocks (or other empty blocks with ad-hoc inventories), only actual blocks.
-		BlockProxy proxy = _blockLookup.apply(blockLocation);
+		BlockProxy proxy = _currentGameSession.blockLookup.apply(blockLocation);
 		boolean didOpen = false;
 		Block block = proxy.getBlock();
 		if (_env.stations.getNormalInventorySize(block) > 0)
@@ -924,7 +807,7 @@ public class UiStateManager
 		if (null != _openStationLocation)
 		{
 			// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
-			BlockProxy stationBlock = _blockLookup.apply(_openStationLocation);
+			BlockProxy stationBlock = _currentGameSession.blockLookup.apply(_openStationLocation);
 			Block stationType = stationBlock.getBlock();
 			
 			if (_env.stations.getNormalInventorySize(stationType) > 0)
@@ -986,7 +869,7 @@ public class UiStateManager
 			// We are just looking at the floor at our feet.
 			Entity thisEntity = _entityBinding.get();
 			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(thisEntity, _playerVolume);
-			BlockProxy thisBlock = _blockLookup.apply(feetBlock);
+			BlockProxy thisBlock = _currentGameSession.blockLookup.apply(feetBlock);
 			Inventory floorInventory = thisBlock.getInventory();
 			
 			relevantInventory = floorInventory;
@@ -1190,7 +1073,7 @@ public class UiStateManager
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
 		if (null != _eyeBlockLocation)
 		{
-			BlockProxy eyeProxy = _blockLookup.apply(_eyeBlockLocation);
+			BlockProxy eyeProxy = _currentGameSession.blockLookup.apply(_eyeBlockLocation);
 			if (null != eyeProxy)
 			{
 				Block blockType = eyeProxy.getBlock();
@@ -1220,6 +1103,168 @@ public class UiStateManager
 		Binding<String> binding = new Binding<>();
 		binding.set(text);
 		return binding;
+	}
+
+	private void _drawRelevantWindows()
+	{
+		// Perform state-specific drawing.
+		IAction action;
+		switch (_uiState)
+		{
+		case INVENTORY:
+			action = _drawInventoryStateWindows();
+			break;
+		case PAUSE:
+			action = _drawPauseStateWindows();
+			break;
+		case PLAY:
+			action = _drawPlayStateWindows();
+			break;
+		case OPTIONS:
+			action = _drawOptionsStateWindows();
+			break;
+		case KEY_BINDINGS:
+			action = _drawKeyBindingStateWindows();
+			break;
+		default:
+			throw Assert.unreachable();
+		}
+		
+		// Run any actions based on clicking on the UI.
+		if (null != action)
+		{
+			action.takeAction();
+		}
+	}
+
+	private void _finalizeFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
+	{
+		// See if we need to update our orientation.
+		if (_orientationNeedsFlush)
+		{
+			_currentGameSession.client.setOrientation(_yawRadians, _pitchRadians);
+			_orientationNeedsFlush = false;
+		}
+		
+		// See if the click refers to anything selected.
+		if (_mouseHeld0)
+		{
+			if (null != stopBlock)
+			{
+				if (_canAct(stopBlock))
+				{
+					_currentGameSession.client.hitBlock(stopBlock);
+					_didAccountForTimeInFrame = true;
+				}
+			}
+			else if (null != entity)
+			{
+				if (_mouseClicked0)
+				{
+					_currentGameSession.client.hitEntity(entity);
+					_updateLastActionMillis();
+				}
+			}
+		}
+		else if (_mouseHeld1)
+		{
+			boolean didAct = false;
+			if (null != stopBlock)
+			{
+				// First, see if we need to change the UI state if this is a station we just clicked on.
+				if (_mouseClicked1)
+				{
+					didAct = _didOpenStationInventory(stopBlock);
+				}
+			}
+			else if (null != entity)
+			{
+				if (_mouseClicked1)
+				{
+					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
+					_currentGameSession.client.applyToEntity(entity);
+					_updateLastActionMillis();
+					didAct = true;
+				}
+			}
+			
+			// If we still didn't do anything, try clicks on the block or self.
+			if (!didAct && _mouseClicked1 && (null != stopBlock) && (null != preStopBlock))
+			{
+				didAct = _currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
+				if (didAct)
+				{
+					_updateLastActionMillis();
+				}
+			}
+			if (!didAct && _mouseClicked1)
+			{
+				didAct = _currentGameSession.client.runRightClickOnSelf();
+				if (didAct)
+				{
+					_updateLastActionMillis();
+				}
+			}
+			if (!didAct && (null != stopBlock) && (null != preStopBlock))
+			{
+				if (_canAct(stopBlock))
+				{
+					// In this case, we either want to place a block or repair a block.
+					didAct = _currentGameSession.client.runPlaceBlock(stopBlock, preStopBlock);
+					if (!didAct)
+					{
+						didAct = _currentGameSession.client.runRepairBlock(stopBlock);
+					}
+				}
+				else
+				{
+					didAct = false;
+				}
+			}
+		}
+		
+		// See if we should continue any in-progress crafting operation.
+		if (!_didAccountForTimeInFrame && (null != _openStationLocation))
+		{
+			// The common code doesn't know we are looking at this block so it can't apply this for us (as it does for in-inventory crafting).
+			_currentGameSession.client.beginCraftInBlock(_openStationLocation, _continuousInBlock);
+			// We don't account for time here since this usually doesn't do anything.
+		}
+		
+		// If we took no action, just tell the client to pass time.
+		if (!_didAccountForTimeInFrame)
+		{
+			// See if we are doing continuous in-inventory crafting.
+			if (null != _continuousInInventory)
+			{
+				_currentGameSession.client.beginCraftInInventory(_continuousInInventory);
+			}
+			else
+			{
+				_currentGameSession.client.doNothing();
+			}
+		}
+		
+		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_currentGameSession.blockLookup, _entityBinding.get().location(), _playerVolume))
+		{
+			_currentGameSession.audioManager.setWalking();
+		}
+		else
+		{
+			_currentGameSession.audioManager.setStanding();
+		}
+		
+		// And reset.
+		_didAccountForTimeInFrame = false;
+		_didWalkInFrame = false;
+		_mouseHeld0 = false;
+		_mouseHeld1 = false;
+		_mouseClicked0 = false;
+		_mouseClicked1 = false;
+		
+		_leftClick = false;
+		_leftShiftClick = false;
+		_rightClick = false;
 	}
 
 
