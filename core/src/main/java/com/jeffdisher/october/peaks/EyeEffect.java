@@ -27,53 +27,70 @@ public class EyeEffect
 {
 	public static final long EYE_EFFECT_DURATION_MILLIS = 1000L;
 
+	public static class Resources
+	{
+		private final Program _program;
+		private final VertexArray _screenSquare;
+		private final int _effectTexture;
+		private final int _uTexture;
+		private final int _uColour;
+		
+		public Resources(GL20 gl)
+		{
+			_program = Program.fullyLinkedProgram(gl
+					, _readUtf8Asset("eye_effect.vert")
+					, _readUtf8Asset("eye_effect.frag")
+					, new String[] {
+							"aPosition",
+							"aTexture",
+					}
+			);
+			
+			// Create the scratch buffer we will use for out graphics data (short-lived).
+			int floatsPerVertex = Arrays.stream(_program.attributes)
+					.map((Attribute attribute) -> attribute.floats())
+					.collect(Collectors.summingInt((Integer i) -> i))
+			;
+			int vertexCount = 6;
+			ByteBuffer buffer = ByteBuffer.allocateDirect(vertexCount * floatsPerVertex * Float.BYTES);
+			buffer.order(ByteOrder.nativeOrder());
+			FloatBuffer meshBuffer = buffer.asFloatBuffer();
+			
+			_screenSquare = _defineEyeEffectVertices(gl, _program, meshBuffer);
+			try
+			{
+				_effectTexture = TextureHelpers.loadInternalRGBA(gl, "eye_effect.jpeg");
+			}
+			catch (IOException e)
+			{
+				throw Assert.unexpected(e);
+			}
+			_uTexture = _program.getUniformLocation("uTexture");
+			Assert.assertTrue(_uTexture >= 0);
+			_uColour = _program.getUniformLocation("uColour");
+			Assert.assertTrue(_uColour >= 0);
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_program.delete();
+			_screenSquare.delete(gl);
+			gl.glDeleteTexture(_effectTexture);
+		}
+	}
+
+
 	private final GL20 _gl;
-	private final Program _program;
-	private final VertexArray _screenSquare;
-	private final int _effectTexture;
-	private final int _uTexture;
-	private final int _uColour;
+	private final Resources _resources;
 
 	private byte _health;
 	private final float[] _colour;
 	private long _effectEndMillis;
 
-	public EyeEffect(GL20 gl)
+	public EyeEffect(GL20 gl, LoadedResources resources)
 	{
 		_gl = gl;
-		
-		_program = Program.fullyLinkedProgram(_gl
-				, _readUtf8Asset("eye_effect.vert")
-				, _readUtf8Asset("eye_effect.frag")
-				, new String[] {
-						"aPosition",
-						"aTexture",
-				}
-		);
-		
-		// Create the scratch buffer we will use for out graphics data (short-lived).
-		int floatsPerVertex = Arrays.stream(_program.attributes)
-				.map((Attribute attribute) -> attribute.floats())
-				.collect(Collectors.summingInt((Integer i) -> i))
-		;
-		int vertexCount = 6;
-		ByteBuffer buffer = ByteBuffer.allocateDirect(vertexCount * floatsPerVertex * Float.BYTES);
-		buffer.order(ByteOrder.nativeOrder());
-		FloatBuffer meshBuffer = buffer.asFloatBuffer();
-		
-		_screenSquare = _defineEyeEffectVertices(_gl, _program, meshBuffer);
-		try
-		{
-			_effectTexture = TextureHelpers.loadInternalRGBA(gl, "eye_effect.jpeg");
-		}
-		catch (IOException e)
-		{
-			throw Assert.unexpected(e);
-		}
-		_uTexture = _program.getUniformLocation("uTexture");
-		Assert.assertTrue(_uTexture >= 0);
-		_uColour = _program.getUniformLocation("uColour");
-		Assert.assertTrue(_uColour >= 0);
+		_resources = resources.eyeEffect();
 		
 		_health = Byte.MAX_VALUE;
 		_colour = new float[] { 1.0f, 1.0f, 1.0f };
@@ -86,12 +103,12 @@ public class EyeEffect
 		{
 			long millisLeft = _effectEndMillis - currentTimeMillis;
 			float alpha = (float)millisLeft / (float)EYE_EFFECT_DURATION_MILLIS;
-			_program.useProgram();
+			_resources._program.useProgram();
 			_gl.glActiveTexture(GL20.GL_TEXTURE1);
-			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _effectTexture);
-			_gl.glUniform1i(_uTexture, 1);
-			_gl.glUniform4f(_uColour, _colour[0], _colour[1], _colour[2], alpha);
-			_screenSquare.drawAllTriangles(_gl);
+			_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._effectTexture);
+			_gl.glUniform1i(_resources._uTexture, 1);
+			_gl.glUniform4f(_resources._uColour, _colour[0], _colour[1], _colour[2], alpha);
+			_resources._screenSquare.drawAllTriangles(_gl);
 		}
 	}
 

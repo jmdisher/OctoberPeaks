@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks.scene;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
@@ -8,10 +7,9 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.SkyBox;
 import com.jeffdisher.october.peaks.graphics.Matrix;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -36,12 +34,12 @@ public class SceneRenderer
 	private Vector _eye;
 	private float _skyLightMultiplier;
 
-	public SceneRenderer(Environment environment, GL20 gl, TextureAtlas<ItemVariant> itemAtlas) throws IOException
+	public SceneRenderer(Environment environment, GL20 gl, LoadedResources resources)
 	{
 		_gl = gl;
-		_blockRenderer = new BlockRenderer(environment, gl, itemAtlas);
-		_entityRenderer = new EntityRenderer(environment, gl);
-		_skyBox = new SkyBox(gl);
+		_blockRenderer = new BlockRenderer(environment, gl, resources);
+		_entityRenderer = new EntityRenderer(gl, resources);
+		_skyBox = new SkyBox(gl, resources);
 		
 		_viewMatrix = Matrix.identity();
 		_eye = new Vector(0.0f, 0.0f, 0.0f);
@@ -142,7 +140,5 @@ public class SceneRenderer
 	public void shutdown()
 	{
 		_blockRenderer.shutdown();
-		_entityRenderer.shutdown();
-		_skyBox.shutdown();
 	}
 }

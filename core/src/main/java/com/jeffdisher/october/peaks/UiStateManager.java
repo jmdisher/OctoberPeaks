@@ -806,11 +806,6 @@ public class UiStateManager
 		}
 	}
 
-	public void shutdown()
-	{
-		_ui.shutdown();
-	}
-
 
 	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{

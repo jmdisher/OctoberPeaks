@@ -26,49 +26,68 @@ public class SkyBox
 	public static final int SKY_PIXEL_EDGE = 128;
 	public static final int TEXTURE_BUFFER_SIZE = 4 * SKY_PIXEL_EDGE * SKY_PIXEL_EDGE;
 
+	public static class Resources
+	{
+		private final Program _program;
+		private final int _uModelMatrix;
+		private final int _uViewMatrix;
+		private final int _uProjectionMatrix;
+		private final int _uSkyFraction;
+		private final int _uTexture0;
+		private final int _uTexture1;
+		private final int _nightTexture;
+		private final int _dayTexture;
+		private final VertexArray _cubeMesh;
+		
+		public Resources(GL20 gl)
+		{
+			_program = Program.fullyLinkedProgram(gl
+					, _readUtf8Asset("sky.vert")
+					, _readUtf8Asset("sky.frag")
+					, new String[] {
+							"aPosition",
+					}
+			);
+			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
+			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+			_uSkyFraction = _program.getUniformLocation("uSkyFraction");
+			_uTexture0 = _program.getUniformLocation("uTexture0");
+			_uTexture1 = _program.getUniformLocation("uTexture1");
+			
+			ByteBuffer textureBufferData = ByteBuffer.allocateDirect(TEXTURE_BUFFER_SIZE);
+			textureBufferData.order(ByteOrder.nativeOrder());
+			
+			_nightTexture = _loadCubeMap(gl, textureBufferData, "sky_up.png", "sky_horizon.png", "sky_down.png");
+			_dayTexture = _loadCubeMap(gl, textureBufferData, "sky_up_blue.png", "sky_blue.png", "sky_blue.png");
+			Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
+			
+			// We will just reuse this buffer for the cube upload.
+			textureBufferData.clear();
+			FloatBuffer meshBuffer = textureBufferData.asFloatBuffer();
+			_cubeMesh = _defineCubeVertices(gl, _program, meshBuffer);
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_program.delete();
+			gl.glDeleteTexture(_nightTexture);
+			gl.glDeleteTexture(_dayTexture);
+			_cubeMesh.delete(gl);
+		}
+	}
+
+
 	private final GL20 _gl;
-	private final Program _program;
-	private final int _uModelMatrix;
-	private final int _uViewMatrix;
-	private final int _uProjectionMatrix;
-	private final int _uSkyFraction;
-	private final int _uTexture0;
-	private final int _uTexture1;
-	private final int _nightTexture;
-	private final int _dayTexture;
-	private final VertexArray _cubeMesh;
+	private final Resources _resources;
 	private Matrix _viewMatrix;
 	private Matrix _dayTimeModelMatrix;
 	private float _skyDayFraction;
 
-	public SkyBox(GL20 gl)
+	public SkyBox(GL20 gl, LoadedResources resources)
 	{
 		_gl = gl;
-		_program = Program.fullyLinkedProgram(gl
-				, _readUtf8Asset("sky.vert")
-				, _readUtf8Asset("sky.frag")
-				, new String[] {
-						"aPosition",
-				}
-		);
-		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
-		_uViewMatrix = _program.getUniformLocation("uViewMatrix");
-		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-		_uSkyFraction = _program.getUniformLocation("uSkyFraction");
-		_uTexture0 = _program.getUniformLocation("uTexture0");
-		_uTexture1 = _program.getUniformLocation("uTexture1");
-		
-		ByteBuffer textureBufferData = ByteBuffer.allocateDirect(TEXTURE_BUFFER_SIZE);
-		textureBufferData.order(ByteOrder.nativeOrder());
-		
-		_nightTexture = _loadCubeMap(gl, textureBufferData, "sky_up.png", "sky_horizon.png", "sky_down.png");
-		_dayTexture = _loadCubeMap(gl, textureBufferData, "sky_up_blue.png", "sky_blue.png", "sky_blue.png");
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
-		
-		// We will just reuse this buffer for the cube upload.
-		textureBufferData.clear();
-		FloatBuffer meshBuffer = textureBufferData.asFloatBuffer();
-		_cubeMesh = _defineCubeVertices(gl, _program, meshBuffer);
+		_resources = resources.skyBox();
 		_viewMatrix = Matrix.identity();
 		_dayTimeModelMatrix = Matrix.identity();
 	}
@@ -107,30 +126,22 @@ public class SkyBox
 
 	public void render(Matrix projectionMatrix)
 	{
-		_program.useProgram();
-		_dayTimeModelMatrix.uploadAsUniform(_gl, _uModelMatrix);
-		_viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
-		projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
-		_gl.glUniform1f(_uSkyFraction, _skyDayFraction);
+		_resources._program.useProgram();
+		_dayTimeModelMatrix.uploadAsUniform(_gl, _resources._uModelMatrix);
+		_viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
+		_gl.glUniform1f(_resources._uSkyFraction, _skyDayFraction);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// We use texture 0 for the night sky and texture 1 for the day sky.
-		_gl.glUniform1i(_uTexture0, 0);
+		_gl.glUniform1i(_resources._uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _nightTexture);
-		_gl.glUniform1i(_uTexture1, 1);
+		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _resources._nightTexture);
+		_gl.glUniform1i(_resources._uTexture1, 1);
 		_gl.glActiveTexture(GL20.GL_TEXTURE1);
-		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _dayTexture);
-		_cubeMesh.drawAllTriangles(_gl);
+		_gl.glBindTexture(GL20.GL_TEXTURE_CUBE_MAP, _resources._dayTexture);
+		_resources._cubeMesh.drawAllTriangles(_gl);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
-	}
-
-	public void shutdown()
-	{
-		_program.delete();
-		_gl.glDeleteTexture(_nightTexture);
-		_gl.glDeleteTexture(_dayTexture);
-		_cubeMesh.delete(_gl);
 	}
 
 

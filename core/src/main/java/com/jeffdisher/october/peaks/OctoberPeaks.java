@@ -15,6 +15,8 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SpatialHelpers;
+import com.jeffdisher.october.peaks.scene.BlockRenderer;
+import com.jeffdisher.october.peaks.scene.EntityRenderer;
 import com.jeffdisher.october.peaks.scene.SceneRenderer;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
@@ -45,7 +47,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	private final InetSocketAddress _serverSocketAddress;
 
 	private GL20 _gl;
-	private TextureAtlas<ItemVariant> _itemAtlas;
+	private LoadedResources _resources;
 	private SceneRenderer _scene;
 	private EyeEffect _eyeEffect;
 	private MovementControl _movement;
@@ -82,23 +84,37 @@ public class OctoberPeaks extends ApplicationAdapter
 		_gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 		_gl.glEnable(GL20.GL_CULL_FACE);
 		
+		// Create the long-lived resources.
+		TextureAtlas<ItemVariant> itemAtlas;
 		try
 		{
-			_itemAtlas = TextureHelpers.loadAtlasForItems(_gl
+			itemAtlas = TextureHelpers.loadAtlasForItems(_gl
 					, _environment.items.ITEMS_BY_TYPE
 					, "missing_texture.png"
 			);
-			
-			_scene = new SceneRenderer(_environment, _gl, _itemAtlas);
-			_scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+			BlockRenderer.Resources blockRenderer = new BlockRenderer.Resources(_environment, _gl, itemAtlas);
+			EntityRenderer.Resources entityRenderer = new EntityRenderer.Resources(_environment, _gl);
+			SkyBox.Resources skyBox = new SkyBox.Resources(_gl);
+			EyeEffect.Resources eyeEffect = new EyeEffect.Resources(_gl);
+			GlUi.Resources glui = new GlUi.Resources(_gl, itemAtlas);
+			_resources = new LoadedResources(itemAtlas
+					, blockRenderer
+					, entityRenderer
+					, skyBox
+					, eyeEffect
+					, glui
+			);
 		}
 		catch (IOException e)
 		{
 			throw new AssertionError("Startup scene", e);
 		}
 		
-		_eyeEffect = new EyeEffect(_gl);
-		GlUi ui = new GlUi(_gl, _itemAtlas);
+		_scene = new SceneRenderer(_environment, _gl, _resources);
+		_scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		
+		_eyeEffect = new EyeEffect(_gl, _resources);
+		GlUi ui = new GlUi(_gl, _resources);
 		_movement = new MovementControl();
 		_scene.updatePosition(_movement.computeEye(), _movement.computeTarget(), _movement.computeUpVector());
 		
@@ -315,10 +331,11 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Disconnect from the server.
 		_client.disconnect();
 		
-		// Shut down the other components.
-		_itemAtlas.shutdown(_gl);
+		// Shut down the other components which have any non-heap resources.
 		_scene.shutdown();
-		_uiState.shutdown();
+		
+		// Shut down the long-lived resources.
+		_resources.shutdown(_gl);
 		
 		// Tear-down the shared environment.
 		Environment.clearSharedInstance();

@@ -14,6 +14,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.OrientationHelpers;
+import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -36,56 +37,78 @@ public class EntityRenderer
 	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
 	public static final long DAMAGE_DURATION_MILLIS = 1000L;
 
-	private final GL20 _gl;
-	private final Program _program;
-	private final int _uModelMatrix;
-	private final int _uViewMatrix;
-	private final int _uProjectionMatrix;
-	private final int _uWorldLightLocation;
-	private final int _uTexture0;
-	private final int _uDamage;
-	private final Map<Integer, PartialEntity> _entities;
-	private final Map<EntityType, _EntityData> _entityData;
-	private final Map<Integer, Long> _entityDamageMillis;
-	private final int _highlightTexture;
+	public static class Resources
+	{
+		private final Program _program;
+		private final int _uModelMatrix;
+		private final int _uViewMatrix;
+		private final int _uProjectionMatrix;
+		private final int _uWorldLightLocation;
+		private final int _uTexture0;
+		private final int _uDamage;
+		private final Map<EntityType, _EntityData> _entityData;
+		private final int _highlightTexture;
+		
+		public Resources(Environment environment, GL20 gl) throws IOException
+		{
+			// Create the shader program.
+			_program = Program.fullyLinkedProgram(gl
+					, _readUtf8Asset("entity.vert")
+					, _readUtf8Asset("entity.frag")
+					, new String[] {
+							"aPosition",
+							"aNormal",
+							"aTexture0",
+					}
+			);
+			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
+			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
+			_uTexture0 = _program.getUniformLocation("uTexture0");
+			_uDamage = _program.getUniformLocation("uDamage");
+			
+			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
+			direct.order(ByteOrder.nativeOrder());
+			FloatBuffer meshBuffer = direct.asFloatBuffer();
+			Map<EntityType, _EntityData> entityData = new HashMap<>();
+			for (EntityType type : environment.creatures.ENTITY_BY_NUMBER)
+			{
+				if (null != type)
+				{
+					_EntityData data = _loadEntityResources(gl, _program, meshBuffer, type);
+					entityData.put(type, data);
+				}
+			}
+			_entityData = Collections.unmodifiableMap(entityData);
+			_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_program.delete();
+			for (_EntityData data : _entityData.values())
+			{
+				data.vertices.delete(gl);
+				gl.glDeleteTexture(data.texture);
+			}
+			gl.glDeleteTexture(_highlightTexture);
+		}
+	}
 
-	public EntityRenderer(Environment environment, GL20 gl) throws IOException
+
+	private final GL20 _gl;
+	private final Resources _resources;
+	private final Map<Integer, PartialEntity> _entities;
+	private final Map<Integer, Long> _entityDamageMillis;
+
+	public EntityRenderer(GL20 gl, LoadedResources resources)
 	{
 		_gl = gl;
+		_resources = resources.entityRenderer();
 		
-		// Create the shader program.
-		_program = Program.fullyLinkedProgram(_gl
-				, _readUtf8Asset("entity.vert")
-				, _readUtf8Asset("entity.frag")
-				, new String[] {
-						"aPosition",
-						"aNormal",
-						"aTexture0",
-				}
-		);
-		_uModelMatrix = _program.getUniformLocation("uModelMatrix");
-		_uViewMatrix = _program.getUniformLocation("uViewMatrix");
-		_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-		_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
-		_uTexture0 = _program.getUniformLocation("uTexture0");
-		_uDamage = _program.getUniformLocation("uDamage");
-		
-		ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
-		direct.order(ByteOrder.nativeOrder());
-		FloatBuffer meshBuffer = direct.asFloatBuffer();
 		_entities = new HashMap<>();
-		Map<EntityType, _EntityData> entityData = new HashMap<>();
-		for (EntityType type : environment.creatures.ENTITY_BY_NUMBER)
-		{
-			if (null != type)
-			{
-				_EntityData data = _loadEntityResources(gl, meshBuffer, type);
-				entityData.put(type, data);
-			}
-		}
-		_entityData = Collections.unmodifiableMap(entityData);
 		_entityDamageMillis = new HashMap<>();
-		_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(_gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
 	}
 
 	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
@@ -93,14 +116,14 @@ public class EntityRenderer
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
-		_program.useProgram();
-		_gl.glUniform3f(_uWorldLightLocation, eye.x(), eye.y(), eye.z());
-		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
-		projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
+		_resources._program.useProgram();
+		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// We just use the texture for the entity.
-		_gl.glUniform1i(_uTexture0, 0);
+		_gl.glUniform1i(_resources._uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		
 		// Render any entities.
@@ -109,9 +132,9 @@ public class EntityRenderer
 		{
 			EntityType type = entity.type();
 			Matrix model = _generateEntityModelMatrix(entity, type);
-			model.uploadAsUniform(_gl, _uModelMatrix);
+			model.uploadAsUniform(_gl, _resources._uModelMatrix);
 			// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
-			_EntityData data = _entityData.get(type);
+			_EntityData data = _resources._entityData.get(type);
 			_gl.glActiveTexture(GL20.GL_TEXTURE0);
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
 			if (_entityDamageMillis.containsKey(entity.id()))
@@ -122,17 +145,17 @@ public class EntityRenderer
 				{
 					long millisLeft = effectEndMillis - currentMillis;
 					float magnitude = (float)millisLeft / (float)DAMAGE_DURATION_MILLIS;
-					_gl.glUniform1f(_uDamage, magnitude);
+					_gl.glUniform1f(_resources._uDamage, magnitude);
 				}
 				else
 				{
-					_gl.glUniform1f(_uDamage, 0.0f);
+					_gl.glUniform1f(_resources._uDamage, 0.0f);
 					_entityDamageMillis.remove(entity.id());
 				}
 			}
 			else
 			{
-				_gl.glUniform1f(_uDamage, 0.0f);
+				_gl.glUniform1f(_resources._uDamage, 0.0f);
 			}
 			data.vertices.drawAllTriangles(_gl);
 		}
@@ -143,23 +166,23 @@ public class EntityRenderer
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
-		_program.useProgram();
-		_gl.glUniform3f(_uWorldLightLocation, eye.x(), eye.y(), eye.z());
-		viewMatrix.uploadAsUniform(_gl, _uViewMatrix);
-		projectionMatrix.uploadAsUniform(_gl, _uProjectionMatrix);
+		_resources._program.useProgram();
+		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// We just use the texture for the entity.
-		_gl.glUniform1i(_uTexture0, 0);
+		_gl.glUniform1i(_resources._uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _highlightTexture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
 		EntityType type = selectedEntity.type();
 		Matrix model = _generateEntityModelMatrix(selectedEntity, type);
-		model.uploadAsUniform(_gl, _uModelMatrix);
-		_entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
+		model.uploadAsUniform(_gl, _resources._uModelMatrix);
+		_resources._entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 	}
 
 	public void setEntity(PartialEntity entity)
@@ -179,13 +202,8 @@ public class EntityRenderer
 		_entityDamageMillis.put(id, endOfEffectMillis);
 	}
 
-	public void shutdown()
-	{
-		_program.delete();
-	}
 
-
-	private _EntityData _loadEntityResources(GL20 gl, FloatBuffer meshBuffer, EntityType type) throws IOException
+	private static _EntityData _loadEntityResources(GL20 gl, Program program, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
 		String name = type.name().toUpperCase();
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
@@ -196,7 +214,7 @@ public class EntityRenderer
 		Assert.assertTrue(textureFile.exists());
 		
 		String rawMesh = meshFile.readString();
-		BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
+		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
 		WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
 			builder.appendVertex(position
 					, normal
