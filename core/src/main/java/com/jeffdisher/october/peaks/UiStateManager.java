@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
@@ -161,13 +162,14 @@ public class UiStateManager implements GameSession.ICallouts
 	private GameSession _currentGameSession;
 
 	public UiStateManager(Environment environment
-			, GlUi ui
+			, GL20 gl
+			, LoadedResources resources
 			, MutableControls mutableControls
 			, ICallouts captureState
 	)
 	{
 		_env = environment;
-		_ui = ui;
+		_ui = new GlUi(gl, resources);
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_mutableControls = mutableControls;
 		_captureState = captureState;
@@ -244,14 +246,14 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		Binding<String> inventoryTitleBinding = new Binding<>();
 		inventoryTitleBinding.set("Inventory");
-		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
+		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
 		ComplexItemView.IBindOptions<Void> fuelViewOptions = new ComplexItemView.IBindOptions<Void>()
 		{
 			@Override
 			public int getOutlineTexture(ItemTuple<Void> context)
 			{
 				// We always just show the same background for fuel.
-				return ui.pixelLightGrey;
+				return _ui.pixelLightGrey;
 			}
 			@Override
 			public void hoverRender(Point cursor, ItemTuple<Void> context)
@@ -265,10 +267,10 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		};
 		_thisEntityInventoryWindow = new Window<>(WINDOW_TOP_RIGHT, thisEntityInventoryView);
-		ComplexItemView<Void> fuelProgress = new ComplexItemView<>(ui, _bottomWindowFuelBinding, fuelViewOptions);
-		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
+		ComplexItemView<Void> fuelProgress = new ComplexItemView<>(_ui, _bottomWindowFuelBinding, fuelViewOptions);
+		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
 		_bottomInventoryWindow = new Window<>(WINDOW_BOTTOM, bottomInventoryView);
-		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
+		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
 		_craftingWindow = new Window<>(WINDOW_TOP_LEFT, craftingPanelView);
 		_metaDataWindow = new Window<>(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
 		_hotbarWindow = new Window<>(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
@@ -368,7 +370,7 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Key-binding prefs.
-		_keyBindingSelectorControl = new ViewKeyControlSelector(ui, _mutableControls
+		_keyBindingSelectorControl = new ViewKeyControlSelector(_ui, _mutableControls
 			, (MutableControls.Control selectedControl) -> {
 				if (_leftClick)
 				{
@@ -686,6 +688,14 @@ public class UiStateManager implements GameSession.ICallouts
 		if (null != _currentGameSession)
 		{
 			_currentGameSession.scene.rebuildProjection(width, height);
+		}
+	}
+
+	public void shutdown()
+	{
+		if (null != _currentGameSession)
+		{
+			_currentGameSession.shutdown();
 		}
 	}
 

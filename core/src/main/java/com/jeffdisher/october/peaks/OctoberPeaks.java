@@ -28,9 +28,6 @@ public class OctoberPeaks extends ApplicationAdapter
 	private InputManager _input;
 	private UiStateManager _uiState;
 
-	// Variables which only exist over the course of a single game session.
-	private GameSession _currentGameSession;
-
 	public OctoberPeaks(Options options)
 	{
 		_environment = Environment.createSharedInstance();
@@ -91,12 +88,10 @@ public class OctoberPeaks extends ApplicationAdapter
 			throw new AssertionError("Startup scene", e);
 		}
 		
-		GlUi ui = new GlUi(_gl, _resources);
-		
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls();
 		_input = new InputManager(mutableControls);
-		_uiState = new UiStateManager(_environment, ui, mutableControls, new UiStateManager.ICallouts() {
+		_uiState = new UiStateManager(_environment, _gl, _resources, mutableControls, new UiStateManager.ICallouts() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{
@@ -105,12 +100,12 @@ public class OctoberPeaks extends ApplicationAdapter
 		});
 		
 		// Immediately transition into playing state.  This will become more complex later.
-		_currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, _uiState);
+		GameSession currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, _uiState);
 		boolean onServer = (null != _serverSocketAddress);
-		_uiState.startPlay(_currentGameSession, onServer);
+		_uiState.startPlay(currentGameSession, onServer);
 		
 		// Finish the rest of the startup now that the pieces are in place.
-		_currentGameSession.finishStartup();
+		currentGameSession.finishStartup();
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
@@ -138,10 +133,7 @@ public class OctoberPeaks extends ApplicationAdapter
 	@Override
 	public void dispose()
 	{
-		if (null != _currentGameSession)
-		{
-			_currentGameSession.shutdown();
-		}
+		_uiState.shutdown();
 		
 		// Shut down the long-lived resources.
 		_resources.shutdown(_gl);
