@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -176,6 +177,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public UiStateManager(Environment environment
 			, GL20 gl
+			, File localStorageDirectory
 			, LoadedResources resources
 			, MutableControls mutableControls
 			, ICallouts captureState
@@ -232,7 +234,9 @@ public class UiStateManager implements GameSession.ICallouts
 					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
 					_uiState = _UiState.PLAY;
 					_captureState.shouldCaptureMouse(true);
-					_currentGameSession = new GameSession(_env, gl, resources, "Local", null, UiStateManager.this);
+					// TODO:  Get a name from something user-defined.
+					File localWorldDirectory = new File(localStorageDirectory, "world");
+					_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, UiStateManager.this);
 					// TODO:  Use an intermediate state for this delay.
 					_currentGameSession.finishStartup();
 					_isRunningOnServer = false;

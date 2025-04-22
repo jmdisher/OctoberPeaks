@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
@@ -19,11 +20,14 @@ import com.jeffdisher.october.utils.Assert;
 
 public class OctoberPeaks extends ApplicationAdapter
 {
+	public static final String ENV_VAR_OCTOBER_PEAKS_ROOT = "OCTOBER_PEAKS_ROOT";
+
 	private final Environment _environment;
 	private final String _clientName;
 	private final InetSocketAddress _serverSocketAddress;
 
 	private GL20 _gl;
+	private File _localStorageDirectory;
 	private LoadedResources _resources;
 	private InputManager _input;
 	private UiStateManager _uiState;
@@ -53,6 +57,14 @@ public class OctoberPeaks extends ApplicationAdapter
 	public void create()
 	{
 		_gl = Gdx.graphics.getGL20();
+		
+		// We will just use external storage, which should put this in home, unless our env var is specified.
+		String envVar = System.getenv(ENV_VAR_OCTOBER_PEAKS_ROOT);
+		_localStorageDirectory = (null != envVar)
+				? new File(envVar)
+				: new File(new File(Gdx.files.getExternalStoragePath()), "OctoberPeaks")
+		;
+		Assert.assertTrue(_localStorageDirectory.isDirectory() || _localStorageDirectory.mkdirs());
 		
 		// Set common GL functionality for the view.
 		_gl.glEnable(GL20.GL_BLEND);
@@ -90,7 +102,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls();
 		_input = new InputManager(mutableControls, (null != _clientName));
-		_uiState = new UiStateManager(_environment, _gl, _resources, mutableControls, new UiStateManager.ICallouts() {
+		_uiState = new UiStateManager(_environment, _gl, _localStorageDirectory, _resources, mutableControls, new UiStateManager.ICallouts() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{
@@ -101,7 +113,9 @@ public class OctoberPeaks extends ApplicationAdapter
 		if (null != _clientName)
 		{
 			// Immediately transition into playing state.  This will become more complex later.
-			GameSession currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, _uiState);
+			// We will just store the world in the current directory.
+			File localWorldDirectory = new File("world");
+			GameSession currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, localWorldDirectory, _uiState);
 			boolean onServer = (null != _serverSocketAddress);
 			_uiState.startPlay(currentGameSession, onServer);
 			

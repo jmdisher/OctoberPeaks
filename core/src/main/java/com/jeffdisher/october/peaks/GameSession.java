@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class GameSession
 			, LoadedResources resources
 			, String clientName
 			, InetSocketAddress serverSocketAddress
+			, File localWorldDirectory
 			, ICallouts callouts
 	)
 	{
@@ -169,6 +171,7 @@ public class GameSession
 				}
 				, clientName
 				, serverSocketAddress
+				, localWorldDirectory
 		);
 		
 		// Load the audio.

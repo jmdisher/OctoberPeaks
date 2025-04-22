@@ -96,6 +96,7 @@ public class ClientWrapper
 			, IUpdateConsumer updateConsumer
 			, String clientName
 			, InetSocketAddress serverAddress
+			, File localWorldDirectory
 	)
 	{
 		_environment = environment;
@@ -108,16 +109,14 @@ public class ClientWrapper
 			if (null == serverAddress)
 			{
 				System.out.println("Starting local server for single-player...");
-				// We will just store the world in the current directory.
-				File worldDirectory = new File("world");
-				if (!worldDirectory.isDirectory())
+				if (!localWorldDirectory.isDirectory())
 				{
-					Assert.assertTrue(worldDirectory.mkdirs());
+					Assert.assertTrue(localWorldDirectory.mkdirs());
 				}
 				
 				// We will use the basic world generator, as that is our current standard generator.
 				_config = new WorldConfig();
-				boolean didLoadConfig = ResourceLoader.populateWorldConfig(worldDirectory, _config);
+				boolean didLoadConfig = ResourceLoader.populateWorldConfig(localWorldDirectory, _config);
 				IWorldGenerator worldGen;
 				switch (_config.worldGeneratorName)
 				{
@@ -136,7 +135,7 @@ public class ClientWrapper
 					EntityLocation spawnLocation = worldGen.getDefaultSpawnLocation();
 					_config.worldSpawn = spawnLocation.getBlockLocation();
 				}
-				_loader = new ResourceLoader(worldDirectory
+				_loader = new ResourceLoader(localWorldDirectory
 						, worldGen
 						, _config.worldSpawn.toEntityLocation()
 				);
