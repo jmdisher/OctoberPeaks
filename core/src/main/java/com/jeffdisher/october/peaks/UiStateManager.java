@@ -29,8 +29,10 @@ import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.ItemTuple;
+import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
+import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
@@ -126,9 +128,11 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// UI for the single-player list.
 	// TODO:  Flesh out this view - currently only goes into the one known game.
-	private final ViewTextButton<String> _tempStartButton;
+	private final Binding<List<String>> _worldListBinding;
+	private final PaginatedListView<String> _worldListView;
 	private final Binding<String> _newWorldNameBinding;
 	private final ViewTextField _newWorldNameTextField;
+	private final ViewTextButton<String> _createWorldButton;
 	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
@@ -197,6 +201,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
 		_uiState = _UiState.START;
 		_exitButtonBinding = new Binding<>(null);
+		_worldListBinding = new Binding<>(null);
 		
 		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
@@ -206,6 +211,10 @@ public class UiStateManager implements GameSession.ICallouts
 					// Enter the single-player list.
 					Assert.assertTrue(_UiState.START == _uiState);
 					_uiState = _UiState.LIST_SINGLE_PLAYER;
+					
+					// Update the world name list since we are entering that state.
+					List<String> worldNames = List.of(localStorageDirectory.list((File dir, String name) -> name.startsWith("world_")));
+					_worldListBinding.set(worldNames);
 				}
 		});
 		_multiPlayerButton = new ViewTextButton<>(_ui, new Binding<>("Multi-Player")
@@ -229,8 +238,20 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Single-player UI.
+		_worldListView = new PaginatedListView<>(_ui
+			, _worldListBinding
+			, () -> _leftClick
+			, new StatelessViewTextButton(_ui)
+			, 0.1f
+			, (String directoryName) -> {
+				if (_leftClick)
+				{
+					_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+				}
+			}
+		);
 		_newWorldNameBinding = new Binding<>("");
-		_tempStartButton = new ViewTextButton<>(_ui, new Binding<>("Start game")
+		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Start game")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -243,15 +264,7 @@ public class UiStateManager implements GameSession.ICallouts
 					if (worldName.length() > 0)
 					{
 						String directoryName = "world_" + worldName;
-						_uiState = _UiState.PLAY;
-						_captureState.shouldCaptureMouse(true);
-						File localWorldDirectory = new File(localStorageDirectory, directoryName);
-						_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, UiStateManager.this);
-						// TODO:  Use an intermediate state for this delay.
-						_currentGameSession.finishStartup();
-						_isRunningOnServer = false;
-						// We can exit from here since we have a return-to state.
-						_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+						_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
 						_typingCapture = null;
 					}
 				}
@@ -914,11 +927,12 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui.enterUiRenderMode();
 		
 		String menuTitle = "Single Player Worlds";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, 0.3f, 0.4f, 0.4f), action);
-		action = _renderViewChainAction(_tempStartButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
-		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
+		action = _renderViewChainAction(_worldListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
+		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, -0.7f, 0.2f, -0.6f), action);
+		action = _renderViewChainAction(_createWorldButton, new Rect(0.2f, -0.7f, 0.4f, -0.6f), action);
+		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.9f, 0.0f, -0.8f), action);
 		
 		return action;
 	}
@@ -1484,6 +1498,19 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		// Any meaning of "back" should stop text input.
 		_typingCapture = null;
+	}
+
+	private void _enterSingleWorld(GL20 gl, File localStorageDirectory, LoadedResources resources, String directoryName)
+	{
+		_uiState = _UiState.PLAY;
+		_captureState.shouldCaptureMouse(true);
+		File localWorldDirectory = new File(localStorageDirectory, directoryName);
+		_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, this);
+		// TODO:  Use an intermediate state for this delay.
+		_currentGameSession.finishStartup();
+		_isRunningOnServer = false;
+		// We can exit from here since we have a return-to state.
+		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
 	}
 
 
