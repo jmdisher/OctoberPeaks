@@ -100,7 +100,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		}
 		
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
-		MutableControls mutableControls = new MutableControls();
+		MutableControls mutableControls = new MutableControls(_localStorageDirectory);
 		_input = new InputManager(mutableControls, (null != _clientName));
 		_uiState = new UiStateManager(_environment, _gl, _localStorageDirectory, _resources, mutableControls, new UiStateManager.ICallouts() {
 			@Override
