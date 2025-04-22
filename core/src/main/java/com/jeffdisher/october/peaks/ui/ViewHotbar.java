@@ -54,7 +54,7 @@ public class ViewHotbar implements IView
 		};
 		
 		// Create the fake binding for the inner view.
-		_innerBinding = new Binding<>();
+		_innerBinding = new Binding<>(null);
 		_itemView = new ComplexItemView<>(ui, _innerBinding, options);
 	}
 

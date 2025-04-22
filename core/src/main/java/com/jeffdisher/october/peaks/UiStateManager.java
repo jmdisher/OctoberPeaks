@@ -196,9 +196,9 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
 		_uiState = _UiState.START;
-		_exitButtonBinding = new Binding<>();
+		_exitButtonBinding = new Binding<>(null);
 		
-		_singlePlayerButton = new ViewTextButton<>(_ui, _inlineBinding("Single Player")
+		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -208,7 +208,7 @@ public class UiStateManager implements GameSession.ICallouts
 					_uiState = _UiState.LIST_SINGLE_PLAYER;
 				}
 		});
-		_multiPlayerButton = new ViewTextButton<>(_ui, _inlineBinding("Multi-Player")
+		_multiPlayerButton = new ViewTextButton<>(_ui, new Binding<>("Multi-Player")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -218,7 +218,7 @@ public class UiStateManager implements GameSession.ICallouts
 					_uiState = _UiState.LIST_MULTI_PLAYER;
 				}
 		});
-		_quitButton = new ViewTextButton<>(_ui, _inlineBinding("Quit")
+		_quitButton = new ViewTextButton<>(_ui, new Binding<>("Quit")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -229,9 +229,8 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Single-player UI.
-		_newWorldNameBinding = new Binding<>();
-		_newWorldNameBinding.set("");
-		_tempStartButton = new ViewTextButton<>(_ui, _inlineBinding("Start game")
+		_newWorldNameBinding = new Binding<>("");
+		_tempStartButton = new ViewTextButton<>(_ui, new Binding<>("Start game")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -266,7 +265,7 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		);
-		_backButton = new ViewTextButton<>(_ui, _inlineBinding("Back")
+		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
 				, (String text) -> text
 				, (ViewTextButton<String> button, String text) -> {
 					if (_leftClick)
@@ -277,8 +276,8 @@ public class UiStateManager implements GameSession.ICallouts
 			});
 		
 		// Define all of our bindings.
-		_selectionBinding = new Binding<>();
-		_entityBinding = new Binding<>();
+		_selectionBinding = new Binding<>(null);
+		_entityBinding = new Binding<>(null);
 		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> {
 			Inventory inventory = entity.isCreativeMode()
 					? CreativeInventory.fakeInventory()
@@ -287,11 +286,11 @@ public class UiStateManager implements GameSession.ICallouts
 			return inventory;
 		});
 		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(_entityBinding, (Entity entity) -> entity.armourSlots());
-		_bottomWindowInventoryBinding = new Binding<>();
-		_bottomWindowTitleBinding = new Binding<>();
-		_bottomWindowFuelBinding = new Binding<>();
-		_craftingPanelTitleBinding = new Binding<>();
-		_craftingPanelBinding = new Binding<>();
+		_bottomWindowInventoryBinding = new Binding<>(null);
+		_bottomWindowTitleBinding = new Binding<>(null);
+		_bottomWindowFuelBinding = new Binding<>(null);
+		_craftingPanelTitleBinding = new Binding<>(null);
+		_craftingPanelBinding = new Binding<>(null);
 		
 		// Create our views.
 		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
@@ -342,8 +341,7 @@ public class UiStateManager implements GameSession.ICallouts
 			return _leftClick;
 		};
 		
-		Binding<String> inventoryTitleBinding = new Binding<>();
-		inventoryTitleBinding.set("Inventory");
+		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
 		ComplexItemView.IBindOptions<Void> fuelViewOptions = new ComplexItemView.IBindOptions<Void>()
 		{
@@ -403,7 +401,7 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 				}
 		});
-		_optionsButton = new ViewTextButton<>(_ui, _inlineBinding("Game Options")
+		_optionsButton = new ViewTextButton<>(_ui, new Binding<>("Game Options")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -411,7 +409,7 @@ public class UiStateManager implements GameSession.ICallouts
 					_uiState = _UiState.OPTIONS;
 				}
 		});
-		_keyBindingsButton = new ViewTextButton<>(_ui, _inlineBinding("Key Bindings")
+		_keyBindingsButton = new ViewTextButton<>(_ui, new Binding<>("Key Bindings")
 				, (String text) -> text
 				, (ViewTextButton<String> button, String text) -> {
 					if (_leftClick)
@@ -420,7 +418,7 @@ public class UiStateManager implements GameSession.ICallouts
 						_currentlyChangingControl = null;
 					}
 			});
-		_returnToGameButton = new ViewTextButton<>(_ui, _inlineBinding("Return to Game")
+		_returnToGameButton = new ViewTextButton<>(_ui, new Binding<>("Return to Game")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -432,8 +430,7 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Options state controls.
-		_fullScreenBinding = new Binding<>();
-		_fullScreenBinding.set(Gdx.graphics.isFullscreen());
+		_fullScreenBinding = new Binding<>(Gdx.graphics.isFullscreen());
 		_fullScreenButton = new ViewTextButton<>(_ui, _fullScreenBinding
 			, (Boolean isFullScreen) -> isFullScreen ? "Change to Windowed" : "Change to Full Screen"
 			, (ViewTextButton<Boolean> button, Boolean isFullScreen) -> {
@@ -454,8 +451,7 @@ public class UiStateManager implements GameSession.ICallouts
 					_fullScreenBinding.set(newFullScreen);
 				}
 		});
-		_viewDistanceBinding = new Binding<>();
-		_viewDistanceBinding.set(MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE);
+		_viewDistanceBinding = new Binding<>(MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE);
 		_viewDistanceControl = new ViewControlIntChanger(_ui, _viewDistanceBinding
 			, (Integer distance) -> distance + " cuboids"
 			, (ViewControlIntChanger button, Integer newDistance) -> {
@@ -1251,13 +1247,6 @@ public class UiStateManager implements GameSession.ICallouts
 				? tempAction
 				: existingAction
 		;
-	}
-
-	private Binding<String> _inlineBinding(String text)
-	{
-		Binding<String> binding = new Binding<>();
-		binding.set(text);
-		return binding;
 	}
 
 	private void _drawRelevantWindows()

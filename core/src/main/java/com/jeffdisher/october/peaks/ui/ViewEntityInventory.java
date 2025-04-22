@@ -65,7 +65,7 @@ public class ViewEntityInventory implements IView
 		};
 		
 		// We use a fake view and binding pair to render the paginated view within the window.
-		_internalGridBinding = new Binding<>();
+		_internalGridBinding = new Binding<>(null);
 		_itemGrid = new PaginatedItemView<>(ui
 				, _internalGridBinding
 				, shouldChangePage

@@ -13,6 +13,7 @@ public class SubBinding<T, P> extends Binding<T>
 
 	public SubBinding(Binding<P> parent, Function<P, T> loader)
 	{
+		super(null);
 		_parent = parent;
 		_loader = loader;
 		

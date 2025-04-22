@@ -16,6 +16,11 @@ public class Binding<T>
 	protected T _data;
 	private List<Binding<?>> _observers = new ArrayList<>();
 
+	public Binding(T start)
+	{
+		_data = start;
+	}
+
 	public T get()
 	{
 		return _data;

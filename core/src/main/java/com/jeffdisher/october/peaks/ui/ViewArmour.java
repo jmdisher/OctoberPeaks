@@ -48,7 +48,7 @@ public class ViewArmour implements IView
 			}
 		};
 		// We use a fake inner binding.
-		_innerBinding = new Binding<>();
+		_innerBinding = new Binding<>(null);
 		_itemView = new ComplexItemView<>(ui, _innerBinding, options);
 	}
 

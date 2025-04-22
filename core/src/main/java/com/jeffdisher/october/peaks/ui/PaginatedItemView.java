@@ -34,7 +34,7 @@ public class PaginatedItemView<T> implements IView
 		_shouldChangePage = shouldChangePage;
 		
 		// We use a fake view and binding pair to render the individual items in the list.
-		_innerBinding = new Binding<>();
+		_innerBinding = new Binding<>(null);
 		_itemView = new ComplexItemView<>(ui, _innerBinding, options);
 	}
 
