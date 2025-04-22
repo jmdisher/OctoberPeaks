@@ -117,9 +117,17 @@ public class UiStateManager implements GameSession.ICallouts
 	private float _pitchRadians;
 
 	// UI for the start state when first launched with no args.
-	// TODO:  Temporarily, we only support entering/exiting the single-player world.
 	private final ViewTextButton<String> _singlePlayerButton;
+	private final ViewTextButton<String> _multiPlayerButton;
 	private final ViewTextButton<String> _quitButton;
+
+	// UI for the single-player list.
+	// TODO:  Flesh out this view - currently only goes into the one known game.
+	private final ViewTextButton<String> _tempStartButton;
+	private final ViewTextButton<String> _backButton;
+
+	// UI for the multi-player list.
+	// TODO:  Implement
 
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
@@ -152,7 +160,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<Boolean> _fullScreenButton;
 	private final Binding<Integer> _viewDistanceBinding;
 	private final ViewControlIntChanger _viewDistanceControl;
-	private final ViewTextButton<String> _returnToPauseButton;
 
 	// UI and state related to key bindings prefs.
 	private final ViewKeyControlSelector _keyBindingSelectorControl;
@@ -190,16 +197,19 @@ public class UiStateManager implements GameSession.ICallouts
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
 				{
-					// We want to start a single-player game.
+					// Enter the single-player list.
 					Assert.assertTrue(_UiState.START == _uiState);
-					_uiState = _UiState.PLAY;
-					_captureState.shouldCaptureMouse(true);
-					_currentGameSession = new GameSession(_env, gl, resources, "Local", null, UiStateManager.this);
-					// TODO:  Use an intermediate state for this delay.
-					_currentGameSession.finishStartup();
-					_isRunningOnServer = false;
-					// We can exit from here since we have a return-to state.
-					_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+					_uiState = _UiState.LIST_SINGLE_PLAYER;
+				}
+		});
+		_multiPlayerButton = new ViewTextButton<>(_ui, _inlineBinding("Multi-Player")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// Enter the single-player list.
+					Assert.assertTrue(_UiState.START == _uiState);
+					_uiState = _UiState.LIST_MULTI_PLAYER;
 				}
 		});
 		_quitButton = new ViewTextButton<>(_ui, _inlineBinding("Quit")
@@ -211,6 +221,34 @@ public class UiStateManager implements GameSession.ICallouts
 					Gdx.app.exit();
 				}
 		});
+		
+		// Single-player UI.
+		_tempStartButton = new ViewTextButton<>(_ui, _inlineBinding("Start game")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// We want to start a single-player game.
+					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
+					_uiState = _UiState.PLAY;
+					_captureState.shouldCaptureMouse(true);
+					_currentGameSession = new GameSession(_env, gl, resources, "Local", null, UiStateManager.this);
+					// TODO:  Use an intermediate state for this delay.
+					_currentGameSession.finishStartup();
+					_isRunningOnServer = false;
+					// We can exit from here since we have a return-to state.
+					_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+				}
+		});
+		_backButton = new ViewTextButton<>(_ui, _inlineBinding("Back")
+				, (String text) -> text
+				, (ViewTextButton<String> button, String text) -> {
+					if (_leftClick)
+					{
+						// This is the same as hitting escape.
+						_doBackStateTransition();
+					}
+			});
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>();
@@ -397,17 +435,13 @@ public class UiStateManager implements GameSession.ICallouts
 			, (ViewControlIntChanger button, Integer newDistance) -> {
 				if (_leftClick)
 				{
-					// We try changing this in the client and it will return the updated value.
-					int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
-					_viewDistanceBinding.set(finalValue);
-				}
-		});
-		_returnToPauseButton = new ViewTextButton<>(_ui, _inlineBinding("Back")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					_uiState = _UiState.PAUSE;
+					// TODO:  When we persist preferences, put this there whether or not in game.
+					if (null != _currentGameSession)
+					{
+						// We try changing this in the client and it will return the updated value.
+						int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
+						_viewDistanceBinding.set(finalValue);
+					}
 				}
 		});
 		
@@ -552,86 +586,35 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void handleKeyEsc()
 	{
-		switch (_uiState)
-		{
-		case START:
-			// Key events are ignored in start state.
-			break;
-		case INVENTORY:
-			_uiState = _UiState.PLAY;
-			_captureState.shouldCaptureMouse(true);
-			break;
-		case PAUSE:
-			_uiState = _UiState.PLAY;
-			_captureState.shouldCaptureMouse(true);
-			_currentGameSession.client.resumeGame();
-			break;
-		case PLAY:
-			_uiState = _UiState.PAUSE;
-			_openStationLocation = null;
-			_captureState.shouldCaptureMouse(false);
-			_currentGameSession.client.pauseGame();
-			break;
-		case OPTIONS:
-			_uiState = _UiState.PAUSE;
-			break;
-		case KEY_BINDINGS:
-			if (null != _currentlyChangingControl)
-			{
-				_currentlyChangingControl = null;
-			}
-			else
-			{
-				_uiState = _UiState.PAUSE;
-			}
-			break;
-		}
+		_doBackStateTransition();
 		_continuousInInventory = null;
 		_continuousInBlock = null;
 	}
 
 	public void handleHotbarIndex(int hotbarIndex)
 	{
-		switch (_uiState)
+		// We ONLY care about hotbar index changes in play mode.
+		if (_UiState.PLAY == _uiState)
 		{
-		case START:
-			// Key events are ignored in start state.
-			break;
-		case PAUSE:
-		case OPTIONS:
-		case KEY_BINDINGS:
-			// Just ignore this.
-			break;
-		case INVENTORY:
-		case PLAY:
 			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
-			break;
 		}
 	}
 
 	public void handleKeyI()
 	{
-		switch (_uiState)
+		// This only matters if we are playing or in the inventory screen.
+		if (_UiState.INVENTORY == _uiState)
 		{
-		case START:
-			// Key events are ignored in start state.
-			break;
-		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
-			break;
-		case PAUSE:
-		case OPTIONS:
-		case KEY_BINDINGS:
-			// Just ignore this.
-			break;
-		case PLAY:
+		}
+		else if (_UiState.PLAY == _uiState)
+		{
 			_uiState = _UiState.INVENTORY;
 			_openStationLocation = null;
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
 			_captureState.shouldCaptureMouse(false);
-			break;
 		}
 		_continuousInInventory = null;
 		_continuousInBlock = null;
@@ -867,7 +850,35 @@ public class UiStateManager implements GameSession.ICallouts
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_singlePlayerButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_multiPlayerButton, new Rect(0.0f, 0.1f, 0.0f, 0.2f), action);
+		action = _renderViewChainAction(_optionsButton, new Rect(0.0f, 0.0f, 0.0f, 0.1f), action);
+		action = _renderViewChainAction(_keyBindingsButton, new Rect(0.0f, -0.1f, 0.0f, 0.0f), action);
 		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
+		
+		return action;
+	}
+
+	private IAction _drawListSinglePlayerStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "Single Player Worlds";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_tempStartButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
+		
+		return action;
+	}
+
+	private IAction _drawListMultiPlayerStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "Multi-Player servers";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
 		
 		return action;
 	}
@@ -1097,7 +1108,10 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private IAction _drawOptionsStateWindows()
 	{
-		_drawCommonPauseBackground();
+		if (null != _currentGameSession)
+		{
+			_drawCommonPauseBackground();
+		}
 		
 		// Draw the menu title and other UI.
 		String menuTitle = "Game Options";
@@ -1105,19 +1119,26 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = null;
 		action = _renderViewChainAction(_fullScreenButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
 		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
-		action = _renderViewChainAction(_returnToPauseButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
+		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
 		
 		return action;
 	}
 
 	private IAction _drawKeyBindingStateWindows()
 	{
-		_drawCommonPauseBackground();
+		if (null != _currentGameSession)
+		{
+			_drawCommonPauseBackground();
+		}
 		
 		// Draw the menu title and other UI.
 		String menuTitle = "Key Bindings";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
-		return _renderViewChainAction(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f), null);
+		IAction action = null;
+		action = _renderViewChainAction(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f), action);
+		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.8f, 0.0f, -0.7f), action);
+		
+		return action;
 	}
 
 	private void _drawCommonPauseBackground()
@@ -1192,20 +1213,26 @@ public class UiStateManager implements GameSession.ICallouts
 		case START:
 			action = _drawStartStateWindows();
 			break;
-		case INVENTORY:
-			action = _drawInventoryStateWindows();
+		case LIST_SINGLE_PLAYER:
+			action = _drawListSinglePlayerStateWindows();
 			break;
-		case PAUSE:
-			action = _drawPauseStateWindows();
-			break;
-		case PLAY:
-			action = _drawPlayStateWindows();
+		case LIST_MULTI_PLAYER:
+			action = _drawListMultiPlayerStateWindows();
 			break;
 		case OPTIONS:
 			action = _drawOptionsStateWindows();
 			break;
 		case KEY_BINDINGS:
 			action = _drawKeyBindingStateWindows();
+			break;
+		case PLAY:
+			action = _drawPlayStateWindows();
+			break;
+		case INVENTORY:
+			action = _drawInventoryStateWindows();
+			break;
+		case PAUSE:
+			action = _drawPauseStateWindows();
 			break;
 		default:
 			throw Assert.unreachable();
@@ -1350,6 +1377,68 @@ public class UiStateManager implements GameSession.ICallouts
 		_rightClick = false;
 	}
 
+	private void _doBackStateTransition()
+	{
+		switch (_uiState)
+		{
+		case START:
+			// Key events are ignored in start state.
+			break;
+		case LIST_SINGLE_PLAYER:
+			// We just want to go back.
+			_uiState = _UiState.START;
+			break;
+		case LIST_MULTI_PLAYER:
+			// We just want to go back.
+			_uiState = _UiState.START;
+			break;
+		case INVENTORY:
+			_uiState = _UiState.PLAY;
+			_captureState.shouldCaptureMouse(true);
+			break;
+		case PAUSE:
+			_uiState = _UiState.PLAY;
+			_captureState.shouldCaptureMouse(true);
+			_currentGameSession.client.resumeGame();
+			break;
+		case PLAY:
+			_uiState = _UiState.PAUSE;
+			_openStationLocation = null;
+			_captureState.shouldCaptureMouse(false);
+			_currentGameSession.client.pauseGame();
+			break;
+		case OPTIONS:
+			// Options depends on whether is a game playing.
+			if (null != _currentGameSession)
+			{
+				_uiState = _UiState.PAUSE;
+			}
+			else
+			{
+				_uiState = _UiState.START;
+			}
+			break;
+		case KEY_BINDINGS:
+			if (null != _currentlyChangingControl)
+			{
+				_currentlyChangingControl = null;
+			}
+			else
+			{
+				// Key bindings depends on whether is a game playing.
+				if (null != _currentGameSession)
+				{
+					_uiState = _UiState.PAUSE;
+				}
+				else
+				{
+					_uiState = _UiState.START;
+				}
+			}
+			break;
+		}
+	}
+
 
 	/**
 	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
@@ -1358,14 +1447,37 @@ public class UiStateManager implements GameSession.ICallouts
 	private static enum _UiState
 	{
 		/**
-		 * This is the mode where the game starts.
-		 * Currently, this is just a placeholder in the state machine but will be used for other UI later.
+		 * The game starts here when invoked without any arguments.  It presents a starting menu to create/join games.
 		 */
 		START,
+		/**
+		 * The state where we show a list of existing single-player worlds and present an option to create a new one.
+		 */
+		LIST_SINGLE_PLAYER,
+		/**
+		 * The state where we show a list of known multi-player server and present an option to add a new one.
+		 */
+		LIST_MULTI_PLAYER,
+		/**
+		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
+		 * If there is a _currentGameSession, it will be shown in the background.
+		 */
+		OPTIONS,
+		/**
+		 * The UI state under the PAUSE screen where the user can change key bindings.
+		 * If there is a _currentGameSession, it will be shown in the background.
+		 */
+		KEY_BINDINGS,
+		
+		// These modes are specific to something involving a running game .
 		/**
 		 * The mode where play is normal.  Cursor is captured and there is no open window.
 		 */
 		PLAY,
+		/**
+		 * The mode where player control is largely disabled and the interface is mostly about clicking on buttons, etc.
+		 */
+		INVENTORY,
 		/**
 		 * The mode where play is effectively "paused".  The cursor is released and buttons to change game setup will be
 		 * presented.
@@ -1373,18 +1485,6 @@ public class UiStateManager implements GameSession.ICallouts
 		 * difference).
 		 */
 		PAUSE,
-		/**
-		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
-		 */
-		OPTIONS,
-		/**
-		 * The UI state under the PAUSE screen where the user can change key bindings.
-		 */
-		KEY_BINDINGS,
-		/**
-		 * The mode where player control is largely disabled and the interface is mostly about clicking on buttons, etc.
-		 */
-		INVENTORY,
 	}
 
 
