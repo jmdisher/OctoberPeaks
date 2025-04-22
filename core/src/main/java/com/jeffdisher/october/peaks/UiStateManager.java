@@ -712,7 +712,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_drawRelevantWindows();
 		
-		if (null != _currentGameSession)
+		if (_UiState.PLAY == _uiState)
 		{
 			// Finalize the event processing with this selection and accounting for inter-frame time.
 			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
