@@ -27,6 +27,7 @@ public class InputManager
 	private int _mouseY;
 	private boolean _buttonDown0;
 	private boolean _buttonDown1;
+	private char _typedCharacter;
 	private boolean _leftShiftDown;
 	private int _lastPressedNumber;
 	private boolean _didHandlePressedNumber;
@@ -55,6 +56,13 @@ public class InputManager
 			public boolean mouseMoved(int screenX, int screenY)
 			{
 				_commonMouse(screenX, screenY);
+				return true;
+			}
+			@Override
+			public boolean keyTyped(char character)
+			{
+				// Note that this technique might mean that we drop characters when typing too quickly (more than one char per frame).
+				_typedCharacter = character;
 				return true;
 			}
 			@Override
@@ -255,6 +263,13 @@ public class InputManager
 			{
 				uiManager.normalMouse1Clicked(_leftShiftDown);
 				_didHandleButton1 = true;
+			}
+			
+			// We also only capture the raw text input when not capturing movements since this would just be noise.
+			if ('\0' != _typedCharacter)
+			{
+				uiManager.keyTyped(_typedCharacter);
+				_typedCharacter = '\0';
 			}
 		}
 		

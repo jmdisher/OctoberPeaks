@@ -42,6 +42,7 @@ import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.ViewTextButton;
+import com.jeffdisher.october.peaks.ui.ViewTextField;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -97,6 +98,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _leftClick;
 	private boolean _leftShiftClick;
 	private boolean _rightClick;
+	private Binding<String> _typingCapture;
 
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
@@ -125,6 +127,8 @@ public class UiStateManager implements GameSession.ICallouts
 	// UI for the single-player list.
 	// TODO:  Flesh out this view - currently only goes into the one known game.
 	private final ViewTextButton<String> _tempStartButton;
+	private final Binding<String> _newWorldNameBinding;
+	private final ViewTextField _newWorldNameTextField;
 	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
@@ -225,6 +229,8 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Single-player UI.
+		_newWorldNameBinding = new Binding<>();
+		_newWorldNameBinding.set("");
 		_tempStartButton = new ViewTextButton<>(_ui, _inlineBinding("Start game")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
@@ -232,18 +238,34 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					// We want to start a single-player game.
 					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
-					_uiState = _UiState.PLAY;
-					_captureState.shouldCaptureMouse(true);
-					// TODO:  Get a name from something user-defined.
-					File localWorldDirectory = new File(localStorageDirectory, "world");
-					_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, UiStateManager.this);
-					// TODO:  Use an intermediate state for this delay.
-					_currentGameSession.finishStartup();
-					_isRunningOnServer = false;
-					// We can exit from here since we have a return-to state.
-					_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+					
+					// Construct the world name (this will change as we flesh out the world selector).
+					String worldName = _newWorldNameBinding.get();
+					if (worldName.length() > 0)
+					{
+						String directoryName = "world_" + worldName;
+						_uiState = _UiState.PLAY;
+						_captureState.shouldCaptureMouse(true);
+						File localWorldDirectory = new File(localStorageDirectory, directoryName);
+						_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, UiStateManager.this);
+						// TODO:  Use an intermediate state for this delay.
+						_currentGameSession.finishStartup();
+						_isRunningOnServer = false;
+						// We can exit from here since we have a return-to state.
+						_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+						_typingCapture = null;
+					}
 				}
 		});
+		_newWorldNameTextField = new ViewTextField(_ui, _newWorldNameBinding
+			, (ViewTextField textField) -> {
+				if (_leftClick)
+				{
+					// We want to enable text capture for this binding.
+					_typingCapture = _newWorldNameBinding;
+				}
+			}
+		);
 		_backButton = new ViewTextButton<>(_ui, _inlineBinding("Back")
 				, (String text) -> text
 				, (ViewTextButton<String> button, String text) -> {
@@ -732,6 +754,35 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
+	public void keyTyped(char typedCharacter)
+	{
+		// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
+		if (null != _typingCapture)
+		{
+			String string = _typingCapture.get();
+			if (('\b' == typedCharacter) && !string.isEmpty())
+			{
+				// Backspace is a special case.
+				_typingCapture.set(string.substring(0, string.length() - 1));
+			}
+			else
+			{
+				int type = Character.getType(typedCharacter);
+				switch (type)
+				{
+				case Character.LOWERCASE_LETTER:
+				case Character.UPPERCASE_LETTER:
+				case Character.LETTER_NUMBER:
+				case Character.SPACE_SEPARATOR:
+					_typingCapture.set(string + typedCharacter);
+					break;
+					default:
+						// Ignore.
+				}
+			}
+		}
+	}
+
 	public void shutdown()
 	{
 		if (null != _currentGameSession)
@@ -869,6 +920,7 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Single Player Worlds";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
+		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, 0.3f, 0.4f, 0.4f), action);
 		action = _renderViewChainAction(_tempStartButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
 		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
 		
@@ -1441,6 +1493,8 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			break;
 		}
+		// Any meaning of "back" should stop text input.
+		_typingCapture = null;
 	}
 
 
