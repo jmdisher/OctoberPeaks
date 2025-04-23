@@ -3,7 +3,7 @@ package com.jeffdisher.october.peaks.ui;
 import java.util.function.Consumer;
 
 import com.badlogic.gdx.Input.Keys;
-import com.jeffdisher.october.peaks.types.MutableControls;
+import com.jeffdisher.october.peaks.persistence.MutableControls;
 
 
 /**

@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks.types;
+package com.jeffdisher.october.peaks.persistence;
 
 import java.io.File;
 import java.io.FileInputStream;

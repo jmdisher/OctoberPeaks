@@ -21,7 +21,7 @@ import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
-import com.jeffdisher.october.peaks.types.MutableControls;
+import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;

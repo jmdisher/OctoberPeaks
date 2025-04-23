@@ -9,12 +9,12 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.ItemVariant;
-import com.jeffdisher.october.peaks.types.MutableControls;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.utils.Assert;
 
