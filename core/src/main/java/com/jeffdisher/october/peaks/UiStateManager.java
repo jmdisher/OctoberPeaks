@@ -128,7 +128,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _quitButton;
 
 	// UI for the single-player list.
-	// TODO:  Flesh out this view - currently only goes into the one known game.
 	private final Binding<List<String>> _worldListBinding;
 	private final PaginatedListView<String> _worldListView;
 	private final Binding<String> _newWorldNameBinding;
@@ -785,11 +784,22 @@ public class UiStateManager implements GameSession.ICallouts
 				case Character.LOWERCASE_LETTER:
 				case Character.UPPERCASE_LETTER:
 				case Character.DECIMAL_DIGIT_NUMBER:
-				case Character.SPACE_SEPARATOR:
 					_typingCapture.set(string + typedCharacter);
 					break;
 					default:
-						// Ignore.
+						// Special-case whitelist.
+						switch (typedCharacter)
+						{
+						case '.':
+						case ':':
+						case '-':
+						case '_':
+						case ' ':
+							_typingCapture.set(string + typedCharacter);
+							break;
+						default:
+							// Ignored.
+						}
 				}
 			}
 		}
