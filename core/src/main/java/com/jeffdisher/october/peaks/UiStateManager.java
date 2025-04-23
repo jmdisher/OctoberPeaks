@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import java.io.File;
 import java.net.ConnectException;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -137,7 +138,11 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
-	// TODO:  Implement
+	private final Binding<List<InetSocketAddress>> _serverListBinding;
+	private final PaginatedListView<InetSocketAddress> _serverListView;
+	private final Binding<String> _newServerAddressBinding;
+	private final ViewTextField _newServerAddressTextField;
+	private final ViewTextButton<String> _connectToServerButton;
 
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
@@ -203,6 +208,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.START;
 		_exitButtonBinding = new Binding<>(null);
 		_worldListBinding = new Binding<>(null);
+		_serverListBinding = new Binding<>(null);
 		
 		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
@@ -226,6 +232,9 @@ public class UiStateManager implements GameSession.ICallouts
 					// Enter the single-player list.
 					Assert.assertTrue(_UiState.START == _uiState);
 					_uiState = _UiState.LIST_MULTI_PLAYER;
+					
+					// TODO:  Load and begin to validate the server list here.
+					_serverListBinding.set(List.of());
 				}
 		});
 		_quitButton = new ViewTextButton<>(_ui, new Binding<>("Quit")
@@ -289,6 +298,72 @@ public class UiStateManager implements GameSession.ICallouts
 						_doBackStateTransition();
 					}
 			});
+		
+		// Server list UI.
+		_serverListView = new PaginatedListView<>(_ui
+			, _serverListBinding
+			, () -> _leftClick
+			, (Rect bounds, boolean shouldHighlight, InetSocketAddress data) -> {
+				String text = data.toString();
+				UiIdioms.drawOutline(_ui, bounds, shouldHighlight);
+				UiIdioms.drawTextCentred(_ui, bounds, text);
+			}
+			, 0.1f
+			, (InetSocketAddress address) -> {
+				if (_leftClick)
+				{
+					try
+					{
+						_connectToServer(gl, localStorageDirectory, resources, "PLACEHOLDER", address);
+					}
+					catch (ConnectException e)
+					{
+						// TODO:  Display this somewhere.
+					}
+				}
+			}
+		);
+		_newServerAddressBinding = new Binding<>("");
+		_connectToServerButton = new ViewTextButton<>(_ui, new Binding<>("Connect")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// We want to connect to a server.
+					Assert.assertTrue(_UiState.LIST_MULTI_PLAYER == _uiState);
+					
+					// We will need to parse this address from the binding.
+					String rawAddress = _newServerAddressBinding.get();
+					int colonIndex = rawAddress.indexOf(":");
+					if (-1 != colonIndex)
+					{
+						String ipHostName = rawAddress.substring(0, colonIndex);
+						int port = Integer.parseInt(rawAddress.substring(colonIndex + 1));
+						InetSocketAddress address = new InetSocketAddress(ipHostName, port);
+						try
+						{
+							_connectToServer(gl, localStorageDirectory, resources, "PLACEHOLDER", address);
+							// TODO:  Add this to the host list and save it.
+						}
+						catch (ConnectException e)
+						{
+							// TODO:  Display this somewhere.
+						}
+						_newServerAddressBinding.set("");
+						_typingCapture = null;
+					}
+				}
+			}
+		);
+		_newServerAddressTextField = new ViewTextField(_ui, _newServerAddressBinding
+			, (ViewTextField textField) -> {
+				if (_leftClick)
+				{
+					// We want to enable text capture for this binding.
+					_typingCapture = _newServerAddressBinding;
+				}
+			}
+		);
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>(null);
@@ -958,7 +1033,10 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Multi-Player servers";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.6f, 0.2f, -0.5f), action);
+		action = _renderViewChainAction(_serverListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
+		action = _renderViewChainAction(_newServerAddressTextField, new Rect(-0.4f, -0.7f, 0.1f, -0.6f), action);
+		action = _renderViewChainAction(_connectToServerButton, new Rect(0.1f, -0.7f, 0.4f, -0.6f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		
 		return action;
 	}
@@ -1533,6 +1611,20 @@ public class UiStateManager implements GameSession.ICallouts
 		_isRunningOnServer = false;
 		// We can exit from here since we have a return-to state.
 		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+	}
+
+	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, InetSocketAddress serverAddress) throws ConnectException
+	{
+		_currentGameSession = new GameSession(_env, gl, resources, clientName, serverAddress, null, this);
+		// TODO:  Use an intermediate state for this delay.
+		_currentGameSession.finishStartup();
+		_isRunningOnServer = true;
+		// We can exit from here since we have a return-to state.
+		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+		
+		// We will only change state if nothing went wrong.
+		_uiState = _UiState.PLAY;
+		_captureState.shouldCaptureMouse(true);
 	}
 
 
