@@ -856,6 +856,11 @@ public class UiStateManager implements GameSession.ICallouts
 			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
 			_finalizeFrameEvents(entity, stopBlock, preStopBlock);
 		}
+		if (null != _currentGameSession)
+		{
+			// Complete any of the idle operations and account for time passing.
+			_idleInActiveFrame();
+		}
 		_clearEvents();
 		
 		// Allow any periodic cleanup.
@@ -1515,6 +1520,22 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		
+		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_currentGameSession.blockLookup, _entityBinding.get().location(), _playerVolume))
+		{
+			_currentGameSession.audioManager.setWalking();
+		}
+		else
+		{
+			_currentGameSession.audioManager.setStanding();
+		}
+	}
+
+	/**
+	 * Continues any active operations and completes accounting for time in a frame where the game is active and not
+	 * paused.
+	 */
+	private void _idleInActiveFrame()
+	{
 		// See if we should continue any in-progress crafting operation.
 		if (!_didAccountForTimeInFrame && (null != _openStationLocation))
 		{
@@ -1537,14 +1558,6 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		
-		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_currentGameSession.blockLookup, _entityBinding.get().location(), _playerVolume))
-		{
-			_currentGameSession.audioManager.setWalking();
-		}
-		else
-		{
-			_currentGameSession.audioManager.setStanding();
-		}
 		_didAccountForTimeInFrame = false;
 		_didWalkInFrame = false;
 	}
