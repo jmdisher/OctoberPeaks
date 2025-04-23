@@ -47,6 +47,7 @@ import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.ViewTextButton;
 import com.jeffdisher.october.peaks.ui.ViewTextField;
+import com.jeffdisher.october.peaks.ui.ViewTextLabel;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -175,6 +176,9 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<Boolean> _fullScreenButton;
 	private final Binding<Integer> _viewDistanceBinding;
 	private final ViewControlIntChanger _viewDistanceControl;
+	private final ViewTextLabel _clientNameLabel;
+	private final Binding<String> _clientNameBinding;
+	private final ViewTextField _clientNameTextField;
 
 	// UI and state related to key bindings prefs.
 	private final ViewKeyControlSelector _keyBindingSelectorControl;
@@ -209,6 +213,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_exitButtonBinding = new Binding<>(null);
 		_worldListBinding = new Binding<>(null);
 		_serverListBinding = new Binding<>(null);
+		_clientNameBinding = new Binding<>("PLACEHOLDER");
 		
 		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
@@ -314,7 +319,8 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					try
 					{
-						_connectToServer(gl, localStorageDirectory, resources, "PLACEHOLDER", address);
+						String clientName = _clientNameBinding.get();
+						_connectToServer(gl, localStorageDirectory, resources, clientName, address);
 					}
 					catch (ConnectException e)
 					{
@@ -342,7 +348,8 @@ public class UiStateManager implements GameSession.ICallouts
 						InetSocketAddress address = new InetSocketAddress(ipHostName, port);
 						try
 						{
-							_connectToServer(gl, localStorageDirectory, resources, "PLACEHOLDER", address);
+							String clientName = _clientNameBinding.get();
+							_connectToServer(gl, localStorageDirectory, resources, clientName, address);
 							// TODO:  Add this to the host list and save it.
 						}
 						catch (ConnectException e)
@@ -556,6 +563,16 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 				}
 		});
+		_clientNameLabel = new ViewTextLabel(_ui, new Binding<>("Client Name"));
+		_clientNameTextField = new ViewTextField(_ui, _clientNameBinding
+			, (ViewTextField textField) -> {
+				if (_leftClick)
+				{
+					// We want to enable text capture for this binding.
+					_typingCapture = _clientNameBinding;
+				}
+			}
+		);
 		
 		// Key-binding prefs.
 		_keyBindingSelectorControl = new ViewKeyControlSelector(_ui, _mutableControls
@@ -1277,6 +1294,8 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = null;
 		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.4f, 0.2f, 0.4f, 0.3f), action);
 		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
+		action = _renderViewChainAction(_clientNameLabel, new Rect(-0.4f, -0.1f, 0.0f, 0.0f), action);
+		action = _renderViewChainAction(_clientNameTextField, new Rect(0.0f, -0.1f, 0.4f, 0.0f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.3f, 0.2f, -0.2f), action);
 		
 		return action;
