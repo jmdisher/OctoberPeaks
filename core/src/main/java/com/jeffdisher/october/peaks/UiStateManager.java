@@ -17,11 +17,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
+import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -88,6 +88,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final GlUi _ui;
 	private final EntityVolume _playerVolume;
 	private final MutableControls _mutableControls;
+	private final MutablePreferences _mutablePreferences;
 	private final ICallouts _captureState;
 	private final Map<Integer, String> _otherPlayersById;
 
@@ -172,12 +173,9 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _returnToGameButton;
 
 	// UI for rendering the options state.
-	private final Binding<Boolean> _fullScreenBinding;
 	private final ViewTextButton<Boolean> _fullScreenButton;
-	private final Binding<Integer> _viewDistanceBinding;
 	private final ViewControlIntChanger _viewDistanceControl;
 	private final ViewTextLabel _clientNameLabel;
-	private final Binding<String> _clientNameBinding;
 	private final ViewTextField _clientNameTextField;
 
 	// UI and state related to key bindings prefs.
@@ -205,6 +203,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui = new GlUi(gl, resources);
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_mutableControls = mutableControls;
+		_mutablePreferences = new MutablePreferences(localStorageDirectory);
 		_captureState = captureState;
 		_otherPlayersById = new HashMap<>();
 		
@@ -213,7 +212,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_exitButtonBinding = new Binding<>(null);
 		_worldListBinding = new Binding<>(null);
 		_serverListBinding = new Binding<>(null);
-		_clientNameBinding = new Binding<>("PLACEHOLDER");
 		
 		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
@@ -319,7 +317,7 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					try
 					{
-						String clientName = _clientNameBinding.get();
+						String clientName = _mutablePreferences.clientName.get();
 						_connectToServer(gl, localStorageDirectory, resources, clientName, address);
 					}
 					catch (ConnectException e)
@@ -348,7 +346,7 @@ public class UiStateManager implements GameSession.ICallouts
 						InetSocketAddress address = new InetSocketAddress(ipHostName, port);
 						try
 						{
-							String clientName = _clientNameBinding.get();
+							String clientName = _mutablePreferences.clientName.get();
 							_connectToServer(gl, localStorageDirectory, resources, clientName, address);
 							// TODO:  Add this to the host list and save it.
 						}
@@ -527,8 +525,7 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Options state controls.
-		_fullScreenBinding = new Binding<>(Gdx.graphics.isFullscreen());
-		_fullScreenButton = new ViewTextButton<>(_ui, _fullScreenBinding
+		_fullScreenButton = new ViewTextButton<>(_ui, _mutablePreferences.isFullScreen
 			, (Boolean isFullScreen) -> isFullScreen ? "Change to Windowed" : "Change to Full Screen"
 			, (ViewTextButton<Boolean> button, Boolean isFullScreen) -> {
 				if (_leftClick)
@@ -545,11 +542,10 @@ public class UiStateManager implements GameSession.ICallouts
 						// For now, we will always use this same default window size.
 						Gdx.graphics.setWindowedMode(1280, 960);
 					}
-					_fullScreenBinding.set(newFullScreen);
+					_mutablePreferences.isFullScreen.set(newFullScreen);
 				}
 		});
-		_viewDistanceBinding = new Binding<>(MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE);
-		_viewDistanceControl = new ViewControlIntChanger(_ui, _viewDistanceBinding
+		_viewDistanceControl = new ViewControlIntChanger(_ui, _mutablePreferences.preferredViewDistance
 			, (Integer distance) -> distance + " cuboids"
 			, (ViewControlIntChanger button, Integer newDistance) -> {
 				if (_leftClick)
@@ -559,17 +555,17 @@ public class UiStateManager implements GameSession.ICallouts
 					{
 						// We try changing this in the client and it will return the updated value.
 						int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
-						_viewDistanceBinding.set(finalValue);
+						_mutablePreferences.preferredViewDistance.set(finalValue);
 					}
 				}
 		});
 		_clientNameLabel = new ViewTextLabel(_ui, new Binding<>("Client Name"));
-		_clientNameTextField = new ViewTextField(_ui, _clientNameBinding
+		_clientNameTextField = new ViewTextField(_ui, _mutablePreferences.clientName
 			, (ViewTextField textField) -> {
 				if (_leftClick)
 				{
 					// We want to enable text capture for this binding.
-					_typingCapture = _clientNameBinding;
+					_typingCapture = _mutablePreferences.clientName;
 				}
 			}
 		);
@@ -1578,6 +1574,8 @@ public class UiStateManager implements GameSession.ICallouts
 			_currentGameSession.client.pauseGame();
 			break;
 		case OPTIONS:
+			// Write-back preferences.
+			_mutablePreferences.saveToDisk();
 			// Options depends on whether is a game playing.
 			if (null != _currentGameSession)
 			{
