@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks;
 
 import java.io.File;
+import java.net.ConnectException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -1518,7 +1519,15 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.PLAY;
 		_captureState.shouldCaptureMouse(true);
 		File localWorldDirectory = new File(localStorageDirectory, directoryName);
-		_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, this);
+		try
+		{
+			_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, this);
+		}
+		catch (ConnectException e)
+		{
+			// There are no connections in this case.
+			throw Assert.unexpected(e);
+		}
 		// TODO:  Use an intermediate state for this delay.
 		_currentGameSession.finishStartup();
 		_isRunningOnServer = false;

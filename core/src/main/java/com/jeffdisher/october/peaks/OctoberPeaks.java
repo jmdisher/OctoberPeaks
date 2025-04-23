@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 
 import com.badlogic.gdx.ApplicationAdapter;
@@ -115,7 +116,19 @@ public class OctoberPeaks extends ApplicationAdapter
 			// Immediately transition into playing state.  This will become more complex later.
 			// We will just store the world in the current directory.
 			File localWorldDirectory = new File("world");
-			GameSession currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, localWorldDirectory, _uiState);
+			GameSession currentGameSession;
+			try
+			{
+				currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, localWorldDirectory, _uiState);
+			}
+			catch (ConnectException e)
+			{
+				// In this start-up mode, we just want to print the error and exit.
+				System.err.println("Failed to connect to server: " + _serverSocketAddress);
+				e.printStackTrace();
+				System.exit(1);
+				throw Assert.unreachable();
+			}
 			boolean onServer = (null != _serverSocketAddress);
 			_uiState.startPlay(currentGameSession, onServer);
 			

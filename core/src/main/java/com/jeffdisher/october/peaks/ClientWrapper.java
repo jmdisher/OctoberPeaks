@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -97,7 +98,7 @@ public class ClientWrapper
 			, String clientName
 			, InetSocketAddress serverAddress
 			, File localWorldDirectory
-	)
+	) throws ConnectException
 	{
 		_environment = environment;
 		_playerVolume = environment.creatures.PLAYER.volume();
@@ -164,6 +165,11 @@ public class ClientWrapper
 				_client = new ClientProcess(new _ClientListener(), serverAddress.getAddress(), serverAddress.getPort(), clientName);
 				_console = null;
 			}
+		}
+		catch (ConnectException e)
+		{
+			// This one we just want to throw back.
+			throw e;
 		}
 		catch (IOException e)
 		{

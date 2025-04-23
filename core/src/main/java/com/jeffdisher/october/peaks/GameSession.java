@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks;
 
 import java.io.File;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class GameSession
 			, InetSocketAddress serverSocketAddress
 			, File localWorldDirectory
 			, ICallouts callouts
-	)
+	) throws ConnectException
 	{
 		_callouts = callouts;
 		this.cuboids = new HashMap<>();
