@@ -238,7 +238,8 @@ public class UiStateManager implements GameSession.ICallouts
 					Assert.assertTrue(_UiState.START == _uiState);
 					_uiState = _UiState.LIST_MULTI_PLAYER;
 					
-					// TODO:  Begin to validate the server list here.
+					// Request that this list be validated.
+					_serverList.pollServers();
 				}
 		});
 		_quitButton = new ViewTextButton<>(_ui, new Binding<>("Quit")
@@ -916,6 +917,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_currentGameSession.shutdown();
 		}
+		_serverList.shutdown();
 	}
 
 
