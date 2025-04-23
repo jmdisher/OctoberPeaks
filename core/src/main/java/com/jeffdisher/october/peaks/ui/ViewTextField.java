@@ -29,7 +29,9 @@ public class ViewTextField implements IView
 	public IAction render(Rect location, Point cursor)
 	{
 		String text = _binding.get();
-		boolean didClick = UiIdioms.drawFixedButton(_ui, location, text, cursor);
+		boolean didClick = location.containsPoint(cursor);
+		UiIdioms.drawOutline(_ui, location, didClick);
+		UiIdioms.drawTextCentred(_ui, location, text);
 		return didClick
 				? new _Action(this)
 				: null

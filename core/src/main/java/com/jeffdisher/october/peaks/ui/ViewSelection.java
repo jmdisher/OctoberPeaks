@@ -19,9 +19,9 @@ import com.jeffdisher.october.utils.Assert;
 public class ViewSelection implements IView
 {
 	// Note that the size is variable for this window so we only know the location, not the width.
-	public static final float SELECTED_BOX_LEFT = 0.05f;
-	public static final float SELECTED_BOX_BOTTOM = 0.90f;
-	public static final Rect LOCATION = new Rect(SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM, SELECTED_BOX_LEFT, SELECTED_BOX_BOTTOM);
+	public static final float SELECTED_BOX_X = 0.0f;
+	public static final float SELECTED_BOX_Y = 0.90f;
+	public static final Rect LOCATION = new Rect(SELECTED_BOX_X, SELECTED_BOX_Y, SELECTED_BOX_X, SELECTED_BOX_Y);
 
 	private final GlUi _ui;
 	private final Environment _env;
@@ -63,7 +63,10 @@ public class ViewSelection implements IView
 					if (_env.special.AIR != blockUnderMouse)
 					{
 						Item itemUnderMouse = blockUnderMouse.item();
-						UiIdioms.drawTextInFrame(_ui, location.leftX(), location.bottomY(), itemUnderMouse.name());
+						String name = itemUnderMouse.name();
+						Rect bounds = _getTextBounds(name);
+						UiIdioms.drawOutline(_ui, bounds, false);
+						UiIdioms.drawTextCentred(_ui, bounds, name);
 					}
 				}
 			}
@@ -78,11 +81,26 @@ public class ViewSelection implements IView
 				{
 					textToShow = selectedEntity.type().name();
 				}
-				UiIdioms.drawTextInFrame(_ui, location.leftX(), location.bottomY(), textToShow);
+				
+				Rect bounds = _getTextBounds(textToShow);
+				UiIdioms.drawOutline(_ui, bounds, false);
+				UiIdioms.drawTextCentred(_ui, bounds, textToShow);
 			}
 		}
 		
 		// No hover or action.
 		return null;
+	}
+
+
+	private Rect _getTextBounds(String text)
+	{
+		float width = UiIdioms.getTextWidth(_ui, text, UiIdioms.GENERAL_TEXT_HEIGHT) + (2.0f * UiIdioms.OUTLINE_SIZE);
+		float halfWidth = width / 2.0f;
+		float leftX = SELECTED_BOX_X - halfWidth;
+		float bottomY = SELECTED_BOX_Y;
+		float rightX = SELECTED_BOX_X + halfWidth;
+		float topY = SELECTED_BOX_Y + UiIdioms.GENERAL_TEXT_HEIGHT;
+		return new Rect(leftX, bottomY, rightX, topY);
 	}
 }

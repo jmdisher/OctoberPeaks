@@ -40,9 +40,16 @@ public class ViewControlIntChanger implements IView
 		Rect display = new Rect(firstSplit, location.bottomY(), secondSplit, location.topY());
 		Rect plus = new Rect(secondSplit, location.bottomY(), location.rightX(), location.topY());
 		
-		boolean didClickMinus = UiIdioms.drawFixedButton(_ui, minus, "-", cursor);
-		UiIdioms.drawFixedButton(_ui, display, text, null);
-		boolean didClickPlus = UiIdioms.drawFixedButton(_ui, plus, "+", cursor);
+		boolean didClickMinus = minus.containsPoint(cursor);
+		boolean didClickPlus = plus.containsPoint(cursor);
+		
+		UiIdioms.drawOutline(_ui, minus, didClickMinus);
+		UiIdioms.drawTextCentred(_ui, minus, "-");
+		
+		UiIdioms.drawTextCentred(_ui, display, text);
+		
+		UiIdioms.drawOutline(_ui, plus, didClickPlus);
+		UiIdioms.drawTextCentred(_ui, plus, "+");
 		
 		_Action action;
 		if (didClickMinus)

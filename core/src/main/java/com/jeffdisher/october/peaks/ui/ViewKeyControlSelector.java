@@ -44,7 +44,9 @@ public class ViewKeyControlSelector implements IView
 			String key = Keys.toString(_controls.getKeyCode(control));
 			
 			UiIdioms.drawRawTextCentredAtTop(_ui, nameCentreX, nextItemTop, control.description);
-			boolean didClick = UiIdioms.drawFixedButton(_ui, keyRect, key, cursor);
+			boolean didClick = keyRect.containsPoint(cursor);
+			UiIdioms.drawOutline(_ui, keyRect, didClick);
+			UiIdioms.drawTextCentred(_ui, keyRect, key);
 			if (didClick)
 			{
 				action = new _Action(control);

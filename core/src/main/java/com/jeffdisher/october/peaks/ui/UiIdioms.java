@@ -29,16 +29,6 @@ public class UiIdioms
 		_renderItem(ui, left, bottom, right, top, outlineTexture, item, count, progress, isMouseOver);
 	}
 
-	public static void drawTextInFrame(GlUi ui, float left, float bottom, String text)
-	{
-		_drawTextInFrameWithHoverCheck(ui, left, bottom, text, null);
-	}
-
-	public static void drawTextRootedAtTop(GlUi ui, float left, float top, String text)
-	{
-		_drawTextInFrameWithHoverCheck(ui, left, top - GENERAL_TEXT_HEIGHT, text, null);
-	}
-
 	public static void drawRawTextCentredAtTop(GlUi ui, float centreX, float top, String text)
 	{
 		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
@@ -47,47 +37,6 @@ public class UiIdioms
 		float left = centreX - (width / 2.0f);
 		float right = centreX + (width / 2.0f);
 		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
-	}
-
-	public static boolean drawButtonRootedAtTop(GlUi ui, float centreX, float top, String text, Point cursor)
-	{
-		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
-		float bottom = top - GENERAL_TEXT_HEIGHT;
-		float width = element.aspectRatio() * GENERAL_TEXT_HEIGHT;
-		float left = centreX - (width / 2.0f);
-		return _drawTextInFrameWithHoverCheck(ui, left, bottom, text, cursor);
-	}
-
-	/**
-	 * Draws a text button in the given bounds, drawing the text centred in the middle.  Automatically highlights the
-	 * button if the mouse is over it.
-	 * 
-	 * @param ui The UI system.
-	 * @param bounds The bounds of the button.
-	 * @param text The text to write.
-	 * @param cursor The cursor.
-	 * @return True if the cursor is within the bounds.
-	 */
-	public static boolean drawFixedButton(GlUi ui, Rect bounds, String text, Point cursor)
-	{
-		boolean isMouseOver = bounds.containsPoint(cursor);
-		int backgroundTexture = isMouseOver
-				? ui.pixelLightGrey
-				: ui.pixelDarkGreyAlpha
-		;
-		_drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, bounds.leftX(), bounds.bottomY(), bounds.rightX(), bounds.topY());
-		
-		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
-		float centreX = bounds.getCentreX();
-		float centreY = bounds.getCentreY();
-		float halfTextHeight = GENERAL_TEXT_HEIGHT / 2.0f;
-		float halfTextWidth = (element.aspectRatio() * bounds.getHeight()) / 2.0f;
-		float left = centreX - halfTextWidth;
-		float right = centreX + halfTextWidth;
-		float bottom = centreY - halfTextHeight;
-		float top = centreY + halfTextHeight;
-		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
-		return isMouseOver;
 	}
 
 	public static <T> void drawPageButtons(GlUi ui, IntConsumer eventHoverChangePage, float rightX, float topY, Point cursor, int pageCount, int currentPage)
@@ -165,6 +114,60 @@ public class UiIdioms
 			}
 		}
 		return hoverOver;
+	}
+
+	/**
+	 * Fills the given bounds with the default UI background and draws a minimal outline within the bounds.  If
+	 * shouldHighlight is set, then the background will be highlighted.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param bounds The bounds to fill.
+	 * @param shouldHighlight True if the background should be highlighted.
+	 */
+	public static void drawOutline(GlUi gl, Rect bounds, boolean shouldHighlight)
+	{
+		int backgroundTexture = shouldHighlight
+				? gl.pixelLightGrey
+				: gl.pixelDarkGreyAlpha
+		;
+		gl.drawWholeTextureRect(gl.pixelLightGrey, bounds.leftX(), bounds.bottomY(), bounds.rightX(), bounds.topY());
+		gl.drawWholeTextureRect(backgroundTexture, bounds.leftX() + OUTLINE_SIZE, bounds.bottomY() + OUTLINE_SIZE, bounds.rightX() - OUTLINE_SIZE, bounds.topY() - OUTLINE_SIZE);
+	}
+
+	/**
+	 * Draws the given text centred inside the given bounds, sized to the vertical height of the bounds.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param bounds The bounds of the text.
+	 * @param text The text to write.
+	 */
+	public static void drawTextCentred(GlUi ui, Rect bounds, String text)
+	{
+		float centreX = bounds.getCentreX();
+		float centreY = bounds.getCentreY();
+		float heightY = bounds.getHeight();
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		float halfTextHeight = GENERAL_TEXT_HEIGHT / 2.0f;
+		float halfTextWidth = (element.aspectRatio() * heightY) / 2.0f;
+		float left = centreX - halfTextWidth;
+		float right = centreX + halfTextWidth;
+		float bottom = centreY - halfTextHeight;
+		float top = centreY + halfTextHeight;
+		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
+	}
+
+	/**
+	 * Returns the width of the given string if drawn with the given height.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param text The text.
+	 * @param height The assumed height of the text.
+	 * @return The width of the string.
+	 */
+	public static float getTextWidth(GlUi ui, String text, float height)
+	{
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		return element.aspectRatio() * height;
 	}
 
 

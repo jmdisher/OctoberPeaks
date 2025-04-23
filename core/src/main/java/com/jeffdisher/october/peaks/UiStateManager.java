@@ -913,11 +913,11 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "October Project";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_singlePlayerButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
-		action = _renderViewChainAction(_multiPlayerButton, new Rect(0.0f, 0.1f, 0.0f, 0.2f), action);
-		action = _renderViewChainAction(_optionsButton, new Rect(0.0f, 0.0f, 0.0f, 0.1f), action);
-		action = _renderViewChainAction(_keyBindingsButton, new Rect(0.0f, -0.1f, 0.0f, 0.0f), action);
-		action = _renderViewChainAction(_quitButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
+		action = _renderViewChainAction(_singlePlayerButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
+		action = _renderViewChainAction(_multiPlayerButton, new Rect(-0.3f, 0.1f, 0.3f, 0.2f), action);
+		action = _renderViewChainAction(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f), action);
+		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.3f, -0.1f, 0.3f, 0.0f), action);
+		action = _renderViewChainAction(_quitButton, new Rect(-0.2f, -0.6f, 0.2f, -0.5f), action);
 		
 		return action;
 	}
@@ -930,9 +930,9 @@ public class UiStateManager implements GameSession.ICallouts
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_worldListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
-		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, -0.7f, 0.2f, -0.6f), action);
-		action = _renderViewChainAction(_createWorldButton, new Rect(0.2f, -0.7f, 0.4f, -0.6f), action);
-		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.9f, 0.0f, -0.8f), action);
+		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, -0.7f, 0.1f, -0.6f), action);
+		action = _renderViewChainAction(_createWorldButton, new Rect(0.1f, -0.7f, 0.4f, -0.6f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		
 		return action;
 	}
@@ -944,7 +944,7 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Multi-Player servers";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.6f, 0.0f, -0.5f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.6f, 0.2f, -0.5f), action);
 		
 		return action;
 	}
@@ -1139,10 +1139,10 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_returnToGameButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
-		action = _renderViewChainAction(_optionsButton, new Rect(0.0f, 0.0f, 0.0f, 0.1f), action);
-		action = _renderViewChainAction(_keyBindingsButton, new Rect(0.0f, -0.2f, 0.0f, -0.1f), action);
-		action = _renderViewChainAction(_exitButton, new Rect(0.0f, -0.5f, 0.0f, -0.4f), action);
+		action = _renderViewChainAction(_returnToGameButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
+		action = _renderViewChainAction(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f), action);
+		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f), action);
+		action = _renderViewChainAction(_exitButton, new Rect(-0.2f, -0.5f, 0.2f, -0.4f), action);
 		
 		return action;
 	}
@@ -1183,9 +1183,9 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Game Options";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_fullScreenButton, new Rect(0.0f, 0.2f, 0.0f, 0.3f), action);
+		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.4f, 0.2f, 0.4f, 0.3f), action);
 		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
-		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.3f, 0.0f, -0.2f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.3f, 0.2f, -0.2f), action);
 		
 		return action;
 	}
@@ -1202,7 +1202,7 @@ public class UiStateManager implements GameSession.ICallouts
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f), action);
-		action = _renderViewChainAction(_backButton, new Rect(0.0f, -0.8f, 0.0f, -0.7f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f), action);
 		
 		return action;
 	}

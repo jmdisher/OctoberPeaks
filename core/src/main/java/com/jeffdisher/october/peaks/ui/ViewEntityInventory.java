@@ -55,7 +55,10 @@ public class ViewEntityInventory implements IView
 				// We just render the name of the item.
 				Item type = context.type();
 				String name = type.name();
-				UiIdioms.drawTextRootedAtTop(ui, cursor.x(), cursor.y(), name);
+				float width = UiIdioms.getTextWidth(ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
+				Rect bounds = new Rect(cursor.x(), cursor.y() - UiIdioms.GENERAL_TEXT_HEIGHT, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
+				UiIdioms.drawOutline(_ui, bounds, false);
+				UiIdioms.drawTextCentred(_ui, bounds, name);
 			}
 			@Override
 			public void hoverAction(ItemTuple<Integer> context)

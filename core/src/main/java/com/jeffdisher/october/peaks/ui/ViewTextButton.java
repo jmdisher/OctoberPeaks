@@ -28,7 +28,9 @@ public class ViewTextButton<T> implements IView
 	{
 		T object = _dataBinding.get();
 		String text = _valueTransformer.apply(object);
-		boolean didClick = UiIdioms.drawButtonRootedAtTop(_ui, location.leftX(), location.topY(), text, cursor);
+		boolean didClick = location.containsPoint(cursor);
+		UiIdioms.drawOutline(_ui, location, didClick);
+		UiIdioms.drawTextCentred(_ui, location, text);
 		return didClick
 				? new _Action(object)
 				: null

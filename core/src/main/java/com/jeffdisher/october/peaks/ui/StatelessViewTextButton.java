@@ -13,11 +13,7 @@ public class StatelessViewTextButton implements IStatelessView<String>
 	@Override
 	public void render(Rect bounds, boolean shouldHighlight, String data)
 	{
-		// TODO:  Remove this once the underlying idioms are refactored.
-		Point fakeCursor = shouldHighlight
-				? new Point(bounds.leftX(), bounds.bottomY())
-				: null
-		;
-		UiIdioms.drawFixedButton(_ui, bounds, data, fakeCursor);
+		UiIdioms.drawOutline(_ui, bounds, shouldHighlight);
+		UiIdioms.drawTextCentred(_ui, bounds, data);
 	}
 }
