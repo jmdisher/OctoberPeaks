@@ -735,8 +735,8 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void handleHotbarIndex(int hotbarIndex)
 	{
-		// We ONLY care about hotbar index changes in play mode.
-		if (_UiState.PLAY == _uiState)
+		// We will accept the hotbar index for any active game session.
+		if (null != _currentGameSession)
 		{
 			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
 		}
