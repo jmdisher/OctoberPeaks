@@ -79,6 +79,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final Rect WINDOW_TOP_LEFT = new Rect(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
+	public static final int MAX_WORLD_NAME = 16;
 
 	private final Environment _env;
 	private final GlUi _ui;
@@ -251,7 +252,7 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		);
 		_newWorldNameBinding = new Binding<>("");
-		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Start game")
+		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Create New")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
@@ -265,6 +266,7 @@ public class UiStateManager implements GameSession.ICallouts
 					{
 						String directoryName = "world_" + worldName;
 						_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+						_newWorldNameBinding.set("");
 						_typingCapture = null;
 					}
 				}
@@ -769,19 +771,20 @@ public class UiStateManager implements GameSession.ICallouts
 		if (null != _typingCapture)
 		{
 			String string = _typingCapture.get();
-			if (('\b' == typedCharacter) && !string.isEmpty())
+			int nameLength = string.length();
+			if (('\b' == typedCharacter) && (nameLength > 0))
 			{
 				// Backspace is a special case.
 				_typingCapture.set(string.substring(0, string.length() - 1));
 			}
-			else
+			else if (nameLength < MAX_WORLD_NAME)
 			{
 				int type = Character.getType(typedCharacter);
 				switch (type)
 				{
 				case Character.LOWERCASE_LETTER:
 				case Character.UPPERCASE_LETTER:
-				case Character.LETTER_NUMBER:
+				case Character.DECIMAL_DIGIT_NUMBER:
 				case Character.SPACE_SEPARATOR:
 					_typingCapture.set(string + typedCharacter);
 					break;
