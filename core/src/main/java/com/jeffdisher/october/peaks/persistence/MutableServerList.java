@@ -1,0 +1,116 @@
+package com.jeffdisher.october.peaks.persistence;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.utils.Assert;
+
+
+/**
+ * Contains the server list which is used in the UI and is backed on the filesystem.
+ * The list Binding is exposed directly but modifications should be made using the public helper here so that the
+ * write-back to disk can be correctly orchestrated.
+ */
+public class MutableServerList
+{
+	public static final String SERVER_LIST_FILE_NAME = "server_list.txt";
+
+
+	private final File _backingFile;
+	public final Binding<List<InetSocketAddress>> servers;
+
+	public MutableServerList(File localStorageDirectory)
+	{
+		_backingFile = new File(localStorageDirectory, SERVER_LIST_FILE_NAME);
+		
+		// Default to a mutable list.
+		this.servers = new Binding<>(new ArrayList<>());
+		
+		// Populate the server list with whatever is on disk.
+		if (_backingFile.exists())
+		{
+			// This is just a text file where each line is a server entry so just load those.
+			try(BufferedReader stream = new BufferedReader(new FileReader(_backingFile)))
+			{
+				String line = stream.readLine();
+				while (null != line)
+				{
+					// We will skip lines which are empty or starting with #.
+					if (!line.isEmpty() && !line.startsWith("#"))
+					{
+						String[] parts = line.split(":");
+						Assert.assertTrue(2 == parts.length);
+						String hostname = parts[0];
+						int port = Integer.parseInt(parts[1]);
+						InetSocketAddress object = new InetSocketAddress(hostname, port);
+						servers.get().add(object);
+					}
+					line = stream.readLine();
+				}
+			}
+			catch (FileNotFoundException e)
+			{
+				// We already know this exists.
+				throw Assert.unexpected(e);
+			}
+			catch (IOException e)
+			{
+				// This would mean a serious issue on the local system.
+				throw Assert.unexpected(e);
+			}
+		}
+	}
+
+	public void addServer(InetSocketAddress newServer)
+	{
+		// Make sure that this isn't already in the list.
+		boolean canAdd = true;
+		String hostname = newServer.getHostName();
+		int port = newServer.getPort();
+		for (InetSocketAddress server : this.servers.get())
+		{
+			if (hostname.equals(server.getHostName()) && (port == server.getPort()))
+			{
+				canAdd = false;
+				break;
+			}
+		}
+		if (canAdd)
+		{
+			servers.get().add(newServer);
+			_flushToDisk();
+		}
+	}
+
+
+	private void _flushToDisk()
+	{
+		try (FileOutputStream stream = new FileOutputStream(_backingFile))
+		{
+			stream.write(String.format("# OctoberPeaks server list file.  See MutableServerList.java for details.%n%n").getBytes(StandardCharsets.UTF_8));
+			for (InetSocketAddress server : this.servers.get())
+			{
+				stream.write(String.format("%s:%d%n", server.getHostName(), server.getPort()).getBytes(StandardCharsets.UTF_8));
+			}
+		}
+		catch (FileNotFoundException e)
+		{
+			// We don't expect the parent to disappear.
+			throw Assert.unexpected(e);
+		}
+		catch (IOException e)
+		{
+			// This would mean a serious issue on the local system.
+			throw Assert.unexpected(e);
+		}
+	}
+}

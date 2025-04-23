@@ -22,6 +22,7 @@ import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
+import com.jeffdisher.october.peaks.persistence.MutableServerList;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -89,6 +90,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final EntityVolume _playerVolume;
 	private final MutableControls _mutableControls;
 	private final MutablePreferences _mutablePreferences;
+	private final MutableServerList _serverList;
 	private final ICallouts _captureState;
 	private final Map<Integer, String> _otherPlayersById;
 
@@ -140,7 +142,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
-	private final Binding<List<InetSocketAddress>> _serverListBinding;
 	private final PaginatedListView<InetSocketAddress> _serverListView;
 	private final Binding<String> _newServerAddressBinding;
 	private final ViewTextField _newServerAddressTextField;
@@ -204,6 +205,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_mutableControls = mutableControls;
 		_mutablePreferences = new MutablePreferences(localStorageDirectory);
+		_serverList = new MutableServerList(localStorageDirectory);
 		_captureState = captureState;
 		_otherPlayersById = new HashMap<>();
 		
@@ -211,7 +213,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.START;
 		_exitButtonBinding = new Binding<>(null);
 		_worldListBinding = new Binding<>(null);
-		_serverListBinding = new Binding<>(null);
 		
 		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
@@ -236,8 +237,7 @@ public class UiStateManager implements GameSession.ICallouts
 					Assert.assertTrue(_UiState.START == _uiState);
 					_uiState = _UiState.LIST_MULTI_PLAYER;
 					
-					// TODO:  Load and begin to validate the server list here.
-					_serverListBinding.set(List.of());
+					// TODO:  Begin to validate the server list here.
 				}
 		});
 		_quitButton = new ViewTextButton<>(_ui, new Binding<>("Quit")
@@ -304,10 +304,10 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Server list UI.
 		_serverListView = new PaginatedListView<>(_ui
-			, _serverListBinding
+			, _serverList.servers
 			, () -> _leftClick
 			, (Rect bounds, boolean shouldHighlight, InetSocketAddress data) -> {
-				String text = data.toString();
+				String text = data.getHostName() + ":" + data.getPort();
 				UiIdioms.drawOutline(_ui, bounds, shouldHighlight);
 				UiIdioms.drawTextCentred(_ui, bounds, text);
 			}
@@ -348,7 +348,8 @@ public class UiStateManager implements GameSession.ICallouts
 						{
 							String clientName = _mutablePreferences.clientName.get();
 							_connectToServer(gl, localStorageDirectory, resources, clientName, address);
-							// TODO:  Add this to the host list and save it.
+							// We can now add this to the list and save it, since we connected.
+							_serverList.addServer(address);
 						}
 						catch (ConnectException e)
 						{
