@@ -126,12 +126,21 @@ public class UiIdioms
 	 */
 	public static void drawOutline(GlUi gl, Rect bounds, boolean shouldHighlight)
 	{
-		int backgroundTexture = shouldHighlight
-				? gl.pixelLightGrey
-				: gl.pixelDarkGreyAlpha
-		;
-		gl.drawWholeTextureRect(gl.pixelLightGrey, bounds.leftX(), bounds.bottomY(), bounds.rightX(), bounds.topY());
-		gl.drawWholeTextureRect(backgroundTexture, bounds.leftX() + OUTLINE_SIZE, bounds.bottomY() + OUTLINE_SIZE, bounds.rightX() - OUTLINE_SIZE, bounds.topY() - OUTLINE_SIZE);
+		_drawOutlineColour(gl, bounds, gl.pixelLightGrey, shouldHighlight);
+	}
+
+	/**
+	 * Fills the given bounds with the default UI background and draws a minimal outline of the requested colour within
+	 * the bounds.  If shouldHighlight is set, then the background will be highlighted.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param bounds The bounds to fill.
+	 * @param outlineTexture The texture number to use for the outline.
+	 * @param shouldHighlight True if the background should be highlighted.
+	 */
+	public static void drawOutlineColour(GlUi gl, Rect bounds, int outlineTexture, boolean shouldHighlight)
+	{
+		_drawOutlineColour(gl, bounds, outlineTexture, shouldHighlight);
 	}
 
 	/**
@@ -154,6 +163,23 @@ public class UiIdioms
 		float bottom = centreY - halfTextHeight;
 		float top = centreY + halfTextHeight;
 		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
+	}
+
+	/**
+	 * Draws the given text left-justified inside the given bounds, sized to the vertical height of the bounds.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param bounds The bounds of the text.
+	 * @param text The text to write.
+	 */
+	public static void drawTextLeft(GlUi ui, Rect bounds, String text)
+	{
+		float heightY = bounds.getHeight();
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text);
+		float textWidth = element.aspectRatio() * heightY;
+		float left = bounds.leftX();
+		float right = left + textWidth;
+		ui.drawWholeTextureRect(element.textureObject(), left, bounds.bottomY(), right, bounds.topY());
 	}
 
 	/**
@@ -223,6 +249,16 @@ public class UiIdioms
 		_drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, left, bottom, right, top);
 		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 		return isMouseOver;
+	}
+
+	private static void _drawOutlineColour(GlUi gl, Rect bounds, int outlineTexture, boolean shouldHighlight)
+	{
+		int backgroundTexture = shouldHighlight
+				? gl.pixelLightGrey
+				: gl.pixelDarkGreyAlpha
+		;
+		gl.drawWholeTextureRect(outlineTexture, bounds.leftX(), bounds.bottomY(), bounds.rightX(), bounds.topY());
+		gl.drawWholeTextureRect(backgroundTexture, bounds.leftX() + OUTLINE_SIZE, bounds.bottomY() + OUTLINE_SIZE, bounds.rightX() - OUTLINE_SIZE, bounds.topY() - OUTLINE_SIZE);
 	}
 
 

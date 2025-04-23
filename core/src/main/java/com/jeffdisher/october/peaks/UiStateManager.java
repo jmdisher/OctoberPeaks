@@ -35,6 +35,7 @@ import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
+import com.jeffdisher.october.peaks.ui.StatelessMultiLineButton;
 import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
@@ -142,7 +143,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
-	private final PaginatedListView<InetSocketAddress> _serverListView;
+	private final PaginatedListView<MutableServerList.ServerRecord> _serverListView;
 	private final Binding<String> _newServerAddressBinding;
 	private final ViewTextField _newServerAddressTextField;
 	private final ViewTextButton<String> _connectToServerButton;
@@ -303,22 +304,36 @@ public class UiStateManager implements GameSession.ICallouts
 			});
 		
 		// Server list UI.
+		StatelessMultiLineButton<MutableServerList.ServerRecord> serverLine = new StatelessMultiLineButton<>(_ui, new StatelessMultiLineButton.ITransformer<>() {
+			@Override
+			public int getOutline(MutableServerList.ServerRecord data)
+			{
+				return data.isGood
+						? _ui.pixelGreen
+						: _ui.pixelRed
+				;
+			}
+			@Override
+			public String getLine(MutableServerList.ServerRecord data, int line)
+			{
+				return (0 == line)
+						? data.address.getHostName() + ":" + data.address.getPort()
+						: data.humanReadableStatus
+				;
+			}
+		}, 2);
 		_serverListView = new PaginatedListView<>(_ui
 			, _serverList.servers
 			, () -> _leftClick
-			, (Rect bounds, boolean shouldHighlight, InetSocketAddress data) -> {
-				String text = data.getHostName() + ":" + data.getPort();
-				UiIdioms.drawOutline(_ui, bounds, shouldHighlight);
-				UiIdioms.drawTextCentred(_ui, bounds, text);
-			}
-			, 0.1f
-			, (InetSocketAddress address) -> {
+			, serverLine
+			, 0.2f
+			, (MutableServerList.ServerRecord server) -> {
 				if (_leftClick)
 				{
 					try
 					{
 						String clientName = _mutablePreferences.clientName.get();
-						_connectToServer(gl, localStorageDirectory, resources, clientName, address);
+						_connectToServer(gl, localStorageDirectory, resources, clientName, server.address);
 					}
 					catch (ConnectException e)
 					{

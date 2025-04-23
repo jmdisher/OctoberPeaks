@@ -26,7 +26,7 @@ public class MutableServerList
 
 
 	private final File _backingFile;
-	public final Binding<List<InetSocketAddress>> servers;
+	public final Binding<List<ServerRecord>> servers;
 
 	public MutableServerList(File localStorageDirectory)
 	{
@@ -52,7 +52,8 @@ public class MutableServerList
 						String hostname = parts[0];
 						int port = Integer.parseInt(parts[1]);
 						InetSocketAddress object = new InetSocketAddress(hostname, port);
-						servers.get().add(object);
+						ServerRecord record = new ServerRecord(object);
+						servers.get().add(record);
 					}
 					line = stream.readLine();
 				}
@@ -76,9 +77,10 @@ public class MutableServerList
 		boolean canAdd = true;
 		String hostname = newServer.getHostName();
 		int port = newServer.getPort();
-		for (InetSocketAddress server : this.servers.get())
+		for (ServerRecord server : this.servers.get())
 		{
-			if (hostname.equals(server.getHostName()) && (port == server.getPort()))
+			InetSocketAddress address = server.address;
+			if (hostname.equals(address.getHostName()) && (port == address.getPort()))
 			{
 				canAdd = false;
 				break;
@@ -86,7 +88,8 @@ public class MutableServerList
 		}
 		if (canAdd)
 		{
-			servers.get().add(newServer);
+			ServerRecord server = new ServerRecord(newServer);
+			servers.get().add(server);
 			_flushToDisk();
 		}
 	}
@@ -97,9 +100,10 @@ public class MutableServerList
 		try (FileOutputStream stream = new FileOutputStream(_backingFile))
 		{
 			stream.write(String.format("# OctoberPeaks server list file.  See MutableServerList.java for details.%n%n").getBytes(StandardCharsets.UTF_8));
-			for (InetSocketAddress server : this.servers.get())
+			for (ServerRecord server : this.servers.get())
 			{
-				stream.write(String.format("%s:%d%n", server.getHostName(), server.getPort()).getBytes(StandardCharsets.UTF_8));
+				InetSocketAddress address = server.address;
+				stream.write(String.format("%s:%d%n", address.getHostName(), address.getPort()).getBytes(StandardCharsets.UTF_8));
 			}
 		}
 		catch (FileNotFoundException e)
@@ -111,6 +115,20 @@ public class MutableServerList
 		{
 			// This would mean a serious issue on the local system.
 			throw Assert.unexpected(e);
+		}
+	}
+
+
+	public static class ServerRecord
+	{
+		public final InetSocketAddress address;
+		public boolean isGood;
+		public String humanReadableStatus;
+		
+		public ServerRecord(InetSocketAddress address)
+		{
+			this.address = address;
+			this.humanReadableStatus = "Checking...";
 		}
 	}
 }
