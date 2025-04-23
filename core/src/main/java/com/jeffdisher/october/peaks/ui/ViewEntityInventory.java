@@ -85,8 +85,7 @@ public class ViewEntityInventory implements IView
 		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 		
 		// Draw the title.
-		String upperCaseTitle = _titleBinding.get().toUpperCase();
-		float labelRight = _ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), upperCaseTitle);
+		float labelRight = _ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), _titleBinding.get());
 		
 		// Draw the capacity.
 		String extraTitle = String.format("(%d/%d)", data.currentEncumbrance, data.maxEncumbrance);

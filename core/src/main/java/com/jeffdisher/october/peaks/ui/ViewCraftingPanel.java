@@ -117,8 +117,7 @@ public class ViewCraftingPanel implements IView
 		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 		
 		// Draw the title.
-		String upperCaseTitle = _titleBinding.get().toUpperCase();
-		_ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), upperCaseTitle);
+		_ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), _titleBinding.get());
 		
 		// Draw the actual sub-view (which will handle pagination, itself).
 		// We need to populate the internal binding since it is based on what we have.

@@ -31,7 +31,7 @@ public class UiIdioms
 
 	public static void drawRawTextCentredAtTop(GlUi ui, float centreX, float top, String text)
 	{
-		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text);
 		float bottom = top - GENERAL_TEXT_HEIGHT;
 		float width = element.aspectRatio() * GENERAL_TEXT_HEIGHT;
 		float left = centreX - (width / 2.0f);
@@ -146,7 +146,7 @@ public class UiIdioms
 		float centreX = bounds.getCentreX();
 		float centreY = bounds.getCentreY();
 		float heightY = bounds.getHeight();
-		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text);
 		float halfTextHeight = GENERAL_TEXT_HEIGHT / 2.0f;
 		float halfTextWidth = (element.aspectRatio() * heightY) / 2.0f;
 		float left = centreX - halfTextWidth;
@@ -166,7 +166,7 @@ public class UiIdioms
 	 */
 	public static float getTextWidth(GlUi ui, String text, float height)
 	{
-		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text);
 		return element.aspectRatio() * height;
 	}
 
@@ -210,7 +210,7 @@ public class UiIdioms
 
 	private static boolean _drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
 	{
-		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text.toUpperCase());
+		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text);
 		float top = bottom + GENERAL_TEXT_HEIGHT;
 		float right = left + element.aspectRatio() * (top - bottom);
 		
