@@ -196,6 +196,11 @@ public class ClientWrapper
 			// We don't use interruption.
 			throw Assert.unexpected(e);
 		}
+		catch (ClientProcess.DisconnectException e)
+		{
+			// TODO:  Implement this correctly once we no longer call "System.exit(0)" on disconnect, below.
+			throw Assert.unreachable();
+		}
 	}
 
 	public void doNothing()
@@ -330,7 +335,8 @@ public class ClientWrapper
 		}
 		else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
 		{
-			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType);
+			byte flags = _cuboids.get(solidBlock.getCuboidAddress()).getData7(AspectRegistry.FLAGS, solidBlock.getBlockAddress());
+			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType, flags);
 			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
 		}
 		else if (_environment.items.getItemById("op.bed") == solidBlockType.item())
