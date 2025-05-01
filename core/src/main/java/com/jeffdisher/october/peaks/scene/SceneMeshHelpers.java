@@ -318,7 +318,8 @@ public class SceneMeshHelpers
 				Assert.assertTrue((byte)1 == size);
 				BlockProxy proxy = new BlockProxy(base, cuboid);
 				Block blockType = proxy.getBlock();
-				boolean blockPermitsEntityMovement = !env.blocks.isSolid(blockType);
+				boolean isActive = FlagsAspect.isSet(proxy.getFlags(), FlagsAspect.FLAG_ACTIVE);
+				boolean blockPermitsEntityMovement = !env.blocks.isSolid(blockType, isActive);
 				if (blockPermitsEntityMovement)
 				{
 					float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };

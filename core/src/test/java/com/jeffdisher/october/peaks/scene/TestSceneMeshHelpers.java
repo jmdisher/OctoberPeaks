@@ -202,7 +202,7 @@ public class TestSceneMeshHelpers
 	public void rotatedMultiBlock() throws Throwable
 	{
 		// Verify the rendering of a rotated multi-block model.
-		Item multiDoor = ENV.items.getItemById("op.double_door_closed_base");
+		Item multiDoor = ENV.items.getItemById("op.double_door_base");
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
 		AbsoluteLocation root = cuboid.getCuboidAddress().getBase().getRelative(5, 5, 5);
 		cuboid.setData15(AspectRegistry.BLOCK, root.getBlockAddress(), multiDoor.number());
