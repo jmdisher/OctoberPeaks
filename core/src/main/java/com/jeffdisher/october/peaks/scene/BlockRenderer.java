@@ -226,20 +226,6 @@ public class BlockRenderer
 				value.modelArray().drawAllTriangles(_gl);
 			}
 		}
-		
-		// Render any dropped items.
-		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
-		{
-			CuboidAddress key = value.address();
-			if (null != value.itemsOnGroundArray())
-			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
-				value.itemsOnGroundArray().drawAllTriangles(_gl);
-			}
-		}
 	}
 
 	public void renderTransparentBlocks(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
@@ -272,6 +258,22 @@ public class BlockRenderer
 		// now.  In the future, more of the non-opaque blocks will be replaced by complex models.
 		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
 		// this may not work for complex models.
+		
+		// Render any dropped items - these are typically transparent but we render them before water since we want to see them under water.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		{
+			CuboidAddress key = value.address();
+			if (null != value.itemsOnGroundArray())
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _resources._uModelMatrix);
+				value.itemsOnGroundArray().drawAllTriangles(_gl);
+			}
+		}
+		
+		// We want to render the water before other transparent blocks since we don't want to see through the water if looking at leaves, for example.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
 		// We will render the water first, since we are usually looking down at it.
@@ -285,6 +287,8 @@ public class BlockRenderer
 				value.waterArray().drawAllTriangles(_gl);
 			}
 		}
+		
+		// Finally, we can render the normal transparent blocks (although this does means some transparent blocks won't render through water).
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			CuboidAddress key = value.address();
