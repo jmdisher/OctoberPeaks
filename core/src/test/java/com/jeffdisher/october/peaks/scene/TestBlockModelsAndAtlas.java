@@ -5,9 +5,8 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.RawTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
@@ -32,8 +31,7 @@ public class TestBlockModelsAndAtlas
 		Block block = new Block(item);
 		Map<Block, Short> blockToIndex = Map.of(block, (short)0);
 		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
-		TextureAtlas<ItemVariant> atlas = TextureHelpers.testBuildAtlas(1, ItemVariant.class);
-		BlockModelsAndAtlas modelsAndAtlas = BlockModelsAndAtlas.testInstance(blockToIndex, models, atlas);
+		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(1, blockToIndex, models);
 		
 		Assert.assertEquals(1, modelsAndAtlas.getBlockSet().size());
 		Assert.assertEquals(models[0], modelsAndAtlas.getModelForBlock(block));
@@ -90,8 +88,7 @@ public class TestBlockModelsAndAtlas
 		Block block = new Block(item);
 		Map<Block, Short> blockToIndex = Map.of(block, (short)0);
 		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
-		TextureAtlas<ItemVariant> atlas = TextureHelpers.testBuildAtlas(1, ItemVariant.class);
-		BlockModelsAndAtlas modelsAndAtlas = BlockModelsAndAtlas.testInstance(blockToIndex, models, atlas);
+		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(1, blockToIndex, models);
 		
 		Map<Block, Prism> boundingBoxes = modelsAndAtlas.buildModelBoundingBoxes();
 		Assert.assertEquals(1, boundingBoxes.size());
@@ -102,5 +99,12 @@ public class TestBlockModelsAndAtlas
 		Assert.assertEquals(0.89f, prism.east(), 0.01f);
 		Assert.assertEquals(0.89f, prism.north(), 0.01f);
 		Assert.assertEquals(0.86f, prism.top(), 0.01f);
+	}
+
+
+	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, Short> blockToIndex, ModelBuffer[] models)
+	{
+		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
+		return BlockModelsAndAtlas.testInstance(blockToIndex, models, raw);
 	}
 }

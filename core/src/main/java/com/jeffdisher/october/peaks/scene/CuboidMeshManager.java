@@ -21,9 +21,9 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
-import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.CuboidColumnAddress;
@@ -45,10 +45,10 @@ public class CuboidMeshManager
 	private final Environment _env;
 	private final IGpu _gpu;
 	private final Attribute[] _programAttributes;
-	private final TextureAtlas<ItemVariant> _itemAtlas;
+	private final ItemTextureAtlas _itemAtlas;
 	private final BlockModelsAndAtlas _blockModels;
 	private final BasicBlockAtlas _blockTextures;
-	private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
+	private final AuxilliaryTextureAtlas _auxBlockTextures;
 
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
@@ -65,10 +65,10 @@ public class CuboidMeshManager
 	public CuboidMeshManager(Environment env
 			, IGpu gpu
 			, Attribute[] programAttributes
-			, TextureAtlas<ItemVariant> itemAtlas
+			, ItemTextureAtlas itemAtlas
 			, BlockModelsAndAtlas blockModels
 			, BasicBlockAtlas blockTextures
-			, TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures
+			, AuxilliaryTextureAtlas auxBlockTextures
 	)
 	{
 		_env = env;
@@ -398,7 +398,7 @@ public class CuboidMeshManager
 		// Collect information about the cuboid.
 		IReadOnlyCuboidData cuboid = request.inputs.cuboid();
 		ColumnHeightMap heightMap = request.inputs.height();
-		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
+		SparseShortProjection<AuxilliaryTextureAtlas.Variant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
 		

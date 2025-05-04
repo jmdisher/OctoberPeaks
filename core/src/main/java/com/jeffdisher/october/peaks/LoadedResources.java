@@ -3,8 +3,7 @@ package com.jeffdisher.october.peaks;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
-import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.ui.GlUi;
 
 
@@ -12,7 +11,7 @@ import com.jeffdisher.october.peaks.ui.GlUi;
  * Just a container for data resources which should only be loaded once and then passed around so that component
  * restarts don't have to load them again, exposing waste and failure states that late into a run.
  */
-public record LoadedResources(TextureAtlas<ItemVariant> itemAtlas
+public record LoadedResources(ItemTextureAtlas itemAtlas
 		, BlockRenderer.Resources blockRenderer
 		, EntityRenderer.Resources entityRenderer
 		, SkyBox.Resources skyBox

@@ -21,9 +21,9 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
-import com.jeffdisher.october.peaks.types.ItemVariant;
+import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
@@ -52,27 +52,27 @@ public class SceneMeshHelpers
 		, new float[] { 0.2f, 0.3f, 0.15f }
 	};
 
-	public static SparseShortProjection<SceneMeshHelpers.AuxVariant> buildAuxProjection(Environment env, IReadOnlyCuboidData cuboid)
+	public static SparseShortProjection<AuxilliaryTextureAtlas.Variant> buildAuxProjection(Environment env, IReadOnlyCuboidData cuboid)
 	{
 		// First, we will use the short callbacks based on damage.
-		SparseShortProjection<SceneMeshHelpers.AuxVariant> variantProjection = SparseShortProjection.fromAspect(cuboid, AspectRegistry.DAMAGE, (short)0, SceneMeshHelpers.AuxVariant.NONE, (BlockAddress blockAddress, Short value) -> {
+		SparseShortProjection<AuxilliaryTextureAtlas.Variant> variantProjection = SparseShortProjection.fromAspect(cuboid, AspectRegistry.DAMAGE, (short)0, AuxilliaryTextureAtlas.Variant.NONE, (BlockAddress blockAddress, Short value) -> {
 			short damage = value;
 			// We will favour showing cracks at a low damage, so the feedback is obvious
 			Block block = new BlockProxy(blockAddress, cuboid).getBlock();
 			float damaged = (float) damage / (float)env.damage.getToughness(block);
 			
-			SceneMeshHelpers.AuxVariant aux;
+			AuxilliaryTextureAtlas.Variant aux;
 			if (damaged > 0.6f)
 			{
-				aux = SceneMeshHelpers.AuxVariant.BREAK_HIGH;
+				aux = AuxilliaryTextureAtlas.Variant.BREAK_HIGH;
 			}
 			else if (damaged > 0.3f)
 			{
-				aux = SceneMeshHelpers.AuxVariant.BREAK_MEDIUM;
+				aux = AuxilliaryTextureAtlas.Variant.BREAK_MEDIUM;
 			}
 			else
 			{
-				aux = SceneMeshHelpers.AuxVariant.BREAK_LOW;
+				aux = AuxilliaryTextureAtlas.Variant.BREAK_LOW;
 			}
 			return aux;
 		});
@@ -81,7 +81,7 @@ public class SceneMeshHelpers
 		cuboid.walkData(AspectRegistry.FLAGS, (BlockAddress base, byte size, Byte value) -> {
 			if (FlagsAspect.isSet(value, FlagsAspect.FLAG_BURNING))
 			{
-				variantProjection.set(base, SceneMeshHelpers.AuxVariant.BURNING);
+				variantProjection.set(base, AuxilliaryTextureAtlas.Variant.BURNING);
 			}
 		}, (byte) 0);
 		return variantProjection;
@@ -90,8 +90,8 @@ public class SceneMeshHelpers
 	public static void populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, BasicBlockAtlas blockAtlas
-			, SparseShortProjection<AuxVariant> projection
-			, TextureAtlas<AuxVariant> auxAtlas
+			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, boolean opaqueVertices
 	)
@@ -137,8 +137,8 @@ public class SceneMeshHelpers
 	public static void populateBufferWithComplexModels(Environment env
 			, BufferBuilder builder
 			, BlockModelsAndAtlas blockModels
-			, SparseShortProjection<AuxVariant> projection
-			, TextureAtlas<AuxVariant> auxAtlas
+			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 	)
 	{
@@ -198,8 +198,8 @@ public class SceneMeshHelpers
 	public static void populateWaterMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, BasicBlockAtlas blockAtlas
-			, SparseShortProjection<AuxVariant> projection
-			, TextureAtlas<AuxVariant> auxAtlas
+			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, short sourceNumber
 			, short strongNumber
@@ -235,7 +235,7 @@ public class SceneMeshHelpers
 		// For now, just use the same image for all faces.
 		float[] uvBase = blockAtlas.baseOfTopTexture(sourceNumber);
 		float textureSize = blockAtlas.getCoordinateSize();
-		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
+		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {
@@ -296,8 +296,8 @@ public class SceneMeshHelpers
 
 	public static void populateMeshForDroppedItems(Environment env
 			, BufferBuilder builder
-			, TextureAtlas<ItemVariant> itemAtlas
-			, TextureAtlas<AuxVariant> auxAtlas
+			, ItemTextureAtlas itemAtlas
+			, AuxilliaryTextureAtlas auxAtlas
 			, IReadOnlyCuboidData cuboid
 			, ColumnHeightMap heightMap
 	)
@@ -305,7 +305,7 @@ public class SceneMeshHelpers
 		float textureSize = itemAtlas.coordinateSize;
 		
 		// Dropped items will never have an aux texture.
-		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
+		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		int cuboidZ = cuboid.getCuboidAddress().getBase().z();
@@ -332,7 +332,7 @@ public class SceneMeshHelpers
 								: blockInventory.getNonStackableForKey(key).type()
 						;
 						
-						float[] uvBase = itemAtlas.baseOfTexture(type.number(), ItemVariant.NONE);
+						float[] uvBase = itemAtlas.baseOfTexture(type.number());
 						float[] offset = DEBRIS_BASES[i];
 						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
 						byte light = cuboid.getData7(AspectRegistry.LIGHT, base);
@@ -354,7 +354,7 @@ public class SceneMeshHelpers
 			, Attribute[] attributes
 			, FloatBuffer meshBuffer
 			, Prism prism
-			, TextureAtlas<AuxVariant> auxAtlas
+			, AuxilliaryTextureAtlas auxAtlas
 	)
 	{
 		// This is currently how we render entities so we can use the hard-coded coordinates.
@@ -362,7 +362,7 @@ public class SceneMeshHelpers
 		float textureSize = 1.0f;
 		
 		// We will use no AUX texture.
-		float[] auxUv = auxAtlas.baseOfTexture((short)0, AuxVariant.NONE);
+		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
 		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
@@ -645,15 +645,6 @@ public class SceneMeshHelpers
 	}
 
 
-	public static enum AuxVariant
-	{
-		NONE,
-		BREAK_LOW,
-		BREAK_MEDIUM,
-		BREAK_HIGH,
-		BURNING,
-	}
-
 	private static record _PrismVertices(float[] v001
 			, float[] v101
 			, float[] v111
@@ -681,17 +672,17 @@ public class SceneMeshHelpers
 	private static class _CommonVertexWriter implements FaceBuilder.IWriter
 	{
 		private final BufferBuilder _builder;
-		private final SparseShortProjection<AuxVariant> _projection;
+		private final SparseShortProjection<AuxilliaryTextureAtlas.Variant> _projection;
 		private final BasicBlockAtlas _blockAtlas;
-		private final TextureAtlas<AuxVariant> _auxAtlas;
+		private final AuxilliaryTextureAtlas _auxAtlas;
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
 		private final MeshInputData _inputData;
 		
 		public _CommonVertexWriter(BufferBuilder builder
-				, SparseShortProjection<AuxVariant> projection
+				, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
 				, BasicBlockAtlas blockAtlas
-				, TextureAtlas<AuxVariant> auxAtlas
+				, AuxilliaryTextureAtlas auxAtlas
 				, Predicate<Short> shouldInclude
 				, MeshInputData inputData
 				, float blockHeight
@@ -718,7 +709,7 @@ public class SceneMeshHelpers
 			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(value);
 			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
 				byte z = (byte)(baseZ + 1);
@@ -750,7 +741,7 @@ public class SceneMeshHelpers
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
 				byte y = (byte)(baseY + 1);
@@ -782,7 +773,7 @@ public class SceneMeshHelpers
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture((short)0, _projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
 				byte x = (byte)(baseX + 1);
@@ -1070,8 +1061,8 @@ public class SceneMeshHelpers
 	}
 
 	private static void _renderModel(BufferBuilder builder
-			, SparseShortProjection<AuxVariant> projection
-			, TextureAtlas<AuxVariant> auxAtlas
+			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, float uvCoordinateSize
 			, float auxCoordinateSize
@@ -1084,7 +1075,7 @@ public class SceneMeshHelpers
 			, int blockHeight
 	)
 	{
-		float[] auxUv = auxAtlas.baseOfTexture((short)0, projection.get(new BlockAddress(baseX, baseY, baseZ)));
+		float[] auxUv = auxAtlas.baseOfTexture(projection.get(new BlockAddress(baseX, baseY, baseZ)));
 		// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
 		float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
 		// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.

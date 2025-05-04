@@ -22,10 +22,10 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
+import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -46,10 +46,10 @@ public class BlockRenderer
 
 	public static class Resources
 	{
-		private final TextureAtlas<ItemVariant> _itemAtlas;
+		private final ItemTextureAtlas _itemAtlas;
 		private final BlockModelsAndAtlas _blockModels;
 		private final BasicBlockAtlas _blockTextures;
-		private final TextureAtlas<SceneMeshHelpers.AuxVariant> _auxBlockTextures;
+		private final AuxilliaryTextureAtlas _auxBlockTextures;
 		private final Program _program;
 		private final int _uModelMatrix;
 		private final int _uViewMatrix;
@@ -63,7 +63,7 @@ public class BlockRenderer
 		private final VertexArray _defaultHighlightCube;
 		private final Map<Block, VertexArray> _blockModelHighlightCubes;
 		
-		public Resources(Environment environment, GL20 gl, TextureAtlas<ItemVariant> itemAtlas) throws IOException
+		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
 		{
 			_itemAtlas = itemAtlas;
 			
@@ -85,9 +85,8 @@ public class BlockRenderer
 			);
 			
 			// Load the secondary atlas for secondary textures.
-			_auxBlockTextures = TextureHelpers.loadAtlasForVariants(gl
+			_auxBlockTextures = TextureHelpers.loadAuxTextureAtlas(gl
 					, "aux_"
-					, SceneMeshHelpers.AuxVariant.class
 					, "missing_texture.png"
 			);
 			

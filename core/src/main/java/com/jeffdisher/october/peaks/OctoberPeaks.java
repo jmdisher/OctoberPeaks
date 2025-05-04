@@ -12,9 +12,8 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.utils.Assert;
 
@@ -73,7 +72,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		_gl.glEnable(GL20.GL_CULL_FACE);
 		
 		// Create the long-lived resources.
-		TextureAtlas<ItemVariant> itemAtlas;
+		ItemTextureAtlas itemAtlas;
 		try
 		{
 			itemAtlas = TextureHelpers.loadAtlasForItems(_gl

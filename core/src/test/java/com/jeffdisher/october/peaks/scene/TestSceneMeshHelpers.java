@@ -19,12 +19,10 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
+import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.RawTextureAtlas;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.BlockVariant;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -228,13 +226,13 @@ public class TestSceneMeshHelpers
 		;
 		Map<Block, Short> blockToIndex = Map.of(ENV.blocks.fromItem(multiDoor), (short)0);
 		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
-		TextureAtlas<ItemVariant> atlas = TextureHelpers.testBuildAtlas(1, ItemVariant.class);
-		BlockModelsAndAtlas modelsAndAtlas = BlockModelsAndAtlas.testInstance(blockToIndex, models, atlas);
+		int textureCount = 1;
+		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(textureCount, blockToIndex, models);
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
-		SparseShortProjection<SceneMeshHelpers.AuxVariant> projection = new SparseShortProjection<>(SceneMeshHelpers.AuxVariant.NONE, Map.of());
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(new RawTextureAtlas(1, 1), 1);
+		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
+		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
 				, null, null
 				, null, null
@@ -292,16 +290,15 @@ public class TestSceneMeshHelpers
 				ENV.blocks.fromItem(WATER_STRONG),
 				ENV.blocks.fromItem(WATER_WEAK),
 		};
-		TextureAtlas<BlockVariant> blockTextures = new TextureAtlas<>(new RawTextureAtlas(4, 2), 1);
 		boolean[] nonOpaqueVector = new boolean[] {
 				true,
 				true,
 				true,
 				true,
 		};
-		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(blocks, blockTextures, nonOpaqueVector);
-		SparseShortProjection<SceneMeshHelpers.AuxVariant> projection = new SparseShortProjection<>(SceneMeshHelpers.AuxVariant.NONE, Map.of());
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(new RawTextureAtlas(1, 1), 1);
+		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
+		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
+		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
 				, optionalUp, (null != optionalUp) ?  ColumnHeightMap.build().freeze() : null
 				, null, null
@@ -350,6 +347,25 @@ public class TestSceneMeshHelpers
 		}
 		return vertices;
 	}
+
+	private static AuxilliaryTextureAtlas _buildAuxAtlas()
+	{
+		RawTextureAtlas raw = TextureHelpers.testRawAtlas(AuxilliaryTextureAtlas.Variant.values().length);
+		return new AuxilliaryTextureAtlas(raw);
+	}
+
+	private static BasicBlockAtlas _buildBlockAtlas(int textureCount, Block[] blocksIncluded, boolean[] nonOpaqueVector)
+	{
+		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
+		return new BasicBlockAtlas(blocksIncluded, raw, nonOpaqueVector);
+	}
+
+	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, Short> blockToIndex, ModelBuffer[] models)
+	{
+		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
+		return BlockModelsAndAtlas.testInstance(blockToIndex, models, raw);
+	}
+
 
 	private static record _Vertex(float x, float y, float z) {}
 }

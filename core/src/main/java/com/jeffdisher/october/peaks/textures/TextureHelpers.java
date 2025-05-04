@@ -11,8 +11,6 @@ import javax.imageio.ImageIO;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
-import com.jeffdisher.october.peaks.types.BlockVariant;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
@@ -81,7 +79,7 @@ public class TextureHelpers
 		return _uploadNewTexture(gl, 1, 1, textureBufferData);
 	}
 
-	public static TextureAtlas<ItemVariant> loadAtlasForItems(GL20 gl
+	public static ItemTextureAtlas loadAtlasForItems(GL20 gl
 			, Item[] tileItems
 			, String missingTextureName
 	) throws IOException
@@ -95,8 +93,8 @@ public class TextureHelpers
 		);
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, COMMON_TEXTURE_EDGE_PIXELS);
 		boolean[] nonOpaqueVector = new boolean[images.length];
-		int variantsPerTile = ItemVariant.values().length;
-		return new TextureAtlas<>(_allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, COMMON_TEXTURE_EDGE_PIXELS), variantsPerTile);
+		int variantsPerTile = 1;
+		return new ItemTextureAtlas(_allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, COMMON_TEXTURE_EDGE_PIXELS));
 	}
 
 	public static BasicBlockAtlas loadAtlasForBlocks(GL20 gl
@@ -105,15 +103,13 @@ public class TextureHelpers
 	) throws IOException
 	{
 		// Just grab the names of the items, assuming they are all PNGs.
-		// TODO:  Change this once we create the multi-sided textures.
-		// (for now, we are just redundantly loading the item for every variant).
-		int variants = BlockVariant.values().length;
+		int variants = BasicBlockAtlas.Variant.values().length;
 		String[] primaryNames = new String[blockItems.length * variants];
 		for (int i = 0; i < blockItems.length; ++i)
 		{
 			Block block = blockItems[i];
 			String itemName = "item_" + block.item().id() + ".png";
-			for (BlockVariant variant : BlockVariant.values())
+			for (BasicBlockAtlas.Variant variant : BasicBlockAtlas.Variant.values())
 			{
 				String name = "block_" + block.item().id() + "_" + variant.name() + ".png";
 				if (!Gdx.files.internal(name).exists())
@@ -132,21 +128,19 @@ public class TextureHelpers
 			Assert.assertTrue(textureEdgePixels == image.getWidth());
 			Assert.assertTrue(textureEdgePixels == image.getHeight());
 		}
-		int variantsPerIndex = BlockVariant.class.getEnumConstants().length;
+		int variantsPerIndex = BasicBlockAtlas.Variant.values().length;
 		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerIndex];
 		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerIndex, images, COMMON_TEXTURE_EDGE_PIXELS);
-		TextureAtlas<BlockVariant> atlas = new TextureAtlas<>(rawAtlas, variantsPerIndex);
-		return new BasicBlockAtlas(blockItems, atlas, nonOpaqueVector);
+		return new BasicBlockAtlas(blockItems, rawAtlas, nonOpaqueVector);
 	}
 
-	public static <T extends Enum<?>> TextureAtlas<T> loadAtlasForVariants(GL20 gl
+	public static AuxilliaryTextureAtlas loadAuxTextureAtlas(GL20 gl
 			, String baseName
-			, Class<T> clazz
 			, String missingTextureName
 	) throws IOException
 	{
 		// We will assume everything is a PNG and just load the variant name on the baseName.
-		T[] variants = clazz.getEnumConstants();
+		AuxilliaryTextureAtlas.Variant[] variants = AuxilliaryTextureAtlas.Variant.values();
 		String[] primaryNames = new String[variants.length];
 		for (int i = 0; i < variants.length; ++i)
 		{
@@ -156,29 +150,24 @@ public class TextureHelpers
 		int variantsPerTile = variants.length;
 		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerTile];
 		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, COMMON_TEXTURE_EDGE_PIXELS);
-		return new TextureAtlas<>(rawAtlas, variants.length);
+		return new AuxilliaryTextureAtlas(rawAtlas);
 	}
 
-	public static TextureAtlas<ItemVariant> loadModelAtlasFromHandles(GL20 gl
+	public static RawTextureAtlas loadRawAtlasFromModelTextureHandles(GL20 gl
 			, FileHandle[] handles
 	) throws IOException
 	{
 		BufferedImage[] images = _loadFileHandles(handles, BLOCK_MODEL_TEXTURE_EDGE_PIXELS);
 		boolean[] nonOpaqueVector = new boolean[images.length];
-		int variantsPerTile = ItemVariant.values().length;
-		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, BLOCK_MODEL_TEXTURE_EDGE_PIXELS);
-		return new TextureAtlas<>(rawAtlas, variantsPerTile);
+		int variantsPerTile = 1;
+		return _allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, BLOCK_MODEL_TEXTURE_EDGE_PIXELS);
 	}
 
-	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, Class<T> variants) throws IOException
+	public static RawTextureAtlas testRawAtlas(int tileTextures)
 	{
-		// Note that we need variants instances for each possible value so tileTextures must be a multiple.
-		int variantsPerIndex = variants.getEnumConstants().length;
-		Assert.assertTrue(0 == (tileTextures % variantsPerIndex));
-		
 		int tileTexturesPerRow = _texturesPerRow(tileTextures);
 		RawTextureAtlas rawAtlas = new RawTextureAtlas(1, tileTexturesPerRow);
-		return new TextureAtlas<T>(rawAtlas, variantsPerIndex);
+		return rawAtlas;
 	}
 
 

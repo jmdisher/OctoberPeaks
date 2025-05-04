@@ -14,9 +14,8 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextManager;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 
@@ -31,7 +30,7 @@ public class GlUi
 {
 	public static class Resources
 	{
-		private final TextureAtlas<ItemVariant> _itemAtlas;
+		private final ItemTextureAtlas _itemAtlas;
 		private final Program _program;
 		private final int _uOffset;
 		private final int _uScale;
@@ -49,7 +48,7 @@ public class GlUi
 		public final int pixelBlueAlpha;
 		public final int pixelOrangeLava;
 		
-		public Resources(GL20 gl, TextureAtlas<ItemVariant> itemAtlas)
+		public Resources(GL20 gl, ItemTextureAtlas itemAtlas)
 		{
 			_itemAtlas = itemAtlas;
 			
@@ -202,7 +201,7 @@ public class GlUi
 
 	public void drawItemTextureRect(Item item, float left, float bottom, float right, float top)
 	{
-		float[] itemTextureBase = _resources._itemAtlas.baseOfTexture(item.number(), ItemVariant.NONE);
+		float[] itemTextureBase = _resources._itemAtlas.baseOfTexture(item.number());
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
 		float xScale = (right - left);

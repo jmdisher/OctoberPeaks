@@ -11,9 +11,8 @@ import java.util.Set;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
-import com.jeffdisher.october.peaks.textures.TextureAtlas;
+import com.jeffdisher.october.peaks.textures.RawTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.ItemVariant;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
@@ -73,12 +72,12 @@ public class BlockModelsAndAtlas
 		
 		// Assemble the atlas.
 		FileHandle[] handles = textureHandles.toArray((int size) -> new FileHandle[size]);
-		TextureAtlas<ItemVariant> atlas = TextureHelpers.loadModelAtlasFromHandles(gl, handles);
+		RawTextureAtlas atlas = TextureHelpers.loadRawAtlasFromModelTextureHandles(gl, handles);
 		
 		return new BlockModelsAndAtlas(blockToIndex, models, atlas);
 	}
 
-	public static BlockModelsAndAtlas testInstance(Map<Block, Short> blockToIndex, ModelBuffer[] models, TextureAtlas<ItemVariant> atlas)
+	public static BlockModelsAndAtlas testInstance(Map<Block, Short> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
 	{
 		return new BlockModelsAndAtlas(blockToIndex, models, atlas);
 	}
@@ -86,9 +85,9 @@ public class BlockModelsAndAtlas
 
 	private final Map<Block, Short> _blockToIndex;
 	private final ModelBuffer[] _models;
-	private final TextureAtlas<ItemVariant> _atlas;
+	private final RawTextureAtlas _atlas;
 
-	private BlockModelsAndAtlas(Map<Block, Short> blockToIndex, ModelBuffer[] models, TextureAtlas<ItemVariant> atlas)
+	private BlockModelsAndAtlas(Map<Block, Short> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
 	{
 		_blockToIndex = Collections.unmodifiableMap(blockToIndex);
 		_models = models;
@@ -114,7 +113,7 @@ public class BlockModelsAndAtlas
 	public float[] baseOfModelTexture(Block block)
 	{
 		short index = _blockToIndex.get(block);
-		return _atlas.baseOfTexture(index, ItemVariant.NONE);
+		return _atlas.baseOfTexture(index);
 	}
 
 	public float getCoordinateSize()
