@@ -20,6 +20,7 @@ import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
+import com.jeffdisher.october.peaks.textures.RawTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.BlockVariant;
@@ -233,7 +234,7 @@ public class TestSceneMeshHelpers
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> projection = new SparseShortProjection<>(SceneMeshHelpers.AuxVariant.NONE, Map.of());
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(1, 1, 1);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(new RawTextureAtlas(1, 1), 1);
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
 				, null, null
 				, null, null
@@ -291,7 +292,7 @@ public class TestSceneMeshHelpers
 				ENV.blocks.fromItem(WATER_STRONG),
 				ENV.blocks.fromItem(WATER_WEAK),
 		};
-		TextureAtlas<BlockVariant> blockTextures = new TextureAtlas<>(4, 2, 1);
+		TextureAtlas<BlockVariant> blockTextures = new TextureAtlas<>(new RawTextureAtlas(4, 2), 1);
 		boolean[] nonOpaqueVector = new boolean[] {
 				true,
 				true,
@@ -300,7 +301,7 @@ public class TestSceneMeshHelpers
 		};
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(blocks, blockTextures, nonOpaqueVector);
 		SparseShortProjection<SceneMeshHelpers.AuxVariant> projection = new SparseShortProjection<>(SceneMeshHelpers.AuxVariant.NONE, Map.of());
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(1, 1, 1);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxAtlas = new TextureAtlas<>(new RawTextureAtlas(1, 1), 1);
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
 				, optionalUp, (null != optionalUp) ?  ColumnHeightMap.build().freeze() : null
 				, null, null

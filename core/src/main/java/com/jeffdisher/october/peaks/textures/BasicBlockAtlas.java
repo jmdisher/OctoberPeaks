@@ -5,6 +5,7 @@ import java.util.Arrays;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.types.BlockVariant;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -20,6 +21,9 @@ public class BasicBlockAtlas
 
 	public BasicBlockAtlas(Block[] blocksIncluded, TextureAtlas<BlockVariant> blockTextures, boolean[] nonOpaqueVector)
 	{
+		// We expect that the non-opaque vector will match up with the set of blocks.
+		Assert.assertTrue(blocksIncluded.length == nonOpaqueVector.length);
+		
 		// We only care about the blocks we are given so build the mapping from items to these block indices.
 		int maxItemNumber = 0;
 		for (Block block : blocksIncluded)

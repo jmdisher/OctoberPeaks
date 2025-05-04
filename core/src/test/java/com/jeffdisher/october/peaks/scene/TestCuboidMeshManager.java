@@ -90,7 +90,7 @@ public class TestCuboidMeshManager
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
-		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
+		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		CuboidAddress address = new CuboidAddress((short)0, (short)0, (short)0);
@@ -182,7 +182,7 @@ public class TestCuboidMeshManager
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
-		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
+		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
@@ -269,7 +269,7 @@ public class TestCuboidMeshManager
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
-		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
+		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.
@@ -357,7 +357,7 @@ public class TestCuboidMeshManager
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
 		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
-		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  new boolean[textureCount]);
+		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
 		
 		// We want to put a single solid block at the top of the low cuboid so we can verify the vertex values.

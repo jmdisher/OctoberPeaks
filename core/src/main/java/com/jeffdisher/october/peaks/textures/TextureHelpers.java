@@ -94,7 +94,9 @@ public class TextureHelpers
 				(int size) -> new String[size]
 		);
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, COMMON_TEXTURE_EDGE_PIXELS);
-		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, ItemVariant.class);
+		boolean[] nonOpaqueVector = new boolean[images.length];
+		int variantsPerTile = ItemVariant.values().length;
+		return new TextureAtlas<>(_allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, COMMON_TEXTURE_EDGE_PIXELS), variantsPerTile);
 	}
 
 	public static BasicBlockAtlas loadAtlasForBlocks(GL20 gl
@@ -130,15 +132,10 @@ public class TextureHelpers
 			Assert.assertTrue(textureEdgePixels == image.getWidth());
 			Assert.assertTrue(textureEdgePixels == image.getHeight());
 		}
-		int tileTexturesPerRow = _texturesPerRow(images.length);
 		int variantsPerIndex = BlockVariant.class.getEnumConstants().length;
 		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerIndex];
-		ByteBuffer textureBufferData = _loadTexturesIntoAtlas(nonOpaqueVector, images, textureEdgePixels, tileTexturesPerRow, variantsPerIndex);
-		((java.nio.Buffer) textureBufferData).flip();
-		int textureAtlasEdge = tileTexturesPerRow * textureEdgePixels;
-		int tileTexture = _uploadTextureAtlas(gl, textureBufferData, textureAtlasEdge);
-		
-		TextureAtlas<BlockVariant> atlas = new TextureAtlas<BlockVariant>(tileTexture, tileTexturesPerRow, variantsPerIndex);
+		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerIndex, images, COMMON_TEXTURE_EDGE_PIXELS);
+		TextureAtlas<BlockVariant> atlas = new TextureAtlas<>(rawAtlas, variantsPerIndex);
 		return new BasicBlockAtlas(blockItems, atlas, nonOpaqueVector);
 	}
 
@@ -156,7 +153,10 @@ public class TextureHelpers
 			primaryNames[i] = baseName + variants[i].name() + ".png";
 		}
 		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, COMMON_TEXTURE_EDGE_PIXELS);
-		return _loadAtlas(gl, images, COMMON_TEXTURE_EDGE_PIXELS, clazz);
+		int variantsPerTile = variants.length;
+		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerTile];
+		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, COMMON_TEXTURE_EDGE_PIXELS);
+		return new TextureAtlas<>(rawAtlas, variants.length);
 	}
 
 	public static TextureAtlas<ItemVariant> loadModelAtlasFromHandles(GL20 gl
@@ -164,14 +164,18 @@ public class TextureHelpers
 	) throws IOException
 	{
 		BufferedImage[] images = _loadFileHandles(handles, BLOCK_MODEL_TEXTURE_EDGE_PIXELS);
-		return _loadAtlas(gl, images, BLOCK_MODEL_TEXTURE_EDGE_PIXELS, ItemVariant.class);
+		boolean[] nonOpaqueVector = new boolean[images.length];
+		int variantsPerTile = ItemVariant.values().length;
+		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerTile, images, BLOCK_MODEL_TEXTURE_EDGE_PIXELS);
+		return new TextureAtlas<>(rawAtlas, variantsPerTile);
 	}
 
 	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, Class<T> variants) throws IOException
 	{
 		int tileTexturesPerRow = _texturesPerRow(tileTextures);
 		int variantsPerIndex = variants.getEnumConstants().length;
-		return new TextureAtlas<T>(1, tileTexturesPerRow, variantsPerIndex);
+		RawTextureAtlas rawAtlas = new RawTextureAtlas(1, tileTexturesPerRow);
+		return new TextureAtlas<T>(rawAtlas, variantsPerIndex);
 	}
 
 
@@ -267,29 +271,6 @@ public class TextureHelpers
 		return loadedTextures;
 	}
 
-	private static <T extends Enum<?>> TextureAtlas<T> _loadAtlas(GL20 gl
-			, BufferedImage images[]
-			, int textureEdgePixels
-			, Class<T> variants
-	) throws IOException
-	{
-		// Verify our size assumptions.
-		for (BufferedImage image : images)
-		{
-			Assert.assertTrue(textureEdgePixels == image.getWidth());
-			Assert.assertTrue(textureEdgePixels == image.getHeight());
-		}
-		int tileTexturesPerRow = _texturesPerRow(images.length);
-		int variantsPerIndex = variants.getEnumConstants().length;
-		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerIndex];
-		ByteBuffer textureBufferData = _loadTexturesIntoAtlas(nonOpaqueVector, images, textureEdgePixels, tileTexturesPerRow, variantsPerIndex);
-		((java.nio.Buffer) textureBufferData).flip();
-		int textureAtlasEdge = tileTexturesPerRow * textureEdgePixels;
-		int tileTexture = _uploadTextureAtlas(gl, textureBufferData, textureAtlasEdge);
-		
-		return new TextureAtlas<T>(tileTexture, tileTexturesPerRow, variantsPerIndex);
-	}
-
 	private static int _texturesPerRow(int textureCount)
 	{
 		// We essentially just want the base2 logarithm of the array length rounded to the nearest power of 2.
@@ -382,5 +363,20 @@ public class TextureHelpers
 		gl.glTexParameteri(GL20.GL_TEXTURE_2D, GL20.GL_TEXTURE_MAG_FILTER, GL20.GL_NEAREST);
 		gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
 		return tileTexture;
+	}
+
+	private static RawTextureAtlas _allocateRawAtlas(GL20 gl
+			, boolean[] out_nonOpaqueVector
+			, int tilesPerBit
+			, BufferedImage[] images
+			, int textureEdgePixels
+	) throws IOException
+	{
+		int texturesPerRow = _texturesPerRow(images.length);
+		ByteBuffer textureBufferData = _loadTexturesIntoAtlas(out_nonOpaqueVector, images, textureEdgePixels, texturesPerRow, tilesPerBit);
+		((java.nio.Buffer) textureBufferData).flip();
+		int textureAtlasEdge = texturesPerRow * textureEdgePixels;
+		int tileTexture = _uploadTextureAtlas(gl, textureBufferData, textureAtlasEdge);
+		return new RawTextureAtlas(tileTexture, texturesPerRow);
 	}
 }

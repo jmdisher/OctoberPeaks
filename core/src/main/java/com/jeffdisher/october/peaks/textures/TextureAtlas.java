@@ -10,14 +10,14 @@ public class TextureAtlas<T extends Enum<?>>
 {
 	public final int texture;
 	public final float coordinateSize;
-	private final int _texturesPerRow;
+	private final RawTextureAtlas _raw;
 	private final int _variantsPerIndex;
 
-	public TextureAtlas(int tileTextures, int tileTexturesPerRow, int variantsPerIndex)
+	public TextureAtlas(RawTextureAtlas raw, int variantsPerIndex)
 	{
-		this.texture = tileTextures;
-		this.coordinateSize = 1.0f / (float)tileTexturesPerRow;
-		_texturesPerRow = tileTexturesPerRow;
+		this.texture = raw.texture;
+		this.coordinateSize = raw.coordinateSize;
+		_raw = raw;
 		_variantsPerIndex = variantsPerIndex;
 	}
 
@@ -31,15 +31,11 @@ public class TextureAtlas<T extends Enum<?>>
 	public float[] baseOfTexture(short index, T variant)
 	{
 		int localIndex = (index * _variantsPerIndex) + variant.ordinal();
-		int row = localIndex / _texturesPerRow;
-		int column = localIndex % _texturesPerRow;
-		float u = this.coordinateSize * (float)column;
-		float v = this.coordinateSize * (float)row;
-		return new float[] {u, v};
+		return _raw.baseOfTexture(localIndex);
 	}
 
 	public void shutdown(GL20 gl)
 	{
-		gl.glDeleteTexture(this.texture);
+		_raw.shutdown(gl);
 	}
 }
