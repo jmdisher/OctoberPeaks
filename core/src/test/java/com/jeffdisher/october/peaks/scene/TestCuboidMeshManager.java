@@ -87,8 +87,8 @@ public class TestCuboidMeshManager
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount * BlockVariant.values().length, BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(SceneMeshHelpers.AuxVariant.values().length, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
@@ -120,7 +120,7 @@ public class TestCuboidMeshManager
 		int textureCount = WATER_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount * SceneMeshHelpers.AuxVariant.values().length, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures,  buildNonOpaqueVector());
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
@@ -179,8 +179,8 @@ public class TestCuboidMeshManager
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount * BlockVariant.values().length, BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(SceneMeshHelpers.AuxVariant.values().length, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
@@ -266,8 +266,8 @@ public class TestCuboidMeshManager
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount * BlockVariant.values().length, BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(SceneMeshHelpers.AuxVariant.values().length, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
@@ -354,8 +354,8 @@ public class TestCuboidMeshManager
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
-		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount, BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(textureCount, SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(textureCount * BlockVariant.values().length, BlockVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(SceneMeshHelpers.AuxVariant.values().length, SceneMeshHelpers.AuxVariant.class);
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(), new ModelBuffer[0], itemAtlas);
 		BasicBlockAtlas blockAtlas = new BasicBlockAtlas(ALL_BLOCKS, blockTextures, new boolean[ALL_BLOCKS.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, itemAtlas, models, blockAtlas, auxBlockTextures);
@@ -422,7 +422,7 @@ public class TestCuboidMeshManager
 		int textureCount = STONE_VALUE + 1;
 		TextureAtlas<ItemVariant> itemAtlas = TextureHelpers.testBuildAtlas(textureCount, ItemVariant.class);
 		TextureAtlas<BlockVariant> blockTextures = TextureHelpers.testBuildAtlas(0, BlockVariant.class);
-		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(1, SceneMeshHelpers.AuxVariant.class);
+		TextureAtlas<SceneMeshHelpers.AuxVariant> auxBlockTextures = TextureHelpers.testBuildAtlas(SceneMeshHelpers.AuxVariant.values().length, SceneMeshHelpers.AuxVariant.class);
 		ModelBuffer[] modelBuffers = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
 		BlockModelsAndAtlas models = BlockModelsAndAtlas.testInstance(Map.of(STONE_BLOCK, (short)0), modelBuffers, itemAtlas);
 		// Note that the Block[] must minimally include water sources.
@@ -458,7 +458,7 @@ public class TestCuboidMeshManager
 		Assert.assertArrayEquals(new float[] { 5.828934f, 3.5784202f, 6.994554f }, position, 0.01f);
 		Assert.assertArrayEquals(new float[] { -1.0f, -0.0f, -0.0f }, normal, 0.01f);
 		Assert.assertArrayEquals(new float[] { 0.3283615f, 0.382985f }, texture0, 0.01f);
-		Assert.assertArrayEquals(new float[] { 0.656723f, 0.76597f }, texture1, 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.656723f * auxBlockTextures.coordinateSize, 0.76597f * auxBlockTextures.coordinateSize }, texture1, 0.01f);
 		Assert.assertArrayEquals(new float[] { 0.1f }, blockLight, 0.01f);
 		// Since this is a model-based block at the top of the column, it is given partial sky light.
 		Assert.assertArrayEquals(new float[] { 0.5f }, skyLight, 0.01f);

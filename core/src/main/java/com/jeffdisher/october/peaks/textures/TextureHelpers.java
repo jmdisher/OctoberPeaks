@@ -172,8 +172,11 @@ public class TextureHelpers
 
 	public static <T extends Enum<?>> TextureAtlas<T> testBuildAtlas(int tileTextures, Class<T> variants) throws IOException
 	{
-		int tileTexturesPerRow = _texturesPerRow(tileTextures);
+		// Note that we need variants instances for each possible value so tileTextures must be a multiple.
 		int variantsPerIndex = variants.getEnumConstants().length;
+		Assert.assertTrue(0 == (tileTextures % variantsPerIndex));
+		
+		int tileTexturesPerRow = _texturesPerRow(tileTextures);
 		RawTextureAtlas rawAtlas = new RawTextureAtlas(1, tileTexturesPerRow);
 		return new TextureAtlas<T>(rawAtlas, variantsPerIndex);
 	}
