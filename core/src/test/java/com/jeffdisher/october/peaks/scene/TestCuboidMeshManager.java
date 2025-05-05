@@ -611,7 +611,19 @@ public class TestCuboidMeshManager
 	private static BasicBlockAtlas _buildBlockAtlas(int textureCount, Block[] blocksIncluded, boolean[] nonOpaqueVector)
 	{
 		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
-		return new BasicBlockAtlas(blocksIncluded, raw, nonOpaqueVector);
+		int maxItemNumber = 0;
+		for (Block block : blocksIncluded)
+		{
+			maxItemNumber = Math.max(maxItemNumber, block.item().number());
+		}
+		int index = 0;
+		int[][] mapping = new int[maxItemNumber + 1][];
+		for (Block block : blocksIncluded)
+		{
+			mapping[block.item().number()] = new int[] { index, index, index };
+			index += 1;
+		}
+		return new BasicBlockAtlas(raw, mapping, nonOpaqueVector);
 	}
 
 	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, Short> blockToIndex, ModelBuffer[] models)

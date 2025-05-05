@@ -102,36 +102,36 @@ public class TextureHelpers
 			, String missingTextureName
 	) throws IOException
 	{
-		// Just grab the names of the items, assuming they are all PNGs.
-		int variants = BasicBlockAtlas.Variant.values().length;
-		String[] primaryNames = new String[blockItems.length * variants];
+		// We want to build the BasicBlockAtlas with precisely what can be addressed for each block so see what is on disk.
+		int textureEdgePixels = COMMON_TEXTURE_EDGE_PIXELS;
+		BufferedImage missingTexture = _loadOneImage(missingTextureName, textureEdgePixels);
+		Assert.assertTrue(null != missingTexture);
+		BasicBlockCollector collector = new BasicBlockCollector(missingTexture);
 		for (int i = 0; i < blockItems.length; ++i)
 		{
 			Block block = blockItems[i];
 			String itemName = "item_" + block.item().id() + ".png";
+			BufferedImage fallback = _loadOneImage(itemName, textureEdgePixels);
+			Assert.assertTrue(null != fallback);
+			collector.setBlockFallback(block, fallback);
+			
 			for (BasicBlockAtlas.Variant variant : BasicBlockAtlas.Variant.values())
 			{
 				String name = "block_" + block.item().id() + "_" + variant.name() + ".png";
-				if (!Gdx.files.internal(name).exists())
+				BufferedImage variantTexture = _loadOneImage(name, textureEdgePixels);
+				if (null != variantTexture)
 				{
-					name = itemName;
+					collector.addVariant(block, variant, variantTexture);
 				}
-				primaryNames[i * variants + variant.ordinal()] = name;
 			}
 		}
-		int textureEdgePixels = COMMON_TEXTURE_EDGE_PIXELS;
-		BufferedImage[] images = _loadAllImages(primaryNames, missingTextureName, textureEdgePixels);
 		
-		// Verify our size assumptions.
-		for (BufferedImage image : images)
-		{
-			Assert.assertTrue(textureEdgePixels == image.getWidth());
-			Assert.assertTrue(textureEdgePixels == image.getHeight());
-		}
-		int variantsPerIndex = BasicBlockAtlas.Variant.values().length;
-		boolean[] nonOpaqueVector = new boolean[images.length / variantsPerIndex];
-		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, variantsPerIndex, images, COMMON_TEXTURE_EDGE_PIXELS);
-		return new BasicBlockAtlas(blockItems, rawAtlas, nonOpaqueVector);
+		// We will now stitch these into the atlas, using the common helper and RawTextureAtlas.
+		BufferedImage[] images = collector.getImagesInOrder(blockItems);
+		
+		boolean[] nonOpaqueVector = new boolean[images.length];
+		RawTextureAtlas rawAtlas = _allocateRawAtlas(gl, nonOpaqueVector, 1, images, textureEdgePixels);
+		return collector.buildBlockAtlas(rawAtlas, blockItems, nonOpaqueVector);
 	}
 
 	public static AuxilliaryTextureAtlas loadAuxTextureAtlas(GL20 gl
@@ -245,6 +245,20 @@ public class TextureHelpers
 			loadedTextures[i] = loadedTexture;
 		}
 		return loadedTextures;
+	}
+
+	private static BufferedImage _loadOneImage(String imageName, int textureEdgePixels) throws IOException
+	{
+		BufferedImage loadedTexture = null;
+		FileHandle textureFile = Gdx.files.internal(imageName);
+		if (textureFile.exists())
+		{
+			loadedTexture = ImageIO.read(textureFile.read());
+			// We require all textures to be of fixed square size.
+			Assert.assertTrue(loadedTexture.getWidth() == textureEdgePixels);
+			Assert.assertTrue(loadedTexture.getHeight() == textureEdgePixels);
+		}
+		return loadedTexture;
 	}
 
 	private static BufferedImage[] _loadFileHandles(FileHandle[] handles, int textureEdgePixels) throws IOException
