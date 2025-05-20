@@ -26,7 +26,9 @@ public class MutablePreferences
 {
 	public static final String PREFS_FILE_NAME = "prefs.tablist";
 	public static final String KEY_CLIENT_NAME = "CLIENT_NAME";
-	public static final float SCREEN_BRIGHTNESS = 1.0f;
+	public static final String DEFAULT_CLIENT_NAME = "PLACEHOLDER";
+	public static final String KEY_SCREEN_BRIGHTNESS = "SCREEN_BRIGHTNESS";
+	public static final float DEFAULT_SCREEN_BRIGHTNESS = 1.0f;
 	// TODO:  Add the other options to the storage once we start applying them on start-up or connection.
 
 
@@ -43,8 +45,8 @@ public class MutablePreferences
 		// Value defaults.
 		this.isFullScreen = new Binding<>(false);
 		this.preferredViewDistance = new Binding<>(MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE);
-		this.clientName = new Binding<>("PLACEHOLDER");
-		this.screenBrightness = new Binding<>(SCREEN_BRIGHTNESS);
+		this.clientName = new Binding<>(DEFAULT_CLIENT_NAME);
+		this.screenBrightness = new Binding<>(DEFAULT_SCREEN_BRIGHTNESS);
 		
 		// See if there is a version on disk with overrides.
 		if (_backingFile.exists())
@@ -57,6 +59,10 @@ public class MutablePreferences
 				if (callbacks.data.containsKey(KEY_CLIENT_NAME))
 				{
 					this.clientName.set(callbacks.data.get(KEY_CLIENT_NAME));
+				}
+				if (callbacks.data.containsKey(KEY_SCREEN_BRIGHTNESS))
+				{
+					this.screenBrightness.set(Float.valueOf(callbacks.data.get(KEY_SCREEN_BRIGHTNESS)));
 				}
 				// TODO:  Read the other values here once we start persisting them.
 			}
@@ -85,6 +91,7 @@ public class MutablePreferences
 			stream.write(String.format("# OctoberPeaks preferences file.  See MutablePreferences.java for details.%n%n").getBytes(StandardCharsets.UTF_8));
 			
 			stream.write(String.format("%s\t%s%n", KEY_CLIENT_NAME, this.clientName.get()).getBytes(StandardCharsets.UTF_8));
+			stream.write(String.format("%s\t%.2f%n", KEY_SCREEN_BRIGHTNESS, this.screenBrightness.get()).getBytes(StandardCharsets.UTF_8));
 			// TODO:  Write the other values here once we start persisting them.
 		}
 		catch (FileNotFoundException e)

@@ -118,7 +118,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			// We will just store the world in the current directory.
 			File localWorldDirectory = new File("world");
 			// These inline start cases will just use an ephemeral brightness binding.
-			Binding<Float> screenBrightness = new Binding<>(MutablePreferences.SCREEN_BRIGHTNESS);
+			Binding<Float> screenBrightness = new Binding<>(MutablePreferences.DEFAULT_SCREEN_BRIGHTNESS);
 			GameSession currentGameSession;
 			try
 			{
