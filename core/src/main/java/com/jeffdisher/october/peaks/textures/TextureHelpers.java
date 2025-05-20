@@ -112,8 +112,10 @@ public class TextureHelpers
 			Block block = blockItems[i];
 			String itemName = "item_" + block.item().id() + ".png";
 			BufferedImage fallback = _loadOneImage(itemName, textureEdgePixels);
-			Assert.assertTrue(null != fallback);
-			collector.setBlockFallback(block, fallback);
+			if (null != fallback)
+			{
+				collector.setBlockFallback(block, fallback);
+			}
 			
 			for (BasicBlockAtlas.Variant variant : BasicBlockAtlas.Variant.values())
 			{
