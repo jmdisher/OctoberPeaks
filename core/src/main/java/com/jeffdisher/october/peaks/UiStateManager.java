@@ -85,6 +85,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final int MAX_WORLD_NAME = 16;
+	public static final String WORLD_DIRECTORY_PREFIX = "world_";
 
 	private final Environment _env;
 	private final GlUi _ui;
@@ -225,7 +226,7 @@ public class UiStateManager implements GameSession.ICallouts
 					_uiState = _UiState.LIST_SINGLE_PLAYER;
 					
 					// Update the world name list since we are entering that state.
-					List<String> worldNames = List.of(localStorageDirectory.list((File dir, String name) -> name.startsWith("world_")));
+					List<String> worldNames = List.of(localStorageDirectory.list((File dir, String name) -> name.startsWith(WORLD_DIRECTORY_PREFIX)));
 					_worldListBinding.set(worldNames);
 				}
 		});
@@ -256,7 +257,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_worldListView = new PaginatedListView<>(_ui
 			, _worldListBinding
 			, () -> _leftClick
-			, new StatelessViewTextButton(_ui)
+			, new StatelessViewTextButton(_ui, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length()))
 			, 0.1f
 			, (String directoryName) -> {
 				if (_leftClick)
