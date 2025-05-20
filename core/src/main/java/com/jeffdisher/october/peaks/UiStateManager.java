@@ -178,6 +178,7 @@ public class UiStateManager implements GameSession.ICallouts
 	// UI for rendering the options state.
 	private final ViewTextButton<Boolean> _fullScreenButton;
 	private final ViewControlPlusMinus<Integer> _viewDistanceControl;
+	private final ViewControlPlusMinus<Float> _brightnessControl;
 	private final ViewTextLabel _clientNameLabel;
 	private final ViewTextField _clientNameTextField;
 
@@ -580,6 +581,26 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 				}
 		});
+		_brightnessControl = new ViewControlPlusMinus<>(_ui, _mutablePreferences.screenBrightness
+				, (Float brightness) -> String.format("%.1fx", brightness)
+				, (boolean plus) -> {
+					if (_leftClick)
+					{
+						// We just want to increment this by 0.1 increments between 1.0 and 2.0.
+						int current = (int)(10.0f * _mutablePreferences.screenBrightness.get());
+						int next;
+						if (plus)
+						{
+							next = Math.min(20, current + 1);
+						}
+						else
+						{
+							next = Math.max(10, current - 1);
+						}
+						float updated = ((float) next) / 10.0f;
+						_mutablePreferences.screenBrightness.set(updated);
+					}
+			});
 		_clientNameLabel = new ViewTextLabel(_ui, new Binding<>("Client Name"));
 		_clientNameTextField = new ViewTextField(_ui, _mutablePreferences.clientName
 			, (ViewTextField textField) -> {
@@ -1313,13 +1334,20 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Draw the menu title and other UI.
 		String menuTitle = "Game Options";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		float nextTop = 0.5f;
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.4f, 0.2f, 0.4f, 0.3f), action);
-		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
-		action = _renderViewChainAction(_clientNameLabel, new Rect(-0.4f, -0.1f, 0.0f, 0.0f), action);
-		action = _renderViewChainAction(_clientNameTextField, new Rect(0.0f, -0.1f, 0.4f, 0.0f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.3f, 0.2f, -0.2f), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(_brightnessControl, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(_clientNameLabel, new Rect(-0.4f, nextTop - 0.1f, 0.0f, nextTop), action);
+		action = _renderViewChainAction(_clientNameTextField, new Rect(0.0f, nextTop - 0.1f, 0.4f, nextTop), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, nextTop - 0.1f, 0.2f, nextTop), action);
 		
 		return action;
 	}
