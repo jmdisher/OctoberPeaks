@@ -1,36 +1,35 @@
 package com.jeffdisher.october.peaks.ui;
 
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 
 /**
  * A view which is actually a control to display and change a value - sends the callback whenever it is changed.
  */
-public class ViewControlIntChanger implements IView
+public class ViewControlPlusMinus<T> implements IView
 {
 	private final GlUi _ui;
-	private final Binding<Integer> _dataBinding;
-	private final Function<Integer, String> _valueTransformer;
-	private final BiConsumer<ViewControlIntChanger, Integer> _hoverAction;
+	private final Binding<T> _dataBinding;
+	private final Function<T, String> _valueTransformer;
+	private final IChange _action;
 
-	public ViewControlIntChanger(GlUi ui
-			, Binding<Integer> dataBinding
-			, Function<Integer, String> valueTransformer
-			, BiConsumer<ViewControlIntChanger, Integer> hoverAction
+	public ViewControlPlusMinus(GlUi ui
+			, Binding<T> dataBinding
+			, Function<T, String> valueTransformer
+			, IChange action
 	)
 	{
 		_ui = ui;
 		_dataBinding = dataBinding;
 		_valueTransformer = valueTransformer;
-		_hoverAction = hoverAction;
+		_action = action;
 	}
 
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
 		// For now, we will just make a segmented display of 3 buttons:  - <val> + by splitting the location into thirds by X.
-		Integer object = _dataBinding.get();
+		T object = _dataBinding.get();
 		String text = _valueTransformer.apply(object);
 		
 		float thirdWidth = location.getWidth() / 3.0f;
@@ -54,11 +53,11 @@ public class ViewControlIntChanger implements IView
 		_Action action;
 		if (didClickMinus)
 		{
-			action = new _Action(object - 1);
+			action = new _Action(false);
 		}
 		else if (didClickPlus)
 		{
-			action = new _Action(object + 1);
+			action = new _Action(true);
 		}
 		else
 		{
@@ -68,12 +67,18 @@ public class ViewControlIntChanger implements IView
 	}
 
 
+	public static interface IChange
+	{
+		public void didChange(boolean plus);
+	}
+
+
 	private class _Action implements IAction
 	{
-		private final Integer _object;
-		public _Action(Integer object)
+		private final boolean _plus;
+		public _Action(boolean plus)
 		{
-			_object = object;
+			_plus = plus;
 		}
 		@Override
 		public void renderHover(Point cursor)
@@ -83,7 +88,7 @@ public class ViewControlIntChanger implements IView
 		@Override
 		public void takeAction()
 		{
-			_hoverAction.accept(ViewControlIntChanger.this, _object);
+			_action.didChange(_plus);
 		}
 	}
 }

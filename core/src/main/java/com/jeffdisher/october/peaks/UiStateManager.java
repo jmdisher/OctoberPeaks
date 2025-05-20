@@ -40,7 +40,7 @@ import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
-import com.jeffdisher.october.peaks.ui.ViewControlIntChanger;
+import com.jeffdisher.october.peaks.ui.ViewControlPlusMinus;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
@@ -177,7 +177,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// UI for rendering the options state.
 	private final ViewTextButton<Boolean> _fullScreenButton;
-	private final ViewControlIntChanger _viewDistanceControl;
+	private final ViewControlPlusMinus<Integer> _viewDistanceControl;
 	private final ViewTextLabel _clientNameLabel;
 	private final ViewTextField _clientNameTextField;
 
@@ -563,15 +563,18 @@ public class UiStateManager implements GameSession.ICallouts
 					_mutablePreferences.isFullScreen.set(newFullScreen);
 				}
 		});
-		_viewDistanceControl = new ViewControlIntChanger(_ui, _mutablePreferences.preferredViewDistance
+		_viewDistanceControl = new ViewControlPlusMinus<>(_ui, _mutablePreferences.preferredViewDistance
 			, (Integer distance) -> distance + " cuboids"
-			, (ViewControlIntChanger button, Integer newDistance) -> {
+			, (boolean plus) -> {
 				if (_leftClick)
 				{
 					// TODO:  When we persist preferences, put this there whether or not in game.
 					if (null != _currentGameSession)
 					{
 						// We try changing this in the client and it will return the updated value.
+						int newDistance = _mutablePreferences.preferredViewDistance.get() +
+								(plus ? 1 : -1)
+						;
 						int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
 						_mutablePreferences.preferredViewDistance.set(finalValue);
 					}
