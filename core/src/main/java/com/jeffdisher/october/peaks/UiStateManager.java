@@ -1647,7 +1647,7 @@ public class UiStateManager implements GameSession.ICallouts
 		File localWorldDirectory = new File(localStorageDirectory, directoryName);
 		try
 		{
-			_currentGameSession = new GameSession(_env, gl, resources, "Local", null, localWorldDirectory, this);
+			_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, "Local", null, localWorldDirectory, this);
 		}
 		catch (ConnectException e)
 		{
@@ -1663,7 +1663,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, InetSocketAddress serverAddress) throws ConnectException
 	{
-		_currentGameSession = new GameSession(_env, gl, resources, clientName, serverAddress, null, this);
+		_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, serverAddress, null, this);
 		// TODO:  Use an intermediate state for this delay.
 		_currentGameSession.finishStartup();
 		_isRunningOnServer = true;

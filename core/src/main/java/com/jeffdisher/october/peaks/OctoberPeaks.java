@@ -10,10 +10,12 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
+import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.utils.Assert;
 
@@ -115,10 +117,12 @@ public class OctoberPeaks extends ApplicationAdapter
 			// Immediately transition into playing state.  This will become more complex later.
 			// We will just store the world in the current directory.
 			File localWorldDirectory = new File("world");
+			// These inline start cases will just use an ephemeral brightness binding.
+			Binding<Float> screenBrightness = new Binding<>(MutablePreferences.SCREEN_BRIGHTNESS);
 			GameSession currentGameSession;
 			try
 			{
-				currentGameSession = new GameSession(_environment, _gl, _resources, _clientName, _serverSocketAddress, localWorldDirectory, _uiState);
+				currentGameSession = new GameSession(_environment, _gl, screenBrightness, _resources, _clientName, _serverSocketAddress, localWorldDirectory, _uiState);
 			}
 			catch (ConnectException e)
 			{

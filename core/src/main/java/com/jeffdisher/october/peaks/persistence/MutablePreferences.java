@@ -26,6 +26,7 @@ public class MutablePreferences
 {
 	public static final String PREFS_FILE_NAME = "prefs.tablist";
 	public static final String KEY_CLIENT_NAME = "CLIENT_NAME";
+	public static final float SCREEN_BRIGHTNESS = 1.0f;
 	// TODO:  Add the other options to the storage once we start applying them on start-up or connection.
 
 
@@ -33,6 +34,7 @@ public class MutablePreferences
 	public final Binding<Boolean> isFullScreen;
 	public final Binding<Integer> preferredViewDistance;
 	public final Binding<String> clientName;
+	public final Binding<Float> screenBrightness;
 
 	public MutablePreferences(File localStorageDirectory)
 	{
@@ -42,6 +44,7 @@ public class MutablePreferences
 		this.isFullScreen = new Binding<>(false);
 		this.preferredViewDistance = new Binding<>(MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE);
 		this.clientName = new Binding<>("PLACEHOLDER");
+		this.screenBrightness = new Binding<>(SCREEN_BRIGHTNESS);
 		
 		// See if there is a version on disk with overrides.
 		if (_backingFile.exists())

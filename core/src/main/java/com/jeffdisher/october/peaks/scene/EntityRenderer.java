@@ -21,6 +21,7 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
@@ -36,7 +37,6 @@ public class EntityRenderer
 {
 	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
 	public static final long DAMAGE_DURATION_MILLIS = 1000L;
-
 	public static class Resources
 	{
 		private final Program _program;
@@ -46,6 +46,7 @@ public class EntityRenderer
 		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uDamage;
+		private final int _uBrightness;
 		private final Map<EntityType, _EntityData> _entityData;
 		private final int _highlightTexture;
 		
@@ -67,6 +68,7 @@ public class EntityRenderer
 			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uDamage = _program.getUniformLocation("uDamage");
+			_uBrightness = _program.getUniformLocation("uBrightness");
 			
 			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 			direct.order(ByteOrder.nativeOrder());
@@ -98,13 +100,15 @@ public class EntityRenderer
 
 
 	private final GL20 _gl;
+	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
 	private final Map<Integer, PartialEntity> _entities;
 	private final Map<Integer, Long> _entityDamageMillis;
 
-	public EntityRenderer(GL20 gl, LoadedResources resources)
+	public EntityRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
 	{
 		_gl = gl;
+		_screenBrightness = screenBrightness;
 		_resources = resources.entityRenderer();
 		
 		_entities = new HashMap<>();
@@ -120,6 +124,7 @@ public class EntityRenderer
 		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// We just use the texture for the entity.
@@ -170,6 +175,7 @@ public class EntityRenderer
 		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// We just use the texture for the entity.

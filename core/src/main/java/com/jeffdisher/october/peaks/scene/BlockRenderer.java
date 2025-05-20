@@ -28,6 +28,7 @@ import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -58,6 +59,7 @@ public class BlockRenderer
 		private final int _uTexture0;
 		private final int _uTexture1;
 		private final int _uSkyLight;
+		private final int _uBrightness;
 		private final Map<Block, Prism> _blockModelBounds;
 		private final int _highlightTexture;
 		private final VertexArray _defaultHighlightCube;
@@ -110,6 +112,7 @@ public class BlockRenderer
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uTexture1 = _program.getUniformLocation("uTexture1");
 			_uSkyLight = _program.getUniformLocation("uSkyLight");
+			_uBrightness = _program.getUniformLocation("uBrightness");
 			
 			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 			direct.order(ByteOrder.nativeOrder());
@@ -145,15 +148,16 @@ public class BlockRenderer
 
 	private final Environment _environment;
 	private final GL20 _gl;
+	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
 	private final CuboidMeshManager _cuboidMeshes;
 
-	public BlockRenderer(Environment environment, GL20 gl, LoadedResources resources)
+	public BlockRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
 	{
 		_environment = environment;
 		_gl = gl;
+		_screenBrightness = screenBrightness;
 		_resources = resources.blockRenderer();
-		
 		
 		_cuboidMeshes = new CuboidMeshManager(_environment, new CuboidMeshManager.IGpu() {
 			@Override
@@ -184,6 +188,7 @@ public class BlockRenderer
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// This shader uses 2 textures.
@@ -237,6 +242,7 @@ public class BlockRenderer
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// This shader uses 2 textures.
@@ -310,6 +316,7 @@ public class BlockRenderer
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// This shader uses 2 textures.

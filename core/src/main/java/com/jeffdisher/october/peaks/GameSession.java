@@ -18,6 +18,7 @@ import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.peaks.scene.SceneRenderer;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -43,6 +44,7 @@ public class GameSession
 
 	public GameSession(Environment environment
 			, GL20 gl
+			, Binding<Float> screenBrightness
 			, LoadedResources resources
 			, String clientName
 			, InetSocketAddress serverSocketAddress
@@ -62,7 +64,7 @@ public class GameSession
 			return proxy;
 		};
 		
-		this.scene = new SceneRenderer(environment, gl, resources);
+		this.scene = new SceneRenderer(environment, gl, screenBrightness, resources);
 		this.scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		
 		this.eyeEffect = new EyeEffect(gl, resources);

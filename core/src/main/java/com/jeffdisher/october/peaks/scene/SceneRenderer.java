@@ -12,6 +12,7 @@ import com.jeffdisher.october.peaks.SkyBox;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -34,11 +35,11 @@ public class SceneRenderer
 	private Vector _eye;
 	private float _skyLightMultiplier;
 
-	public SceneRenderer(Environment environment, GL20 gl, LoadedResources resources)
+	public SceneRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
 	{
 		_gl = gl;
-		_blockRenderer = new BlockRenderer(environment, gl, resources);
-		_entityRenderer = new EntityRenderer(gl, resources);
+		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
+		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources);
 		_skyBox = new SkyBox(gl, resources);
 		
 		_viewMatrix = Matrix.identity();
