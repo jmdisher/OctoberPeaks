@@ -139,14 +139,14 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<List<String>> _worldListBinding;
 	private final PaginatedListView<String> _worldListView;
 	private final Binding<String> _newWorldNameBinding;
-	private final ViewTextField _newWorldNameTextField;
+	private final ViewTextField<String> _newWorldNameTextField;
 	private final ViewTextButton<String> _createWorldButton;
 	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
 	private final PaginatedListView<MutableServerList.ServerRecord> _serverListView;
 	private final Binding<String> _newServerAddressBinding;
-	private final ViewTextField _newServerAddressTextField;
+	private final ViewTextField<String> _newServerAddressTextField;
 	private final ViewTextButton<String> _connectToServerButton;
 
 	// Bindings defined/owned here and referenced by various UI components.
@@ -180,7 +180,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewControlPlusMinus<Integer> _viewDistanceControl;
 	private final ViewControlPlusMinus<Float> _brightnessControl;
 	private final ViewTextLabel _clientNameLabel;
-	private final ViewTextField _clientNameTextField;
+	private final ViewTextField<String> _clientNameTextField;
 
 	// UI and state related to key bindings prefs.
 	private final ViewKeyControlSelector _keyBindingSelectorControl;
@@ -287,8 +287,10 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 				}
 		});
-		_newWorldNameTextField = new ViewTextField(_ui, _newWorldNameBinding
-			, (ViewTextField textField) -> {
+		_newWorldNameTextField = new ViewTextField<>(_ui, _newWorldNameBinding
+			, (String value) -> (_typingCapture == _newWorldNameBinding) ? (value + "_") : value
+			, () -> (_typingCapture == _newWorldNameBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
+			, () -> {
 				if (_leftClick)
 				{
 					// We want to enable text capture for this binding.
@@ -379,8 +381,10 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		);
-		_newServerAddressTextField = new ViewTextField(_ui, _newServerAddressBinding
-			, (ViewTextField textField) -> {
+		_newServerAddressTextField = new ViewTextField<>(_ui, _newServerAddressBinding
+			, (String value) -> (_typingCapture == _newServerAddressBinding) ? (value + "_") : value
+			, () -> (_typingCapture == _newServerAddressBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
+			, () -> {
 				if (_leftClick)
 				{
 					// We want to enable text capture for this binding.
@@ -602,8 +606,10 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 			});
 		_clientNameLabel = new ViewTextLabel(_ui, new Binding<>("Client Name"));
-		_clientNameTextField = new ViewTextField(_ui, _mutablePreferences.clientName
-			, (ViewTextField textField) -> {
+		_clientNameTextField = new ViewTextField<>(_ui, _mutablePreferences.clientName
+			, (String value) -> (_typingCapture == _mutablePreferences.clientName) ? (value + "_") : value
+			, () -> (_typingCapture == _mutablePreferences.clientName) ? _ui.pixelGreen : _ui.pixelLightGrey
+			, () -> {
 				if (_leftClick)
 				{
 					// We want to enable text capture for this binding.
