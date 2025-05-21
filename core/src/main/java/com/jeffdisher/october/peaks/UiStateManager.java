@@ -139,9 +139,12 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<List<String>> _worldListBinding;
 	private final PaginatedListView<String> _worldListView;
 	private final Binding<String> _newWorldNameBinding;
+	private final ViewTextButton<String> _enterCreateSingleState;
+	private final ViewTextButton<String> _backButton;
+
+	// Ui for new single-player.
 	private final ViewTextField<String> _newWorldNameTextField;
 	private final ViewTextButton<String> _createWorldButton;
-	private final ViewTextButton<String> _backButton;
 
 	// UI for the multi-player list.
 	private final PaginatedListView<MutableServerList.ServerRecord> _serverListView;
@@ -267,26 +270,54 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		);
+		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
+				, (String text) -> text
+				, (ViewTextButton<String> button, String text) -> {
+					if (_leftClick)
+					{
+						// This is the same as hitting escape.
+						_doBackStateTransition();
+					}
+			}
+		);
 		_newWorldNameBinding = new Binding<>("");
+		_enterCreateSingleState = new ViewTextButton<>(_ui, new Binding<>("Create New World")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// Enter the single-player creation window.
+					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
+					_uiState = _UiState.NEW_SINGLE_PLAYER;
+					
+					// Select the default text field.
+					_typingCapture = _newWorldNameBinding;
+				}
+			}
+		);
+		
+		// New single player UI.
 		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Create New")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
 				{
 					// We want to start a single-player game.
-					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
+					Assert.assertTrue(_UiState.NEW_SINGLE_PLAYER == _uiState);
 					
-					// Construct the world name (this will change as we flesh out the world selector).
+					// Make sure that the name is non-empty and not already used.
 					String worldName = _newWorldNameBinding.get();
-					if (worldName.length() > 0)
+					String directoryName = "world_" + worldName;
+					boolean alreadyExists = _worldListBinding.get().contains(directoryName);
+					if (!alreadyExists && (worldName.length() > 0))
 					{
-						String directoryName = "world_" + worldName;
 						_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
 						_newWorldNameBinding.set("");
 						_typingCapture = null;
 					}
 				}
-		});
+			}
+		);
 		_newWorldNameTextField = new ViewTextField<>(_ui, _newWorldNameBinding
 			, (String value) -> (_typingCapture == _newWorldNameBinding) ? (value + "_") : value
 			, () -> (_typingCapture == _newWorldNameBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
@@ -298,15 +329,6 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		);
-		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
-				, (String text) -> text
-				, (ViewTextButton<String> button, String text) -> {
-					if (_leftClick)
-					{
-						// This is the same as hitting escape.
-						_doBackStateTransition();
-					}
-			});
 		
 		// Server list UI.
 		StatelessMultiLineButton<MutableServerList.ServerRecord> serverLine = new StatelessMultiLineButton<>(_ui, new StatelessMultiLineButton.ITransformer<>() {
@@ -1086,6 +1108,19 @@ public class UiStateManager implements GameSession.ICallouts
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_worldListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
+		action = _renderViewChainAction(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
+		
+		return action;
+	}
+
+	private IAction _drawNewSinglePlayerStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "Create Single Player World";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
+		IAction action = null;
 		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, -0.7f, 0.1f, -0.6f), action);
 		action = _renderViewChainAction(_createWorldButton, new Rect(0.1f, -0.7f, 0.4f, -0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
@@ -1443,6 +1478,9 @@ public class UiStateManager implements GameSession.ICallouts
 		case LIST_SINGLE_PLAYER:
 			action = _drawListSinglePlayerStateWindows();
 			break;
+		case NEW_SINGLE_PLAYER:
+			action = _drawNewSinglePlayerStateWindows();
+			break;
 		case LIST_MULTI_PLAYER:
 			action = _drawListMultiPlayerStateWindows();
 			break;
@@ -1623,6 +1661,10 @@ public class UiStateManager implements GameSession.ICallouts
 			// We just want to go back.
 			_uiState = _UiState.START;
 			break;
+		case NEW_SINGLE_PLAYER:
+			// Go back to the list.
+			_uiState = _UiState.LIST_SINGLE_PLAYER;
+			break;
 		case LIST_MULTI_PLAYER:
 			// We just want to go back.
 			_uiState = _UiState.START;
@@ -1728,6 +1770,10 @@ public class UiStateManager implements GameSession.ICallouts
 		 * The state where we show a list of existing single-player worlds and present an option to create a new one.
 		 */
 		LIST_SINGLE_PLAYER,
+		/**
+		 * The state where we present an option to create a new one.
+		 */
+		NEW_SINGLE_PLAYER,
 		/**
 		 * The state where we show a list of known multi-player server and present an option to add a new one.
 		 */
