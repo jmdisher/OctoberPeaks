@@ -23,6 +23,14 @@ import com.jeffdisher.october.utils.Assert;
  * write-back to disk can be correctly orchestrated.
  * Note that this expects the PollingClient responses on a background thread so it internally uses synchronization to
  * lock access to the underlying StateRecord list (although a lock would be more ideal).
+ * WARNING:  This class plays pretty "fast-and-loose" with thread safety as the "servers" variable's elements are
+ * directly read externally (as it is public), and internally written by the background thread.  This is safe as long as
+ * the following rules are followed:
+ * 1) The background thread only accesses the list under lock
+ * 2) The background thread never adds/removes elements from the list
+ * 3) The foreground thread only modifies the list under lock
+ * These rules allow concurrent updates to the data elements while only allowing changes to the list by the foreground
+ * thread, while holding a lock which prevents the background thread from accessing the list (while being modified).
  */
 public class MutableServerList implements PollingClient.IListener
 {
@@ -33,6 +41,11 @@ public class MutableServerList implements PollingClient.IListener
 	private final File _backingFile;
 	private final PollingClient _pollingClient;
 	public final Binding<List<ServerRecord>> servers;
+
+	// A record is stored here while being checked for a special-case external call.  This is used for records which are
+	// not yet part of the internal server list.
+	// It can only be accessed under lock.
+	private ServerRecord _shared_specialRequest;
 
 	public MutableServerList(File localStorageDirectory)
 	{
@@ -91,18 +104,29 @@ public class MutableServerList implements PollingClient.IListener
 		}
 	}
 
-	public synchronized void addServer(InetSocketAddress newServer)
+	public synchronized ServerRecord beginSpecialPollRequest(InetSocketAddress newServer)
+	{
+		// This call is expected on the main thread.
+		Assert.assertTrue(Thread.currentThread() == _mainThread);
+		
+		// We will over-write any currently in-progress polls.
+		_shared_specialRequest = new ServerRecord(newServer);
+		_pollingClient.pollServer(newServer);
+		
+		// This will be populated asynchronously by the background thread.
+		return _shared_specialRequest;
+	}
+
+	public synchronized void addServerToList(ServerRecord server)
 	{
 		// This call is expected on the main thread.
 		Assert.assertTrue(Thread.currentThread() == _mainThread);
 		
 		// Make sure that this isn't already in the list.
-		boolean canAdd = (null == _findRecord(newServer));
+		boolean canAdd = (null == _findRecord(server.address));
 		if (canAdd)
 		{
-			ServerRecord server = new ServerRecord(newServer);
 			servers.get().add(server);
-			_pollingClient.pollServer(newServer);
 			_flushToDisk();
 		}
 	}
@@ -113,7 +137,21 @@ public class MutableServerList implements PollingClient.IListener
 		// This call is expected on the background thread.
 		Assert.assertTrue(Thread.currentThread() != _mainThread);
 		
-		ServerRecord found = _findRecord(serverToPoll);
+		// Check if this is a special-case.
+		ServerRecord found  = null;
+		if ((null != _shared_specialRequest) && _doAddressesMatch(_shared_specialRequest.address, serverToPoll))
+		{
+			found = _shared_specialRequest;
+			_shared_specialRequest = null;
+		}
+		
+		// If that didn't work, find the usual list.
+		if (null == found)
+		{
+			found = _findRecord(serverToPoll);
+		}
+		
+		// As long as found this anywhere, update it.
 		if (null != found)
 		{
 			found.isGood = false;
@@ -127,7 +165,21 @@ public class MutableServerList implements PollingClient.IListener
 		// This call is expected on the background thread.
 		Assert.assertTrue(Thread.currentThread() != _mainThread);
 		
-		ServerRecord found = _findRecord(serverToPoll);
+		// Check if this is a special-case.
+		ServerRecord found  = null;
+		if ((null != _shared_specialRequest) && _doAddressesMatch(_shared_specialRequest.address, serverToPoll))
+		{
+			found = _shared_specialRequest;
+			_shared_specialRequest = null;
+		}
+		
+		// If that didn't work, find the usual list.
+		if (null == found)
+		{
+			found = _findRecord(serverToPoll);
+		}
+		
+		// As long as found this anywhere, update it.
 		if (null != found)
 		{
 			boolean versionDoesMatch = (Packet_ClientSendDescription.NETWORK_PROTOCOL_VERSION == version);
@@ -171,18 +223,21 @@ public class MutableServerList implements PollingClient.IListener
 	private ServerRecord _findRecord(InetSocketAddress serverToCheck)
 	{
 		ServerRecord record = null;
-		String hostname = serverToCheck.getHostName();
-		int port = serverToCheck.getPort();
 		for (ServerRecord server : this.servers.get())
 		{
 			InetSocketAddress address = server.address;
-			if (hostname.equals(address.getHostName()) && (port == address.getPort()))
+			if (_doAddressesMatch(serverToCheck, address))
 			{
 				record = server;
 				break;
 			}
 		}
 		return record;
+	}
+
+	private static boolean _doAddressesMatch(InetSocketAddress one, InetSocketAddress two)
+	{
+		return one.getHostName().equals(two.getHostName()) && (one.getPort() == two.getPort());
 	}
 
 

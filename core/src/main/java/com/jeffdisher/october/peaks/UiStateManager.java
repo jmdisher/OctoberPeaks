@@ -46,6 +46,7 @@ import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
+import com.jeffdisher.october.peaks.ui.ViewOfStateless;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.ViewTextButton;
 import com.jeffdisher.october.peaks.ui.ViewTextField;
@@ -148,9 +149,15 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// UI for the multi-player list.
 	private final PaginatedListView<MutableServerList.ServerRecord> _serverListView;
+	private final ViewTextButton<String> _enterAddNewServerButton;
+
+	// UI for new multi-player.
 	private final Binding<String> _newServerAddressBinding;
+	private final Binding<MutableServerList.ServerRecord> _currentlyTestingServerBinding;
+	private final ViewOfStateless<MutableServerList.ServerRecord> _currentlyTestingServerView;
 	private final ViewTextField<String> _newServerAddressTextField;
-	private final ViewTextButton<String> _connectToServerButton;
+	private final ViewTextButton<String> _testServerButton;
+	private final ViewTextButton<String> _saveServerButton;
 
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
@@ -369,14 +376,46 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		);
+		_currentlyTestingServerBinding = new Binding<>(null);
 		_newServerAddressBinding = new Binding<>("");
-		_connectToServerButton = new ViewTextButton<>(_ui, new Binding<>("Connect")
+		_enterAddNewServerButton = new ViewTextButton<>(_ui, new Binding<>("Add New Server")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
 				{
-					// We want to connect to a server.
+					// Enter the single-player creation window.
 					Assert.assertTrue(_UiState.LIST_MULTI_PLAYER == _uiState);
+					_uiState = _UiState.NEW_MULTI_PLAYER;
+					
+					// Select the default text field.
+					_typingCapture = _newServerAddressBinding;
+					
+					// Clear any stale state from last time.
+					_currentlyTestingServerBinding.set(null);
+				}
+			}
+		);
+		
+		// New server UI.
+		_currentlyTestingServerView = new ViewOfStateless<>(serverLine, _currentlyTestingServerBinding);
+		_newServerAddressTextField = new ViewTextField<>(_ui, _newServerAddressBinding
+			, (String value) -> (_typingCapture == _newServerAddressBinding) ? (value + "_") : value
+			, () -> (_typingCapture == _newServerAddressBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
+			, () -> {
+				if (_leftClick)
+				{
+					// We want to enable text capture for this binding.
+					_typingCapture = _newServerAddressBinding;
+				}
+			}
+		);
+		_testServerButton = new ViewTextButton<>(_ui, new Binding<>("Test Connection")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// We want to do the test for version, etc, and add this to our list on success.
+					Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
 					
 					// We will need to parse this address from the binding.
 					String rawAddress = _newServerAddressBinding.get();
@@ -386,31 +425,33 @@ public class UiStateManager implements GameSession.ICallouts
 						String ipHostName = rawAddress.substring(0, colonIndex);
 						int port = Integer.parseInt(rawAddress.substring(colonIndex + 1));
 						InetSocketAddress address = new InetSocketAddress(ipHostName, port);
-						try
-						{
-							String clientName = _mutablePreferences.clientName.get();
-							_connectToServer(gl, localStorageDirectory, resources, clientName, address);
-							// We can now add this to the list and save it, since we connected.
-							_serverList.addServer(address);
-						}
-						catch (ConnectException e)
-						{
-							// TODO:  Display this somewhere.
-						}
+						
+						// Create the socket and start the background test, storing the new token in the binding.
+						MutableServerList.ServerRecord record = _serverList.beginSpecialPollRequest(address);
+						_currentlyTestingServerBinding.set(record);
 						_newServerAddressBinding.set("");
 						_typingCapture = null;
 					}
 				}
 			}
 		);
-		_newServerAddressTextField = new ViewTextField<>(_ui, _newServerAddressBinding
-			, (String value) -> (_typingCapture == _newServerAddressBinding) ? (value + "_") : value
-			, () -> (_typingCapture == _newServerAddressBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
-			, () -> {
+		_saveServerButton = new ViewTextButton<>(_ui, new Binding<>("Save Tested Connection")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
 				{
-					// We want to enable text capture for this binding.
-					_typingCapture = _newServerAddressBinding;
+					Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
+					
+					// If there is a binding, and it is good, add it to the server list and back out of this.
+					MutableServerList.ServerRecord record = _currentlyTestingServerBinding.get();
+					if ((null != record) && record.isGood)
+					{
+						_serverList.addServerToList(record);
+						_currentlyTestingServerBinding.set(null);
+						
+						// We can escape this state.
+						_doBackStateTransition();
+					}
 				}
 			}
 		);
@@ -1136,8 +1177,23 @@ public class UiStateManager implements GameSession.ICallouts
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_serverListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
-		action = _renderViewChainAction(_newServerAddressTextField, new Rect(-0.4f, -0.7f, 0.1f, -0.6f), action);
-		action = _renderViewChainAction(_connectToServerButton, new Rect(0.1f, -0.7f, 0.4f, -0.6f), action);
+		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
+		
+		return action;
+	}
+
+	private IAction _drawNewMultiPlayerStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "New Server Connection";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_currentlyTestingServerView, new Rect(-0.4f, -0.6f, 0.4f, -0.4f), action);
+		action = _renderViewChainAction(_newServerAddressTextField, new Rect(-0.5f, -0.7f, 0.1f, -0.6f), action);
+		action = _renderViewChainAction(_testServerButton, new Rect(0.1f, -0.7f, 0.5f, -0.6f), action);
+		action = _renderViewChainAction(_saveServerButton, new Rect(-0.3f, -0.8f, 0.3f, -0.7f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		
 		return action;
@@ -1484,6 +1540,9 @@ public class UiStateManager implements GameSession.ICallouts
 		case LIST_MULTI_PLAYER:
 			action = _drawListMultiPlayerStateWindows();
 			break;
+		case NEW_MULTI_PLAYER:
+			action = _drawNewMultiPlayerStateWindows();
+			break;
 		case OPTIONS:
 			action = _drawOptionsStateWindows();
 			break;
@@ -1669,6 +1728,10 @@ public class UiStateManager implements GameSession.ICallouts
 			// We just want to go back.
 			_uiState = _UiState.START;
 			break;
+		case NEW_MULTI_PLAYER:
+			// Go back to the list.
+			_uiState = _UiState.LIST_MULTI_PLAYER;
+			break;
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -1775,9 +1838,13 @@ public class UiStateManager implements GameSession.ICallouts
 		 */
 		NEW_SINGLE_PLAYER,
 		/**
-		 * The state where we show a list of known multi-player server and present an option to add a new one.
+		 * The state where we show a list of known multi-player servers.
 		 */
 		LIST_MULTI_PLAYER,
+		/**
+		 * The state where present an option to add a new one server to our list.
+		 */
+		NEW_MULTI_PLAYER,
 		/**
 		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
 		 * If there is a _currentGameSession, it will be shown in the background.
