@@ -149,6 +149,9 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _enterCreateSingleState;
 	private final ViewTextButton<String> _backButton;
 
+	// UI for delete confirmation.
+	private final ViewTextButton<String> _confirmDeleteButton;
+
 	// Ui for new single-player.
 	private final ViewTextField<String> _newWorldNameTextField;
 	private final ViewTextButton<String> _createWorldButton;
@@ -243,8 +246,7 @@ public class UiStateManager implements GameSession.ICallouts
 					_uiState = _UiState.LIST_SINGLE_PLAYER;
 					
 					// Update the world name list since we are entering that state.
-					List<String> worldNames = List.of(localStorageDirectory.list((File dir, String name) -> name.startsWith(WORLD_DIRECTORY_PREFIX)));
-					_worldListBinding.set(worldNames);
+					_rebuildSinglePlayerListBinding(_worldListBinding, localStorageDirectory);
 				}
 		});
 		_multiPlayerButton = new ViewTextButton<>(_ui, new Binding<>("Multi-Player")
@@ -280,12 +282,18 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		);
+		Binding<String> selectedWorldNameForDelete = new Binding<>(null);
 		StatelessViewTextButton<String> deleteWorldButton = new StatelessViewTextButton<>(_ui
 			, (String text) -> "X"
 			, (String directoryName) -> {
 				if (_leftClick)
 				{
-					System.out.println("TODO:  Delete \"" + directoryName + "\"");
+					// We want to enter the confirmation state.
+					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
+					_uiState = _UiState.CONFIRM_DELETE_SINGLE_PLAYER;
+					
+					// We also need to put this chosen directory in the binding.
+					selectedWorldNameForDelete.set(directoryName);
 				}
 			}
 		);
@@ -318,6 +326,29 @@ public class UiStateManager implements GameSession.ICallouts
 					// Select the default text field.
 					_typingCapture = _newWorldNameBinding;
 				}
+			}
+		);
+		
+		// World delete confirmation UI.
+		_confirmDeleteButton = new ViewTextButton<>(_ui, selectedWorldNameForDelete
+				, (String text) -> "Confirm delete world \"" + text.substring(WORLD_DIRECTORY_PREFIX.length()) + "\" (cannot be undone)"
+				, (ViewTextButton<String> button, String text) -> {
+					if (_leftClick)
+					{
+						// Verify state transition.
+						Assert.assertTrue(_UiState.CONFIRM_DELETE_SINGLE_PLAYER == _uiState);
+						_uiState = _UiState.LIST_SINGLE_PLAYER;
+						
+						// Delete the directory, then return to the listing.
+						File localWorldDirectory = new File(localStorageDirectory, selectedWorldNameForDelete.get());
+						System.out.println("Deleting local world: " + localWorldDirectory);
+						_deleteWorldRecursively(localWorldDirectory);
+						
+						selectedWorldNameForDelete.set(null);
+						
+						// We also need to rebuild the list.
+						_rebuildSinglePlayerListBinding(_worldListBinding, localStorageDirectory);
+					}
 			}
 		);
 		
@@ -1173,6 +1204,19 @@ public class UiStateManager implements GameSession.ICallouts
 		return action;
 	}
 
+	private IAction _drawConfirmDeleteSinglePlayerStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "Confirm Delete?";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_confirmDeleteButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
+		
+		return action;
+	}
+
 	private IAction _drawNewSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -1553,6 +1597,9 @@ public class UiStateManager implements GameSession.ICallouts
 		case LIST_SINGLE_PLAYER:
 			action = _drawListSinglePlayerStateWindows();
 			break;
+		case CONFIRM_DELETE_SINGLE_PLAYER:
+			action = _drawConfirmDeleteSinglePlayerStateWindows();
+			break;
 		case NEW_SINGLE_PLAYER:
 			action = _drawNewSinglePlayerStateWindows();
 			break;
@@ -1739,6 +1786,10 @@ public class UiStateManager implements GameSession.ICallouts
 			// We just want to go back.
 			_uiState = _UiState.START;
 			break;
+		case CONFIRM_DELETE_SINGLE_PLAYER:
+			// Go back to the list.
+			_uiState = _UiState.LIST_SINGLE_PLAYER;
+			break;
 		case NEW_SINGLE_PLAYER:
 			// Go back to the list.
 			_uiState = _UiState.LIST_SINGLE_PLAYER;
@@ -1837,6 +1888,32 @@ public class UiStateManager implements GameSession.ICallouts
 		_captureState.shouldCaptureMouse(true);
 	}
 
+	private static void _rebuildSinglePlayerListBinding(Binding<List<String>> worldListBinding, File localStorageDirectory)
+	{
+		List<String> worldNames = List.of(localStorageDirectory.list((File dir, String name) -> name.startsWith(WORLD_DIRECTORY_PREFIX)));
+		worldListBinding.set(worldNames);
+	}
+
+	private static void _deleteWorldRecursively(File directory)
+	{
+		// We should only see directories this way (unless someone was messing with our on-disk data).
+		Assert.assertTrue(directory.isDirectory());
+		
+		// Walk all the files, recursively deleting directories.
+		for (File sub : directory.listFiles())
+		{
+			if (sub.isDirectory())
+			{
+				_deleteWorldRecursively(sub);
+			}
+			else
+			{
+				sub.delete();
+			}
+		}
+		directory.delete();
+	}
+
 
 	/**
 	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
@@ -1852,6 +1929,10 @@ public class UiStateManager implements GameSession.ICallouts
 		 * The state where we show a list of existing single-player worlds and present an option to create a new one.
 		 */
 		LIST_SINGLE_PLAYER,
+		/**
+		 * The state where we just allow confirmation to delete a single-player world.
+		 */
+		CONFIRM_DELETE_SINGLE_PLAYER,
 		/**
 		 * The state where we present an option to create a new one.
 		 */
