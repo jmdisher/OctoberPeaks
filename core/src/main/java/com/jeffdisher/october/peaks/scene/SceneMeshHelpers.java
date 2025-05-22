@@ -124,7 +124,8 @@ public class SceneMeshHelpers
 				, inputData
 		);
 		faces.populateMasks(inputData.cuboid, shouldInclude);
-		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(builder
+		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(env
+				, builder
 				, projection
 				, blockAtlas
 				, auxAtlas
@@ -233,7 +234,9 @@ public class SceneMeshHelpers
 		faces.buildFaces(inputData.cuboid, surface);
 		
 		// For now, just use the same image for all faces.
-		float[] uvBase = blockAtlas.baseOfTopTexture(sourceNumber);
+		// (we assume liquids are never "active").
+		boolean isActive = false;
+		float[] uvBase = blockAtlas.baseOfTopTexture(isActive, sourceNumber);
 		float textureSize = blockAtlas.getCoordinateSize();
 		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
@@ -672,6 +675,7 @@ public class SceneMeshHelpers
 
 	private static class _CommonVertexWriter implements FaceBuilder.IWriter
 	{
+		private final Environment _env;
 		private final BufferBuilder _builder;
 		private final SparseShortProjection<AuxilliaryTextureAtlas.Variant> _projection;
 		private final BasicBlockAtlas _blockAtlas;
@@ -680,7 +684,8 @@ public class SceneMeshHelpers
 		private final _PrismVertices _v;
 		private final MeshInputData _inputData;
 		
-		public _CommonVertexWriter(BufferBuilder builder
+		public _CommonVertexWriter(Environment env
+				, BufferBuilder builder
 				, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
 				, BasicBlockAtlas blockAtlas
 				, AuxilliaryTextureAtlas auxAtlas
@@ -689,6 +694,7 @@ public class SceneMeshHelpers
 				, float blockHeight
 		)
 		{
+			_env = env;
 			_builder = builder;
 			_projection = projection;
 			_blockAtlas = blockAtlas;
@@ -706,9 +712,10 @@ public class SceneMeshHelpers
 		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(value);
-			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(value);
+			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value);
+			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
@@ -740,7 +747,8 @@ public class SceneMeshHelpers
 		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(value);
+			boolean isActive = _isActive(baseX, baseY, baseZ, value);
+			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
@@ -772,7 +780,8 @@ public class SceneMeshHelpers
 		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
-			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(value);
+			boolean isActive = _isActive(baseX, baseY, baseZ, value);
+			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
@@ -799,6 +808,15 @@ public class SceneMeshHelpers
 					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)
 				);
 			}
+		}
+		private boolean _isActive(byte baseX, byte baseY, byte baseZ, short value)
+		{
+			boolean hasActiveVariant = _env.blocks.hasActiveVariant(_env.blocks.fromItem(_env.items.ITEMS_BY_TYPE[value]));
+			boolean isActive = hasActiveVariant
+					? FlagsAspect.isSet(_inputData.cuboid.getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
+					: false
+			;
+			return isActive;
 		}
 	}
 

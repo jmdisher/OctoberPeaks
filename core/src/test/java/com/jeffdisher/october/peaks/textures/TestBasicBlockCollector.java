@@ -42,7 +42,7 @@ public class TestBasicBlockCollector
 		collector.setBlockFallback(DIRT, dirtFallback);
 		
 		BufferedImage stoneTop = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-		collector.addVariant(STONE, BasicBlockAtlas.Variant.TOP, stoneTop);
+		collector.addVariant(STONE, BasicBlockAtlas.Variant.INACTIVE_TOP, stoneTop);
 		
 		Block[] blockOrder = new Block[] { STONE, DIRT, LOG };
 		BufferedImage[] textureOrder = collector.getImagesInOrder(blockOrder);
@@ -56,9 +56,9 @@ public class TestBasicBlockCollector
 		boolean[] nonOpaqueVectorByTexture = new boolean[textureOrder.length];
 		BasicBlockAtlas atlas = collector.buildBlockAtlas(raw, blockOrder, nonOpaqueVectorByTexture);
 		
-		float[] uvStoneSide = atlas.baseOfSideTexture(STONE.item().number());
-		float[] uvStoneTop = atlas.baseOfTopTexture(STONE.item().number());
-		float[] uvLogSide = atlas.baseOfSideTexture(LOG.item().number());
+		float[] uvStoneSide = atlas.baseOfSideTexture(false, STONE.item().number());
+		float[] uvStoneTop = atlas.baseOfTopTexture(false, STONE.item().number());
+		float[] uvLogSide = atlas.baseOfSideTexture(false, LOG.item().number());
 		
 		Assert.assertArrayEquals(new float[] { 0.5f, 0.0f }, uvStoneSide, 0.01f);
 		Assert.assertArrayEquals(new float[] { 0.0f, 0.5f }, uvStoneTop, 0.01f);
