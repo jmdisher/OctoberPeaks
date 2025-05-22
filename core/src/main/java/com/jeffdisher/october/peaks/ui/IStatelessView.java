@@ -8,5 +8,5 @@ package com.jeffdisher.october.peaks.ui;
  */
 public interface IStatelessView<T>
 {
-	public void render(Rect bounds, boolean shouldHighlight, T data);
+	public IAction render(Rect bounds, Point cursor, T data);
 }

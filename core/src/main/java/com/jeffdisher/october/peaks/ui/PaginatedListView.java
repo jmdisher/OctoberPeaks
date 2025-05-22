@@ -2,7 +2,6 @@ package com.jeffdisher.october.peaks.ui;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import com.jeffdisher.october.utils.Assert;
@@ -21,7 +20,6 @@ public class PaginatedListView<T> implements IView
 	private final BooleanSupplier _shouldChangePage;
 	private final IStatelessView<T> _innerView;
 	private final float _innerViewHeight;
-	private final Consumer<T> _actionConsumer;
 	private int _currentListIndex;
 
 	public PaginatedListView(GlUi ui
@@ -29,7 +27,6 @@ public class PaginatedListView<T> implements IView
 			, BooleanSupplier shouldChangePage
 			, IStatelessView<T> innerView
 			, float innerViewHeight
-			, Consumer<T> actionConsumer
 	)
 	{
 		_ui = ui;
@@ -37,7 +34,6 @@ public class PaginatedListView<T> implements IView
 		_shouldChangePage = shouldChangePage;
 		_innerView = innerView;
 		_innerViewHeight = innerViewHeight;
-		_actionConsumer = actionConsumer;
 		_currentListIndex = 0;
 	}
 
@@ -75,47 +71,22 @@ public class PaginatedListView<T> implements IView
 		// Now, draw the appropriate number of sub-elements.
 		float nextItemTop = location.topY() - HEADER_HEIGHT;
 		int nextIndex = _currentListIndex;
-		T targetData = null;
+		IAction action = null;
 		for (int i = 0; (i < itemsPerPage) && (nextIndex < listSize); ++i)
 		{
 			float itemBottom = nextItemTop - _innerViewHeight;
 			Rect innerBounds = new Rect(location.leftX(), itemBottom, location.rightX(), nextItemTop);
 			T data = list.get(nextIndex);
-			boolean shouldHighlight = innerBounds.containsPoint(cursor);
-			_innerView.render(innerBounds, shouldHighlight, data);
-			if (shouldHighlight)
+			IAction thisAction = _innerView.render(innerBounds, cursor, data);
+			if (null != thisAction)
 			{
-				targetData = data;
+				action = thisAction;
 			}
 			
 			// Prepare for next iteration.
 			nextItemTop = itemBottom;
 			nextIndex += 1;
 		}
-		
-		return (null != targetData)
-				? new _Action(targetData)
-				: null
-		;
-	}
-
-
-	private class _Action implements IAction
-	{
-		private final T _data;
-		public _Action(T data)
-		{
-			_data = data;
-		}
-		@Override
-		public void renderHover(Point cursor)
-		{
-			// Do nothing.
-		}
-		@Override
-		public void takeAction()
-		{
-			_actionConsumer.accept(_data);
-		}
+		return action;
 	}
 }

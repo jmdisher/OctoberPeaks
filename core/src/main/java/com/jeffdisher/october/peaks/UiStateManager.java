@@ -35,6 +35,7 @@ import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
+import com.jeffdisher.october.peaks.ui.ServerRecordTransformer;
 import com.jeffdisher.october.peaks.ui.StatelessMultiLineButton;
 import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
@@ -268,14 +269,16 @@ public class UiStateManager implements GameSession.ICallouts
 		_worldListView = new PaginatedListView<>(_ui
 			, _worldListBinding
 			, () -> _leftClick
-			, new StatelessViewTextButton(_ui, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length()))
-			, 0.1f
-			, (String directoryName) -> {
-				if (_leftClick)
-				{
-					_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+			, new StatelessViewTextButton(_ui
+				, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length())
+				, (String directoryName) -> {
+					if (_leftClick)
+					{
+						_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+					}
 				}
-			}
+			)
+			, 0.1f
 		);
 		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
 				, (String text) -> text
@@ -338,29 +341,8 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		
 		// Server list UI.
-		StatelessMultiLineButton<MutableServerList.ServerRecord> serverLine = new StatelessMultiLineButton<>(_ui, new StatelessMultiLineButton.ITransformer<>() {
-			@Override
-			public int getOutline(MutableServerList.ServerRecord data)
-			{
-				return data.isGood
-						? _ui.pixelGreen
-						: _ui.pixelRed
-				;
-			}
-			@Override
-			public String getLine(MutableServerList.ServerRecord data, int line)
-			{
-				return (0 == line)
-						? data.address.getHostName() + ":" + data.address.getPort()
-						: data.humanReadableStatus
-				;
-			}
-		}, 2);
-		_serverListView = new PaginatedListView<>(_ui
-			, _serverList.servers
-			, () -> _leftClick
-			, serverLine
-			, 0.2f
+		StatelessMultiLineButton<MutableServerList.ServerRecord> connectToServerLine = new StatelessMultiLineButton<>(_ui
+			, new ServerRecordTransformer(_ui)
 			, (MutableServerList.ServerRecord server) -> {
 				if (_leftClick)
 				{
@@ -375,6 +357,12 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 				}
 			}
+		);
+		_serverListView = new PaginatedListView<>(_ui
+			, _serverList.servers
+			, () -> _leftClick
+			, connectToServerLine
+			, 0.2f
 		);
 		_currentlyTestingServerBinding = new Binding<>(null);
 		_newServerAddressBinding = new Binding<>("");
@@ -397,7 +385,11 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		
 		// New server UI.
-		_currentlyTestingServerView = new ViewOfStateless<>(serverLine, _currentlyTestingServerBinding);
+		StatelessMultiLineButton<MutableServerList.ServerRecord> renderOnlyServerLine = new StatelessMultiLineButton<>(_ui
+				, new ServerRecordTransformer(_ui)
+				, null
+			);
+		_currentlyTestingServerView = new ViewOfStateless<>(renderOnlyServerLine, _currentlyTestingServerBinding);
 		_newServerAddressTextField = new ViewTextField<>(_ui, _newServerAddressBinding
 			, (String value) -> (_typingCapture == _newServerAddressBinding) ? (value + "_") : value
 			, () -> (_typingCapture == _newServerAddressBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
