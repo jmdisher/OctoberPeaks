@@ -36,6 +36,7 @@ import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.ServerRecordTransformer;
+import com.jeffdisher.october.peaks.ui.StatelessHBox;
 import com.jeffdisher.october.peaks.ui.StatelessMultiLineButton;
 import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
@@ -88,6 +89,10 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final int MAX_WORLD_NAME = 16;
 	public static final String WORLD_DIRECTORY_PREFIX = "world_";
+	public static final float SINGLE_PLAYER_WORLD_ROW_WIDTH = 0.8f;
+	public static final float SINGLE_PLAYER_WORLD_ROW_HEIGHT = 0.1f;
+	public static final float MULTI_PLAYER_SERVER_ROW_WIDTH = 0.8f;
+	public static final float MULTI_PLAYER_SERVER_ROW_HEIGHT = 0.2f;
 
 	private final Environment _env;
 	private final GlUi _ui;
@@ -266,19 +271,29 @@ public class UiStateManager implements GameSession.ICallouts
 		});
 		
 		// Single-player UI.
+		StatelessViewTextButton<String> enterWorldButton = new StatelessViewTextButton<>(_ui
+			, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length())
+			, (String directoryName) -> {
+				if (_leftClick)
+				{
+					_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+				}
+			}
+		);
+		StatelessViewTextButton<String> deleteWorldButton = new StatelessViewTextButton<>(_ui
+			, (String text) -> "X"
+			, (String directoryName) -> {
+				if (_leftClick)
+				{
+					System.out.println("TODO:  Delete \"" + directoryName + "\"");
+				}
+			}
+		);
 		_worldListView = new PaginatedListView<>(_ui
 			, _worldListBinding
 			, () -> _leftClick
-			, new StatelessViewTextButton(_ui
-				, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length())
-				, (String directoryName) -> {
-					if (_leftClick)
-					{
-						_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
-					}
-				}
-			)
-			, 0.1f
+			, new StatelessHBox<>(enterWorldButton, SINGLE_PLAYER_WORLD_ROW_WIDTH - SINGLE_PLAYER_WORLD_ROW_HEIGHT, deleteWorldButton)
+			, SINGLE_PLAYER_WORLD_ROW_HEIGHT
 		);
 		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
 				, (String text) -> text
@@ -354,15 +369,25 @@ public class UiStateManager implements GameSession.ICallouts
 					catch (ConnectException e)
 					{
 						// TODO:  Display this somewhere.
+						e.printStackTrace();
 					}
+				}
+			}
+		);
+		StatelessViewTextButton<MutableServerList.ServerRecord> deleteServerButton = new StatelessViewTextButton<>(_ui
+			, (MutableServerList.ServerRecord ignored) -> "X"
+			, (MutableServerList.ServerRecord record) -> {
+				if (_leftClick)
+				{
+					System.out.println("TODO:  Delete \"" + record.address + "\"");
 				}
 			}
 		);
 		_serverListView = new PaginatedListView<>(_ui
 			, _serverList.servers
 			, () -> _leftClick
-			, connectToServerLine
-			, 0.2f
+			, new StatelessHBox<>(connectToServerLine, MULTI_PLAYER_SERVER_ROW_WIDTH - MULTI_PLAYER_SERVER_ROW_HEIGHT, deleteServerButton)
+			, MULTI_PLAYER_SERVER_ROW_HEIGHT
 		);
 		_currentlyTestingServerBinding = new Binding<>(null);
 		_newServerAddressBinding = new Binding<>("");
@@ -1140,7 +1165,8 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Single Player Worlds";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_worldListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
+		float halfListWidth = SINGLE_PLAYER_WORLD_ROW_WIDTH / 2.0f;
+		action = _renderViewChainAction(_worldListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
 		action = _renderViewChainAction(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		
@@ -1168,7 +1194,8 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Multi-Player servers";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_serverListView, new Rect(-0.4f, -0.6f, 0.4f, 0.6f), action);
+		float halfListWidth = MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
+		action = _renderViewChainAction(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
 		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		

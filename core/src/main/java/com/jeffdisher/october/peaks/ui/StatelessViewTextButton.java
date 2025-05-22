@@ -4,15 +4,15 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 
-public class StatelessViewTextButton implements IStatelessView<String>
+public class StatelessViewTextButton<T> implements IStatelessView<T>
 {
 	private final GlUi _ui;
-	private final Function<String, String> _valueTransformer;
-	private final Consumer<String> _actionConsumer;
+	private final Function<T, String> _valueTransformer;
+	private final Consumer<T> _actionConsumer;
 
 	public StatelessViewTextButton(GlUi ui
-			, Function<String, String> valueTransformer
-			, Consumer<String> actionConsumer
+			, Function<T, String> valueTransformer
+			, Consumer<T> actionConsumer
 	)
 	{
 		_ui = ui;
@@ -21,7 +21,7 @@ public class StatelessViewTextButton implements IStatelessView<String>
 	}
 
 	@Override
-	public IAction render(Rect bounds, Point cursor, String data)
+	public IAction render(Rect bounds, Point cursor, T data)
 	{
 		boolean shouldHighlight = bounds.containsPoint(cursor);
 		UiIdioms.drawOutline(_ui, bounds, shouldHighlight);
@@ -38,8 +38,8 @@ public class StatelessViewTextButton implements IStatelessView<String>
 
 	private class _Action implements IAction
 	{
-		private final String _data;
-		public _Action(String data)
+		private final T _data;
+		public _Action(T data)
 		{
 			_data = data;
 		}
