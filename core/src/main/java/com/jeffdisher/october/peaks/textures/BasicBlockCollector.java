@@ -128,6 +128,11 @@ public class BasicBlockCollector
 					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
 					textureIndex += 1;
 				}
+				else if (variant.ordinal() >= BasicBlockAtlas.Variant.FIRST_ACTIVE_INDEX)
+				{
+					// If we don't have a texture, but are active, default to the inactive.
+					variantIndices[variantIndex] = variantIndices[BasicBlockAtlas.Variant.FIRST_ACTIVE_INDEX - 3];
+				}
 				else
 				{
 					// We know this block should be in the atlas but there isn't a texture for this variant so try the

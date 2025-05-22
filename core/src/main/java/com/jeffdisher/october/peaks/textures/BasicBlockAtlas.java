@@ -57,24 +57,27 @@ public class BasicBlockAtlas
 		return _blockTextures.coordinateSize;
 	}
 
-	public float[] baseOfTopTexture(short value)
+	public float[] baseOfTopTexture(boolean isActive, short value)
 	{
 		int[] variants = _indexLookup_block_variant[value];
-		int rawIndex = variants[Variant.TOP.ordinal()];
+		Variant variant = isActive ? Variant.ACTIVE_TOP : Variant.INACTIVE_TOP;
+		int rawIndex = variants[variant.ordinal()];
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
-	public float[] baseOfBottomTexture(short value)
+	public float[] baseOfBottomTexture(boolean isActive, short value)
 	{
 		int[] variants = _indexLookup_block_variant[value];
-		int rawIndex = variants[Variant.BOTTOM.ordinal()];
+		Variant variant = isActive ? Variant.ACTIVE_BOTTOM : Variant.INACTIVE_BOTTOM;
+		int rawIndex = variants[variant.ordinal()];
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
-	public float[] baseOfSideTexture(short value)
+	public float[] baseOfSideTexture(boolean isActive, short value)
 	{
 		int[] variants = _indexLookup_block_variant[value];
-		int rawIndex = variants[Variant.SIDE.ordinal()];
+		Variant variant = isActive ? Variant.ACTIVE_SIDE : Variant.INACTIVE_SIDE;
+		int rawIndex = variants[variant.ordinal()];
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
@@ -89,10 +92,18 @@ public class BasicBlockAtlas
 	}
 
 
+	/**
+	 * Blocks can have different variants for different faces, but also whether they are active or not.
+	 */
 	public static enum Variant
 	{
-		TOP,
-		BOTTOM,
-		SIDE,
+		INACTIVE_TOP,
+		INACTIVE_BOTTOM,
+		INACTIVE_SIDE,
+		ACTIVE_TOP,
+		ACTIVE_BOTTOM,
+		ACTIVE_SIDE,
+		;
+		public static int FIRST_ACTIVE_INDEX = ACTIVE_TOP.ordinal();
 	}
 }
