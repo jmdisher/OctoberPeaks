@@ -131,6 +131,18 @@ public class MutableServerList implements PollingClient.IListener
 		}
 	}
 
+	public synchronized void removeServerFromList(ServerRecord server)
+	{
+		// This call is expected on the main thread.
+		Assert.assertTrue(Thread.currentThread() == _mainThread);
+		
+		// We will just remove based on instance-comparison, ignoring the case where it wasn't found.
+		// NOTE:  This is safe since we are under lock (so background won't touch this) and the only other accessor is
+		// from this same thread.
+		this.servers.get().remove(server);
+		_flushToDisk();
+	}
+
 	@Override
 	public synchronized void networkTimeout(InetSocketAddress serverToPoll)
 	{

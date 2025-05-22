@@ -379,7 +379,7 @@ public class UiStateManager implements GameSession.ICallouts
 			, (MutableServerList.ServerRecord record) -> {
 				if (_leftClick)
 				{
-					System.out.println("TODO:  Delete \"" + record.address + "\"");
+					_serverList.removeServerFromList(record);
 				}
 			}
 		);
