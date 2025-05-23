@@ -153,8 +153,7 @@ public class SceneMeshHelpers
 				Block includedBlock = included.get(object);
 				if (null != includedBlock)
 				{
-					float[] uv = blockModels.baseOfModelTexture(includedBlock);
-					ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock);
+					short value = object.shortValue();
 					int blockHeight = env.blocks.isMultiBlock(includedBlock)
 							? env.multiBlocks.getDefaultVolume(includedBlock).z()
 							: 1
@@ -172,7 +171,21 @@ public class SceneMeshHelpers
 								BlockAddress thisAddress = new BlockAddress(baseX, baseY, baseZ);
 								if (null == inputData.cuboid.getDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, thisAddress))
 								{
+									// We need to see if this block has an active variant, since that is required to select the appropriate model.
+									boolean hasActiveVariant = env.blocks.hasActiveVariant(env.blocks.fromItem(env.items.ITEMS_BY_TYPE[value]));
+									boolean isActive = hasActiveVariant
+											? FlagsAspect.isSet(inputData.cuboid.getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
+											: false
+									;
 									OrientationAspect.Direction multiBlockDirection = OrientationAspect.byteToDirection(inputData.cuboid.getData7(AspectRegistry.ORIENTATION, thisAddress));
+									boolean isDown = (OrientationAspect.Direction.DOWN == multiBlockDirection);
+									if (isDown)
+									{
+										// If this is facing down, we just use a north rotation.
+										multiBlockDirection = OrientationAspect.Direction.NORTH;
+									}
+									float[] uv = blockModels.baseOfModelTexture(includedBlock, isActive, isDown);
+									ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock, isActive, isDown);
 									_renderModel(builder
 											, projection
 											, auxAtlas

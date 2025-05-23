@@ -31,63 +31,66 @@ public class BlockModelsAndAtlas
 	{
 		// We will look for "model_ITEM_ID.obj" and "model_ITEM_ID.png" - both or neither must be present.
 		// We will then store the vertex data for these models (in Java heap), and store the textures into an atlas.
-		Map<Block, Short> blockToIndex = new HashMap<>();
-		List<FileHandle> modelHandles = new ArrayList<>();
-		List<FileHandle> textureHandles = new ArrayList<>();
+		Map<Block, Indices> blockToIndex = new HashMap<>();
+		List<ModelBuffer> modelList = new ArrayList<>();
+		List<FileHandle> textureHandleList = new ArrayList<>();
 		for (Block block : blocks)
 		{
 			String itemId = block.item().id();
-			String modelFile = "model_" + itemId + ".obj";
-			String textureFile = "model_" + itemId + ".png";
-			
-			FileHandle modelHandle = Gdx.files.internal(modelFile);
-			if (!modelHandle.exists())
+			_ModelPair inactive = _loadPair("model_" + itemId + ".obj", "model_" + itemId + ".png");
+			if (null != inactive)
 			{
-				modelHandle = null;
+				short inactiveIndex = (short)modelList.size();
+				String text = inactive.model.readString();
+				ModelBuffer model = ModelBuffer.buildFromWavefront(text);
+				modelList.add(model);
+				textureHandleList.add(inactive.texture);
+				
+				_ModelPair active = _loadPair("model_" + itemId + "_ACTIVE.obj", "model_" + itemId + "_ACTIVE.png");
+				short activeIndex = inactiveIndex;
+				if (null != active)
+				{
+					activeIndex = (short)modelList.size();
+					text = active.model.readString();
+					model = ModelBuffer.buildFromWavefront(text);
+					modelList.add(model);
+					textureHandleList.add(active.texture);
+				}
+				
+				_ModelPair down = _loadPair("model_" + itemId + "_DOWN.obj", "model_" + itemId + "_DOWN.png");
+				short downIndex = inactiveIndex;
+				if (null != down)
+				{
+					downIndex = (short)modelList.size();
+					text = down.model.readString();
+					model = ModelBuffer.buildFromWavefront(text);
+					modelList.add(model);
+					textureHandleList.add(down.texture);
+				}
+				
+				blockToIndex.put(block, new Indices(inactiveIndex, activeIndex, downIndex));
 			}
-			FileHandle textureHandle = Gdx.files.internal(textureFile);
-			if (!textureHandle.exists())
-			{
-				textureHandle = null;
-			}
-			// Both or neither must be present.
-			Assert.assertTrue((null != modelHandle) == (null != textureHandle));
-			
-			if (null != modelHandle)
-			{
-				blockToIndex.put(block, (short)modelHandles.size());
-				modelHandles.add(modelHandle);
-				textureHandles.add(textureHandle);
-			}
-		}
-		
-		// Load the models.
-		ModelBuffer[] models = new ModelBuffer[modelHandles.size()];
-		for (int i = 0; i < modelHandles.size(); ++i)
-		{
-			FileHandle handle = modelHandles.get(i);
-			String text = handle.readString();
-			models[i] = ModelBuffer.buildFromWavefront(text);
 		}
 		
 		// Assemble the atlas.
-		FileHandle[] handles = textureHandles.toArray((int size) -> new FileHandle[size]);
+		FileHandle[] handles = textureHandleList.toArray((int size) -> new FileHandle[size]);
 		RawTextureAtlas atlas = TextureHelpers.loadRawAtlasFromModelTextureHandles(gl, handles);
 		
+		ModelBuffer[] models = modelList.toArray((int size) -> new ModelBuffer[size]);
 		return new BlockModelsAndAtlas(blockToIndex, models, atlas);
 	}
 
-	public static BlockModelsAndAtlas testInstance(Map<Block, Short> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
+	public static BlockModelsAndAtlas testInstance(Map<Block, Indices> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
 	{
 		return new BlockModelsAndAtlas(blockToIndex, models, atlas);
 	}
 
 
-	private final Map<Block, Short> _blockToIndex;
+	private final Map<Block, Indices> _blockToIndex;
 	private final ModelBuffer[] _models;
 	private final RawTextureAtlas _atlas;
 
-	private BlockModelsAndAtlas(Map<Block, Short> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
+	private BlockModelsAndAtlas(Map<Block, Indices> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
 	{
 		_blockToIndex = Collections.unmodifiableMap(blockToIndex);
 		_models = models;
@@ -99,9 +102,13 @@ public class BlockModelsAndAtlas
 		return _blockToIndex.keySet();
 	}
 
-	public ModelBuffer getModelForBlock(Block block)
+	public ModelBuffer getModelForBlock(Block block, boolean isActive, boolean isDown)
 	{
-		short index = _blockToIndex.get(block);
+		Indices indices = _blockToIndex.get(block);
+		short index = isActive
+				? indices.active
+				: isDown ? indices.down : indices.inactive
+		;
 		return _models[index];
 	}
 
@@ -110,9 +117,13 @@ public class BlockModelsAndAtlas
 		return _atlas.texture;
 	}
 
-	public float[] baseOfModelTexture(Block block)
+	public float[] baseOfModelTexture(Block block, boolean isActive, boolean isDown)
 	{
-		short index = _blockToIndex.get(block);
+		Indices indices = _blockToIndex.get(block);
+		short index = isActive
+				? indices.active
+				: isDown ? indices.down : indices.inactive
+		;
 		return _atlas.baseOfTexture(index);
 	}
 
@@ -124,10 +135,11 @@ public class BlockModelsAndAtlas
 	public Map<Block, Prism> buildModelBoundingBoxes()
 	{
 		Map<Block, Prism> boxes = new HashMap<>();
-		for (Map.Entry<Block, Short> elt : _blockToIndex.entrySet())
+		for (Map.Entry<Block, Indices> elt : _blockToIndex.entrySet())
 		{
 			Block block = elt.getKey();
-			short index = elt.getValue();
+			// We will assume that the active and inactive are the same bounds.
+			short index = elt.getValue().inactive;
 			ModelBuffer buffer = _models[index];
 			Prism bounds = _buildBounds(buffer);
 			// For now, we don't want to bother with orientation of multi-blocks so we will just default to single-block checks.
@@ -173,4 +185,31 @@ public class BlockModelsAndAtlas
 		}
 		return new Prism(west, south, bottom, east, north, top);
 	}
+
+	private static _ModelPair _loadPair(String modelFile, String textureFile)
+	{
+		FileHandle modelHandle = Gdx.files.internal(modelFile);
+		if (!modelHandle.exists())
+		{
+			modelHandle = null;
+		}
+		FileHandle textureHandle = Gdx.files.internal(textureFile);
+		if (!textureHandle.exists())
+		{
+			textureHandle = null;
+		}
+		// Both or neither must be present.
+		Assert.assertTrue((null != modelHandle) == (null != textureHandle));
+		
+		return (null != modelHandle)
+			? new _ModelPair(modelHandle, textureHandle)
+			: null
+		;
+	}
+
+
+	// This is only public for testing reasons.
+	public static record Indices(short inactive, short active, short down) {}
+
+	private static record _ModelPair(FileHandle model, FileHandle texture) {}
 }

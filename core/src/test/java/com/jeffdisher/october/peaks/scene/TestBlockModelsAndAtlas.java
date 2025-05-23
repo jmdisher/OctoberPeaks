@@ -29,14 +29,14 @@ public class TestBlockModelsAndAtlas
 		;
 		Item item = new Item("test.id", "Test", (short)1);
 		Block block = new Block(item);
-		Map<Block, Short> blockToIndex = Map.of(block, (short)0);
+		Map<Block, BlockModelsAndAtlas.Indices> blockToIndex = Map.of(block, new BlockModelsAndAtlas.Indices((short)0, (short)0, (short)0));
 		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
 		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(1, blockToIndex, models);
 		
 		Assert.assertEquals(1, modelsAndAtlas.getBlockSet().size());
-		Assert.assertEquals(models[0], modelsAndAtlas.getModelForBlock(block));
+		Assert.assertEquals(models[0], modelsAndAtlas.getModelForBlock(block, false, false));
 		Assert.assertEquals(1, modelsAndAtlas.getModelAtlasTexture());
-		Assert.assertArrayEquals(new float[] { 0.0f, 0.0f }, modelsAndAtlas.baseOfModelTexture(block), 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.0f, 0.0f }, modelsAndAtlas.baseOfModelTexture(block, false, false), 0.01f);
 		Assert.assertEquals(1.0f, modelsAndAtlas.getCoordinateSize(), 0.01f);
 	}
 
@@ -86,7 +86,7 @@ public class TestBlockModelsAndAtlas
 		;
 		Item item = new Item("test.id", "Test", (short)1);
 		Block block = new Block(item);
-		Map<Block, Short> blockToIndex = Map.of(block, (short)0);
+		Map<Block, BlockModelsAndAtlas.Indices> blockToIndex = Map.of(block, new BlockModelsAndAtlas.Indices((short)0, (short)0, (short)0));
 		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
 		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(1, blockToIndex, models);
 		
@@ -102,7 +102,7 @@ public class TestBlockModelsAndAtlas
 	}
 
 
-	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, Short> blockToIndex, ModelBuffer[] models)
+	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, BlockModelsAndAtlas.Indices> blockToIndex, ModelBuffer[] models)
 	{
 		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
 		return BlockModelsAndAtlas.testInstance(blockToIndex, models, raw);

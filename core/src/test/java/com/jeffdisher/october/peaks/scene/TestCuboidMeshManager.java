@@ -418,7 +418,8 @@ public class TestCuboidMeshManager
 		ItemTextureAtlas itemAtlas = _buildItemAtlas(textureCount);
 		AuxilliaryTextureAtlas auxBlockTextures = _buildAuxAtlas();
 		ModelBuffer[] modelBuffers = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
-		BlockModelsAndAtlas models = _buildBlockModelsAndAtlas(textureCount, Map.of(STONE_BLOCK, (short)0), modelBuffers);
+		Map<Block, BlockModelsAndAtlas.Indices> blockToIndex = Map.of(STONE_BLOCK, new BlockModelsAndAtlas.Indices((short)0, (short)0, (short)0));
+		BlockModelsAndAtlas models = _buildBlockModelsAndAtlas(textureCount, blockToIndex, modelBuffers);
 		// Note that the Block[] must minimally include water sources.
 		Block[] basicBlocks = new Block[] {waterSource, waterStrong, waterWeak, lavaSource, lavaStrong, lavaWeak};
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(0, basicBlocks, new boolean[basicBlocks.length]);
@@ -626,7 +627,7 @@ public class TestCuboidMeshManager
 		return new BasicBlockAtlas(raw, mapping, nonOpaqueVector);
 	}
 
-	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, Short> blockToIndex, ModelBuffer[] models)
+	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, BlockModelsAndAtlas.Indices> blockToIndex, ModelBuffer[] models)
 	{
 		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
 		return BlockModelsAndAtlas.testInstance(blockToIndex, models, raw);
