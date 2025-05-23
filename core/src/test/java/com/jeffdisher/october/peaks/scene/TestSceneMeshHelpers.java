@@ -224,7 +224,7 @@ public class TestSceneMeshHelpers
 				+ "vt 1.0 1.0\n"
 				+ "f 1/1/1 2/2/1 3/3/1\n"
 		;
-		Map<Block, Short> blockToIndex = Map.of(ENV.blocks.fromItem(multiDoor), (short)0);
+		Map<Block, BlockModelsAndAtlas.Indices> blockToIndex = Map.of(ENV.blocks.fromItem(multiDoor), new BlockModelsAndAtlas.Indices((short)0, (short)0, (short)0));
 		ModelBuffer[] models = new ModelBuffer[] { ModelBuffer.buildFromWavefront(string) };
 		int textureCount = 1;
 		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(textureCount, blockToIndex, models);
@@ -372,7 +372,7 @@ public class TestSceneMeshHelpers
 		return new BasicBlockAtlas(raw, mapping, nonOpaqueVector);
 	}
 
-	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, Short> blockToIndex, ModelBuffer[] models)
+	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, BlockModelsAndAtlas.Indices> blockToIndex, ModelBuffer[] models)
 	{
 		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
 		return BlockModelsAndAtlas.testInstance(blockToIndex, models, raw);
