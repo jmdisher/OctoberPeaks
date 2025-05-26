@@ -38,6 +38,7 @@ import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.ServerRecordTransformer;
 import com.jeffdisher.october.peaks.ui.StatelessHBox;
 import com.jeffdisher.october.peaks.ui.StatelessMultiLineButton;
+import com.jeffdisher.october.peaks.ui.StatelessViewRadioButton;
 import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
@@ -49,6 +50,7 @@ import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewOfStateless;
+import com.jeffdisher.october.peaks.ui.ViewRadioButton;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.ViewTextButton;
 import com.jeffdisher.october.peaks.ui.ViewTextField;
@@ -156,6 +158,10 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// Ui for new single-player.
 	private final ViewTextField<String> _newWorldNameTextField;
+	private final ViewRadioButton<WorldConfig.WorldGeneratorName> _newWorldGeneratorNameButton;
+	private final ViewRadioButton<WorldConfig.DefaultPlayerMode> _newDefaultPlayerModeButton;
+	private final ViewRadioButton<Difficulty> _newDifficultyButton;
+	private final ViewTextField<String> _newWorldSeedTextField;
 	private final ViewTextButton<String> _createWorldButton;
 
 	// UI for the multi-player list.
@@ -356,6 +362,55 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		
 		// New single player UI.
+		Binding<WorldConfig.WorldGeneratorName> worldGeneratorNameBinding = new Binding<>(WorldConfig.WorldGeneratorName.BASIC);
+		_newWorldGeneratorNameButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
+				, (WorldConfig.WorldGeneratorName type) -> type.name()
+				, (WorldConfig.WorldGeneratorName selected) -> {
+					if (_leftClick)
+					{
+						worldGeneratorNameBinding.set(selected);
+					}
+				}
+				, WorldConfig.WorldGeneratorName.class
+			)
+			, worldGeneratorNameBinding
+		);
+		Binding<WorldConfig.DefaultPlayerMode> defaultPlayerModeBinding = new Binding<>(WorldConfig.DefaultPlayerMode.SURVIVAL);
+		_newDefaultPlayerModeButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
+				, (WorldConfig.DefaultPlayerMode type) -> type.name()
+				, (WorldConfig.DefaultPlayerMode selected) -> {
+					if (_leftClick)
+					{
+						defaultPlayerModeBinding.set(selected);
+					}
+				}
+				, WorldConfig.DefaultPlayerMode.class
+			)
+			, defaultPlayerModeBinding
+		);
+		Binding<Difficulty> difficultyBinding = new Binding<>(Difficulty.HOSTILE);
+		_newDifficultyButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
+				, (Difficulty type) -> type.name()
+				, (Difficulty selected) -> {
+					if (_leftClick)
+					{
+						difficultyBinding.set(selected);
+					}
+				}
+				, Difficulty.class
+			)
+			, difficultyBinding
+		);
+		Binding<String> newSeedBinding = new Binding<>("");
+		_newWorldSeedTextField = new ViewTextField<>(_ui
+				, newSeedBinding
+				, (String text) -> text
+				, () -> _ui.pixelLightGrey
+				, () -> {
+					// We want to enable text capture for this binding.
+					_typingCapture = newSeedBinding;
+				}
+		);
 		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Create New")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
@@ -370,11 +425,23 @@ public class UiStateManager implements GameSession.ICallouts
 					boolean alreadyExists = _worldListBinding.get().contains(directoryName);
 					if (!alreadyExists && (worldName.length() > 0))
 					{
-						// TODO:  Add options for these into the UI.
-						WorldConfig.WorldGeneratorName worldGeneratorName = null;
-						WorldConfig.DefaultPlayerMode defaultPlayerMode = null;
-						Difficulty difficulty = null;
+						WorldConfig.WorldGeneratorName worldGeneratorName = worldGeneratorNameBinding.get();
+						WorldConfig.DefaultPlayerMode defaultPlayerMode = defaultPlayerModeBinding.get();
+						Difficulty difficulty = difficultyBinding.get();
+						// The seed is a little tricky: if empty, use the default, if a number, use the number, if text, use the hash.
 						Integer basicWorldGeneratorSeed = null;
+						String rawSeed = newSeedBinding.get();
+						if (!rawSeed.isEmpty())
+						{
+							try
+							{
+								basicWorldGeneratorSeed = Integer.parseInt(rawSeed);
+							}
+							catch (NumberFormatException e)
+							{
+								basicWorldGeneratorSeed = rawSeed.hashCode();
+							}
+						}
 						_enterSingleWorld(gl
 							, localStorageDirectory
 							, resources
@@ -1240,6 +1307,10 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Create Single Player World";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
+		action = _renderViewChainAction(_newWorldGeneratorNameButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f), action);
+		action = _renderViewChainAction(_newDefaultPlayerModeButton, new Rect(-0.6f, -0.2f, 0.6f, -0.1f), action);
+		action = _renderViewChainAction(_newDifficultyButton, new Rect(-0.6f, -0.3f, 0.6f, -0.2f), action);
+		action = _renderViewChainAction(_newWorldSeedTextField, new Rect(-0.4f, -0.4f, 0.4f, -0.3f), action);
 		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, -0.7f, 0.1f, -0.6f), action);
 		action = _renderViewChainAction(_createWorldButton, new Rect(0.1f, -0.7f, 0.4f, -0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
