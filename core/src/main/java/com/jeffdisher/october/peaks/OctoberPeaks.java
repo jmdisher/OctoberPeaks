@@ -17,6 +17,8 @@ import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
+import com.jeffdisher.october.types.Difficulty;
+import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -122,7 +124,24 @@ public class OctoberPeaks extends ApplicationAdapter
 			GameSession currentGameSession;
 			try
 			{
-				currentGameSession = new GameSession(_environment, _gl, screenBrightness, _resources, _clientName, _serverSocketAddress, localWorldDirectory, _uiState);
+				// In this running mode, we always just use the defaults so pass nulls.
+				WorldConfig.WorldGeneratorName worldGeneratorName = null;
+				WorldConfig.DefaultPlayerMode defaultPlayerMode = null;
+				Difficulty difficulty = null;
+				Integer basicWorldGeneratorSeed = null;
+				currentGameSession = new GameSession(_environment
+					, _gl
+					, screenBrightness
+					, _resources
+					, _clientName
+					, _serverSocketAddress
+					, localWorldDirectory
+					, worldGeneratorName
+					, defaultPlayerMode
+					, difficulty
+					, basicWorldGeneratorSeed
+					, _uiState
+				);
 			}
 			catch (ConnectException e)
 			{

@@ -61,6 +61,7 @@ import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.CreativeInventory;
+import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.FuelState;
@@ -69,6 +70,7 @@ import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -278,7 +280,8 @@ public class UiStateManager implements GameSession.ICallouts
 			, (String directoryName) -> {
 				if (_leftClick)
 				{
-					_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+					// We just pass nulls for our new game options.
+					_enterSingleWorld(gl, localStorageDirectory, resources, directoryName, null, null, null, 0);
 				}
 			}
 		);
@@ -367,7 +370,20 @@ public class UiStateManager implements GameSession.ICallouts
 					boolean alreadyExists = _worldListBinding.get().contains(directoryName);
 					if (!alreadyExists && (worldName.length() > 0))
 					{
-						_enterSingleWorld(gl, localStorageDirectory, resources, directoryName);
+						// TODO:  Add options for these into the UI.
+						WorldConfig.WorldGeneratorName worldGeneratorName = null;
+						WorldConfig.DefaultPlayerMode defaultPlayerMode = null;
+						Difficulty difficulty = null;
+						Integer basicWorldGeneratorSeed = null;
+						_enterSingleWorld(gl
+							, localStorageDirectory
+							, resources
+							, directoryName
+							, worldGeneratorName
+							, defaultPlayerMode
+							, difficulty
+							, basicWorldGeneratorSeed
+						);
 						_newWorldNameBinding.set("");
 						_typingCapture = null;
 					}
@@ -1853,14 +1869,33 @@ public class UiStateManager implements GameSession.ICallouts
 		_typingCapture = null;
 	}
 
-	private void _enterSingleWorld(GL20 gl, File localStorageDirectory, LoadedResources resources, String directoryName)
+	private void _enterSingleWorld(GL20 gl, File localStorageDirectory
+		, LoadedResources resources
+		, String directoryName
+		, WorldConfig.WorldGeneratorName worldGeneratorName
+		, WorldConfig.DefaultPlayerMode defaultPlayerMode
+		, Difficulty difficulty
+		, Integer basicWorldGeneratorSeed
+	)
 	{
 		_uiState = _UiState.PLAY;
 		_captureState.shouldCaptureMouse(true);
 		File localWorldDirectory = new File(localStorageDirectory, directoryName);
 		try
 		{
-			_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, "Local", null, localWorldDirectory, this);
+			_currentGameSession = new GameSession(_env
+				, gl
+				, _mutablePreferences.screenBrightness
+				, resources
+				, "Local"
+				, null
+				, localWorldDirectory
+				, worldGeneratorName
+				, defaultPlayerMode
+				, difficulty
+				, basicWorldGeneratorSeed
+				, this
+			);
 		}
 		catch (ConnectException e)
 		{
@@ -1876,7 +1911,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, InetSocketAddress serverAddress) throws ConnectException
 	{
-		_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, serverAddress, null, this);
+		_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, serverAddress, null, null, null, null, null, this);
 		// TODO:  Use an intermediate state for this delay.
 		_currentGameSession.finishStartup();
 		_isRunningOnServer = true;

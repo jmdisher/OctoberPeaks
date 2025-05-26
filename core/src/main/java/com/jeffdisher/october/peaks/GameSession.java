@@ -23,10 +23,12 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.MutableEntity;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -49,6 +51,10 @@ public class GameSession
 			, String clientName
 			, InetSocketAddress serverSocketAddress
 			, File localWorldDirectory
+			, WorldConfig.WorldGeneratorName worldGeneratorName
+			, WorldConfig.DefaultPlayerMode defaultPlayerMode
+			, Difficulty difficulty
+			, Integer basicWorldGeneratorSeed
 			, ICallouts callouts
 	) throws ConnectException
 	{
@@ -81,6 +87,10 @@ public class GameSession
 				, clientName
 				, serverSocketAddress
 				, localWorldDirectory
+				, worldGeneratorName
+				, defaultPlayerMode
+				, difficulty
+				, basicWorldGeneratorSeed
 			);
 		}
 		catch (ConnectException e)

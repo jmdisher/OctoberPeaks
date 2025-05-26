@@ -51,6 +51,7 @@ import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityVolume;
@@ -97,6 +98,10 @@ public class ClientWrapper
 			, String clientName
 			, InetSocketAddress serverAddress
 			, File localWorldDirectory
+			, WorldConfig.WorldGeneratorName worldGeneratorName
+			, WorldConfig.DefaultPlayerMode defaultPlayerMode
+			, Difficulty difficulty
+			, Integer basicWorldGeneratorSeed
 	) throws ConnectException
 	{
 		_environment = environment;
@@ -114,8 +119,25 @@ public class ClientWrapper
 					Assert.assertTrue(localWorldDirectory.mkdirs());
 				}
 				
-				// We will use the basic world generator, as that is our current standard generator.
+				// Since we use this same routine for both new and existing local games, add the options before we load
+				// from disk, since the disk copy will override our options, if it already exists.
 				_config = new WorldConfig();
+				if (null != worldGeneratorName)
+				{
+					_config.worldGeneratorName = worldGeneratorName;
+				}
+				if (null != defaultPlayerMode)
+				{
+					_config.defaultPlayerMode = defaultPlayerMode;
+				}
+				if (null != difficulty)
+				{
+					_config.difficulty = difficulty;
+				}
+				if (null != basicWorldGeneratorSeed)
+				{
+					_config.basicSeed = basicWorldGeneratorSeed.intValue();
+				}
 				boolean didLoadConfig = ResourceLoader.populateWorldConfig(localWorldDirectory, _config);
 				IWorldGenerator worldGen = WorldGenHelpers.createConfiguredWorldGenerator(environment, _config);
 				if (!didLoadConfig)
