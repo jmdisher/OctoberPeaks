@@ -65,9 +65,8 @@ import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
-import com.jeffdisher.october.worldgen.BasicWorldGenerator;
-import com.jeffdisher.october.worldgen.FlatWorldGenerator;
 import com.jeffdisher.october.worldgen.IWorldGenerator;
+import com.jeffdisher.october.worldgen.WorldGenHelpers;
 
 
 public class ClientWrapper
@@ -118,18 +117,7 @@ public class ClientWrapper
 				// We will use the basic world generator, as that is our current standard generator.
 				_config = new WorldConfig();
 				boolean didLoadConfig = ResourceLoader.populateWorldConfig(localWorldDirectory, _config);
-				IWorldGenerator worldGen;
-				switch (_config.worldGeneratorName)
-				{
-				case BASIC:
-					worldGen = new BasicWorldGenerator(_environment, _config.basicSeed);
-					break;
-				case FLAT:
-					worldGen = new FlatWorldGenerator(true);
-					break;
-					default:
-						throw Assert.unreachable();
-				}
+				IWorldGenerator worldGen = WorldGenHelpers.createConfiguredWorldGenerator(environment, _config);
 				if (!didLoadConfig)
 				{
 					// There is no config so ask the world-gen for the default spawn.
