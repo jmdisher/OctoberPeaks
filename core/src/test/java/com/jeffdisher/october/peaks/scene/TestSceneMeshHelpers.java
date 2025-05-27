@@ -324,6 +324,51 @@ public class TestSceneMeshHelpers
 		Assert.assertEquals(5 * 12, lowCount);
 	}
 
+	@Test
+	public void lightMaxing() throws Throwable
+	{
+		// We want to demonstrate the the faces of a cube will take on the maximum of a nearby light source, even if the face is dark.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress sourceBlock = BlockAddress.fromInt(2, 3, 4);
+		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, STONE.number());
+		// We will place a few light sources to test the interaction.
+		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 0, 1), (byte)10);
+		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 1, 1), (byte)15);
+		
+		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid);
+		int quadsWritten = _countQuadsInBuffer(liquidBuffer);
+		// We should see 6 quads, single-sided.
+		Assert.assertEquals(6, quadsWritten);
+		
+		float[] blockLights = _collectBlockLightVerticesInBuffer(liquidBuffer);
+		int verticesPerQuad = 6;
+		Assert.assertEquals(quadsWritten * verticesPerQuad, blockLights.length);
+		int highCount = 0;
+		int midCount = 0;
+		for (float light : blockLights)
+		{
+			if (1.1f == light)
+			{
+				highCount += 1;
+			}
+			else if (0.7666667f == light)
+			{
+				midCount += 1;
+			}
+			else if (0.1f == light)
+			{
+				// We will just ignore these as the background darkness.
+			}
+			else
+			{
+				Assert.fail();
+			}
+		}
+		// TODO:  Update these values when the new implementation is in place.  For now, there is no bleeding of light across blocks so only the medium light appears.
+		Assert.assertEquals(0, highCount);
+		Assert.assertEquals(6, midCount);
+	}
+
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
@@ -374,6 +419,34 @@ public class TestSceneMeshHelpers
 				, weak.number()
 				, true
 		);
+		return builder.finishOne();
+	}
+
+	private static BufferBuilder.Buffer _buildOpaqueBlockBuffer(Item block, CuboidData cuboid)
+	{
+		FloatBuffer buffer = FloatBuffer.allocate(4096);
+		
+		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
+		Block[] blocks = new Block[] {
+				ENV.special.AIR,
+				ENV.blocks.fromItem(block),
+		};
+		boolean[] nonOpaqueVector = new boolean[] {
+				true,
+				false,
+		};
+		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
+		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
+		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
+		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
+				, null, null
+				, null, null
+				, null, null
+				, null, null
+				, null, null
+				, null, null
+		);
+		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builder, blockAtlas, projection, auxAtlas, inputData, true);
 		return builder.finishOne();
 	}
 
