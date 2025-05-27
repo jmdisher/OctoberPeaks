@@ -382,9 +382,10 @@ public class TestSceneMeshHelpers
 				Assert.fail();
 			}
 		}
-		// TODO:  Update these values when the new implementation is in place.  For now, there is no bleeding of light across blocks so only the medium light appears.
-		Assert.assertEquals(0, highCount);
-		Assert.assertEquals(6, midCount);
+		// 2 edges should see the bright value bleed in, meaning 6 vertices.
+		Assert.assertEquals(6, highCount);
+		// Of of those faces has the medium intensity, so its remaining 3 vertices should be that.
+		Assert.assertEquals(3, midCount);
 	}
 
 
