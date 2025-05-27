@@ -263,7 +263,11 @@ public class SceneMeshHelpers
 				// The exception to this rule is that we want to draw the top face of a liquid block.
 				if ((1.0f == normal[2]) || !_isBlockOpaque(env, inputData, externalBlock))
 				{
-					float blockLightMultiplier = _mapBlockLight(_getBlockLight(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z()));
+					// Liquids may be translucent or light emitters so we want to take the maximum of the external face light and the internal light.
+					// (this avoids cases where lava is dark just because there is a partial block next to it).
+					byte externalLight = _getBlockLight(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z());
+					byte internalLight = _getBlockLight(inputData, address.x(), address.y(), address.z());
+					float blockLightMultiplier = _mapBlockLight((byte)Math.max(externalLight, internalLight));
 					float skyLightMultiplier = _getSkyLightMultiplier(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z(), SKY_LIGHT_DIRECT);
 					
 					_populateQuad(builder

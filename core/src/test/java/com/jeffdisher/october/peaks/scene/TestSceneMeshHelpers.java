@@ -39,6 +39,9 @@ public class TestSceneMeshHelpers
 	private static Item WATER_SOURCE;
 	private static Item WATER_STRONG;
 	private static Item WATER_WEAK;
+	private static Item LAVA_SOURCE;
+	private static Item LAVA_STRONG;
+	private static Item LAVA_WEAK;
 	private static Attribute[] ATTRIBUTES;
 	@BeforeClass
 	public static void setup()
@@ -48,6 +51,9 @@ public class TestSceneMeshHelpers
 		WATER_SOURCE = ENV.items.getItemById("op.water_source");
 		WATER_STRONG = ENV.items.getItemById("op.water_strong");
 		WATER_WEAK = ENV.items.getItemById("op.water_weak");
+		LAVA_SOURCE = ENV.items.getItemById("op.lava_source");
+		LAVA_STRONG = ENV.items.getItemById("op.lava_strong");
+		LAVA_WEAK = ENV.items.getItemById("op.lava_weak");
 		ATTRIBUTES = new Attribute[] {
 				new Attribute("aPosition", 3),
 				new Attribute("aNormal", 3),
@@ -278,17 +284,67 @@ public class TestSceneMeshHelpers
 		Assert.assertEquals(4, matchCount);
 	}
 
+	@Test
+	public void lavaSourceLight() throws Throwable
+	{
+		// We just want to demonstrate that we take the maximum light of a surface and source, for liquids.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress sourceBlock = BlockAddress.fromInt(2, 3, 4);
+		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, LAVA_SOURCE.number());
+		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock, ENV.lighting.getLightEmission(ENV.blocks.fromItem(LAVA_SOURCE), false));
+		// Set an adjacent block to something less and something greater.
+		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 0, 1), (byte)15);
+		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 1, 0), (byte)1);
+		
+		BufferBuilder.Buffer liquidBuffer = _buildLavaBuffer(cuboid);
+		int quadsWritten = _countQuadsInBuffer(liquidBuffer);
+		// We should see 6 quads, double-sided.
+		Assert.assertEquals(12, quadsWritten);
+		
+		float[] blockLights = _collectBlockLightVerticesInBuffer(liquidBuffer);
+		Assert.assertEquals(6 * 12, blockLights.length);
+		int highCount = 0;
+		int lowCount = 0;
+		for (float light : blockLights)
+		{
+			if (1.1f == light)
+			{
+				highCount += 1;
+			}
+			else if (0.6333334f == light)
+			{
+				lowCount += 1;
+			}
+			else
+			{
+				Assert.fail();
+			}
+		}
+		Assert.assertEquals(12, highCount);
+		Assert.assertEquals(5 * 12, lowCount);
+	}
+
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
+	{
+		return _buildLiquidBuffer(WATER_SOURCE, WATER_STRONG, WATER_WEAK, cuboid, optionalUp, optionalNorth);
+	}
+
+	private static BufferBuilder.Buffer _buildLavaBuffer(CuboidData cuboid)
+	{
+		return _buildLiquidBuffer(LAVA_SOURCE, LAVA_STRONG, LAVA_WEAK, cuboid, null, null);
+	}
+
+	private static BufferBuilder.Buffer _buildLiquidBuffer(Item source, Item strong, Item weak, CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
 		Block[] blocks = new Block[] {
 				ENV.special.AIR,
-				ENV.blocks.fromItem(WATER_SOURCE),
-				ENV.blocks.fromItem(WATER_STRONG),
-				ENV.blocks.fromItem(WATER_WEAK),
+				ENV.blocks.fromItem(source),
+				ENV.blocks.fromItem(strong),
+				ENV.blocks.fromItem(weak),
 		};
 		boolean[] nonOpaqueVector = new boolean[] {
 				true,
@@ -313,9 +369,9 @@ public class TestSceneMeshHelpers
 				, projection
 				, auxAtlas
 				, inputData
-				, WATER_SOURCE.number()
-				, WATER_STRONG.number()
-				, WATER_WEAK.number()
+				, source.number()
+				, strong.number()
+				, weak.number()
 				, true
 		);
 		return builder.finishOne();
@@ -346,6 +402,24 @@ public class TestSceneMeshHelpers
 			vertices.add(vertex);
 		}
 		return vertices;
+	}
+
+	private static float[] _collectBlockLightVerticesInBuffer(BufferBuilder.Buffer waterBuffer)
+	{
+		// We will collect the block light of each vertex.
+		// We also want to look at the shape of the vertices to see how this is joining between cuboids.
+		int floatsPerVertex = Arrays.stream(ATTRIBUTES).collect(Collectors.summingInt((Attribute attr) -> attr.floats()));
+		float[] vertexData = new float[floatsPerVertex * waterBuffer.vertexCount];
+		waterBuffer.testGetFloats(vertexData);
+		float[] blockLights = new float[waterBuffer.vertexCount];
+		for (int offset = 0; offset < waterBuffer.vertexCount; ++offset)
+		{
+			// We know that this is the 10th float.
+			int blockLightFloat = 10;
+			int fromIndex = offset * floatsPerVertex + blockLightFloat;
+			blockLights[offset] = vertexData[fromIndex];
+		}
+		return blockLights;
 	}
 
 	private static AuxilliaryTextureAtlas _buildAuxAtlas()
