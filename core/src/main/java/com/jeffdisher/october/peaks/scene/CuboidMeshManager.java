@@ -551,6 +551,23 @@ public class CuboidMeshManager
 		ColumnHeightMap mapEast = _getHeightMapOrNull(otherEastAddress);
 		ColumnHeightMap mapWest = _getHeightMapOrNull(otherWestAddress);
 		
+		IReadOnlyCuboidData[][][] cuboidsXYZ = new IReadOnlyCuboidData[][][] {
+			new IReadOnlyCuboidData[][] {
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(-1, -1, -1)), _getCuboidOrNull(address.getRelative(-1, -1, 0)), _getCuboidOrNull(address.getRelative(-1, -1, 1))},
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(-1, 0, -1)), otherWest, _getCuboidOrNull(address.getRelative(-1, 0, 1))},
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(-1, 1, -1)), _getCuboidOrNull(address.getRelative(-1, 1, 0)), _getCuboidOrNull(address.getRelative(-1, 1, 1))},
+			},
+			new IReadOnlyCuboidData[][] {
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(0, -1, -1)), otherSouth, _getCuboidOrNull(address.getRelative(0, -1, 1))},
+				new IReadOnlyCuboidData[] {otherDown, cuboid, otherUp},
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(0, 1, -1)), otherNorth, _getCuboidOrNull(address.getRelative(0, 1, 1))},
+			},
+			new IReadOnlyCuboidData[][] {
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(1, -1, -1)), _getCuboidOrNull(address.getRelative(1, -1, 0)), _getCuboidOrNull(address.getRelative(1, -1, 1))},
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(1, 0, -1)), otherEast, _getCuboidOrNull(address.getRelative(1, 0, 1))},
+				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(1, 1, -1)), _getCuboidOrNull(address.getRelative(1, 1, 0)), _getCuboidOrNull(address.getRelative(1, 1, 1))},
+			},
+		};
 		return new SceneMeshHelpers.MeshInputData(cuboid
 				, heightMap
 				, otherUp
@@ -565,6 +582,8 @@ public class CuboidMeshManager
 				, mapEast
 				, otherWest
 				, mapWest
+				
+				, cuboidsXYZ
 		);
 		
 	}

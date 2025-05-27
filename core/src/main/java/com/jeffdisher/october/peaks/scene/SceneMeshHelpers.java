@@ -862,78 +862,48 @@ public class SceneMeshHelpers
 
 	private static byte _getBlockLight(MeshInputData data, byte baseX, byte baseY, byte baseZ)
 	{
-		byte light;
+		int indexX = 1;
+		int indexY = 1;
+		int indexZ = 1;
+		
 		if (baseX < 0)
 		{
-			if (null != data.west)
-			{
-				light = data.west.getData7(AspectRegistry.LIGHT, new BlockAddress((byte)(baseX + Encoding.CUBOID_EDGE_SIZE), baseY, baseZ));
-			}
-			else
-			{
-				light = 0;
-			}
+			baseX = (byte)(baseX + Encoding.CUBOID_EDGE_SIZE);
+			indexX -= 1;
 		}
 		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.east)
-			{
-				light = data.east.getData7(AspectRegistry.LIGHT, new BlockAddress((byte)(baseX - Encoding.CUBOID_EDGE_SIZE), baseY, baseZ));
-			}
-			else
-			{
-				light = 0;
-			}
+			baseX = (byte)(baseX - Encoding.CUBOID_EDGE_SIZE);
+			indexX += 1;
 		}
-		else if (baseY < 0)
+		
+		if (baseY < 0)
 		{
-			if (null != data.south)
-			{
-				light = data.south.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, (byte)(baseY + Encoding.CUBOID_EDGE_SIZE), baseZ));
-			}
-			else
-			{
-				light = 0;
-			}
+			baseY = (byte)(baseY + Encoding.CUBOID_EDGE_SIZE);
+			indexY -= 1;
 		}
 		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.north)
-			{
-				light = data.north.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, (byte)(baseY - Encoding.CUBOID_EDGE_SIZE), baseZ));
-			}
-			else
-			{
-				light = 0;
-			}
+			baseY = (byte)(baseY - Encoding.CUBOID_EDGE_SIZE);
+			indexY += 1;
 		}
-		else if (baseZ < 0)
+		
+		if (baseZ < 0)
 		{
-			if (null != data.down)
-			{
-				light = data.down.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, (byte)(baseZ + Encoding.CUBOID_EDGE_SIZE)));
-			}
-			else
-			{
-				light = 0;
-			}
+			baseZ = (byte)(baseZ + Encoding.CUBOID_EDGE_SIZE);
+			indexZ -= 1;
 		}
 		else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.up)
-			{
-				light = data.up.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, (byte)(baseZ - Encoding.CUBOID_EDGE_SIZE)));
-			}
-			else
-			{
-				light = 0;
-			}
+			baseZ = (byte)(baseZ - Encoding.CUBOID_EDGE_SIZE);
+			indexZ += 1;
 		}
-		else
-		{
-			light = data.cuboid.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, baseZ));
-		}
-		return light;
+		
+		IReadOnlyCuboidData toRead = data.cuboidsXYZ[indexX][indexY][indexZ];
+		return (null != toRead)
+				? toRead.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, baseZ))
+				: 0
+		;
 	}
 
 	private static float _getSkyLightMultiplier(MeshInputData data, byte baseX, byte baseY, byte baseZ, float aboveOrMatchLight)
@@ -1188,5 +1158,7 @@ public class SceneMeshHelpers
 			, ColumnHeightMap eastHeight
 			, IReadOnlyCuboidData west
 			, ColumnHeightMap westHeight
+			
+			, IReadOnlyCuboidData[][][] cuboidsXYZ
 	) {}
 }

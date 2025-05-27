@@ -17,6 +17,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
+import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
@@ -246,6 +247,23 @@ public class TestSceneMeshHelpers
 				, null, null
 				, null, null
 				, null, null
+				, new IReadOnlyCuboidData[][][] {
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+					},
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[] { null, cuboid, null },
+						new IReadOnlyCuboidData[3],
+					},
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+					},
+				}
 		);
 		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builder, modelsAndAtlas, projection, auxAtlas, inputData);
 		BufferBuilder.Buffer finished = builder.finishOne();
@@ -407,6 +425,23 @@ public class TestSceneMeshHelpers
 				, null, null
 				, null, null
 				, null, null
+				, new IReadOnlyCuboidData[][][] {
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+					},
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[] {null, cuboid, optionalUp},
+						new IReadOnlyCuboidData[] {null, optionalNorth, null},
+					},
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+					},
+				}
 		);
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(ENV
 				, builder
@@ -445,6 +480,23 @@ public class TestSceneMeshHelpers
 				, null, null
 				, null, null
 				, null, null
+				, new IReadOnlyCuboidData[][][] {
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+					},
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[] {null, cuboid, null},
+						new IReadOnlyCuboidData[3],
+					},
+					new IReadOnlyCuboidData[][] {
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+						new IReadOnlyCuboidData[3],
+					},
+				}
 		);
 		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builder, blockAtlas, projection, auxAtlas, inputData, true);
 		return builder.finishOne();
