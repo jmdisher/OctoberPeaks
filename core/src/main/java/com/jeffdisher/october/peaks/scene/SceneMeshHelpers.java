@@ -766,7 +766,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
 						, _maxLightAsFloat(westBlockLight, northBlockLight, NWBlockLight, thisBlockLight)
 					}
-					, _getSkyLightMultiplier(_inputData, baseX, baseY, z, SKY_LIGHT_DIRECT)
+					, _getUpFacingSkyMultipler(_inputData, baseX, baseY, z)
 				);
 			}
 			else
@@ -996,6 +996,52 @@ public class SceneMeshHelpers
 		return (null != toRead)
 				? toRead.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, baseZ))
 				: 0
+		;
+	}
+
+	private static float _getUpFacingSkyMultipler(MeshInputData data, byte baseX, byte baseY, byte baseZ)
+	{
+		int indexX = 1;
+		int indexY = 1;
+		
+		if (baseX < 0)
+		{
+			baseX = (byte)(baseX + Encoding.CUBOID_EDGE_SIZE);
+			indexX -= 1;
+		}
+		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			baseX = (byte)(baseX - Encoding.CUBOID_EDGE_SIZE);
+			indexX += 1;
+		}
+		
+		if (baseY < 0)
+		{
+			baseY = (byte)(baseY + Encoding.CUBOID_EDGE_SIZE);
+			indexY -= 1;
+		}
+		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
+		{
+			baseY = (byte)(baseY - Encoding.CUBOID_EDGE_SIZE);
+			indexY += 1;
+		}
+		
+		ColumnHeightMap toRead = data.columnHeightXY[indexX][indexY];
+		int realZ = data.cuboid.getCuboidAddress().getBase().z() + baseZ - 1;
+		
+		boolean isLit;
+		if (null != toRead)
+		{
+			isLit = (realZ >= toRead.getHeight(baseX, baseY));
+		}
+		else
+		{
+			isLit = true;
+		}
+		
+		return isLit
+				? SKY_LIGHT_DIRECT
+				: SKY_LIGHT_SHADOW
 		;
 	}
 
@@ -1253,5 +1299,6 @@ public class SceneMeshHelpers
 			, ColumnHeightMap westHeight
 			
 			, IReadOnlyCuboidData[][][] cuboidsXYZ
+			, ColumnHeightMap[][] columnHeightXY
 	) {}
 }

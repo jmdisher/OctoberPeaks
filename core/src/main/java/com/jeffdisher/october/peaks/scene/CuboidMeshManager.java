@@ -568,6 +568,23 @@ public class CuboidMeshManager
 				new IReadOnlyCuboidData[] {_getCuboidOrNull(address.getRelative(1, 1, -1)), _getCuboidOrNull(address.getRelative(1, 1, 0)), _getCuboidOrNull(address.getRelative(1, 1, 1))},
 			},
 		};
+		ColumnHeightMap[][] columnHeightXY = new ColumnHeightMap[][] {
+			new ColumnHeightMap[] {
+					_getHeightMapOrNull(address.getRelative(-1, -1, 0)),
+					mapNorth,
+					_getHeightMapOrNull(address.getRelative(-1, 1, 0)),
+			},
+			new ColumnHeightMap[] {
+					mapWest,
+					heightMap,
+					mapEast,
+			},
+			new ColumnHeightMap[] {
+					_getHeightMapOrNull(address.getRelative(1, -1, 0)),
+					mapSouth,
+					_getHeightMapOrNull(address.getRelative(1, 1, 0)),
+			},
+		};
 		return new SceneMeshHelpers.MeshInputData(cuboid
 				, heightMap
 				, otherUp
@@ -584,6 +601,7 @@ public class CuboidMeshManager
 				, mapWest
 				
 				, cuboidsXYZ
+				, columnHeightXY
 		);
 		
 	}

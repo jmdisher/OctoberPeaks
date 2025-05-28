@@ -17,7 +17,9 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
+import com.jeffdisher.october.data.CuboidHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.HeightMapHelpers;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
@@ -240,7 +242,8 @@ public class TestSceneMeshHelpers
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
 		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
-		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
+		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
+		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
 				, null, null
 				, null, null
 				, null, null
@@ -262,6 +265,23 @@ public class TestSceneMeshHelpers
 						new IReadOnlyCuboidData[3],
 						new IReadOnlyCuboidData[3],
 						new IReadOnlyCuboidData[3],
+					},
+				}
+				, new ColumnHeightMap[][] {
+					new ColumnHeightMap[] {
+						null,
+						null,
+						null,
+					},
+					new ColumnHeightMap[] {
+						null,
+						heightMap,
+						null,
+					},
+					new ColumnHeightMap[] {
+						null,
+						null,
+						null,
 					},
 				}
 		);
@@ -353,7 +373,7 @@ public class TestSceneMeshHelpers
 		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 0, 1), (byte)10);
 		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 1, 1), (byte)15);
 		
-		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid);
+		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid, ColumnHeightMap.build().freeze());
 		int quadsWritten = _countQuadsInBuffer(liquidBuffer);
 		// We should see 6 quads, single-sided.
 		Assert.assertEquals(6, quadsWritten);
@@ -388,6 +408,65 @@ public class TestSceneMeshHelpers
 		Assert.assertEquals(3, midCount);
 	}
 
+	@Test
+	public void skyLightBlending() throws Throwable
+	{
+		// We want to demonstrate that the height map impacts sky light blending.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress sourceBlock = BlockAddress.fromInt(2, 3, 4);
+		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, STONE.number());
+		
+		// Temporarily build a fake cuboid so we can generate a height map for it.
+		CuboidData temp = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress blockAbove = sourceBlock.getRelativeInt(0, 0, 2);
+		temp.setData15(AspectRegistry.BLOCK, blockAbove, STONE.number());
+		temp.setData15(AspectRegistry.BLOCK, blockAbove.getRelativeInt(-1, -1, 0), STONE.number());
+		temp.setData15(AspectRegistry.BLOCK, blockAbove.getRelativeInt(-1, 0, 0), STONE.number());
+		temp.setData15(AspectRegistry.BLOCK, blockAbove.getRelativeInt(-1, 1, 0), STONE.number());
+		CuboidHeightMap cuboidHeight = HeightMapHelpers.buildHeightMap(temp);
+		
+		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(cuboidHeight, cuboid.getCuboidAddress()).freeze();
+		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid, heightMap);
+		int quadsWritten = _countQuadsInBuffer(liquidBuffer);
+		// We should see 6 quads, single-sided.
+		Assert.assertEquals(6, quadsWritten);
+		
+		float[] blockLights = _collectSkyLightVerticesInBuffer(liquidBuffer);
+		int verticesPerQuad = 6;
+		Assert.assertEquals(quadsWritten * verticesPerQuad, blockLights.length);
+		int highCount = 0;
+		int lowCount = 0;
+		int sideCount = 0;
+		for (float light : blockLights)
+		{
+			if (0.75f == light)
+			{
+				highCount += 1;
+			}
+			else if (0.25f == light)
+			{
+				lowCount += 1;
+			}
+			else if (0.5f == light)
+			{
+				sideCount += 1;
+			}
+			else if (0.0f == light)
+			{
+				// These remaining cases are underneath or blocked on the side.
+			}
+			else
+			{
+				Assert.fail();
+			}
+		}
+		// TODO:  Change these values once we have soft blending.
+		Assert.assertEquals(0, highCount);
+		Assert.assertEquals(0, lowCount);
+		// 3 side faces are under the sky, so they have partial light.
+		Assert.assertEquals(18, sideCount);
+	}
+
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
@@ -419,10 +498,11 @@ public class TestSceneMeshHelpers
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
 		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
-		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
-				, optionalUp, (null != optionalUp) ?  ColumnHeightMap.build().freeze() : null
+		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
+		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
+				, optionalUp, (null != optionalUp) ?  heightMap : null
 				, null, null
-				, optionalNorth, (null != optionalNorth) ? ColumnHeightMap.build().freeze() : null
+				, optionalNorth, (null != optionalNorth) ? heightMap : null
 				, null, null
 				, null, null
 				, null, null
@@ -443,6 +523,23 @@ public class TestSceneMeshHelpers
 						new IReadOnlyCuboidData[3],
 					},
 				}
+				, new ColumnHeightMap[][] {
+					new ColumnHeightMap[] {
+						null,
+						null,
+						null,
+					},
+					new ColumnHeightMap[] {
+						null,
+						heightMap,
+						null,
+					},
+					new ColumnHeightMap[] {
+						null,
+						null,
+						null,
+					},
+				}
 		);
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(ENV
 				, builder
@@ -458,7 +555,7 @@ public class TestSceneMeshHelpers
 		return builder.finishOne();
 	}
 
-	private static BufferBuilder.Buffer _buildOpaqueBlockBuffer(Item block, CuboidData cuboid)
+	private static BufferBuilder.Buffer _buildOpaqueBlockBuffer(Item block, CuboidData cuboid, ColumnHeightMap heightMap)
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		
@@ -474,7 +571,7 @@ public class TestSceneMeshHelpers
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
 		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
-		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, ColumnHeightMap.build().freeze()
+		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
 				, null, null
 				, null, null
 				, null, null
@@ -496,6 +593,23 @@ public class TestSceneMeshHelpers
 						new IReadOnlyCuboidData[3],
 						new IReadOnlyCuboidData[3],
 						new IReadOnlyCuboidData[3],
+					},
+				}
+				, new ColumnHeightMap[][] {
+					new ColumnHeightMap[] {
+						null,
+						null,
+						null,
+					},
+					new ColumnHeightMap[] {
+						null,
+						heightMap,
+						null,
+					},
+					new ColumnHeightMap[] {
+						null,
+						null,
+						null,
 					},
 				}
 		);
@@ -542,6 +656,24 @@ public class TestSceneMeshHelpers
 		{
 			// We know that this is the 10th float.
 			int blockLightFloat = 10;
+			int fromIndex = offset * floatsPerVertex + blockLightFloat;
+			blockLights[offset] = vertexData[fromIndex];
+		}
+		return blockLights;
+	}
+
+	private static float[] _collectSkyLightVerticesInBuffer(BufferBuilder.Buffer waterBuffer)
+	{
+		// We will collect the block light of each vertex.
+		// We also want to look at the shape of the vertices to see how this is joining between cuboids.
+		int floatsPerVertex = Arrays.stream(ATTRIBUTES).collect(Collectors.summingInt((Attribute attr) -> attr.floats()));
+		float[] vertexData = new float[floatsPerVertex * waterBuffer.vertexCount];
+		waterBuffer.testGetFloats(vertexData);
+		float[] blockLights = new float[waterBuffer.vertexCount];
+		for (int offset = 0; offset < waterBuffer.vertexCount; ++offset)
+		{
+			// We know that this is the 11th float.
+			int blockLightFloat = 11;
 			int fromIndex = offset * floatsPerVertex + blockLightFloat;
 			blockLights[offset] = vertexData[fromIndex];
 		}
