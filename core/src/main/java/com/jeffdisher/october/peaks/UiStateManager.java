@@ -206,7 +206,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<Boolean> _fullScreenButton;
 	private final ViewControlPlusMinus<Integer> _viewDistanceControl;
 	private final ViewControlPlusMinus<Float> _brightnessControl;
-	private final ViewTextLabel _clientNameLabel;
 	private final ViewTextField<String> _clientNameTextField;
 
 	// UI and state related to key bindings prefs.
@@ -405,10 +404,13 @@ public class UiStateManager implements GameSession.ICallouts
 		_newWorldSeedTextField = new ViewTextField<>(_ui
 				, newSeedBinding
 				, (String text) -> text
-				, () -> _ui.pixelLightGrey
+				, () -> (_typingCapture == newSeedBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
 				, () -> {
 					// We want to enable text capture for this binding.
-					_typingCapture = newSeedBinding;
+					if (_leftClick)
+					{
+						_typingCapture = newSeedBinding;
+					}
 				}
 		);
 		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Create New")
@@ -799,7 +801,6 @@ public class UiStateManager implements GameSession.ICallouts
 						_mutablePreferences.screenBrightness.set(updated);
 					}
 			});
-		_clientNameLabel = new ViewTextLabel(_ui, new Binding<>("Client Name"));
 		_clientNameTextField = new ViewTextField<>(_ui, _mutablePreferences.clientName
 			, (String value) -> (_typingCapture == _mutablePreferences.clientName) ? (value + "_") : value
 			, () -> (_typingCapture == _mutablePreferences.clientName) ? _ui.pixelGreen : _ui.pixelLightGrey
@@ -1260,7 +1261,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw whatever is common to states where we draw interactive buttons on top.
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "October Project";
+		String menuTitle = "October Peaks";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
 		action = _renderViewChainAction(_singlePlayerButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
@@ -1305,15 +1306,30 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui.enterUiRenderMode();
 		
 		String menuTitle = "Create Single Player World";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
+		float margin = 0.6f;
+		float divider = -0.2f;
+		float nextTop = 0.8f;
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_newWorldGeneratorNameButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f), action);
-		action = _renderViewChainAction(_newDefaultPlayerModeButton, new Rect(-0.6f, -0.2f, 0.6f, -0.1f), action);
-		action = _renderViewChainAction(_newDifficultyButton, new Rect(-0.6f, -0.3f, 0.6f, -0.2f), action);
-		action = _renderViewChainAction(_newWorldSeedTextField, new Rect(-0.4f, -0.4f, 0.4f, -0.3f), action);
-		action = _renderViewChainAction(_newWorldNameTextField, new Rect(-0.4f, -0.7f, 0.1f, -0.6f), action);
-		action = _renderViewChainAction(_createWorldButton, new Rect(0.1f, -0.7f, 0.4f, -0.6f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("World Generator")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
+		action = _renderViewChainAction(_newWorldGeneratorNameButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Player Mode")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
+		action = _renderViewChainAction(_newDefaultPlayerModeButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Difficulty")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
+		action = _renderViewChainAction(_newDifficultyButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Seed Override")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
+		action = _renderViewChainAction(_newWorldSeedTextField, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("World Name")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
+		action = _renderViewChainAction(_newWorldNameTextField, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.1f;
+		action = _renderViewChainAction(_createWorldButton, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(_backButton, new Rect(-0.3f, nextTop - 0.1f, 0.3f, nextTop), action);
 		
 		return action;
 	}
@@ -1323,11 +1339,11 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui.enterUiRenderMode();
 		
 		String menuTitle = "Multi-Player servers";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
 		float halfListWidth = MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
 		action = _renderViewChainAction(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
-		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f), action);
+		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		
 		return action;
@@ -1338,13 +1354,21 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui.enterUiRenderMode();
 		
 		String menuTitle = "New Server Connection";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		float margin = 0.6f;
+		float divider = -0.2f;
+		float nextTop = 0.8f;
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
-		action = _renderViewChainAction(_currentlyTestingServerView, new Rect(-0.4f, -0.6f, 0.4f, -0.4f), action);
-		action = _renderViewChainAction(_newServerAddressTextField, new Rect(-0.5f, -0.7f, 0.1f, -0.6f), action);
-		action = _renderViewChainAction(_testServerButton, new Rect(0.1f, -0.7f, 0.5f, -0.6f), action);
-		action = _renderViewChainAction(_saveServerButton, new Rect(-0.3f, -0.8f, 0.3f, -0.7f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(_currentlyTestingServerView, new Rect(-margin, nextTop - 0.2f, margin, nextTop), action);
+		nextTop -= 0.3f;
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Server IP:port")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
+		action = _renderViewChainAction(_newServerAddressTextField, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(_testServerButton, new Rect(-margin, nextTop - 0.1f, 0.0f, nextTop), action);
+		action = _renderViewChainAction(_saveServerButton, new Rect(0.0f, nextTop - 0.1f, margin, nextTop), action);
+		nextTop -= 0.2f;
+		action = _renderViewChainAction(_backButton, new Rect(-0.3f, nextTop - 0.1f, 0.3f, nextTop), action);
 		
 		return action;
 	}
@@ -1581,20 +1605,23 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Draw the menu title and other UI.
 		String menuTitle = "Game Options";
-		float nextTop = 0.5f;
+		float nextTop = 0.8f;
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
 		nextTop -= 0.2f;
-		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Toggle Display")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
+		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
 		nextTop -= 0.1f;
-		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("View Distance")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
+		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
 		nextTop -= 0.1f;
-		action = _renderViewChainAction(_brightnessControl, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Scene Brightness")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
+		action = _renderViewChainAction(_brightnessControl, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
 		nextTop -= 0.1f;
-		action = _renderViewChainAction(_clientNameLabel, new Rect(-0.4f, nextTop - 0.1f, 0.0f, nextTop), action);
-		action = _renderViewChainAction(_clientNameTextField, new Rect(0.0f, nextTop - 0.1f, 0.4f, nextTop), action);
+		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Multiplayer Name")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
+		action = _renderViewChainAction(_clientNameTextField, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
 		nextTop -= 0.2f;
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, nextTop - 0.1f, 0.2f, nextTop), action);
+		action = _renderViewChainAction(_backButton, new Rect(-0.3f, nextTop - 0.1f, 0.3f, nextTop), action);
 		
 		return action;
 	}
