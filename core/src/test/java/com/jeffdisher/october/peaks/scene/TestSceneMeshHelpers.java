@@ -460,9 +460,10 @@ public class TestSceneMeshHelpers
 				Assert.fail();
 			}
 		}
-		// TODO:  Change these values once we have soft blending.
-		Assert.assertEquals(0, highCount);
-		Assert.assertEquals(0, lowCount);
+		// 1 (3 vertices) edge is partially illuminated.
+		Assert.assertEquals(3, highCount);
+		// 1 (3 vertices) edge is mostly dark.
+		Assert.assertEquals(3, lowCount);
 		// 3 side faces are under the sky, so they have partial light.
 		Assert.assertEquals(18, sideCount);
 	}

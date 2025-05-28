@@ -271,6 +271,7 @@ public class SceneMeshHelpers
 					float skyLightMultiplier = _getSkyLightMultiplier(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z(), SKY_LIGHT_DIRECT);
 					// For now, at least, we will leave the liquid surfaces without blending.
 					float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
+					float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
 					
 					_populateQuad(builder
 							, _base
@@ -281,7 +282,7 @@ public class SceneMeshHelpers
 							, auxUv
 							, auxTextureSize
 							, blockLightMultipliers
-							, skyLightMultiplier
+							, skyLightMultipliers
 					);
 					
 					if (drawInternalSurfaces)
@@ -308,7 +309,7 @@ public class SceneMeshHelpers
 								, auxUv
 								, auxTextureSize
 								, blockLightMultipliers
-								, skyLightMultiplier
+								, skyLightMultipliers
 						);
 					}
 				}
@@ -403,10 +404,10 @@ public class SceneMeshHelpers
 		// Note that no matter the scale, the quad vertices are the same magnitudes.
 		_PrismVertices v = _PrismVertices.from(outline);
 		float blockLightMultiplier = 1.0f;
-		float skyLightMultiplier = 0.0f;
 		float[] base = new float[] { 0.0f, 0.0f, 0.0f };
 		// The selection prism has no light blending.
 		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
+		float[] skyLightMultipliers = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
 		
 		// X-normal plane.
 		_populateQuad(builder, base, new float[][] {
@@ -415,7 +416,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
-			, skyLightMultiplier
+			, skyLightMultipliers
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v100, v.v110, v.v111, v.v101
@@ -423,7 +424,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
-			, skyLightMultiplier
+			, skyLightMultipliers
 		);
 		
 		// Y-normal plane.
@@ -433,7 +434,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
-			, skyLightMultiplier
+			, skyLightMultipliers
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v110, v.v010, v.v011, v.v111
@@ -441,7 +442,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
-			, skyLightMultiplier
+			, skyLightMultipliers
 		);
 		
 		// Z-normal plane.
@@ -452,7 +453,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
-			, skyLightMultiplier
+			, skyLightMultipliers
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v001, v.v101, v.v111, v.v011
@@ -460,7 +461,7 @@ public class SceneMeshHelpers
 			, uvBase, textureSize
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
-			, skyLightMultiplier
+			, skyLightMultipliers
 		);
 		
 		return builder.finishOne().flush(gl);
@@ -535,6 +536,7 @@ public class SceneMeshHelpers
 		};
 		// We won't bother light-blending the up-facing square.
 		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
+		float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
 		
 		_populateQuad(builder, base
 				, new float[][] {bottomLeft, bottomRight, topRight, topLeft }
@@ -542,7 +544,7 @@ public class SceneMeshHelpers
 				, uvBase, textureSize
 				, otherUvBase, otherTextureSize
 				, blockLightMultipliers
-				, skyLightMultiplier
+				, skyLightMultipliers
 		);
 	}
 
@@ -555,7 +557,7 @@ public class SceneMeshHelpers
 			, float[] otherUvBase
 			, float otherTextureSize
 			, float[] blockLightMultipliers
-			, float skyLightMultiplier
+			, float[] skyLightMultipliers
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -564,24 +566,28 @@ public class SceneMeshHelpers
 				base[2] + vertices[0][2],
 		};
 		float[] bottomLeftBlockLight = new float[] {blockLightMultipliers[0]};
+		float[] bottomLeftSkyLight = new float[] {skyLightMultipliers[0]};
 		float[] bottomRight = new float[] {
 				base[0] + vertices[1][0],
 				base[1] + vertices[1][1],
 				base[2] + vertices[1][2],
 		};
 		float[] bottomRightBlockLight = new float[] {blockLightMultipliers[1]};
+		float[] bottomRightSkyLight = new float[] {skyLightMultipliers[1]};
 		float[] topRight = new float[] {
 				base[0] + vertices[2][0],
 				base[1] + vertices[2][1],
 				base[2] + vertices[2][2],
 		};
 		float[] topRightBlockLight = new float[] {blockLightMultipliers[2]};
+		float[] topRightSkyLight = new float[] {skyLightMultipliers[2]};
 		float[] topLeft = new float[] {
 				base[0] + vertices[3][0],
 				base[1] + vertices[3][1],
 				base[2] + vertices[3][2],
 		};
 		float[] topLeftBlockLight = new float[] {blockLightMultipliers[3]};
+		float[] topLeftSkyLight = new float[] {skyLightMultipliers[3]};
 		float u = uvBase[0];
 		float v = uvBase[1];
 		float uEdge = u + textureSize;
@@ -591,7 +597,6 @@ public class SceneMeshHelpers
 		float otherV = otherUvBase[1];
 		float otherUEdge = otherU + otherTextureSize;
 		float otherVEdge = otherV + otherTextureSize;
-		float[] skyLight = new float[] { skyLightMultiplier };
 		
 		// Each element is:
 		// vx, vy, vz
@@ -606,7 +611,7 @@ public class SceneMeshHelpers
 				, new float[] {u, v}
 				, new float[] {otherU, otherV}
 				, bottomLeftBlockLight
-				, skyLight
+				, bottomLeftSkyLight
 		);
 		// Right Bottom.
 		builder.appendVertex(bottomRight
@@ -614,7 +619,7 @@ public class SceneMeshHelpers
 				, new float[] {uEdge, v}
 				, new float[] {otherUEdge, otherV}
 				, bottomRightBlockLight
-				, skyLight
+				, bottomRightSkyLight
 		);
 		// Right Top.
 		builder.appendVertex(topRight
@@ -622,7 +627,7 @@ public class SceneMeshHelpers
 				, new float[] {uEdge, vEdge}
 				, new float[] {otherUEdge, otherVEdge}
 				, topRightBlockLight
-				, skyLight
+				, topRightSkyLight
 		);
 		// Left Bottom.
 		builder.appendVertex(bottomLeft
@@ -630,7 +635,7 @@ public class SceneMeshHelpers
 				, new float[] {u, v}
 				, new float[] {otherU, otherV}
 				, bottomLeftBlockLight
-				, skyLight
+				, bottomLeftSkyLight
 		);
 		// Right Top.
 		builder.appendVertex(topRight
@@ -638,7 +643,7 @@ public class SceneMeshHelpers
 				, new float[] {uEdge, vEdge}
 				, new float[] {otherUEdge, otherVEdge}
 				, topRightBlockLight
-				, skyLight
+				, topRightSkyLight
 		);
 		// Left Top.
 		builder.appendVertex(topLeft
@@ -646,7 +651,7 @@ public class SceneMeshHelpers
 				, new float[] {u, vEdge}
 				, new float[] {otherU, otherVEdge}
 				, topLeftBlockLight
-				, skyLight
+				, topLeftSkyLight
 		);
 	}
 
@@ -747,15 +752,32 @@ public class SceneMeshHelpers
 			if (isPositiveNormal)
 			{
 				byte z = (byte)(baseZ + 1);
+				byte westX = (byte)(baseX - 1);
+				byte eastX = (byte)(baseX + 1);
+				byte southY = (byte)(baseY - 1);
+				byte northY = (byte)(baseY + 1);
 				byte thisBlockLight = _getBlockLight(_inputData, baseX, baseY, z);
-				byte eastBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), baseY, z);
-				byte westBlockLight = _getBlockLight(_inputData, (byte)(baseX - 1), baseY, z);
-				byte northBlockLight = _getBlockLight(_inputData, baseX, (byte)(baseY + 1), z);
-				byte southBlockLight = _getBlockLight(_inputData, baseX, (byte)(baseY - 1), z);
-				byte SWBlockLight = _getBlockLight(_inputData, (byte)(baseX - 1), (byte)(baseY - 1), z);
-				byte SEBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), (byte)(baseY - 1), z);
-				byte NWBlockLight = _getBlockLight(_inputData, (byte)(baseX - 1), (byte)(baseY + 1), z);
-				byte NEBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), (byte)(baseY + 1), z);
+				byte eastBlockLight = _getBlockLight(_inputData, eastX, baseY, z);
+				byte westBlockLight = _getBlockLight(_inputData, westX, baseY, z);
+				byte northBlockLight = _getBlockLight(_inputData, baseX, northY, z);
+				byte southBlockLight = _getBlockLight(_inputData, baseX, southY, z);
+				byte SWBlockLight = _getBlockLight(_inputData, westX, southY, z);
+				byte SEBlockLight = _getBlockLight(_inputData, eastX, southY, z);
+				byte NWBlockLight = _getBlockLight(_inputData, westX, northY, z);
+				byte NEBlockLight = _getBlockLight(_inputData, eastX, northY, z);
+				
+				// We handle sky slight specially for z+ faces, since the sky is in that direction.
+				// We actually want to average the 4 block faces adjacent to each corner, in this case.
+				float skySW = _getUpFacingSkyMultipler(_inputData, westX, southY, z);
+				float skyS = _getUpFacingSkyMultipler(_inputData, baseX, southY, z);
+				float skySE = _getUpFacingSkyMultipler(_inputData, eastX, southY, z);
+				float skyW = _getUpFacingSkyMultipler(_inputData, westX, baseY, z);
+				float sky = _getUpFacingSkyMultipler(_inputData, baseX, baseY, z);
+				float skyE = _getUpFacingSkyMultipler(_inputData, eastX, baseY, z);
+				float skyNW = _getUpFacingSkyMultipler(_inputData, westX, northY, z);
+				float skyN = _getUpFacingSkyMultipler(_inputData, baseX, northY, z);
+				float skyNE = _getUpFacingSkyMultipler(_inputData, eastX, northY, z);
+				
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v001, _v.v101, _v.v111, _v.v011
 					}, new float[] {0.0f, 0.0f, 1.0f}
@@ -766,7 +788,12 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
 						, _maxLightAsFloat(westBlockLight, northBlockLight, NWBlockLight, thisBlockLight)
 					}
-					, _getUpFacingSkyMultipler(_inputData, baseX, baseY, z)
+					, new float[] {
+							_blendSkyLight(skyW, skyS, skySW, sky),
+							_blendSkyLight(skyE, skyS, skySE, sky),
+							_blendSkyLight(skyE, skyN, skyNE, sky),
+							_blendSkyLight(skyW, skyN, skyNW, sky),
+					}
 				);
 			}
 			else
@@ -791,7 +818,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(westBlockLight, northBlockLight, NWBlockLight, thisBlockLight)
 						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
 					}
-					, SKY_LIGHT_SHADOW
+					, new float[] {SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW}
 				);
 			}
 		}
@@ -815,6 +842,7 @@ public class SceneMeshHelpers
 				byte WUBlockLight = _getBlockLight(_inputData, (byte)(baseX - 1), y, (byte)(baseZ + 1));
 				byte EDBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), y, (byte)(baseZ - 1));
 				byte EUBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), y, (byte)(baseZ + 1));
+				float skyLightMultiplier = _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v110, _v.v010, _v.v011, _v.v111
 					}, new float[] {0.0f, 1.0f, 0.0f}
@@ -825,7 +853,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(westBlockLight, thisBlockLight, upBlockLight, WUBlockLight)
 						, _maxLightAsFloat(eastBlockLight, thisBlockLight, upBlockLight, EUBlockLight)
 					}
-					, _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL)
+					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
 				);
 			}
 			else
@@ -840,6 +868,7 @@ public class SceneMeshHelpers
 				byte WUBlockLight = _getBlockLight(_inputData, (byte)(baseX - 1), y, (byte)(baseZ + 1));
 				byte EDBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), y, (byte)(baseZ - 1));
 				byte EUBlockLight = _getBlockLight(_inputData, (byte)(baseX + 1), y, (byte)(baseZ + 1));
+				float skyLightMultiplier = _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v000, _v.v100, _v.v101, _v.v001
 					}, new float[] {0.0f, -1.0f,0.0f}
@@ -850,7 +879,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(eastBlockLight, thisBlockLight, upBlockLight, EUBlockLight)
 						, _maxLightAsFloat(westBlockLight, thisBlockLight, upBlockLight, WUBlockLight)
 					}
-					, _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL)
+					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
 				);
 			}
 		}
@@ -874,6 +903,7 @@ public class SceneMeshHelpers
 				byte SUBlockLight = _getBlockLight(_inputData, x, (byte)(baseY - 1), (byte)(baseZ + 1));
 				byte NDBlockLight = _getBlockLight(_inputData, x, (byte)(baseY + 1), (byte)(baseZ - 1));
 				byte NUBlockLight = _getBlockLight(_inputData, x, (byte)(baseY + 1), (byte)(baseZ + 1));
+				float skyLightMultiplier = _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v100, _v.v110, _v.v111, _v.v101
 					}, new float[] {1.0f, 0.0f, 0.0f}
@@ -884,7 +914,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(thisBlockLight, northBlockLight, upBlockLight, NUBlockLight)
 						, _maxLightAsFloat(thisBlockLight, southBlockLight, upBlockLight, SUBlockLight)
 					}
-					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)
+					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
 				);
 			}
 			else
@@ -899,6 +929,7 @@ public class SceneMeshHelpers
 				byte SUBlockLight = _getBlockLight(_inputData, x, (byte)(baseY - 1), (byte)(baseZ + 1));
 				byte NDBlockLight = _getBlockLight(_inputData, x, (byte)(baseY + 1), (byte)(baseZ - 1));
 				byte NUBlockLight = _getBlockLight(_inputData, x, (byte)(baseY + 1), (byte)(baseZ + 1));
+				float skyLightMultiplier = _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL);
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v010, _v.v000, _v.v001, _v.v011
 					}, new float[] {-1.0f, 0.0f, 0.0f}
@@ -909,7 +940,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(thisBlockLight, southBlockLight, upBlockLight, SUBlockLight)
 						, _maxLightAsFloat(thisBlockLight, northBlockLight, upBlockLight, NUBlockLight)
 					}
-					, _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL)
+					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
 				);
 			}
 		}
@@ -927,6 +958,11 @@ public class SceneMeshHelpers
 			// We just want to take the maximum of the given 4 light values and convert them to a float light multiplier.
 			byte max = (byte)Math.max(Math.max(one, two), Math.max(three, four));
 			return _mapBlockLight(max);
+		}
+		private static float _blendSkyLight(float one, float two, float three, float four)
+		{
+			// We will average these so that blocks in the open are brighter than those in corners.
+			return (one + two + three + four) / 4.0f;
 		}
 	}
 
