@@ -17,9 +17,10 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.client.MovementAccumulator;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
-import com.jeffdisher.october.mutations.EntityChangeAccelerate;
+import com.jeffdisher.october.logic.ViscosityReader;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.persistence.MutableServerList;
@@ -899,28 +900,28 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void moveForward()
 	{
-		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.FORWARD);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.FORWARD, false);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void moveBackward()
 	{
-		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.BACKWARD);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.BACKWARD, false);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void strafeRight()
 	{
-		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.RIGHT);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.RIGHT, false);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
 	public void strafeLeft()
 	{
-		_currentGameSession.client.accelerateHorizontal(EntityChangeAccelerate.Relative.LEFT);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.LEFT, false);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
@@ -1766,7 +1767,6 @@ public class UiStateManager implements GameSession.ICallouts
 				if (_canAct(stopBlock))
 				{
 					_currentGameSession.client.hitBlock(stopBlock);
-					_didAccountForTimeInFrame = true;
 				}
 			}
 			else if (null != entity)
@@ -1835,7 +1835,8 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		
-		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(_currentGameSession.blockLookup, _entityBinding.get().location(), _playerVolume))
+		ViscosityReader reader = new ViscosityReader(_env, _currentGameSession.blockLookup);
+		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(reader, _entityBinding.get().location(), _playerVolume))
 		{
 			_currentGameSession.audioManager.setWalking();
 		}
@@ -1851,26 +1852,10 @@ public class UiStateManager implements GameSession.ICallouts
 	 */
 	private void _idleInActiveFrame()
 	{
-		// See if we should continue any in-progress crafting operation.
-		if (!_didAccountForTimeInFrame && (null != _openStationLocation))
-		{
-			// The common code doesn't know we are looking at this block so it can't apply this for us (as it does for in-inventory crafting).
-			_currentGameSession.client.beginCraftInBlock(_openStationLocation, _continuousInBlock);
-			// We don't account for time here since this usually doesn't do anything.
-		}
-		
 		// If we took no action, just tell the client to pass time.
 		if (!_didAccountForTimeInFrame)
 		{
-			// See if we are doing continuous in-inventory crafting.
-			if (null != _continuousInInventory)
-			{
-				_currentGameSession.client.beginCraftInInventory(_continuousInInventory);
-			}
-			else
-			{
-				_currentGameSession.client.doNothing();
-			}
+			_currentGameSession.client.doNothing(_continuousInInventory, _openStationLocation, _continuousInBlock);
 		}
 		
 		_didAccountForTimeInFrame = false;

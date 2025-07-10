@@ -15,19 +15,21 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.aspects.OrientationAspect;
+import com.jeffdisher.october.client.MovementAccumulator;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
-import com.jeffdisher.october.mutations.EntityChangeAccelerate;
 import com.jeffdisher.october.mutations.EntityChangeAttackEntity;
 import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
+import com.jeffdisher.october.mutations.EntityChangeCraft;
+import com.jeffdisher.october.mutations.EntityChangeCraftInBlock;
+import com.jeffdisher.october.mutations.EntityChangeIncrementalBlockBreak;
 import com.jeffdisher.october.mutations.EntityChangeJump;
 import com.jeffdisher.october.mutations.EntityChangePlaceMultiBlock;
 import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
 import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
-import com.jeffdisher.october.mutations.EntityChangeSetOrientation;
 import com.jeffdisher.october.mutations.EntityChangeSwapArmour;
 import com.jeffdisher.october.mutations.EntityChangeSwim;
 import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
@@ -49,6 +51,7 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
+import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Difficulty;
@@ -213,7 +216,7 @@ public class ClientWrapper
 		}
 	}
 
-	public void doNothing()
+	public void doNothing(Craft rescheduleInInventory, AbsoluteLocation openStationLocation, Craft rescheduleInBlock)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		if (_isPaused)
@@ -222,6 +225,37 @@ public class ClientWrapper
 		}
 		else
 		{
+			// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
+			CraftOperation ongoing = _thisEntity.localCraftOperation();
+			if (null != ongoing)
+			{
+				EntityChangeCraft change = new EntityChangeCraft(null);
+				_client.sendAction(change, currentTimeMillis);
+			}
+			else if (null != rescheduleInInventory)
+			{
+				EntityChangeCraft change = new EntityChangeCraft(rescheduleInInventory);
+				_client.sendAction(change, currentTimeMillis);
+			}
+			else if (null != openStationLocation)
+			{
+				IReadOnlyCuboidData cuboid = _cuboids.get(openStationLocation.getCuboidAddress());
+				// We already have this open in another view.
+				Assert.assertTrue(null != cuboid);
+				CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
+				if (null != blockOperation)
+				{
+					EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(openStationLocation, blockOperation.selectedCraft());
+					_client.sendAction(change, currentTimeMillis);
+				}
+				else if (null != rescheduleInBlock)
+				{
+					EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
+					_client.sendAction(change, currentTimeMillis);
+				}
+			}
+			
+			// Now, just allow time to pass while standing.
 			_client.doNothing(currentTimeMillis);
 		}
 	}
@@ -230,17 +264,15 @@ public class ClientWrapper
 	{
 		byte yaw = OrientationHelpers.yawFromRadians(yawRadians);
 		byte pitch = OrientationHelpers.yawFromRadians(pitchRadians);
-		EntityChangeSetOrientation<IMutablePlayerEntity> set = new EntityChangeSetOrientation<>(yaw, pitch);
-		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isPaused);
-		_client.sendAction(set, currentTimeMillis);
+		_client.setOrientation(yaw, pitch);
 	}
 
-	public void accelerateHorizontal(EntityChangeAccelerate.Relative relativeDirection)
+	public void accelerateHorizontal(MovementAccumulator.Relative relativeDirection, boolean runningSpeed)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isPaused);
-		_client.accelerateHorizontally(relativeDirection, currentTimeMillis);
+		_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
 	}
 
 	public boolean jumpOrSwim()
@@ -307,7 +339,8 @@ public class ClientWrapper
 			if (!_environment.blocks.canBeReplaced(proxy.getBlock()))
 			{
 				// This block is not the kind which can be replaced, meaning it can potentially be broken.
-				_client.hitBlock(blockLocation, currentTimeMillis);
+				EntityChangeIncrementalBlockBreak change = new EntityChangeIncrementalBlockBreak(blockLocation);
+				_client.sendAction(change, currentTimeMillis);
 				didHit = true;
 			}
 		}
@@ -507,7 +540,8 @@ public class ClientWrapper
 			if (damage > 0)
 			{
 				long currentTimeMillis = System.currentTimeMillis();
-				_client.repairBlock(solidBlock, currentTimeMillis);
+				EntityChangeIncrementalBlockBreak change = new EntityChangeIncrementalBlockBreak(solidBlock);
+				_client.sendAction(change, currentTimeMillis);
 				didAttemptRepair = true;
 			}
 		}
@@ -682,14 +716,16 @@ public class ClientWrapper
 	{
 		Assert.assertTrue(!_isPaused);
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.craft(craft, currentTimeMillis);
+		EntityChangeCraft change = new EntityChangeCraft(craft);
+		_client.sendAction(change, currentTimeMillis);
 	}
 
 	public void beginCraftInBlock(AbsoluteLocation block, Craft craft)
 	{
 		Assert.assertTrue(!_isPaused);
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.craftInBlock(block, craft, currentTimeMillis);
+		EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(block, craft);
+		_client.sendAction(change, currentTimeMillis);
 	}
 
 	public void swapArmour(BodyPart part)
