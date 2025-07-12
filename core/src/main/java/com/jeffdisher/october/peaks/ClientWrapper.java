@@ -275,6 +275,13 @@ public class ClientWrapper
 		_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
 	}
 
+	public void sneak(MovementAccumulator.Relative relativeDirection)
+	{
+		long currentTimeMillis = System.currentTimeMillis();
+		Assert.assertTrue(!_isPaused);
+		_client.sneak(relativeDirection, currentTimeMillis);
+	}
+
 	public boolean jumpOrSwim()
 	{
 		// See if we can jump or swim.

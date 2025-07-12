@@ -29,6 +29,7 @@ public class InputManager
 	private boolean _buttonDown1;
 	private char _typedCharacter;
 	private boolean _leftShiftDown;
+	private boolean _leftControlDown;
 	private int _lastPressedNumber;
 	private boolean _didHandlePressedNumber;
 
@@ -72,6 +73,9 @@ public class InputManager
 				{
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = true;
+					break;
+				case Keys.CONTROL_LEFT:
+					_leftControlDown = true;
 					break;
 				default:
 					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
@@ -134,6 +138,9 @@ public class InputManager
 					break;
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = false;
+					break;
+				case Keys.CONTROL_LEFT:
+					_leftControlDown = false;
 					break;
 				default:
 					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
@@ -227,21 +234,25 @@ public class InputManager
 			}
 			
 			// Check out movement controls.
+			UiStateManager.WalkType walk = _leftControlDown
+				? UiStateManager.WalkType.SNEAK
+				: (_leftShiftDown ? UiStateManager.WalkType.RUN : UiStateManager.WalkType.WALK)
+			;
 			if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
 			{
-				uiManager.moveForward(_leftShiftDown);
+				uiManager.moveForward(walk);
 			}
 			else if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
 			{
-				uiManager.moveBackward(_leftShiftDown);
+				uiManager.moveBackward(walk);
 			}
 			else if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
 			{
-				uiManager.strafeRight(_leftShiftDown);
+				uiManager.strafeRight(walk);
 			}
 			else if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
 			{
-				uiManager.strafeLeft(_leftShiftDown);
+				uiManager.strafeLeft(walk);
 			}
 			
 			if (_activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])

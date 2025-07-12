@@ -898,32 +898,28 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void moveForward(boolean runningSpeed)
+	public void moveForward(WalkType walk)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.FORWARD, runningSpeed);
-		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		MovementAccumulator.Relative relative = MovementAccumulator.Relative.FORWARD;
+		_commonWalk(relative, walk);
 	}
 
-	public void moveBackward(boolean runningSpeed)
+	public void moveBackward(WalkType walk)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.BACKWARD, runningSpeed);
-		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		MovementAccumulator.Relative relative = MovementAccumulator.Relative.BACKWARD;
+		_commonWalk(relative, walk);
 	}
 
-	public void strafeRight(boolean runningSpeed)
+	public void strafeRight(WalkType walk)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.RIGHT, runningSpeed);
-		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		MovementAccumulator.Relative relative = MovementAccumulator.Relative.RIGHT;
+		_commonWalk(relative, walk);
 	}
 
-	public void strafeLeft(boolean runningSpeed)
+	public void strafeLeft(WalkType walk)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.LEFT, runningSpeed);
-		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		MovementAccumulator.Relative relative = MovementAccumulator.Relative.LEFT;
+		_commonWalk(relative, walk);
 	}
 
 	public void jumpOrSwim()
@@ -2032,6 +2028,21 @@ public class UiStateManager implements GameSession.ICallouts
 		directory.delete();
 	}
 
+	private void _commonWalk(MovementAccumulator.Relative relative, WalkType walk)
+	{
+		if (WalkType.SNEAK == walk)
+		{
+			_currentGameSession.client.sneak(relative);
+		}
+		else
+		{
+			boolean runningSpeed = (WalkType.RUN == walk);
+			_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
+		}
+		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
+	}
+
 
 	/**
 	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
@@ -2100,5 +2111,12 @@ public class UiStateManager implements GameSession.ICallouts
 	public static interface ICallouts
 	{
 		public void shouldCaptureMouse(boolean setCapture);
+	}
+
+	public static enum WalkType
+	{
+		WALK,
+		RUN,
+		SNEAK,
 	}
 }
