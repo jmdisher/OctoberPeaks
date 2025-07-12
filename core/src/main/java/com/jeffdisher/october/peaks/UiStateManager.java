@@ -898,30 +898,30 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void moveForward()
+	public void moveForward(boolean runningSpeed)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.FORWARD, false);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.FORWARD, runningSpeed);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
-	public void moveBackward()
+	public void moveBackward(boolean runningSpeed)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.BACKWARD, false);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.BACKWARD, runningSpeed);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
-	public void strafeRight()
+	public void strafeRight(boolean runningSpeed)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.RIGHT, false);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.RIGHT, runningSpeed);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}
 
-	public void strafeLeft()
+	public void strafeLeft(boolean runningSpeed)
 	{
-		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.LEFT, false);
+		_currentGameSession.client.accelerateHorizontal(MovementAccumulator.Relative.LEFT, runningSpeed);
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
 	}

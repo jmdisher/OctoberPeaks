@@ -229,19 +229,19 @@ public class InputManager
 			// Check out movement controls.
 			if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
 			{
-				uiManager.moveForward();
+				uiManager.moveForward(_leftShiftDown);
 			}
 			else if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
 			{
-				uiManager.moveBackward();
+				uiManager.moveBackward(_leftShiftDown);
 			}
 			else if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
 			{
-				uiManager.strafeRight();
+				uiManager.strafeRight(_leftShiftDown);
 			}
 			else if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
 			{
-				uiManager.strafeLeft();
+				uiManager.strafeLeft(_leftShiftDown);
 			}
 			
 			if (_activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])
