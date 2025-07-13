@@ -17,6 +17,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.client.MovementAccumulator;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
@@ -839,6 +840,17 @@ public class UiStateManager implements GameSession.ICallouts
 	public void thisEntityUpdated(Entity projectedEntity)
 	{
 		_entityBinding.set(projectedEntity);
+		
+		// Make sure that we close the inventory if it is now too far away (can happen if falling or respawning).
+		if (null != _openStationLocation)
+		{
+			float distance = SpatialHelpers.distanceFromPlayerEyeToBlockSurface(projectedEntity.location(), _env.creatures.PLAYER, _openStationLocation);
+			boolean isLocationClose = (distance <= MiscConstants.REACH_BLOCK);
+			if (!isLocationClose)
+			{
+				_openStationLocation = null;
+			}
+		}
 	}
 
 	@Override
