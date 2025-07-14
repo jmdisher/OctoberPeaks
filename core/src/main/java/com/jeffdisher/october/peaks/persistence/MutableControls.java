@@ -106,13 +106,17 @@ public class MutableControls
 		return _keyCodeToCommand.get(keyCode);
 	}
 
-	public void setKeyForControl(Control control, int keyCode)
+	public boolean setKeyForControl(Control control, int keyCode)
 	{
 		// Update the data.
-		_setKeyForControl(control, keyCode);
+		boolean didSet = _setKeyForControl(control, keyCode);
 		
-		// These updates are rare so just write this now, to keep the UI simpler.
-		_flushToDisk();
+		if (didSet)
+		{
+			// These updates are rare so just write this now, to keep the UI simpler.
+			_flushToDisk();
+		}
+		return didSet;
 	}
 
 	public int getKeyCode(Control control)
@@ -121,11 +125,17 @@ public class MutableControls
 	}
 
 
-	private void _setKeyForControl(Control control, int keyCode)
+	private boolean _setKeyForControl(Control control, int keyCode)
 	{
-		_keyCodeToCommand.remove(control.keyCode);
-		control.keyCode = keyCode;
-		_keyCodeToCommand.put(control.keyCode, control);
+		boolean didSet = false;
+		if (!_keyCodeToCommand.containsKey(keyCode))
+		{
+			_keyCodeToCommand.remove(control.keyCode);
+			control.keyCode = keyCode;
+			_keyCodeToCommand.put(control.keyCode, control);
+			didSet = true;
+		}
+		return didSet;
 	}
 
 	private void _flushToDisk()

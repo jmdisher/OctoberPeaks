@@ -1023,8 +1023,11 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _currentlyChangingControl.get()))
 		{
-			_mutableControls.setKeyForControl(_currentlyChangingControl.get(), lastKeyUp);
-			_currentlyChangingControl.set(null);
+			boolean didSet = _mutableControls.setKeyForControl(_currentlyChangingControl.get(), lastKeyUp);
+			if (didSet)
+			{
+				_currentlyChangingControl.set(null);
+			}
 		}
 	}
 
