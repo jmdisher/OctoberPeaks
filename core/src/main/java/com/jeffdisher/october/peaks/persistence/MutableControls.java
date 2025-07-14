@@ -36,9 +36,12 @@ public class MutableControls
 		MOVE_JUMP(Keys.SPACE, false, "Jump/Swim"),
 		MOVE_INVENTORY(Keys.I, true, "Open/Close Inventory"),
 		MOVE_FUEL(Keys.F, true, "Toggle Fuel Inventory"),
+		MOVE_SPRINT(Keys.CONTROL_LEFT, false, "Sprint"),
+		MOVE_SNEAK(Keys.SHIFT_LEFT, false, "Sneak"),
 		;
 		
 		private int keyCode;
+		// "Click only" means that the event is only sent on the key up, not continuously sent while key is down.
 		public final boolean isClickOnly;
 		public final String description;
 		private Control(int defaultCode, boolean isClickOnly, String description)

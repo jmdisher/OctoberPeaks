@@ -29,7 +29,6 @@ public class InputManager
 	private boolean _buttonDown1;
 	private char _typedCharacter;
 	private boolean _leftShiftDown;
-	private boolean _leftControlDown;
 	private int _lastPressedNumber;
 	private boolean _didHandlePressedNumber;
 
@@ -74,19 +73,16 @@ public class InputManager
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = true;
 					break;
-				case Keys.CONTROL_LEFT:
-					_leftControlDown = true;
-					break;
-				default:
-					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
-					MutableControls.Control control = _controls.getCodeForKey(keycode);
-					if (null != control)
+				}
+				
+				// See if one of our dynamic controls matches this.
+				MutableControls.Control control = _controls.getCodeForKey(keycode);
+				if (null != control)
+				{
+					// We can actually do something here.
+					if (!control.isClickOnly)
 					{
-						// We can actually do something here.
-						if (!control.isClickOnly)
-						{
-							_activeControls[control.ordinal()] = true;
-						}
+						_activeControls[control.ordinal()] = true;
 					}
 				}
 				return true;
@@ -139,19 +135,16 @@ public class InputManager
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = false;
 					break;
-				case Keys.CONTROL_LEFT:
-					_leftControlDown = false;
-					break;
-				default:
-					// The default case handles the mutable controls (since our hard-coded values can't be over-ridden).
-					MutableControls.Control control = _controls.getCodeForKey(keycode);
-					if (null != control)
-					{
-						// Click only is only triggered on key up while hold are only set on key down and always cleared on up.
-						_activeControls[control.ordinal()] = control.isClickOnly;
-					}
-					_lastKeyUp = keycode;
 				}
+				
+				// See if one of our dynamic controls matches this.
+				MutableControls.Control control = _controls.getCodeForKey(keycode);
+				if (null != control)
+				{
+					// Click only is only triggered on key up while hold are only set on key down and always cleared on up.
+					_activeControls[control.ordinal()] = control.isClickOnly;
+				}
+				_lastKeyUp = keycode;
 				return true;
 			}
 			@Override
@@ -234,9 +227,9 @@ public class InputManager
 			}
 			
 			// Check out movement controls.
-			UiStateManager.WalkType walk = _leftControlDown
+			UiStateManager.WalkType walk = _activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()]
 				? UiStateManager.WalkType.SNEAK
-				: (_leftShiftDown ? UiStateManager.WalkType.RUN : UiStateManager.WalkType.WALK)
+				: (_activeControls[MutableControls.Control.MOVE_SPRINT.ordinal()] ? UiStateManager.WalkType.RUN : UiStateManager.WalkType.WALK)
 			;
 			if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
 			{
