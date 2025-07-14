@@ -571,17 +571,17 @@ public class CuboidMeshManager
 		ColumnHeightMap[][] columnHeightXY = new ColumnHeightMap[][] {
 			new ColumnHeightMap[] {
 					_getHeightMapOrNull(address.getRelative(-1, -1, 0)),
-					mapNorth,
+					mapWest,
 					_getHeightMapOrNull(address.getRelative(-1, 1, 0)),
 			},
 			new ColumnHeightMap[] {
-					mapWest,
+					mapSouth,
 					heightMap,
-					mapEast,
+					mapNorth,
 			},
 			new ColumnHeightMap[] {
 					_getHeightMapOrNull(address.getRelative(1, -1, 0)),
-					mapSouth,
+					mapEast,
 					_getHeightMapOrNull(address.getRelative(1, 1, 0)),
 			},
 		};
