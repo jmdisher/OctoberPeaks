@@ -187,6 +187,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<ItemTuple<Void>> _bottomWindowFuelBinding;
 	private final Binding<String> _craftingPanelTitleBinding;
 	private final Binding<List<CraftDescription>> _craftingPanelBinding;
+	private final Binding<MutableControls.Control> _currentlyChangingControl;
 	
 	// Views for rendering parts of the UI in specific modes.
 	private final Window<Inventory> _thisEntityInventoryWindow;
@@ -212,7 +213,6 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// UI and state related to key bindings prefs.
 	private final ViewKeyControlSelector _keyBindingSelectorControl;
-	private MutableControls.Control _currentlyChangingControl;
 	// We also use _returnToPauseButton here.
 
 	// Data related to the liquid overlay.
@@ -607,6 +607,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_bottomWindowFuelBinding = new Binding<>(null);
 		_craftingPanelTitleBinding = new Binding<>(null);
 		_craftingPanelBinding = new Binding<>(null);
+		_currentlyChangingControl = new Binding<>(null);
 		
 		// Create our views.
 		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
@@ -731,7 +732,7 @@ public class UiStateManager implements GameSession.ICallouts
 					if (_leftClick)
 					{
 						_uiState = _UiState.KEY_BINDINGS;
-						_currentlyChangingControl = null;
+						_currentlyChangingControl.set(null);
 					}
 			});
 		_returnToGameButton = new ViewTextButton<>(_ui, new Binding<>("Return to Game")
@@ -817,10 +818,11 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Key-binding prefs.
 		_keyBindingSelectorControl = new ViewKeyControlSelector(_ui, _mutableControls
+			, _currentlyChangingControl
 			, (MutableControls.Control selectedControl) -> {
 				if (_leftClick)
 				{
-					_currentlyChangingControl = selectedControl;
+					_currentlyChangingControl.set(selectedControl);
 				}
 			}
 		);
@@ -1019,10 +1021,10 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void keyCodeUp(int lastKeyUp)
 	{
-		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _currentlyChangingControl))
+		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _currentlyChangingControl.get()))
 		{
-			_mutableControls.setKeyForControl(_currentlyChangingControl, lastKeyUp);
-			_currentlyChangingControl = null;
+			_mutableControls.setKeyForControl(_currentlyChangingControl.get(), lastKeyUp);
+			_currentlyChangingControl.set(null);
 		}
 	}
 
@@ -1938,9 +1940,9 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			break;
 		case KEY_BINDINGS:
-			if (null != _currentlyChangingControl)
+			if (null != _currentlyChangingControl.get())
 			{
-				_currentlyChangingControl = null;
+				_currentlyChangingControl.set(null);
 			}
 			else
 			{

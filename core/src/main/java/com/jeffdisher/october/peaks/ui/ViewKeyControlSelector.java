@@ -16,15 +16,18 @@ public class ViewKeyControlSelector implements IView
 
 	private final GlUi _ui;
 	private final MutableControls _controls;
+	private final Binding<MutableControls.Control> _selectedControlBinding;
 	private final Consumer<MutableControls.Control> _hoverAction;
 
 	public ViewKeyControlSelector(GlUi ui
 			, MutableControls controls
+			, Binding<MutableControls.Control> selectedControlBinding
 			, Consumer<MutableControls.Control> hoverAction
 	)
 	{
 		_ui = ui;
 		_controls = controls;
+		_selectedControlBinding = selectedControlBinding;
 		_hoverAction = hoverAction;
 	}
 
@@ -44,8 +47,12 @@ public class ViewKeyControlSelector implements IView
 			String key = Keys.toString(_controls.getKeyCode(control));
 			
 			UiIdioms.drawRawTextCentredAtTop(_ui, nameCentreX, nextItemTop, control.description);
+			int outlineTexture = (_selectedControlBinding.get() == control)
+				? _ui.pixelGreen
+				: _ui.pixelLightGrey
+			;
 			boolean didClick = keyRect.containsPoint(cursor);
-			UiIdioms.drawOutline(_ui, keyRect, didClick);
+			UiIdioms.drawOutlineColour(_ui, keyRect, outlineTexture, didClick);
 			UiIdioms.drawTextCentred(_ui, keyRect, key);
 			if (didClick)
 			{
