@@ -49,6 +49,7 @@ public class GameSession
 			, Binding<Float> screenBrightness
 			, LoadedResources resources
 			, String clientName
+			, int startingViewDistance
 			, InetSocketAddress serverSocketAddress
 			, File localWorldDirectory
 			, WorldConfig.WorldGeneratorName worldGeneratorName
@@ -85,6 +86,7 @@ public class GameSession
 			this.client = new ClientWrapper(environment
 				, new _UpdateConsumer()
 				, clientName
+				, startingViewDistance
 				, serverSocketAddress
 				, localWorldDirectory
 				, worldGeneratorName

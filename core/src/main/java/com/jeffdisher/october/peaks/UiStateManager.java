@@ -482,7 +482,9 @@ public class UiStateManager implements GameSession.ICallouts
 					try
 					{
 						String clientName = _mutablePreferences.clientName.get();
-						_connectToServer(gl, localStorageDirectory, resources, clientName, server.address);
+						// TODO:  We should store this default view distance in prefs, somewhere.
+						int startingViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
+						_connectToServer(gl, localStorageDirectory, resources, clientName, startingViewDistance, server.address);
 					}
 					catch (ConnectException e)
 					{
@@ -1977,6 +1979,8 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.PLAY;
 		_captureState.shouldCaptureMouse(true);
 		File localWorldDirectory = new File(localStorageDirectory, directoryName);
+		// TODO:  We should store this default view distance in prefs, somewhere.
+		int startingViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 		try
 		{
 			_currentGameSession = new GameSession(_env
@@ -1984,6 +1988,7 @@ public class UiStateManager implements GameSession.ICallouts
 				, _mutablePreferences.screenBrightness
 				, resources
 				, "Local"
+				, startingViewDistance
 				, null
 				, localWorldDirectory
 				, worldGeneratorName
@@ -2005,9 +2010,9 @@ public class UiStateManager implements GameSession.ICallouts
 		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
 	}
 
-	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, InetSocketAddress serverAddress) throws ConnectException
+	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress) throws ConnectException
 	{
-		_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, serverAddress, null, null, null, null, null, this);
+		_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
 		// TODO:  Use an intermediate state for this delay.
 		_currentGameSession.finishStartup();
 		_isRunningOnServer = true;

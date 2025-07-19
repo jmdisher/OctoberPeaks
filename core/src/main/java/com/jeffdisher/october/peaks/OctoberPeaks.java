@@ -9,6 +9,7 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
@@ -129,11 +130,14 @@ public class OctoberPeaks extends ApplicationAdapter
 				WorldConfig.DefaultPlayerMode defaultPlayerMode = null;
 				Difficulty difficulty = null;
 				Integer basicWorldGeneratorSeed = null;
+				// TODO:  We should store this default view distance in prefs, somewhere.
+				int startingViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 				currentGameSession = new GameSession(_environment
 					, _gl
 					, screenBrightness
 					, _resources
 					, _clientName
+					, startingViewDistance
 					, _serverSocketAddress
 					, localWorldDirectory
 					, worldGeneratorName
