@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks.ui;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.logic.PropertyHelpers;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -26,7 +27,7 @@ public record ItemTuple<T>(Item type, int count, float durability, T context)
 		else if (null != nonStack)
 		{
 			Item type = nonStack.type();
-			float durability = ((float)nonStack.durability()) / (float)env.durability.getDurability(type);
+			float durability = (float)PropertyHelpers.getDurability(nonStack) / (float)env.durability.getDurability(type);
 			tuple = new ItemTuple<>(type, 0, durability, context);
 		}
 		else

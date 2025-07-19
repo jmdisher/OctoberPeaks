@@ -21,31 +21,30 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
-import com.jeffdisher.october.mutations.EntityChangeAttackEntity;
-import com.jeffdisher.october.mutations.EntityChangeChangeHotbarSlot;
-import com.jeffdisher.october.mutations.EntityChangeCraft;
-import com.jeffdisher.october.mutations.EntityChangeCraftInBlock;
-import com.jeffdisher.october.mutations.EntityChangeIncrementalBlockBreak;
-import com.jeffdisher.october.mutations.EntityChangeJump;
-import com.jeffdisher.october.mutations.EntityChangePlaceMultiBlock;
-import com.jeffdisher.october.mutations.EntityChangeSetBlockLogicState;
-import com.jeffdisher.october.mutations.EntityChangeSetDayAndSpawn;
-import com.jeffdisher.october.mutations.EntityChangeSwapArmour;
-import com.jeffdisher.october.mutations.EntityChangeSwim;
-import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnBlock;
-import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnEntity;
-import com.jeffdisher.october.mutations.EntityChangeUseSelectedItemOnSelf;
-import com.jeffdisher.october.mutations.IMutationEntity;
-import com.jeffdisher.october.mutations.MutationEntityPushItems;
-import com.jeffdisher.october.mutations.MutationEntityRequestItemPickUp;
-import com.jeffdisher.october.mutations.MutationEntitySelectItem;
-import com.jeffdisher.october.mutations.MutationPlaceSelectedBlock;
 import com.jeffdisher.october.persistence.ResourceLoader;
 import com.jeffdisher.october.process.ClientProcess;
 import com.jeffdisher.october.process.ServerProcess;
 import com.jeffdisher.october.server.MonitoringAgent;
 import com.jeffdisher.october.server.ServerRunner;
 import com.jeffdisher.october.server.TickRunner;
+import com.jeffdisher.october.subactions.EntityChangeAttackEntity;
+import com.jeffdisher.october.subactions.EntityChangeChangeHotbarSlot;
+import com.jeffdisher.october.subactions.EntityChangeCraft;
+import com.jeffdisher.october.subactions.EntityChangeCraftInBlock;
+import com.jeffdisher.october.subactions.EntityChangeIncrementalBlockBreak;
+import com.jeffdisher.october.subactions.EntityChangeJump;
+import com.jeffdisher.october.subactions.EntityChangePlaceMultiBlock;
+import com.jeffdisher.october.subactions.EntityChangeSetBlockLogicState;
+import com.jeffdisher.october.subactions.EntityChangeSetDayAndSpawn;
+import com.jeffdisher.october.subactions.EntityChangeSwapArmour;
+import com.jeffdisher.october.subactions.EntityChangeSwim;
+import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnBlock;
+import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
+import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
+import com.jeffdisher.october.subactions.MutationEntityPushItems;
+import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
+import com.jeffdisher.october.subactions.MutationEntitySelectItem;
+import com.jeffdisher.october.subactions.MutationPlaceSelectedBlock;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -60,6 +59,7 @@ import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.EventRecord;
 import com.jeffdisher.october.types.FuelState;
+import com.jeffdisher.october.types.IEntitySubAction;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
@@ -99,6 +99,7 @@ public class ClientWrapper
 	public ClientWrapper(Environment environment
 			, IUpdateConsumer updateConsumer
 			, String clientName
+			, int startingViewDistance
 			, InetSocketAddress serverAddress
 			, File localWorldDirectory
 			, WorldConfig.WorldGeneratorName worldGeneratorName
@@ -161,7 +162,7 @@ public class ClientWrapper
 						, _monitoringAgent
 						, _config
 				);
-				_client = new ClientProcess(new _ClientListener(), InetAddress.getLocalHost(), PORT, clientName);
+				_client = new ClientProcess(new _ClientListener(), InetAddress.getLocalHost(), PORT, clientName, startingViewDistance);
 				_console = ConsoleRunner.runInBackground(System.in
 						, System.out
 						, _monitoringAgent
@@ -175,7 +176,7 @@ public class ClientWrapper
 				_config = null;
 				_monitoringAgent = null;
 				_server = null;
-				_client = new ClientProcess(new _ClientListener(), serverAddress.getAddress(), serverAddress.getPort(), clientName);
+				_client = new ClientProcess(new _ClientListener(), serverAddress.getAddress(), serverAddress.getPort(), clientName, startingViewDistance);
 				_console = null;
 			}
 		}
@@ -377,7 +378,7 @@ public class ClientWrapper
 		Block emptyBlockType = _getBlockType(emptyBlock);
 		
 		// First, see if the target block has a general logic state we can change.
-		IMutationEntity<IMutablePlayerEntity> change;
+		IEntitySubAction<IMutablePlayerEntity> change;
 		if ((null == solidBlockType) || (null == emptyBlockType))
 		{
 			// The target isn't loaded.
@@ -445,7 +446,7 @@ public class ClientWrapper
 		// We need to check our selected item and see what "action" is associated with it.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		
-		IMutationEntity<IMutablePlayerEntity> change;
+		IEntitySubAction<IMutablePlayerEntity> change;
 		if (Entity.NO_SELECTION != selectedKey)
 		{
 			// Check if a special use exists for this item and block or if we are just placing.
@@ -517,7 +518,7 @@ public class ClientWrapper
 			if (null != block)
 			{
 				long currentTimeMillis = System.currentTimeMillis();
-				IMutationEntity<IMutablePlayerEntity> change;
+				IEntitySubAction<IMutablePlayerEntity> change;
 				if (_environment.blocks.isMultiBlock(block))
 				{
 					// We will place the multi-block in the same orientation as this user.
@@ -870,9 +871,10 @@ public class ClientWrapper
 			System.exit(0);
 		}
 		@Override
-		public void connectionEstablished(int assignedLocalEntityId)
+		public void connectionEstablished(int assignedEntityId, int currentViewDistance)
 		{
-			_assignedLocalEntityId = assignedLocalEntityId;
+			_assignedLocalEntityId = assignedEntityId;
+			// TODO: We should probably pass currentViewDistance back so that this can initialize the UI.
 		}
 		@Override
 		public void cuboidDidChange(IReadOnlyCuboidData cuboid
