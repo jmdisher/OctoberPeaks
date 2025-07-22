@@ -938,9 +938,14 @@ public class UiStateManager implements GameSession.ICallouts
 		_commonWalk(relative, walk);
 	}
 
-	public void jumpOrSwim()
+	public void ascendOrJumpOrSwim()
 	{
-		_currentGameSession.client.jumpOrSwim();
+		_currentGameSession.client.ascendOrJumpOrSwim();
+	}
+
+	public void tryDescend()
+	{
+		_currentGameSession.client.tryDescend();
 	}
 
 	public void normalMouseMoved(Point cursor)

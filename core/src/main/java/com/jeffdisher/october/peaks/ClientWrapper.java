@@ -41,6 +41,8 @@ import com.jeffdisher.october.subactions.EntityChangeSwim;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnBlock;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
+import com.jeffdisher.october.subactions.EntitySubActionLadderAscend;
+import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
 import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
 import com.jeffdisher.october.subactions.MutationEntitySelectItem;
@@ -283,7 +285,7 @@ public class ClientWrapper
 		_client.sneak(relativeDirection, currentTimeMillis);
 	}
 
-	public boolean jumpOrSwim()
+	public boolean ascendOrJumpOrSwim()
 	{
 		// See if we can jump or swim.
 		boolean didMove = false;
@@ -300,29 +302,61 @@ public class ClientWrapper
 			};
 			EntityLocation location = _thisEntity.location();
 			EntityLocation vector = _thisEntity.velocity();
-			long currentTimeMillis = System.currentTimeMillis();
 			
-			if (EntityChangeJump.canJump(previousBlockLookUp
+			IEntitySubAction<IMutablePlayerEntity> subAction = null;
+			if (EntitySubActionLadderAscend.canAscend(previousBlockLookUp, location, _playerVolume))
+			{
+				subAction = new EntitySubActionLadderAscend<>();
+			}
+			else if (EntityChangeJump.canJump(previousBlockLookUp
 					, location
 					, _playerVolume
 					, vector
 			))
 			{
-				EntityChangeJump<IMutablePlayerEntity> jumpChange = new EntityChangeJump<>();
-				_client.sendAction(jumpChange, currentTimeMillis);
-				didMove = true;
-				_didJump = true;
+				subAction = new EntityChangeJump<>();
 			}
 			else if (EntityChangeSwim.canSwim(previousBlockLookUp
 					, location
 					, vector
 			))
 			{
-				EntityChangeSwim<IMutablePlayerEntity> swimChange = new EntityChangeSwim<>();
-				_client.sendAction(swimChange, currentTimeMillis);
+				subAction = new EntityChangeSwim<>();
+			}
+			
+			// Run this, if we found something.
+			if (null != subAction)
+			{
+				long currentTimeMillis = System.currentTimeMillis();
+				_client.sendAction(subAction, currentTimeMillis);
 				didMove = true;
 				_didJump = true;
 			}
+		}
+		return didMove;
+	}
+
+	public boolean tryDescend()
+	{
+		// Try to descend, if we are on a ladder.
+		Assert.assertTrue(!_isPaused);
+		
+		long currentTimeMillis = System.currentTimeMillis();
+		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = (AbsoluteLocation location) -> {
+			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
+			return (null != cuboid)
+					? new BlockProxy(location.getBlockAddress(), cuboid)
+					: null
+			;
+		};
+		EntityLocation location = _thisEntity.location();
+		
+		boolean didMove = false;
+		if (EntitySubActionLadderDescend.canDescend(previousBlockLookUp, location, _playerVolume))
+		{
+			EntitySubActionLadderDescend<IMutablePlayerEntity> subAction = new EntitySubActionLadderDescend<>();
+			_client.sendAction(subAction, currentTimeMillis);
+			didMove = true;
 		}
 		return didMove;
 	}
