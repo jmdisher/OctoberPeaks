@@ -248,9 +248,14 @@ public class InputManager
 				uiManager.strafeLeft(walk);
 			}
 			
+			// See if we want to jump or try descending a ladder.
 			if (_activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])
 			{
-				uiManager.jumpOrSwim();
+				uiManager.ascendOrJumpOrSwim();
+			}
+			else if (_activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
+			{
+				uiManager.tryDescend();
 			}
 		}
 		else
