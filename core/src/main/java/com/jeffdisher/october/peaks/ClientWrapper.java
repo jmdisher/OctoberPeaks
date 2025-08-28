@@ -43,6 +43,7 @@ import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
 import com.jeffdisher.october.subactions.EntitySubActionLadderAscend;
 import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
+import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
 import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
 import com.jeffdisher.october.subactions.MutationEntitySelectItem;
@@ -96,6 +97,7 @@ public class ClientWrapper
 
 	// Local state information to avoid redundant events, etc.
 	private boolean _didJump;
+	private long _lastSpecialActionMillis;
 	private int _currentViewDistance;
 
 	public ClientWrapper(Environment environment
@@ -257,6 +259,19 @@ public class ClientWrapper
 					_client.sendAction(change, currentTimeMillis);
 				}
 			}
+			else
+			{
+				// If we are standing in a portal, see if we are ready to pass through it.
+				if ((_lastSpecialActionMillis + EntitySubActionTravelViaBlock.TRAVEL_COOLDOWN_MILLIS) < currentTimeMillis)
+				{
+					AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _getBlockLookUp(), _thisEntity.location(), _playerVolume);
+					if (null != surfaceLocation)
+					{
+						EntitySubActionTravelViaBlock travel = new EntitySubActionTravelViaBlock(surfaceLocation);
+						_client.sendAction(travel, currentTimeMillis);
+					}
+				}
+			}
 			
 			// Now, just allow time to pass while standing.
 			_client.doNothing(currentTimeMillis);
@@ -342,13 +357,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isPaused);
 		
 		long currentTimeMillis = System.currentTimeMillis();
-		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = (AbsoluteLocation location) -> {
-			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
-			return (null != cuboid)
-					? new BlockProxy(location.getBlockAddress(), cuboid)
-					: null
-			;
-		};
+		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _getBlockLookUp();
 		EntityLocation location = _thisEntity.location();
 		
 		boolean didMove = false;
@@ -864,6 +873,12 @@ public class ClientWrapper
 	{
 		_thisEntity = thisEntity;
 		_didJump = false;
+		
+		// We typically only see the ephemeral locally so check if it is here to update our last action time.
+		if ((null != thisEntity.ephemeral()) && (thisEntity.ephemeral().lastSpecialActionMillis() > 0L))
+		{
+			_lastSpecialActionMillis = thisEntity.ephemeral().lastSpecialActionMillis();
+		}
 	}
 
 	private Inventory _getEntityInventory()
@@ -885,6 +900,18 @@ public class ClientWrapper
 				: null
 		;
 		return blockType;
+	}
+
+	private Function<AbsoluteLocation, BlockProxy> _getBlockLookUp()
+	{
+		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = (AbsoluteLocation location) -> {
+			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
+			return (null != cuboid)
+				? new BlockProxy(location.getBlockAddress(), cuboid)
+				: null
+			;
+		};
+		return previousBlockLookUp;
 	}
 
 
