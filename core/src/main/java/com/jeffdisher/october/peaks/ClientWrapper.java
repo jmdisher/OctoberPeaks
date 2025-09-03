@@ -43,6 +43,7 @@ import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
 import com.jeffdisher.october.subactions.EntitySubActionLadderAscend;
 import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
+import com.jeffdisher.october.subactions.EntitySubActionRequestSwapSpecialSlot;
 import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
 import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
@@ -437,6 +438,13 @@ public class ClientWrapper
 		{
 			// This is a bed so we need to take a special action to set spawn and reset the day.
 			change = new EntityChangeSetDayAndSpawn(solidBlock);
+		}
+		else if (_environment.specialSlot.hasSpecialSlot(solidBlockType))
+		{
+			// This change will typically succeed even if nothing changes.
+			// For now, we will always send all.
+			boolean sendAll = true;
+			change = new EntitySubActionRequestSwapSpecialSlot(solidBlock, sendAll);
 		}
 		else if (Entity.NO_SELECTION != selectedKey)
 		{
