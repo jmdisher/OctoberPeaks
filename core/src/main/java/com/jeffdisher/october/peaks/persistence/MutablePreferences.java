@@ -28,6 +28,7 @@ public class MutablePreferences
 	public static final String KEY_CLIENT_NAME = "CLIENT_NAME";
 	public static final String DEFAULT_CLIENT_NAME = "PLACEHOLDER";
 	public static final String KEY_SCREEN_BRIGHTNESS = "SCREEN_BRIGHTNESS";
+	public static final String KEY_VIEW_DISTANCE = "VIEW_DISTANCE";
 	public static final float DEFAULT_SCREEN_BRIGHTNESS = 1.0f;
 	// TODO:  Add the other options to the storage once we start applying them on start-up or connection.
 
@@ -56,6 +57,10 @@ public class MutablePreferences
 				FlatTabListCallbacks<String, String> callbacks = new FlatTabListCallbacks<>((String input) -> input, (String input) -> input);
 				TabListReader.readEntireFile(callbacks, stream);
 				
+				if (callbacks.data.containsKey(KEY_VIEW_DISTANCE))
+				{
+					this.preferredViewDistance.set(Integer.valueOf(callbacks.data.get(KEY_VIEW_DISTANCE)));
+				}
 				if (callbacks.data.containsKey(KEY_CLIENT_NAME))
 				{
 					this.clientName.set(callbacks.data.get(KEY_CLIENT_NAME));
@@ -90,6 +95,7 @@ public class MutablePreferences
 		{
 			stream.write(String.format("# OctoberPeaks preferences file.  See MutablePreferences.java for details.%n%n").getBytes(StandardCharsets.UTF_8));
 			
+			stream.write(String.format("%s\t%d%n", KEY_VIEW_DISTANCE, this.preferredViewDistance.get()).getBytes(StandardCharsets.UTF_8));
 			stream.write(String.format("%s\t%s%n", KEY_CLIENT_NAME, this.clientName.get()).getBytes(StandardCharsets.UTF_8));
 			stream.write(String.format("%s\t%.2f%n", KEY_SCREEN_BRIGHTNESS, this.screenBrightness.get()).getBytes(StandardCharsets.UTF_8));
 			// TODO:  Write the other values here once we start persisting them.
