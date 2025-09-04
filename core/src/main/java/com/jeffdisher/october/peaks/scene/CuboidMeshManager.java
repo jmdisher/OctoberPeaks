@@ -58,7 +58,7 @@ public class CuboidMeshManager
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
 	private final Map<CuboidColumnAddress, _HeightWrapper> _foregroundHeightMaps;
-	private final Queue<CuboidAddress> _foregroundRequestOrder;
+	private final List<CuboidAddress> _foregroundRequestOrder;
 	private final Queue<FloatBuffer> _foregroundGraphicsBuffers;
 	
 	// Objects related to the handoff.
@@ -148,7 +148,16 @@ public class CuboidMeshManager
 		_foregroundHeightMaps.put(column, new _HeightWrapper(count, heightMap));
 		
 		// We need to enqueue a request to re-bake this (will be skipped if this is a redundant change).
-		_foregroundRequestOrder.add(address);
+		if (null != changedBlocks)
+		{
+			// Changed cuboids are prioritized.
+			_foregroundRequestOrder.add(0, address);
+		}
+		else
+		{
+			// New cuboids go to the end.
+			_foregroundRequestOrder.add(address);
+		}
 		
 		// See if we need to re-bake any adjacent cuboids.
 		if (null == existing)
