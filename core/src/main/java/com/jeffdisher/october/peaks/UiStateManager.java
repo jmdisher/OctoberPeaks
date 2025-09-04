@@ -483,8 +483,7 @@ public class UiStateManager implements GameSession.ICallouts
 					try
 					{
 						String clientName = _mutablePreferences.clientName.get();
-						// TODO:  We should store this default view distance in prefs, somewhere.
-						int startingViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
+						int startingViewDistance = _mutablePreferences.preferredViewDistance.get();
 						_connectToServer(gl, localStorageDirectory, resources, clientName, startingViewDistance, server.address);
 					}
 					catch (ConnectException e)
@@ -779,11 +778,17 @@ public class UiStateManager implements GameSession.ICallouts
 					if (null != _currentGameSession)
 					{
 						// We try changing this in the client and it will return the updated value.
-						int newDistance = _mutablePreferences.preferredViewDistance.get() +
+						int oldDistance = _mutablePreferences.preferredViewDistance.get();
+						int newDistance = oldDistance +
 								(plus ? 1 : -1)
 						;
 						int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
-						_mutablePreferences.preferredViewDistance.set(finalValue);
+						if (finalValue != oldDistance)
+						{
+							// If this change did anything, update the UI and save changes.
+							_mutablePreferences.preferredViewDistance.set(finalValue);
+							_mutablePreferences.saveToDisk();
+						}
 					}
 				}
 		});
@@ -1985,8 +1990,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.PLAY;
 		_captureState.shouldCaptureMouse(true);
 		File localWorldDirectory = new File(localStorageDirectory, directoryName);
-		// TODO:  We should store this default view distance in prefs, somewhere.
-		int startingViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 		try
 		{
 			_currentGameSession = new GameSession(_env
@@ -1994,7 +1997,7 @@ public class UiStateManager implements GameSession.ICallouts
 				, _mutablePreferences.screenBrightness
 				, resources
 				, "Local"
-				, startingViewDistance
+				, _mutablePreferences.preferredViewDistance.get()
 				, null
 				, localWorldDirectory
 				, worldGeneratorName
