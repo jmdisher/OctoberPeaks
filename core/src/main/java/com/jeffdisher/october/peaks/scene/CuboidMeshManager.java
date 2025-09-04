@@ -24,6 +24,7 @@ import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.CuboidColumnAddress;
@@ -41,6 +42,9 @@ public class CuboidMeshManager
 	public static final int SCRATCH_BUFFER_COUNT = 2;
 	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
 
+	// Block type IDs which have some special use.
+	public static final String PEDESTAL_ITEM_ID = "op.pedestal";
+
 	// Non-mutated data.
 	private final Environment _env;
 	private final IGpu _gpu;
@@ -49,6 +53,7 @@ public class CuboidMeshManager
 	private final BlockModelsAndAtlas _blockModels;
 	private final BasicBlockAtlas _blockTextures;
 	private final AuxilliaryTextureAtlas _auxBlockTextures;
+	private final Block _pedestalBlock;
 
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
@@ -78,6 +83,7 @@ public class CuboidMeshManager
 		_blockModels = blockModels;
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
+		_pedestalBlock = env.blocks.fromItem(env.items.getItemById(PEDESTAL_ITEM_ID));
 		
 		// Foreground-only data.
 		_foregroundCuboids = new HashMap<>();
@@ -438,8 +444,8 @@ public class CuboidMeshManager
 		);
 		BufferBuilder.Buffer modelBuffer = builder.finishOne();
 		
-		// Create the vertex array for any items dropped on the ground.
-		SceneMeshHelpers.populateMeshForDroppedItems(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap);
+		// Create the vertex array for any items visible in the world.
+		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _pedestalBlock);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
 		// Create the transparent (non-water) cuboid vertices.
