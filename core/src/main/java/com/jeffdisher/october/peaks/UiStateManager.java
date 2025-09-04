@@ -228,6 +228,7 @@ public class UiStateManager implements GameSession.ICallouts
 			, File localStorageDirectory
 			, LoadedResources resources
 			, MutableControls mutableControls
+			, MutablePreferences mutablePreferences
 			, ICallouts captureState
 	)
 	{
@@ -235,7 +236,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui = new GlUi(gl, resources);
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_mutableControls = mutableControls;
-		_mutablePreferences = new MutablePreferences(localStorageDirectory);
+		_mutablePreferences = mutablePreferences;
 		_serverList = new MutableServerList(localStorageDirectory);
 		_captureState = captureState;
 		_otherPlayersById = new HashMap<>();
