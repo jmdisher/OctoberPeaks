@@ -30,6 +30,7 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.ItemSlot;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;
@@ -317,12 +318,13 @@ public class SceneMeshHelpers
 		});
 	}
 
-	public static void populateMeshForDroppedItems(Environment env
+	public static void populateMeshForItemsInWorld(Environment env
 			, BufferBuilder builder
 			, ItemTextureAtlas itemAtlas
 			, AuxilliaryTextureAtlas auxAtlas
 			, IReadOnlyCuboidData cuboid
 			, ColumnHeightMap heightMap
+			, Block pedestal
 	)
 	{
 		float textureSize = itemAtlas.coordinateSize;
@@ -369,6 +371,39 @@ public class SceneMeshHelpers
 								, skyLightMultiplier
 						);
 					}
+				}
+			}
+		}, null);
+		
+		// See if there are any special slots in pedestals in this cuboid (we may generalize this later).
+		cuboid.walkData(AspectRegistry.SPECIAL_ITEM_SLOT, new IOctree.IWalkerCallback<ItemSlot>() {
+			@Override
+			public void visit(BlockAddress base, byte size, ItemSlot specialSlot)
+			{
+				Assert.assertTrue((byte)1 == size);
+				BlockProxy proxy = new BlockProxy(base, cuboid);
+				Block blockType = proxy.getBlock();
+				if (pedestal == blockType)
+				{
+					Item type = specialSlot.getType();
+					float[] uvBase = itemAtlas.baseOfTexture(type.number());
+					float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
+					float pedestalTopHeight = 0.7f;
+					float itemEdge = 0.4f;
+					float itemInset = 0.3f;
+					
+					// We don't want to offset in X since that is the direction we currently draw into.
+					float[] itemBase = new float[] { blockBase[0] + itemInset, blockBase[1] + 0.5f, blockBase[2] + pedestalTopHeight };
+					// We assume that things on pedestals have some kind of "internal" light.
+					float blockLightMultiplier = 0.5f;
+					// And we check the block light above them.
+					float skyLightMultiplier = ((base.z() + cuboidZ) == heightMap.getHeight(base.x(), base.y())) ? 1.0f : 0.0f;
+					_drawStandingSquare(builder, itemBase, itemEdge
+							, uvBase, textureSize
+							, auxUv, auxTextureSize
+							, blockLightMultiplier
+							, skyLightMultiplier
+					);
 				}
 			}
 		}, null);
@@ -541,6 +576,60 @@ public class SceneMeshHelpers
 		_populateQuad(builder, base
 				, new float[][] {bottomLeft, bottomRight, topRight, topLeft }
 				, new float[] { 0.0f, 0.0f, 1.0f }
+				, uvBase, textureSize
+				, otherUvBase, otherTextureSize
+				, blockLightMultipliers
+				, skyLightMultipliers
+		);
+	}
+
+	private static void _drawStandingSquare(BufferBuilder builder
+			, float[] base
+			, float edgeSize
+			, float[] uvBase
+			, float textureSize
+			, float[] otherUvBase
+			, float otherTextureSize
+			, float blockLightMultiplier
+			, float skyLightMultiplier
+	)
+	{
+		// The idea here is that we draw 2 quads with the same texture:  One facing North and one South.
+		float[] OI = new float[] {
+				0.0f,
+				0.0f,
+				edgeSize,
+		};
+		float[] II = new float[] {
+				edgeSize,
+				0.0f,
+				edgeSize,
+		};
+		float[] IO = new float[] {
+				edgeSize,
+				0.0f,
+				0.0f,
+		};
+		float[] OO = new float[] {
+				0.0f,
+				0.0f,
+				0.0f,
+		};
+		// We won't bother light-blending single items.
+		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
+		float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
+		
+		_populateQuad(builder, base
+				, new float[][] { OO, IO, II, OI }
+				, new float[] { 0.0f, 1.0f, 0.0f }
+				, uvBase, textureSize
+				, otherUvBase, otherTextureSize
+				, blockLightMultipliers
+				, skyLightMultipliers
+		);
+		_populateQuad(builder, base
+				, new float[][] { IO, OO, OI, II }
+				, new float[] { 0.0f, -1.0f, 0.0f }
 				, uvBase, textureSize
 				, otherUvBase, otherTextureSize
 				, blockLightMultipliers
