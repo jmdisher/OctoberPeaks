@@ -9,7 +9,6 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
@@ -27,11 +26,12 @@ public class OctoberPeaks extends ApplicationAdapter
 {
 	public static final String ENV_VAR_OCTOBER_PEAKS_ROOT = "OCTOBER_PEAKS_ROOT";
 
-	private final Environment _environment;
-	private final String _clientName;
-	private final InetSocketAddress _serverSocketAddress;
+	// Note that these "no UI" ivars are only set when running in the testing mode where there is no top-level UI or local preferences.
+	private final String _noUiClientName;
+	private final InetSocketAddress _noUiServerSocketAddress;
 
 	private GL20 _gl;
+	private Environment _environment;
 	private File _localStorageDirectory;
 	private LoadedResources _resources;
 	private InputManager _input;
@@ -39,106 +39,55 @@ public class OctoberPeaks extends ApplicationAdapter
 
 	public OctoberPeaks(Options options)
 	{
-		_environment = Environment.createSharedInstance();
 		if (null != options)
 		{
-			// We were told to start up in an explicit mode so use that.
+			// We were told to start up in an explicit (no UI) mode so use that.
 			String givenName = options.clientName();
-			_clientName = (null != givenName)
+			_noUiClientName = (null != givenName)
 					? givenName
 					: "Local"
 			;
-			_serverSocketAddress = options.serverAddress();
+			_noUiServerSocketAddress = options.serverAddress();
 		}
 		else
 		{
 			// We were told to start up with an interactive UI to choose the mode.
-			_clientName = null;
-			_serverSocketAddress = null;
+			_noUiClientName = null;
+			_noUiServerSocketAddress = null;
 		}
 	}
 
 	@Override
 	public void create()
 	{
-		_gl = Gdx.graphics.getGL20();
+		_initializeCommonResources();
 		
-		// We will just use external storage, which should put this in home, unless our env var is specified.
-		String envVar = System.getenv(ENV_VAR_OCTOBER_PEAKS_ROOT);
-		_localStorageDirectory = (null != envVar)
-				? new File(envVar)
-				: new File(new File(Gdx.files.getExternalStoragePath()), "OctoberPeaks")
-		;
-		Assert.assertTrue(_localStorageDirectory.isDirectory() || _localStorageDirectory.mkdirs());
-		
-		// Set common GL functionality for the view.
-		_gl.glEnable(GL20.GL_BLEND);
-		_gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-		_gl.glEnable(GL20.GL_CULL_FACE);
-		
-		// Create the long-lived resources.
-		ItemTextureAtlas itemAtlas;
-		try
+		// Normally, these "no-UI" ivars are left null but some testing modes explicitly set them to bypass normal top-level UI.
+		boolean isNoUiMode = (null != _noUiClientName);
+		_initializeLocalStorage(isNoUiMode);
+		MutablePreferences prefs = new MutablePreferences(_localStorageDirectory);
+		_initializeInputAndState(isNoUiMode, prefs);
+		if (isNoUiMode)
 		{
-			itemAtlas = TextureHelpers.loadAtlasForItems(_gl
-					, _environment.items.ITEMS_BY_TYPE
-					, "missing_texture.png"
-			);
-			BlockRenderer.Resources blockRenderer = new BlockRenderer.Resources(_environment, _gl, itemAtlas);
-			EntityRenderer.Resources entityRenderer = new EntityRenderer.Resources(_environment, _gl);
-			SkyBox.Resources skyBox = new SkyBox.Resources(_gl);
-			EyeEffect.Resources eyeEffect = new EyeEffect.Resources(_gl);
-			GlUi.Resources glui = new GlUi.Resources(_gl, itemAtlas);
-			AudioManager.Resources audioManager = new AudioManager.Resources();
-			_resources = new LoadedResources(itemAtlas
-					, blockRenderer
-					, entityRenderer
-					, skyBox
-					, eyeEffect
-					, glui
-					, audioManager
-			);
-		}
-		catch (IOException e)
-		{
-			throw new AssertionError("Startup scene", e);
-		}
-		
-		// Create the input manager and connect the UI state manager to the relevant parts of the system.
-		MutableControls mutableControls = new MutableControls(_localStorageDirectory);
-		_input = new InputManager(mutableControls, (null != _clientName));
-		_uiState = new UiStateManager(_environment, _gl, _localStorageDirectory, _resources, mutableControls, new UiStateManager.ICallouts() {
-			@Override
-			public void shouldCaptureMouse(boolean setCapture)
-			{
-				_input.enterCaptureState(setCapture);
-			}
-		});
-		
-		if (null != _clientName)
-		{
-			// Immediately transition into playing state.  This will become more complex later.
-			// We will just store the world in the current directory.
-			File localWorldDirectory = new File("world");
-			// These inline start cases will just use an ephemeral brightness binding.
-			Binding<Float> screenBrightness = new Binding<>(MutablePreferences.DEFAULT_SCREEN_BRIGHTNESS);
+			// In this testing mode, we start directly in the game, never creating the top-level UI.
+			File localWorldDirectory = new File(_localStorageDirectory, "world");
 			GameSession currentGameSession;
 			try
 			{
-				// In this running mode, we always just use the defaults so pass nulls.
+				// In this running mode, we always just use the defaults so pass nulls or local/ephemeral bindings.
+				Binding<Float> screenBrightness = prefs.screenBrightness;
+				int startingViewDistance = prefs.preferredViewDistance.get();
 				WorldConfig.WorldGeneratorName worldGeneratorName = null;
 				WorldConfig.DefaultPlayerMode defaultPlayerMode = null;
 				Difficulty difficulty = null;
 				Integer basicWorldGeneratorSeed = null;
-				// TODO:  We should store this default view distance in prefs, somewhere.
-				int startingViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 				currentGameSession = new GameSession(_environment
 					, _gl
 					, screenBrightness
 					, _resources
-					, _clientName
+					, _noUiClientName
 					, startingViewDistance
-					, _serverSocketAddress
+					, _noUiServerSocketAddress
 					, localWorldDirectory
 					, worldGeneratorName
 					, defaultPlayerMode
@@ -150,17 +99,20 @@ public class OctoberPeaks extends ApplicationAdapter
 			catch (ConnectException e)
 			{
 				// In this start-up mode, we just want to print the error and exit.
-				System.err.println("Failed to connect to server: " + _serverSocketAddress);
+				System.err.println("Failed to connect to server: " + _noUiServerSocketAddress);
 				e.printStackTrace();
 				System.exit(1);
 				throw Assert.unreachable();
 			}
-			boolean onServer = (null != _serverSocketAddress);
+			boolean onServer = (null != _noUiServerSocketAddress);
 			_uiState.startPlay(currentGameSession, onServer);
 			
 			// Finish the rest of the startup now that the pieces are in place.
 			currentGameSession.finishStartup();
-			Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		}
+		else
+		{
+			// In this normal mode, we start at the top-level UI, so the UI state is managed internally to the _uiState.
 		}
 	}
 
@@ -195,5 +147,79 @@ public class OctoberPeaks extends ApplicationAdapter
 		
 		// Tear-down the shared environment.
 		Environment.clearSharedInstance();
+	}
+
+
+	private void _initializeCommonResources()
+	{
+		// This is called during "create()" to establish all the resources which are common for both normal runs and testing no-UI runs.
+		_gl = Gdx.graphics.getGL20();
+		_environment = Environment.createSharedInstance();
+		
+		// Set common GL functionality for the view.
+		_gl.glEnable(GL20.GL_BLEND);
+		_gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+		_gl.glEnable(GL20.GL_CULL_FACE);
+		
+		// Create the long-lived resources.
+		try
+		{
+			ItemTextureAtlas itemAtlas = TextureHelpers.loadAtlasForItems(_gl
+					, _environment.items.ITEMS_BY_TYPE
+					, "missing_texture.png"
+			);
+			BlockRenderer.Resources blockRenderer = new BlockRenderer.Resources(_environment, _gl, itemAtlas);
+			EntityRenderer.Resources entityRenderer = new EntityRenderer.Resources(_environment, _gl);
+			SkyBox.Resources skyBox = new SkyBox.Resources(_gl);
+			EyeEffect.Resources eyeEffect = new EyeEffect.Resources(_gl);
+			GlUi.Resources glui = new GlUi.Resources(_gl, itemAtlas);
+			AudioManager.Resources audioManager = new AudioManager.Resources();
+			_resources = new LoadedResources(itemAtlas
+					, blockRenderer
+					, entityRenderer
+					, skyBox
+					, eyeEffect
+					, glui
+					, audioManager
+			);
+		}
+		catch (IOException e)
+		{
+			throw new AssertionError("Startup scene", e);
+		}
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+	}
+
+	private void _initializeLocalStorage(boolean isNoUiMode)
+	{
+		String envVar = System.getenv(ENV_VAR_OCTOBER_PEAKS_ROOT);
+		if (isNoUiMode)
+		{
+			// In no-UI mode, just put this in /tmp (this is only for testing unless over-ridden).
+			_localStorageDirectory = new File("/tmp/OctoberPeaks");
+		}
+		else
+		{
+			// We will just use external storage, which should put this in home, unless our env var is specified.
+			_localStorageDirectory = (null != envVar)
+					? new File(envVar)
+					: new File(new File(Gdx.files.getExternalStoragePath()), "OctoberPeaks")
+			;
+		}
+		Assert.assertTrue(_localStorageDirectory.isDirectory() || _localStorageDirectory.mkdirs());
+	}
+
+	private void _initializeInputAndState(boolean isNoUiMode, MutablePreferences mutablePreferences)
+	{
+		// Create the input manager and connect the UI state manager to the relevant parts of the system.
+		MutableControls mutableControls = new MutableControls(_localStorageDirectory);
+		_input = new InputManager(mutableControls, isNoUiMode);
+		_uiState = new UiStateManager(_environment, _gl, _localStorageDirectory, _resources, mutableControls, mutablePreferences, new UiStateManager.ICallouts() {
+			@Override
+			public void shouldCaptureMouse(boolean setCapture)
+			{
+				_input.enterCaptureState(setCapture);
+			}
+		});
 	}
 }
