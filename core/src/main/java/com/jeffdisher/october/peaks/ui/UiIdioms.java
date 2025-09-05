@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks.ui;
 
-import java.util.List;
 import java.util.function.IntConsumer;
 
 import com.jeffdisher.october.peaks.textures.TextManager;
@@ -65,55 +64,6 @@ public class UiIdioms
 				eventHoverChangePage.accept(currentPage + 1);
 			}
 		}
-	}
-
-	public static <T> T drawItemGrid(List<T> data
-			, ItemRenderer<T> renderer
-			, Point cursor
-			, float spacePerElement
-			, float sizePerElement
-			, int itemsPerRow
-			, int itemsPerPage
-			, float leftMargin
-			, float topMargin
-			, int totalItems
-			, int currentPage
-	)
-	{
-		int startingIndex = currentPage * itemsPerPage;
-		int firstIndexBeyondPage = startingIndex + itemsPerPage;
-		if (firstIndexBeyondPage > totalItems)
-		{
-			firstIndexBeyondPage = totalItems;
-		}
-		
-		T hoverOver = null;
-		int xElement = 0;
-		int yElement = 0;
-		for (T elt : data.subList(startingIndex, firstIndexBeyondPage))
-		{
-			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
-			float left = leftMargin + (xElement * spacePerElement);
-			float top = topMargin - (yElement * spacePerElement);
-			float bottom = top - sizePerElement;
-			float right = left + sizePerElement;
-			// We only handle the mouse-over if there is a handler we will notify.
-			boolean isMouseOver = new Rect(left, bottom, right, top).containsPoint(cursor);
-			renderer.drawItem(left, bottom, right, top, elt, isMouseOver);
-			if (isMouseOver)
-			{
-				hoverOver = elt;
-			}
-			
-			// On to the next item.
-			xElement += 1;
-			if (xElement >= itemsPerRow)
-			{
-				xElement = 0;
-				yElement += 1;
-			}
-		}
-		return hoverOver;
 	}
 
 	/**
@@ -259,11 +209,5 @@ public class UiIdioms
 		;
 		gl.drawWholeTextureRect(outlineTexture, bounds.leftX(), bounds.bottomY(), bounds.rightX(), bounds.topY());
 		gl.drawWholeTextureRect(backgroundTexture, bounds.leftX() + OUTLINE_SIZE, bounds.bottomY() + OUTLINE_SIZE, bounds.rightX() - OUTLINE_SIZE, bounds.topY() - OUTLINE_SIZE);
-	}
-
-
-	public static interface ItemRenderer<T>
-	{
-		void drawItem(float left, float bottom, float right, float top, T item, boolean isMouseOver);
 	}
 }
