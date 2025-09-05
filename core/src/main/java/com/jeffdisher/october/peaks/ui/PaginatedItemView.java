@@ -72,18 +72,41 @@ public class PaginatedItemView<T> implements IView
 			UiIdioms.drawPageButtons(_ui, pageSelector, location.rightX(), location.topY(), cursor, pageCount, currentPage);
 		}
 		
-		// TODO:  This out-param hack can be removed once all consumers call this directly and we no longer need to preserve the old call shape.
-		IAction[] out_action = new IAction[1];
-		UiIdioms.ItemRenderer<ItemTuple<T>> renderer = (float left, float bottom, float right, float top, ItemTuple<T> item, boolean isMouseOver) -> {
-			_innerBinding.set(item);
+		// Now, draw the appropriate number of sub-elements in a grid.
+		int startingIndex = currentPage * itemsPerPage;
+		int firstIndexBeyondPage = startingIndex + itemsPerPage;
+		if (firstIndexBeyondPage > totalItems)
+		{
+			firstIndexBeyondPage = totalItems;
+		}
+		
+		IAction hoverOver = null;
+		int xElement = 0;
+		int yElement = 0;
+		for (ItemTuple<T> elt : itemList.subList(startingIndex, firstIndexBeyondPage))
+		{
+			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
+			float left = leftMargin + (xElement * spacePerElement);
+			float top = topMargin - (yElement * spacePerElement);
+			float bottom = top - WINDOW_ITEM_SIZE;
+			float right = left + WINDOW_ITEM_SIZE;
+			
+			_innerBinding.set(elt);
 			Rect itemRect = new Rect(left, bottom, right, top);
 			IAction innerAction = _itemView.render(itemRect, cursor);
 			if (null != innerAction)
 			{
-				out_action[0] = innerAction;
+				hoverOver = innerAction;
 			}
-		};
-		UiIdioms.drawItemGrid(itemList, renderer, cursor, spacePerElement, WINDOW_ITEM_SIZE, itemsPerRow, itemsPerPage, leftMargin, topMargin, totalItems, currentPage);
-		return out_action[0];
+			
+			// On to the next item.
+			xElement += 1;
+			if (xElement >= itemsPerRow)
+			{
+				xElement = 0;
+				yElement += 1;
+			}
+		}
+		return hoverOver;
 	}
 }
