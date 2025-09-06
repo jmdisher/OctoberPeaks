@@ -23,7 +23,7 @@ public class ViewEntityInventory implements IView
 	private final GlUi _ui;
 	private final Binding<String> _titleBinding;
 	private final Binding<Inventory> _binding;
-	private final ComplexItemView<Void> _optionalProgress;
+	private final ViewFuelSlot _optionalProgress;
 
 	private final Binding<List<ItemTuple<Integer>>> _internalGridBinding;
 	private final IView _itemGrid;
@@ -31,7 +31,7 @@ public class ViewEntityInventory implements IView
 	public ViewEntityInventory(GlUi ui
 			, Binding<String> titleBinding
 			, Binding<Inventory> binding
-			, ComplexItemView<Void> optionalProgress
+			, ViewFuelSlot optionalProgress
 			, IntConsumer mouseOverKeyConsumer
 			, BooleanSupplier shouldChangePage
 	)
@@ -41,38 +41,33 @@ public class ViewEntityInventory implements IView
 		_binding = binding;
 		_optionalProgress = optionalProgress;
 		
-		ComplexItemView.IBindOptions<Integer> options = new ComplexItemView.IBindOptions<>()
-		{
+		IStatelessView<ItemTuple<Integer>> hoverRender = new IStatelessView<>() {
 			@Override
-			public int getOutlineTexture(ItemTuple<Integer> context)
-			{
-				// The user's inventory is always drawn with light grey.
-				return ui.pixelLightGrey;
-			}
-			@Override
-			public void hoverRender(Point cursor, ItemTuple<Integer> context)
+			public IAction render(Rect elementBounds, Point cursor, ItemTuple<Integer> data)
 			{
 				// We just render the name of the item.
-				Item type = context.type();
+				Item type = data.type();
 				String name = type.name();
 				float width = UiIdioms.getTextWidth(ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
 				Rect bounds = new Rect(cursor.x(), cursor.y() - UiIdioms.GENERAL_TEXT_HEIGHT, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
 				UiIdioms.drawOutline(_ui, bounds, false);
 				UiIdioms.drawTextCentred(_ui, bounds, name);
-			}
-			@Override
-			public void hoverAction(ItemTuple<Integer> context)
-			{
-				mouseOverKeyConsumer.accept(context.context());
+				return null;
 			}
 		};
+		StatelessViewItemTuple<Integer> stateless = new StatelessViewItemTuple<>(_ui
+			// The standard inventory is always drawn with light grey.
+			, (Integer ignored) -> ui.pixelLightGrey
+			, hoverRender
+			, (ItemTuple<Integer> tuple) -> mouseOverKeyConsumer.accept(tuple.context())
+		);
 		
 		// We use a fake view and binding pair to render the paginated view within the window.
 		_internalGridBinding = new Binding<>(null);
 		_itemGrid = new PaginatedItemView<>(ui
 				, _internalGridBinding
 				, shouldChangePage
-				, options
+				, stateless
 		);
 	}
 
