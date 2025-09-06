@@ -28,7 +28,6 @@ import com.jeffdisher.october.peaks.persistence.MutableServerList;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
-import com.jeffdisher.october.peaks.ui.ComplexItemView;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
@@ -48,6 +47,7 @@ import com.jeffdisher.october.peaks.ui.ViewArmour;
 import com.jeffdisher.october.peaks.ui.ViewControlPlusMinus;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
+import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
@@ -662,27 +662,8 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
-		ComplexItemView.IBindOptions<Void> fuelViewOptions = new ComplexItemView.IBindOptions<Void>()
-		{
-			@Override
-			public int getOutlineTexture(ItemTuple<Void> context)
-			{
-				// We always just show the same background for fuel.
-				return _ui.pixelLightGrey;
-			}
-			@Override
-			public void hoverRender(Point cursor, ItemTuple<Void> context)
-			{
-				// No fuel slot hover.
-			}
-			@Override
-			public void hoverAction(ItemTuple<Void> context)
-			{
-				// There is no fuel slot action.
-			}
-		};
 		_thisEntityInventoryWindow = new Window<>(WINDOW_TOP_RIGHT, thisEntityInventoryView);
-		ComplexItemView<Void> fuelProgress = new ComplexItemView<>(_ui, _bottomWindowFuelBinding, fuelViewOptions);
+		ViewFuelSlot fuelProgress = new ViewFuelSlot(_ui, _bottomWindowFuelBinding);
 		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
 		_bottomInventoryWindow = new Window<>(WINDOW_BOTTOM, bottomInventoryView);
 		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);

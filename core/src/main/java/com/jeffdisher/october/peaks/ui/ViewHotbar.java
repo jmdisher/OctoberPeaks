@@ -21,41 +21,20 @@ public class ViewHotbar implements IView
 	public static final Rect LOCATION = new Rect(- HOTBAR_WIDTH / 2.0f, HOTBAR_BOTTOM_Y, HOTBAR_WIDTH / 2.0f, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
 
 	private final Binding<Entity> _binding;
-	private final Binding<ItemTuple<Boolean>> _innerBinding;
-	private final IView _itemView;
+	private final StatelessViewItemTuple<Boolean> _stateless;
 
 	public ViewHotbar(GlUi ui
 			, Binding<Entity> binding
 	)
 	{
 		_binding = binding;
-		
-		// We only care about whether or not this is selected so we will pass in a boolean.
-		ComplexItemView.IBindOptions<Boolean> options = new ComplexItemView.IBindOptions<Boolean>()
-		{
-			@Override
-			public int getOutlineTexture(ItemTuple<Boolean> context)
-			{
-				return context.context()
-						? ui.pixelGreen
-						: ui.pixelLightGrey
-				;
-			}
-			@Override
-			public void hoverRender(Point cursor, ItemTuple<Boolean> context)
-			{
-				// Nothing.
-			}
-			@Override
-			public void hoverAction(ItemTuple<Boolean> context)
-			{
-				// No action.
-			}
-		};
-		
-		// Create the fake binding for the inner view.
-		_innerBinding = new Binding<>(null);
-		_itemView = new ComplexItemView<>(ui, _innerBinding, options);
+		// Note that we will pre-process the data before invoking stateless, based on entity context, so this is in terms of Boolean.
+		_stateless = new StatelessViewItemTuple<>(ui
+			// We always just use the light grey, no matter.
+			, (Boolean ignored) -> ignored ? ui.pixelGreen : ui.pixelLightGrey
+			, null
+			, null
+		);
 	}
 
 	@Override
@@ -71,21 +50,22 @@ public class ViewHotbar implements IView
 		{
 			boolean isActive = (activeIndex == i);
 			int thisKey = hotbarKeys[i];
+			ItemTuple<Boolean> innerValue;
 			if (0 == thisKey)
 			{
 				// No item so just draw the frame.
-				_innerBinding.set(new ItemTuple<>(null, 0, 0.0f, isActive));
+				innerValue = new ItemTuple<>(null, 0, 0.0f, isActive);
 			}
 			else
 			{
 				// There is something here so render it.
 				Items stack = entityInventory.getStackForKey(thisKey);
 				NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-				_innerBinding.set(ItemTuple.commonFromItems(env, stack, nonStack, isActive));
+				innerValue = ItemTuple.commonFromItems(env, stack, nonStack, isActive);
 			}
 			
 			// Use the composed item - we ignore the response since it doesn't do anything.
-			_itemView.render(new Rect(nextLeftButton, location.bottomY(), nextLeftButton + HOTBAR_ITEM_SCALE, location.topY()), cursor);
+			_stateless.render(new Rect(nextLeftButton, location.bottomY(), nextLeftButton + HOTBAR_ITEM_SCALE, location.topY()), cursor, innerValue);
 			
 			nextLeftButton += HOTBAR_ITEM_SCALE + HOTBAR_ITEM_SPACING;
 		}

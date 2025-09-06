@@ -18,24 +18,19 @@ public class PaginatedItemView<T> implements IView
 	private final GlUi _ui;
 	private final Binding<List<ItemTuple<T>>> _binding;
 	private final BooleanSupplier _shouldChangePage;
-
-	private final Binding<ItemTuple<T>> _innerBinding;
-	private final IView _itemView;
+	private final IStatelessView<ItemTuple<T>> _innerView;
 	private int _currentPage;
 
 	public PaginatedItemView(GlUi ui
 			, Binding<List<ItemTuple<T>>> binding
 			, BooleanSupplier shouldChangePage
-			, ComplexItemView.IBindOptions<T> options
+			, IStatelessView<ItemTuple<T>> innerView
 	)
 	{
 		_ui = ui;
 		_binding = binding;
 		_shouldChangePage = shouldChangePage;
-		
-		// We use a fake view and binding pair to render the individual items in the list.
-		_innerBinding = new Binding<>(null);
-		_itemView = new ComplexItemView<>(ui, _innerBinding, options);
+		_innerView = innerView;
 	}
 
 	@Override
@@ -91,12 +86,11 @@ public class PaginatedItemView<T> implements IView
 			float bottom = top - WINDOW_ITEM_SIZE;
 			float right = left + WINDOW_ITEM_SIZE;
 			
-			_innerBinding.set(elt);
 			Rect itemRect = new Rect(left, bottom, right, top);
-			IAction innerAction = _itemView.render(itemRect, cursor);
-			if (null != innerAction)
+			IAction thisAction = _innerView.render(itemRect, cursor, elt);
+			if (null != thisAction)
 			{
-				hoverOver = innerAction;
+				hoverOver = thisAction;
 			}
 			
 			// On to the next item.
