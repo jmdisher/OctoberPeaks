@@ -1,6 +1,8 @@
 package com.jeffdisher.october.peaks.ui;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -9,9 +11,12 @@ import java.util.function.ToIntFunction;
 
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.PropertyHelpers;
+import com.jeffdisher.october.properties.PropertyRegistry;
+import com.jeffdisher.october.properties.PropertyType;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.ItemSlot;
+import com.jeffdisher.october.types.NonStackableItem;
 
 
 /**
@@ -47,20 +52,7 @@ public class ViewEntityInventory implements IView
 		Function<_ItemTuple, Item> typeValueTransformer = (_ItemTuple desc) -> desc.getType();
 		ToIntFunction<_ItemTuple> numberLabelValueTransformer = (_ItemTuple desc) -> desc.getCount();
 		StatelessViewItemTuple.ToFloatFunction<_ItemTuple> progressBarValueTransformer = (_ItemTuple desc) -> desc.getDurability();
-		IStatelessView<_ItemTuple> hoverRender = new IStatelessView<>() {
-			@Override
-			public IAction render(Rect elementBounds, Point cursor, _ItemTuple data)
-			{
-				// We just render the name of the item.
-				Item type = data.getType();
-				String name = type.name();
-				float width = UiIdioms.getTextWidth(ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
-				Rect bounds = new Rect(cursor.x(), cursor.y() - UiIdioms.GENERAL_TEXT_HEIGHT, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
-				UiIdioms.drawOutline(_ui, bounds, false);
-				UiIdioms.drawTextCentred(_ui, bounds, name);
-				return null;
-			}
-		};
+		_Hover hoverRender = new _Hover();
 		Consumer<_ItemTuple> actionConsumer = (_ItemTuple tuple) -> mouseOverKeyConsumer.accept(tuple.key);
 		StatelessViewItemTuple<_ItemTuple> stateless = new StatelessViewItemTuple<>(_ui
 			// The standard inventory is always drawn with light grey.
@@ -133,6 +125,87 @@ public class ViewEntityInventory implements IView
 				durability = (float)PropertyHelpers.getDurability(slot.nonStackable) / (float)env.durability.getDurability(type);
 			}
 			return durability;
+		}
+	}
+
+	private class _Hover implements IStatelessView<_ItemTuple>
+	{
+		@Override
+		public IAction render(Rect elementBounds, Point cursor, _ItemTuple data)
+		{
+			// For the hover, we want to show more details if this item has special properties.
+			if (null != data.slot.stack)
+			{
+				// We just render the name of the item.
+				Item type = data.getType();
+				String name = type.name();
+				float width = UiIdioms.getTextWidth(_ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
+				Rect bounds = new Rect(cursor.x(), cursor.y() - UiIdioms.GENERAL_TEXT_HEIGHT, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
+				UiIdioms.drawOutline(_ui, bounds, false);
+				UiIdioms.drawTextCentred(_ui, bounds, name);
+			}
+			else
+			{
+				// Check if this has a special name or other properties.
+				NonStackableItem nonStack = data.slot.nonStackable;
+				Map<PropertyType<?>, Object> properties = nonStack.properties();
+				
+				String name = PropertyHelpers.getName(nonStack);
+				byte durability = _getValue(properties, PropertyRegistry.ENCHANT_DURABILITY);
+				byte weaponMelee = _getValue(properties, PropertyRegistry.ENCHANT_WEAPON_MELEE);
+				byte toolEfficiency = _getValue(properties, PropertyRegistry.ENCHANT_TOOL_EFFICIENCY);
+				
+				List<String> strings = new ArrayList<>();
+				float width = UiIdioms.getTextWidth(_ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
+				float height = UiIdioms.GENERAL_TEXT_HEIGHT;
+				strings.add(name);
+				if (durability > 0)
+				{
+					String enchant = "+" + durability + " durability";
+					float thisWidth = UiIdioms.getTextWidth(_ui, enchant, UiIdioms.GENERAL_TEXT_HEIGHT);
+					width = Math.max(width, thisWidth);
+					height += UiIdioms.GENERAL_TEXT_HEIGHT;
+					strings.add(enchant);
+				}
+				if (weaponMelee > 0)
+				{
+					String enchant = "+" + weaponMelee + " melee damage";
+					float thisWidth = UiIdioms.getTextWidth(_ui, enchant, UiIdioms.GENERAL_TEXT_HEIGHT);
+					width = Math.max(width, thisWidth);
+					height += UiIdioms.GENERAL_TEXT_HEIGHT;
+					strings.add(enchant);
+				}
+				if (toolEfficiency > 0)
+				{
+					String enchant = "+" + toolEfficiency + " efficiency";
+					float thisWidth = UiIdioms.getTextWidth(_ui, enchant, UiIdioms.GENERAL_TEXT_HEIGHT);
+					width = Math.max(width, thisWidth);
+					height += UiIdioms.GENERAL_TEXT_HEIGHT;
+					strings.add(enchant);
+				}
+				
+				Rect bounds = new Rect(cursor.x(), cursor.y() - height, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
+				UiIdioms.drawOutline(_ui, bounds, false);
+				
+				float textTop = cursor.y();
+				for (String string : strings)
+				{
+					Rect rect = new Rect(cursor.x() + UiIdioms.OUTLINE_SIZE, textTop - UiIdioms.GENERAL_TEXT_HEIGHT, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), textTop);
+					UiIdioms.drawTextLeft(_ui, rect, string);
+					textTop -= UiIdioms.GENERAL_TEXT_HEIGHT;
+				}
+			}
+			return null;
+		}
+		private static byte _getValue(Map<PropertyType<?>, Object> properties, PropertyType<Byte> type)
+		{
+			byte value = 0;
+			if (properties.containsKey(type))
+			{
+				Object raw = properties.get(type);
+				value = type.type().cast(raw);
+			}
+			return value;
 		}
 	}
 }
