@@ -32,7 +32,6 @@ import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.IView;
-import com.jeffdisher.october.peaks.ui.ItemTuple;
 import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
@@ -184,7 +183,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<Inventory> _thisEntityInventoryBinding;
 	private final Binding<Inventory> _bottomWindowInventoryBinding;
 	private final Binding<String> _bottomWindowTitleBinding;
-	private final Binding<ItemTuple<Void>> _bottomWindowFuelBinding;
+	private final Binding<ViewFuelSlot.FuelTuple> _bottomWindowFuelBinding;
 	private final Binding<String> _craftingPanelTitleBinding;
 	private final Binding<List<CraftDescription>> _craftingPanelBinding;
 	private final Binding<MutableControls.Control> _currentlyChangingControl;
@@ -1389,7 +1388,7 @@ public class UiStateManager implements GameSession.ICallouts
 		List<Craft> validCrafts = null;
 		CraftOperation currentOperation = null;
 		String stationName = "Floor";
-		ItemTuple<Void> fuelSlot = null;
+		ViewFuelSlot.FuelTuple fuelSlot = null;
 		boolean isAutomaticCrafting = false;
 		if (null != _openStationLocation)
 		{
@@ -1415,7 +1414,7 @@ public class UiStateManager implements GameSession.ICallouts
 						long totalFuel = _env.fuel.millisOfFuel(currentFuel);
 						long remainingFuel = fuel.millisFuelled();
 						float fuelRemaining = (float)remainingFuel / (float) totalFuel;
-						fuelSlot = new ItemTuple<>(currentFuel, 0, fuelRemaining, null);
+						fuelSlot = new ViewFuelSlot.FuelTuple(currentFuel, fuelRemaining);
 					}
 				}
 				else

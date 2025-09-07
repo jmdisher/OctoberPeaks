@@ -10,21 +10,21 @@ import com.jeffdisher.october.types.Item;
  */
 public class ViewFuelSlot implements IView
 {
-	private final Binding<ItemTuple<Void>> _bottomWindowFuelBinding;
-	private final StatelessViewItemTuple<ItemTuple<Void>> _stateless;
+	private final Binding<FuelTuple> _bottomWindowFuelBinding;
+	private final StatelessViewItemTuple<FuelTuple> _stateless;
 
 	public ViewFuelSlot(GlUi ui
-		, Binding<ItemTuple<Void>> bottomWindowFuelBinding
+		, Binding<FuelTuple> bottomWindowFuelBinding
 	)
 	{
 		_bottomWindowFuelBinding = bottomWindowFuelBinding;
 		
-		Function<ItemTuple<Void>, Item> typeValueTransformer = (ItemTuple<Void> desc) -> desc.type();
-		ToIntFunction<ItemTuple<Void>> numberLabelValueTransformer = (ItemTuple<Void> desc) -> desc.count();
-		StatelessViewItemTuple.ToFloatFunction<ItemTuple<Void>> progressBarValueTransformer = (ItemTuple<Void> desc) -> desc.durability();
+		Function<FuelTuple, Item> typeValueTransformer = (FuelTuple desc) -> desc.type;
+		ToIntFunction<FuelTuple> numberLabelValueTransformer = (FuelTuple ignored) -> 0;
+		StatelessViewItemTuple.ToFloatFunction<FuelTuple> progressBarValueTransformer = (FuelTuple desc) -> desc.remaining;
 		_stateless = new StatelessViewItemTuple<>(ui
 			// We always just show the same background for fuel.
-			, (ItemTuple<Void> ignored) -> ui.pixelLightGrey
+			, (FuelTuple ignored) -> ui.pixelLightGrey
 			, typeValueTransformer
 			, numberLabelValueTransformer
 			, progressBarValueTransformer
@@ -36,7 +36,10 @@ public class ViewFuelSlot implements IView
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
-		ItemTuple<Void> tuple = _bottomWindowFuelBinding.get();
+		FuelTuple tuple = _bottomWindowFuelBinding.get();
 		return _stateless.render(location, cursor, tuple);
 	}
+
+
+	public static record FuelTuple(Item type, float remaining) {}
 }

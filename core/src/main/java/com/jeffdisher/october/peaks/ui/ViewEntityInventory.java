@@ -8,10 +8,10 @@ import java.util.function.IntConsumer;
 import java.util.function.ToIntFunction;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.logic.PropertyHelpers;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
-import com.jeffdisher.october.types.Items;
-import com.jeffdisher.october.types.NonStackableItem;
+import com.jeffdisher.october.types.ItemSlot;
 
 
 /**
@@ -28,8 +28,8 @@ public class ViewEntityInventory implements IView
 	private final Binding<Inventory> _binding;
 	private final ViewFuelSlot _optionalProgress;
 
-	private final Binding<List<ItemTuple<Integer>>> _internalGridBinding;
-	private final PaginatedItemView<ItemTuple<Integer>> _itemGrid;
+	private final Binding<List<_ItemTuple>> _internalGridBinding;
+	private final PaginatedItemView<_ItemTuple> _itemGrid;
 
 	public ViewEntityInventory(GlUi ui
 			, Binding<String> titleBinding
@@ -44,15 +44,15 @@ public class ViewEntityInventory implements IView
 		_binding = binding;
 		_optionalProgress = optionalProgress;
 		
-		Function<ItemTuple<Integer>, Item> typeValueTransformer = (ItemTuple<Integer> desc) -> desc.type();
-		ToIntFunction<ItemTuple<Integer>> numberLabelValueTransformer = (ItemTuple<Integer> desc) -> desc.count();
-		StatelessViewItemTuple.ToFloatFunction<ItemTuple<Integer>> progressBarValueTransformer = (ItemTuple<Integer> desc) -> desc.durability();
-		IStatelessView<ItemTuple<Integer>> hoverRender = new IStatelessView<>() {
+		Function<_ItemTuple, Item> typeValueTransformer = (_ItemTuple desc) -> desc.getType();
+		ToIntFunction<_ItemTuple> numberLabelValueTransformer = (_ItemTuple desc) -> desc.getCount();
+		StatelessViewItemTuple.ToFloatFunction<_ItemTuple> progressBarValueTransformer = (_ItemTuple desc) -> desc.getDurability();
+		IStatelessView<_ItemTuple> hoverRender = new IStatelessView<>() {
 			@Override
-			public IAction render(Rect elementBounds, Point cursor, ItemTuple<Integer> data)
+			public IAction render(Rect elementBounds, Point cursor, _ItemTuple data)
 			{
 				// We just render the name of the item.
-				Item type = data.type();
+				Item type = data.getType();
 				String name = type.name();
 				float width = UiIdioms.getTextWidth(ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
 				Rect bounds = new Rect(cursor.x(), cursor.y() - UiIdioms.GENERAL_TEXT_HEIGHT, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
@@ -61,10 +61,10 @@ public class ViewEntityInventory implements IView
 				return null;
 			}
 		};
-		Consumer<ItemTuple<Integer>> actionConsumer = (ItemTuple<Integer> tuple) -> mouseOverKeyConsumer.accept(tuple.context());
-		StatelessViewItemTuple<ItemTuple<Integer>> stateless = new StatelessViewItemTuple<>(_ui
+		Consumer<_ItemTuple> actionConsumer = (_ItemTuple tuple) -> mouseOverKeyConsumer.accept(tuple.key);
+		StatelessViewItemTuple<_ItemTuple> stateless = new StatelessViewItemTuple<>(_ui
 			// The standard inventory is always drawn with light grey.
-			, (ItemTuple<Integer> ignored) -> ui.pixelLightGrey
+			, (_ItemTuple ignored) -> ui.pixelLightGrey
 			, typeValueTransformer
 			, numberLabelValueTransformer
 			, progressBarValueTransformer
@@ -108,12 +108,31 @@ public class ViewEntityInventory implements IView
 		
 		// Draw the actual sub-view (which will handle pagination, itself).
 		// We need to populate the internal binding since it is based on what we have.
-		Environment env = Environment.getShared();
-		_internalGridBinding.set(data.sortedKeys().stream().map((Integer key) -> {
-			Items stack = data.getStackForKey(key);
-			NonStackableItem nonStack = data.getNonStackableForKey(key);
-			return ItemTuple.commonFromItems(env, stack, nonStack, key);
-		}).toList());
+		_internalGridBinding.set(data.sortedKeys().stream().map((Integer key) -> new _ItemTuple(data.getSlotForKey(key), key)).toList());
 		return _itemGrid.render(location, cursor);
+	}
+
+
+	private static record _ItemTuple(ItemSlot slot, int key)
+	{
+		public Item getType()
+		{
+			return (null != slot.stack) ? slot.stack.type() : slot.nonStackable.type();
+		}
+		public int getCount()
+		{
+			return (null != slot.stack) ? slot.stack.count() : 0;
+		}
+		public float getDurability()
+		{
+			float durability = 0.0f;
+			if (null != slot.nonStackable)
+			{
+				Environment env = Environment.getShared();
+				Item type = slot.nonStackable.type();
+				durability = (float)PropertyHelpers.getDurability(slot.nonStackable) / (float)env.durability.getDurability(type);
+			}
+			return durability;
+		}
 	}
 }
