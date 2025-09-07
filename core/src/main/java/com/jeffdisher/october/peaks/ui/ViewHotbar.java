@@ -4,12 +4,12 @@ import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.logic.PropertyHelpers;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
-import com.jeffdisher.october.types.Items;
-import com.jeffdisher.october.types.NonStackableItem;
+import com.jeffdisher.october.types.ItemSlot;
 
 
 /**
@@ -25,7 +25,7 @@ public class ViewHotbar implements IView
 	public static final Rect LOCATION = new Rect(- HOTBAR_WIDTH / 2.0f, HOTBAR_BOTTOM_Y, HOTBAR_WIDTH / 2.0f, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
 
 	private final Binding<Entity> _binding;
-	private final StatelessViewItemTuple<ItemTuple<Boolean>> _stateless;
+	private final StatelessViewItemTuple<_BarTuple> _stateless;
 
 	public ViewHotbar(GlUi ui
 			, Binding<Entity> binding
@@ -33,11 +33,12 @@ public class ViewHotbar implements IView
 	{
 		_binding = binding;
 		
-		// Note that we will pre-process the data before invoking stateless, based on entity context, so this is in terms of Boolean.
-		ToIntFunction<ItemTuple<Boolean>> outlineTextureValueTransformer = (ItemTuple<Boolean> desc) -> desc.context() ? ui.pixelGreen : ui.pixelLightGrey;
-		Function<ItemTuple<Boolean>, Item> typeValueTransformer = (ItemTuple<Boolean> desc) -> desc.type();
-		ToIntFunction<ItemTuple<Boolean>> numberLabelValueTransformer = (ItemTuple<Boolean> desc) -> desc.count();
-		StatelessViewItemTuple.ToFloatFunction<ItemTuple<Boolean>> progressBarValueTransformer = (ItemTuple<Boolean> desc) -> desc.durability();
+		// Note that we could just store the inventory keys and reach into the bound Entity on each call but these are
+		// all always visible so we pre-process them in a single pass in render().
+		ToIntFunction<_BarTuple> outlineTextureValueTransformer = (_BarTuple desc) -> desc.isActive ? ui.pixelGreen : ui.pixelLightGrey;
+		Function<_BarTuple, Item> typeValueTransformer = (_BarTuple desc) -> desc.getType();
+		ToIntFunction<_BarTuple> numberLabelValueTransformer = (_BarTuple desc) -> desc.getCount();
+		StatelessViewItemTuple.ToFloatFunction<_BarTuple> progressBarValueTransformer = (_BarTuple desc) -> desc.getDurability();
 		_stateless = new StatelessViewItemTuple<>(ui
 			, outlineTextureValueTransformer
 			, typeValueTransformer
@@ -51,7 +52,6 @@ public class ViewHotbar implements IView
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
-		Environment env = Environment.getShared();
 		float nextLeftButton = location.leftX();
 		Entity entity = _binding.get();
 		Inventory entityInventory = _getEntityInventory(entity);
@@ -61,18 +61,17 @@ public class ViewHotbar implements IView
 		{
 			boolean isActive = (activeIndex == i);
 			int thisKey = hotbarKeys[i];
-			ItemTuple<Boolean> innerValue;
+			_BarTuple innerValue;
 			if (0 == thisKey)
 			{
 				// No item so just draw the frame.
-				innerValue = new ItemTuple<>(null, 0, 0.0f, isActive);
+				innerValue = new _BarTuple(null, isActive);
 			}
 			else
 			{
 				// There is something here so render it.
-				Items stack = entityInventory.getStackForKey(thisKey);
-				NonStackableItem nonStack = entityInventory.getNonStackableForKey(thisKey);
-				innerValue = ItemTuple.commonFromItems(env, stack, nonStack, isActive);
+				ItemSlot slot = entityInventory.getSlotForKey(thisKey);
+				innerValue = new _BarTuple(slot, isActive);
 			}
 			
 			// Use the composed item - we ignore the response since it doesn't do anything.
@@ -93,5 +92,36 @@ public class ViewHotbar implements IView
 				: entity.inventory()
 		;
 		return inventory;
+	}
+
+
+	private static record _BarTuple(ItemSlot slot, boolean isActive)
+	{
+		public Item getType()
+		{
+			Item type = null;
+			if (null != this.slot)
+			{
+				type = (null != slot.stack) ? slot.stack.type() : slot.nonStackable.type();
+			}
+			return type;
+		}
+		public int getCount()
+		{
+			// Only called on non-null type.
+			return (null != slot.stack) ? slot.stack.count() : 0;
+		}
+		public float getDurability()
+		{
+			// Only called on non-null type.
+			float durability = 0.0f;
+			if (null != slot.nonStackable)
+			{
+				Environment env = Environment.getShared();
+				Item type = slot.nonStackable.type();
+				durability = (float)PropertyHelpers.getDurability(slot.nonStackable) / (float)env.durability.getDurability(type);
+			}
+			return durability;
+		}
 	}
 }
