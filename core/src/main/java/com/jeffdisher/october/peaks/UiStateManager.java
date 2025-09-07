@@ -190,13 +190,13 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<MutableControls.Control> _currentlyChangingControl;
 	
 	// Views for rendering parts of the UI in specific modes.
-	private final Window<Inventory> _thisEntityInventoryWindow;
-	private final Window<Inventory> _bottomInventoryWindow;
-	private final Window<List<ItemTuple<CraftDescription>>> _craftingWindow;
-	private final Window<Entity> _metaDataWindow;
-	private final Window<Entity> _hotbarWindow;
-	private final Window<NonStackableItem[]> _armourWindow;
-	private final Window<WorldSelection> _selectionWindow;
+	private final Window _thisEntityInventoryWindow;
+	private final Window _bottomInventoryWindow;
+	private final Window _craftingWindow;
+	private final Window _metaDataWindow;
+	private final Window _hotbarWindow;
+	private final Window _armourWindow;
+	private final Window _selectionWindow;
 
 	// UI for rendering the controls in the pause state.
 	private final Binding<String> _exitButtonBinding;
@@ -662,14 +662,14 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
-		_thisEntityInventoryWindow = new Window<>(WINDOW_TOP_RIGHT, thisEntityInventoryView);
+		_thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
 		ViewFuelSlot fuelProgress = new ViewFuelSlot(_ui, _bottomWindowFuelBinding);
 		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
-		_bottomInventoryWindow = new Window<>(WINDOW_BOTTOM, bottomInventoryView);
+		_bottomInventoryWindow = new Window(WINDOW_BOTTOM, bottomInventoryView);
 		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
-		_craftingWindow = new Window<>(WINDOW_TOP_LEFT, craftingPanelView);
-		_metaDataWindow = new Window<>(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
-		_hotbarWindow = new Window<>(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
+		_craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
+		_metaDataWindow = new Window(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
+		_hotbarWindow = new Window(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
 			if (_leftClick)
 			{
@@ -677,10 +677,10 @@ public class UiStateManager implements GameSession.ICallouts
 				_currentGameSession.client.swapArmour(hoverPart);
 			}
 		};
-		_armourWindow = new Window<>(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
+		_armourWindow = new Window(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
 		// The ViewSelection should only use block lookup during play state so the _currentGameSession should never be null.
 		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.apply(location);
-		_selectionWindow = new Window<>(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
+		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
 		// Pause state controls.
 		_exitButton = new ViewTextButton<>(_ui, _exitButtonBinding
