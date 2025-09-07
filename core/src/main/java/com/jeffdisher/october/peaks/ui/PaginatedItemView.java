@@ -16,15 +16,15 @@ public class PaginatedItemView<T> implements IView
 	public static final float WINDOW_TITLE_HEIGHT = 0.1f;
 
 	private final GlUi _ui;
-	private final Binding<List<ItemTuple<T>>> _binding;
+	private final Binding<List<T>> _binding;
 	private final BooleanSupplier _shouldChangePage;
-	private final IStatelessView<ItemTuple<T>> _innerView;
+	private final IStatelessView<T> _innerView;
 	private int _currentPage;
 
 	public PaginatedItemView(GlUi ui
-			, Binding<List<ItemTuple<T>>> binding
+			, Binding<List<T>> binding
 			, BooleanSupplier shouldChangePage
-			, IStatelessView<ItemTuple<T>> innerView
+			, IStatelessView<T> innerView
 	)
 	{
 		_ui = ui;
@@ -36,7 +36,7 @@ public class PaginatedItemView<T> implements IView
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
-		List<ItemTuple<T>> itemList = _binding.get();
+		List<T> itemList = _binding.get();
 		
 		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
 		float xSpace = location.rightX() - location.leftX() - WINDOW_MARGIN;
@@ -78,7 +78,7 @@ public class PaginatedItemView<T> implements IView
 		IAction hoverOver = null;
 		int xElement = 0;
 		int yElement = 0;
-		for (ItemTuple<T> elt : itemList.subList(startingIndex, firstIndexBeyondPage))
+		for (T elt : itemList.subList(startingIndex, firstIndexBeyondPage))
 		{
 			// We want to render these left->right, top->bottom but GL is left->right, bottom->top so we increment X and Y in opposite ways.
 			float left = leftMargin + (xElement * spacePerElement);
