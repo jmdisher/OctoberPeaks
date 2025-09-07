@@ -2,7 +2,10 @@ package com.jeffdisher.october.peaks.ui;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.function.ToIntFunction;
 
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.Inventory;
@@ -26,7 +29,7 @@ public class ViewEntityInventory implements IView
 	private final ViewFuelSlot _optionalProgress;
 
 	private final Binding<List<ItemTuple<Integer>>> _internalGridBinding;
-	private final IView _itemGrid;
+	private final PaginatedItemView<ItemTuple<Integer>> _itemGrid;
 
 	public ViewEntityInventory(GlUi ui
 			, Binding<String> titleBinding
@@ -41,6 +44,9 @@ public class ViewEntityInventory implements IView
 		_binding = binding;
 		_optionalProgress = optionalProgress;
 		
+		Function<ItemTuple<Integer>, Item> typeValueTransformer = (ItemTuple<Integer> desc) -> desc.type();
+		ToIntFunction<ItemTuple<Integer>> numberLabelValueTransformer = (ItemTuple<Integer> desc) -> desc.count();
+		StatelessViewItemTuple.ToFloatFunction<ItemTuple<Integer>> progressBarValueTransformer = (ItemTuple<Integer> desc) -> desc.durability();
 		IStatelessView<ItemTuple<Integer>> hoverRender = new IStatelessView<>() {
 			@Override
 			public IAction render(Rect elementBounds, Point cursor, ItemTuple<Integer> data)
@@ -55,11 +61,15 @@ public class ViewEntityInventory implements IView
 				return null;
 			}
 		};
-		StatelessViewItemTuple<Integer> stateless = new StatelessViewItemTuple<>(_ui
+		Consumer<ItemTuple<Integer>> actionConsumer = (ItemTuple<Integer> tuple) -> mouseOverKeyConsumer.accept(tuple.context());
+		StatelessViewItemTuple<ItemTuple<Integer>> stateless = new StatelessViewItemTuple<>(_ui
 			// The standard inventory is always drawn with light grey.
-			, (Integer ignored) -> ui.pixelLightGrey
+			, (ItemTuple<Integer> ignored) -> ui.pixelLightGrey
+			, typeValueTransformer
+			, numberLabelValueTransformer
+			, progressBarValueTransformer
 			, hoverRender
-			, (ItemTuple<Integer> tuple) -> mouseOverKeyConsumer.accept(tuple.context())
+			, actionConsumer
 		);
 		
 		// We use a fake view and binding pair to render the paginated view within the window.

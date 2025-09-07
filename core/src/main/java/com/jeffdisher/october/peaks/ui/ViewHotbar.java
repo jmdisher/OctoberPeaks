@@ -1,9 +1,13 @@
 package com.jeffdisher.october.peaks.ui;
 
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
+
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
+import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
 
@@ -21,17 +25,24 @@ public class ViewHotbar implements IView
 	public static final Rect LOCATION = new Rect(- HOTBAR_WIDTH / 2.0f, HOTBAR_BOTTOM_Y, HOTBAR_WIDTH / 2.0f, HOTBAR_BOTTOM_Y + HOTBAR_ITEM_SCALE);
 
 	private final Binding<Entity> _binding;
-	private final StatelessViewItemTuple<Boolean> _stateless;
+	private final StatelessViewItemTuple<ItemTuple<Boolean>> _stateless;
 
 	public ViewHotbar(GlUi ui
 			, Binding<Entity> binding
 	)
 	{
 		_binding = binding;
+		
 		// Note that we will pre-process the data before invoking stateless, based on entity context, so this is in terms of Boolean.
+		ToIntFunction<ItemTuple<Boolean>> outlineTextureValueTransformer = (ItemTuple<Boolean> desc) -> desc.context() ? ui.pixelGreen : ui.pixelLightGrey;
+		Function<ItemTuple<Boolean>, Item> typeValueTransformer = (ItemTuple<Boolean> desc) -> desc.type();
+		ToIntFunction<ItemTuple<Boolean>> numberLabelValueTransformer = (ItemTuple<Boolean> desc) -> desc.count();
+		StatelessViewItemTuple.ToFloatFunction<ItemTuple<Boolean>> progressBarValueTransformer = (ItemTuple<Boolean> desc) -> desc.durability();
 		_stateless = new StatelessViewItemTuple<>(ui
-			// We always just use the light grey, no matter.
-			, (Boolean ignored) -> ignored ? ui.pixelGreen : ui.pixelLightGrey
+			, outlineTextureValueTransformer
+			, typeValueTransformer
+			, numberLabelValueTransformer
+			, progressBarValueTransformer
 			, null
 			, null
 		);

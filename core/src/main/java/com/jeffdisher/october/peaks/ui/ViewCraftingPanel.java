@@ -4,8 +4,9 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
-import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.Item;
 
 
 /**
@@ -21,14 +22,12 @@ public class ViewCraftingPanel implements IView
 	private final GlUi _ui;
 	private final Binding<String> _titleBinding;
 	private final Binding<List<CraftDescription>> _binding;
-
-	private final Binding<List<ItemTuple<CraftDescription>>> _internalGridBinding;
 	private final IView _itemGrid;
 
 	public ViewCraftingPanel(GlUi ui
 			, Binding<String> titleBinding
 			, Binding<List<CraftDescription>> binding
-			, Consumer<CraftDescription> craftHoverOverItem
+			, Consumer<CraftDescription> actionConsumer
 			, BooleanSupplier shouldChangePage
 	)
 	{
@@ -36,7 +35,7 @@ public class ViewCraftingPanel implements IView
 		_titleBinding = titleBinding;
 		_binding = binding;
 		
-		Function<CraftDescription, Integer> outlineTextureValueTransformer = (CraftDescription context) -> {
+		ToIntFunction<CraftDescription> outlineTextureValueTransformer = (CraftDescription context) -> {
 			// We want to set the outline colour based on whether or not all the requirements are satisfied (this could be moved into CraftDescription as an eager calculation).
 			boolean isSatisfied = true;
 			for (CraftDescription.ItemRequirement items : context.input())
@@ -52,9 +51,11 @@ public class ViewCraftingPanel implements IView
 				: ui.pixelRed
 			;
 		};
-		IStatelessView<ItemTuple<CraftDescription>> hoverRender = (Rect elementBounds, Point cursor, ItemTuple<CraftDescription> data) -> {
+		Function<CraftDescription, Item> typeValueTransformer = (CraftDescription desc) -> desc.output().type();
+		ToIntFunction<CraftDescription> numberLabelValueTransformer = (CraftDescription desc) -> desc.output().count();
+		StatelessViewItemTuple.ToFloatFunction<CraftDescription> progressBarValueTransformer = (CraftDescription desc) -> desc.progress();
+		IStatelessView<CraftDescription> hoverRender = (Rect elementBounds, Point cursor, CraftDescription craft) -> {
 			// This hover is pretty complicated since we draw the name an inputs.
-			CraftDescription craft = data.context();
 			String name = craft.craft().name;
 			
 			// Calculate the dimensions (we have a title and then a list of input items below this).
@@ -88,19 +89,17 @@ public class ViewCraftingPanel implements IView
 			}
 			return null;
 		};
-		Consumer<ItemTuple<CraftDescription>> actionConsumer = (ItemTuple<CraftDescription> tuple) -> {
-			craftHoverOverItem.accept(tuple.context());
-		};
 		StatelessViewItemTuple<CraftDescription> stateless = new StatelessViewItemTuple<>(_ui
 			, outlineTextureValueTransformer
+			, typeValueTransformer
+			, numberLabelValueTransformer
+			, progressBarValueTransformer
 			, hoverRender
 			, actionConsumer
 		);
 		
-		// We use a fake view and binding pair to render the paginated view within the window.
-		_internalGridBinding = new Binding<>(null);
 		_itemGrid = new PaginatedItemView<>(ui
-				, _internalGridBinding
+				, _binding
 				, shouldChangePage
 				, stateless
 		);
@@ -109,8 +108,6 @@ public class ViewCraftingPanel implements IView
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
-		List<CraftDescription> data = _binding.get();
-		
 		// Draw the window outline.
 		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 		
@@ -118,11 +115,6 @@ public class ViewCraftingPanel implements IView
 		_ui.drawLabel(location.leftX(), location.topY() - WINDOW_TITLE_HEIGHT, location.topY(), _titleBinding.get());
 		
 		// Draw the actual sub-view (which will handle pagination, itself).
-		// We need to populate the internal binding since it is based on what we have.
-		_internalGridBinding.set(data.stream().map((CraftDescription craft) -> {
-			Items output = craft.output();
-			return new ItemTuple<>(output.type(), output.count(), craft.progress(), craft);
-		}).toList());
 		return _itemGrid.render(location, cursor);
 	}
 }
