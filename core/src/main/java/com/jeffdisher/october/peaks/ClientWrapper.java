@@ -71,6 +71,7 @@ import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.MutableInventory;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.worldgen.IWorldGenerator;
@@ -1003,6 +1004,21 @@ public class ClientWrapper
 		public void otherEntityDidUnload(int id)
 		{
 			_updateConsumer.otherEntityDidUnload(id);
+		}
+		@Override
+		public void passiveEntityDidLoad(PartialPassive entity)
+		{
+			// TODO:  Plumb through passives.
+		}
+		@Override
+		public void passiveEntityDidChange(PartialPassive entity)
+		{
+			// TODO:  Plumb through passives.
+		}
+		@Override
+		public void passiveEntityDidUnload(int id)
+		{
+			// TODO:  Plumb through passives.
 		}
 		@Override
 		public void tickDidComplete(long tickNumber)

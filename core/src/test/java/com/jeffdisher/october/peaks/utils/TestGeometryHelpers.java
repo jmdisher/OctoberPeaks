@@ -256,12 +256,14 @@ public class TestGeometryHelpers
 
 	private static PartialEntity _getTestCow(int id, EntityLocation location)
 	{
+		Object extendedData = COW.extendedCodec().buildDefault();
 		return new PartialEntity(id
 				, COW
 				, location
 				, OrientationHelpers.YAW_NORTH
 				, OrientationHelpers.PITCH_FLAT
 				, (byte)1
+				, extendedData
 		);
 	}
 }
