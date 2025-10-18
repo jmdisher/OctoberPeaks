@@ -29,6 +29,7 @@ public class InputManager
 	private boolean _buttonDown1;
 	private char _typedCharacter;
 	private boolean _leftShiftDown;
+	private boolean _leftCtrlDown;
 	private int _lastPressedNumber;
 	private boolean _didHandlePressedNumber;
 
@@ -38,6 +39,7 @@ public class InputManager
 	private boolean _didHandleButton0;
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
+	private boolean _didHandleQ;
 
 	public InputManager(MutableControls mutableControls, boolean startInCaptureMode)
 	{
@@ -72,6 +74,9 @@ public class InputManager
 				{
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = true;
+					break;
+				case Keys.CONTROL_LEFT:
+					_leftCtrlDown = true;
 					break;
 				}
 				
@@ -134,6 +139,13 @@ public class InputManager
 					break;
 				case Keys.SHIFT_LEFT:
 					_leftShiftDown = false;
+					break;
+				case Keys.CONTROL_LEFT:
+					_leftCtrlDown = false;
+					break;
+				case Keys.Q:
+					// TODO:  Generalize this with the other keys (once we decide how to add in ctrl).
+					_didHandleQ = false;
 					break;
 				}
 				
@@ -200,6 +212,7 @@ public class InputManager
 		_didHandleButton0 = true;
 		_didHandleButton1 = true;
 		_didHandleKeyEsc = true;
+		_didHandleQ = true;
 	}
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
@@ -302,6 +315,11 @@ public class InputManager
 		{
 			uiManager.handleKeyF();
 			_activeControls[MutableControls.Control.MOVE_FUEL.ordinal()] = false;
+		}
+		if (!_didHandleQ)
+		{
+			uiManager.handleKeyQ(_leftCtrlDown);
+			_didHandleQ = true;
 		}
 		
 		if (Keys.UNKNOWN != _lastKeyUp)

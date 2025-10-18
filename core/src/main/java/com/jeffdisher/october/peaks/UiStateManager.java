@@ -121,6 +121,8 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _leftClick;
 	private boolean _leftShiftClick;
 	private boolean _rightClick;
+	private boolean _ctrlQPressed;
+	private boolean _qPressed;
 	private Binding<String> _typingCapture;
 
 	// Data specifically related to high-level UI state.
@@ -1012,6 +1014,18 @@ public class UiStateManager implements GameSession.ICallouts
 		_continuousInBlock = null;
 	}
 
+	public void handleKeyQ(boolean isCtrlPressed)
+	{
+		if (isCtrlPressed)
+		{
+			_ctrlQPressed = true;
+		}
+		else
+		{
+			_qPressed = true;
+		}
+	}
+
 	public void keyCodeUp(int lastKeyUp)
 	{
 		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _currentlyChangingControl.get()))
@@ -1161,6 +1175,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{
+		// This is the helper called when looking at the player's own inventory.
 		if (_leftClick)
 		{
 			// Select this in the hotbar (this will clear if already set).
@@ -1173,6 +1188,13 @@ public class UiStateManager implements GameSession.ICallouts
 		else if (_leftShiftClick)
 		{
 			_currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
+		}
+		else if (_qPressed || _ctrlQPressed)
+		{
+			// If we are holding ctrl, drop the entire stack.
+			_currentGameSession.client.dropItemSlot(entityInventoryKey, _ctrlQPressed);
+			_qPressed = false;
+			_ctrlQPressed = false;
 		}
 	}
 
@@ -1766,6 +1788,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		// See if the click refers to anything selected.
+		boolean didAct = false;
 		if (_mouseHeld0)
 		{
 			if (null != stopBlock)
@@ -1773,6 +1796,7 @@ public class UiStateManager implements GameSession.ICallouts
 				if (_canAct(stopBlock))
 				{
 					_currentGameSession.client.hitBlock(stopBlock);
+					didAct = true;
 				}
 			}
 			else if (null != entity)
@@ -1781,12 +1805,12 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					_currentGameSession.client.hitEntity(entity);
 					_updateLastActionMillis();
+					didAct = true;
 				}
 			}
 		}
 		else if (_mouseHeld1)
 		{
-			boolean didAct = false;
 			if (null != stopBlock)
 			{
 				// First, see if we need to change the UI state if this is a station we just clicked on.
@@ -1838,6 +1862,24 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					didAct = false;
 				}
+			}
+		}
+		
+		// If we were in the normal play mode, we still want to be able to drop from the hotbar.
+		if (!didAct)
+		{
+			if (_qPressed || _ctrlQPressed)
+			{
+				// If we are holding ctrl, drop the entire stack.
+				Entity thisEntity = _entityBinding.get();
+				int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
+				if (Entity.NO_SELECTION != selectedKey)
+				{
+					_currentGameSession.client.dropItemSlot(selectedKey, _ctrlQPressed);
+					didAct = true;
+				}
+				_qPressed = false;
+				_ctrlQPressed = false;
 			}
 		}
 		

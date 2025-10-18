@@ -21,6 +21,7 @@ import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
+import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.persistence.ResourceLoader;
 import com.jeffdisher.october.process.ClientProcess;
 import com.jeffdisher.october.process.ServerProcess;
@@ -41,8 +42,10 @@ import com.jeffdisher.october.subactions.EntityChangeSwim;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnBlock;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
+import com.jeffdisher.october.subactions.EntitySubActionDropItemsAsPassive;
 import com.jeffdisher.october.subactions.EntitySubActionLadderAscend;
 import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
+import com.jeffdisher.october.subactions.EntitySubActionPickUpPassive;
 import com.jeffdisher.october.subactions.EntitySubActionRequestSwapSpecialSlot;
 import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
@@ -72,6 +75,7 @@ import com.jeffdisher.october.types.MutableInventory;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
+import com.jeffdisher.october.types.PassiveType;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.worldgen.IWorldGenerator;
@@ -81,6 +85,11 @@ import com.jeffdisher.october.worldgen.WorldGenHelpers;
 public class ClientWrapper
 {
 	public static final int PORT = 5678;
+	/**
+	 * Technically, we can pick up a passive on every tick but we use this cooldown so that we don't aggressively check
+	 * distances.
+	 */
+	public static final long PICK_UP_COOLDOWN_MILLIS = 1000L;
 
 	private final Environment _environment;
 	private final EntityVolume _playerVolume;
@@ -96,10 +105,13 @@ public class ClientWrapper
 	// Data cached from the client listener.
 	private Entity _thisEntity;
 	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
+	// We want to pick up passive items as a background kind of operation:  We will do it passively when nothing else is being done.
+	private final Map<Integer, PartialPassive> _passiveItems;
 
 	// Local state information to avoid redundant events, etc.
 	private boolean _didJump;
 	private long _lastSpecialActionMillis;
+	private long _nextPickUpAttemptMillis;
 	private int _currentViewDistance;
 
 	public ClientWrapper(Environment environment
@@ -198,6 +210,7 @@ public class ClientWrapper
 		}
 		
 		_cuboids = new HashMap<>();
+		_passiveItems = new HashMap<>();
 		_currentViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 	}
 
@@ -232,17 +245,17 @@ public class ClientWrapper
 		}
 		else
 		{
+			IEntitySubAction<IMutablePlayerEntity> subAction = null;
+			
 			// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
 			CraftOperation ongoing = _thisEntity.localCraftOperation();
 			if (null != ongoing)
 			{
-				EntityChangeCraft change = new EntityChangeCraft(null);
-				_client.sendAction(change, currentTimeMillis);
+				subAction = new EntityChangeCraft(null);
 			}
 			else if (null != rescheduleInInventory)
 			{
-				EntityChangeCraft change = new EntityChangeCraft(rescheduleInInventory);
-				_client.sendAction(change, currentTimeMillis);
+				subAction = new EntityChangeCraft(rescheduleInInventory);
 			}
 			else if (null != openStationLocation)
 			{
@@ -252,13 +265,11 @@ public class ClientWrapper
 				CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
 				if (null != blockOperation)
 				{
-					EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(openStationLocation, blockOperation.selectedCraft());
-					_client.sendAction(change, currentTimeMillis);
+					subAction = new EntityChangeCraftInBlock(openStationLocation, blockOperation.selectedCraft());
 				}
 				else if (null != rescheduleInBlock)
 				{
-					EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
-					_client.sendAction(change, currentTimeMillis);
+					subAction = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
 				}
 			}
 			else
@@ -269,12 +280,20 @@ public class ClientWrapper
 					AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _getBlockLookUp(), _thisEntity.location(), _playerVolume);
 					if (null != surfaceLocation)
 					{
-						EntitySubActionTravelViaBlock travel = new EntitySubActionTravelViaBlock(surfaceLocation);
-						_client.sendAction(travel, currentTimeMillis);
+						subAction = new EntitySubActionTravelViaBlock(surfaceLocation);
 					}
 				}
 			}
 			
+			// If we aren't taking any other action, see if it is time for us to try to pick something up and if there is anything nearby.
+			if (null == subAction)
+			{
+				subAction = _tryPassivePickup(currentTimeMillis);
+			}
+			if (null != subAction)
+			{
+				_client.sendAction(subAction, currentTimeMillis);
+			}
 			// Now, just allow time to pass while standing.
 			_client.doNothing(currentTimeMillis);
 		}
@@ -292,6 +311,13 @@ public class ClientWrapper
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isPaused);
+		
+		// Enqueue a passive action, if that makes sense.
+		IEntitySubAction<IMutablePlayerEntity> subAction = _tryPassivePickup(currentTimeMillis);
+		if (null != subAction)
+		{
+			_client.sendAction(subAction, currentTimeMillis);
+		}
 		_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
 	}
 
@@ -299,6 +325,13 @@ public class ClientWrapper
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isPaused);
+		
+		// Enqueue a passive action, if that makes sense.
+		IEntitySubAction<IMutablePlayerEntity> subAction = _tryPassivePickup(currentTimeMillis);
+		if (null != subAction)
+		{
+			_client.sendAction(subAction, currentTimeMillis);
+		}
 		_client.sneak(relativeDirection, currentTimeMillis);
 	}
 
@@ -806,6 +839,14 @@ public class ClientWrapper
 		_client.sendAction(attack, currentTimeMillis);
 	}
 
+	public void dropItemSlot(int localInventoryId, boolean dropAll)
+	{
+		Assert.assertTrue(!_isPaused);
+		EntitySubActionDropItemsAsPassive drop = new EntitySubActionDropItemsAsPassive(localInventoryId, dropAll);
+		long currentTimeMillis = System.currentTimeMillis();
+		_client.sendAction(drop, currentTimeMillis);
+	}
+
 	public boolean pauseGame()
 	{
 		if (null != _monitoringAgent)
@@ -923,6 +964,43 @@ public class ClientWrapper
 		return previousBlockLookUp;
 	}
 
+	private IEntitySubAction<IMutablePlayerEntity> _tryPassivePickup(long currentTimeMillis)
+	{
+		IEntitySubAction<IMutablePlayerEntity> subAction = null;
+		if (currentTimeMillis >= _nextPickUpAttemptMillis)
+		{
+			// See if there is something to pick up.
+			int passive = _getClosestPassiveItems();
+			if (passive > 0)
+			{
+				subAction = new EntitySubActionPickUpPassive(passive);
+			}
+			// Reset our next attempt time.
+			_nextPickUpAttemptMillis = currentTimeMillis + PICK_UP_COOLDOWN_MILLIS;
+		}
+		return subAction;
+	}
+
+	private int _getClosestPassiveItems()
+	{
+		int id = 0;
+		float closest = Float.MAX_VALUE;
+		// All the passives we store are the ItemSlot type.
+		EntityVolume volume = PassiveType.ITEM_SLOT.volume();
+		// TODO:  We need to organize this data better since we shouldn't always search all of them.
+		for (Map.Entry<Integer, PartialPassive> elt : _passiveItems.entrySet())
+		{
+			PartialPassive passive = elt.getValue();
+			float distance = SpatialHelpers.distanceFromPlayerEyeToVolume(_thisEntity.location(), _environment.creatures.PLAYER, passive.location(), volume);
+			if ((distance <= EntitySubActionPickUpPassive.PICKUP_DISTANCE) && (distance < closest))
+			{
+				id = elt.getKey();
+				closest = distance;
+			}
+		}
+		return id;
+	}
+
 
 	private class _ClientListener implements ClientProcess.IListener
 	{
@@ -1009,16 +1087,27 @@ public class ClientWrapper
 		public void passiveEntityDidLoad(PartialPassive entity)
 		{
 			_updateConsumer.passiveEntityDidLoad(entity);
+			if (PassiveType.ITEM_SLOT == entity.type())
+			{
+				Object old = _passiveItems.put(entity.id(), entity);
+				Assert.assertTrue(null == old);
+			}
 		}
 		@Override
 		public void passiveEntityDidChange(PartialPassive entity)
 		{
 			_updateConsumer.passiveEntityDidChange(entity);
+			if (PassiveType.ITEM_SLOT == entity.type())
+			{
+				Object old = _passiveItems.put(entity.id(), entity);
+				Assert.assertTrue(null != old);
+			}
 		}
 		@Override
 		public void passiveEntityDidUnload(int id)
 		{
 			_updateConsumer.passiveEntityDidUnload(id);
+			_passiveItems.remove(id);
 		}
 		@Override
 		public void tickDidComplete(long tickNumber)
