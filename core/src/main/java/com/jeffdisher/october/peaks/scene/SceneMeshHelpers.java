@@ -502,6 +502,35 @@ public class SceneMeshHelpers
 		return builder.finishOne().flush(gl);
 	}
 
+	public static void drawPassiveStandingSquare(BufferBuilder builder
+		, float itemEdge
+		, float textureSize
+	)
+	{
+		// This way of handling passives is a bit of a hack:  We use the same attribute arrangement in the passive item
+		// shader just to reuse the quad helper here (even though the shader ignores most of the data).  The actual
+		// positioning of the passive is set by the PassiveRenderer, in the model matrix, prior to invocation.  The
+		// texture is done the same way: The base coordinates are passed in via uniform per-instance.
+		// TODO:  Change this (and the pedestal items) to use a more specific shader and vertex array shape.
+		float[] uvBase = new float[] { 0.0f, 0.0f };
+		// We draw this as a square in the XZ plane.
+		float halfEdge = itemEdge / 2.0f;
+		float[] blockBase = new float[] { 0.0f, halfEdge, 0.0f };
+		
+		// We don't use aux texture or lighting.
+		float[] auxUv = new float[] { 0.0f, 0.0f };
+		float auxTextureSize = 0.0f;
+		float blockLightMultiplier = 0.0f;
+		float skyLightMultiplier = 0.0f;
+		
+		_drawStandingSquare(builder, blockBase, itemEdge
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultiplier
+			, skyLightMultiplier
+		);
+	}
+
 
 	private static void _preSeed(FaceBuilder faces
 			, Predicate<Short> shouldInclude

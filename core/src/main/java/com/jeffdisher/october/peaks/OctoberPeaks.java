@@ -13,6 +13,7 @@ import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
+import com.jeffdisher.october.peaks.scene.PassiveRenderer;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -174,6 +175,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			EyeEffect.Resources eyeEffect = new EyeEffect.Resources(_gl);
 			GlUi.Resources glui = new GlUi.Resources(_gl, itemAtlas);
 			AudioManager.Resources audioManager = new AudioManager.Resources();
+			PassiveRenderer.Resources passive = new PassiveRenderer.Resources(_environment, _gl, itemAtlas);
 			_resources = new LoadedResources(itemAtlas
 					, blockRenderer
 					, entityRenderer
@@ -181,6 +183,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					, eyeEffect
 					, glui
 					, audioManager
+					, passive
 			);
 		}
 		catch (IOException e)

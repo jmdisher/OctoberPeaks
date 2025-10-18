@@ -18,6 +18,7 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.PartialPassive;
 
 
 /**
@@ -28,6 +29,7 @@ public class SceneRenderer
 	private final GL20 _gl;
 	private final BlockRenderer _blockRenderer;
 	private final EntityRenderer _entityRenderer;
+	private final PassiveRenderer _passiveRenderer;
 	private final SkyBox _skyBox;
 
 	private Matrix _viewMatrix;
@@ -40,6 +42,7 @@ public class SceneRenderer
 		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
 		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources);
+		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources);
 		_skyBox = new SkyBox(gl, resources);
 		
 		_viewMatrix = Matrix.identity();
@@ -87,6 +90,7 @@ public class SceneRenderer
 		{
 			_entityRenderer.renderSelectedEntity(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedEntity);
 		}
+		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye);
 		
 		_blockRenderer.handleEndOfFrame();
 	}
@@ -114,6 +118,21 @@ public class SceneRenderer
 	public void entityHurt(int id)
 	{
 		_entityRenderer.entityHurt(id);
+	}
+
+	public void passiveEntityDidLoad(PartialPassive entity)
+	{
+		_passiveRenderer.passiveEntityDidLoad(entity);
+	}
+
+	public void passiveEntityDidChange(PartialPassive entity)
+	{
+		_passiveRenderer.passiveEntityDidChange(entity);
+	}
+
+	public void passiveEntityDidUnload(int id)
+	{
+		_passiveRenderer.passiveEntityDidUnload(id);
 	}
 
 	public void setDayTime(float dayProgression, float skyLightMultiplier)

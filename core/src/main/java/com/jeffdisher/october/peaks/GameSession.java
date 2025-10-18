@@ -28,6 +28,7 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.MutableEntity;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 
@@ -215,6 +216,21 @@ public class GameSession
 			{
 				GameSession.this.audioManager.otherEntityKilled(location, id);
 			}
+		}
+		@Override
+		public void passiveEntityDidLoad(PartialPassive entity)
+		{
+			GameSession.this.scene.passiveEntityDidLoad(entity);
+		}
+		@Override
+		public void passiveEntityDidChange(PartialPassive entity)
+		{
+			GameSession.this.scene.passiveEntityDidChange(entity);
+		}
+		@Override
+		public void passiveEntityDidUnload(int id)
+		{
+			GameSession.this.scene.passiveEntityDidUnload(id);
 		}
 		@Override
 		public void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression)

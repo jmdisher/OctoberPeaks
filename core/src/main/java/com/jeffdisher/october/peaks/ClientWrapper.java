@@ -1008,17 +1008,17 @@ public class ClientWrapper
 		@Override
 		public void passiveEntityDidLoad(PartialPassive entity)
 		{
-			// TODO:  Plumb through passives.
+			_updateConsumer.passiveEntityDidLoad(entity);
 		}
 		@Override
 		public void passiveEntityDidChange(PartialPassive entity)
 		{
-			// TODO:  Plumb through passives.
+			_updateConsumer.passiveEntityDidChange(entity);
 		}
 		@Override
 		public void passiveEntityDidUnload(int id)
 		{
-			// TODO:  Plumb through passives.
+			_updateConsumer.passiveEntityDidUnload(id);
 		}
 		@Override
 		public void tickDidComplete(long tickNumber)
@@ -1106,6 +1106,10 @@ public class ClientWrapper
 		void otherEntityDidUnload(int id);
 		void otherEntityHurt(int id, AbsoluteLocation location);
 		void otherEntityKilled(int id, AbsoluteLocation location);
+		
+		void passiveEntityDidLoad(PartialPassive entity);
+		void passiveEntityDidChange(PartialPassive entity);
+		void passiveEntityDidUnload(int id);
 		
 		void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression);
 	}
