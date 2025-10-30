@@ -78,6 +78,18 @@ public class ViewEntityInventory implements IView
 	{
 		Inventory data = _binding.get();
 		
+		// Note that this binding may be null if there is no bottom inventory, for example.
+		IAction action = null;
+		if (null != data)
+		{
+			action = _render(location, cursor, data);
+		}
+		return action;
+	}
+
+
+	private IAction _render(Rect location, Point cursor, Inventory data)
+	{
 		// Draw the window outline.
 		UiIdioms.drawOverlayFrame(_ui, _ui.pixelDarkGreyAlpha, _ui.pixelLightGrey, location.leftX(), location.bottomY(), location.rightX(), location.topY());
 		
@@ -103,7 +115,6 @@ public class ViewEntityInventory implements IView
 		_internalGridBinding.set(data.sortedKeys().stream().map((Integer key) -> new _ItemTuple(data.getSlotForKey(key), key)).toList());
 		return _itemGrid.render(location, cursor);
 	}
-
 
 	private static record _ItemTuple(ItemSlot slot, int key)
 	{

@@ -1476,11 +1476,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// We are just looking at the floor at our feet.
 			Entity thisEntity = _entityBinding.get();
-			AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(thisEntity, _playerVolume);
-			BlockProxy thisBlock = _currentGameSession.blockLookup.apply(feetBlock);
-			Inventory floorInventory = thisBlock.getInventory();
 			
-			relevantInventory = floorInventory;
 			inventoryToCraftFrom = entityInventory;
 			// We are just looking at the entity inventory so find the built-in crafting recipes.
 			validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
