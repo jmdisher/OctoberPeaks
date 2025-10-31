@@ -33,17 +33,20 @@ import com.jeffdisher.october.utils.Assert;
 public class PassiveRenderer
 {
 	public static final int BUFFER_SIZE = 1024;
+	public static final float TWO_PI_RADIANS = (float)(2.0 * Math.PI);
+
 	public static class Resources
 	{
 		private final ItemTextureAtlas _itemAtlas;
 		private final Program _program;
-		private final int _uModelMatrix;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
 		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uBrightness;
 		private final int _uUvBase;
+		private final int _uAnimation;
+		private final int _uCentre;
 		// TODO:  We will need to generalize this for other passive types.
 		private final VertexArray _itemSlotVertices;
 		
@@ -68,13 +71,14 @@ public class PassiveRenderer
 					"aSkyLightMultiplier_ignored",
 				}
 			);
-			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
 			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			_uUvBase = _program.getUniformLocation("uUvBase");
+			_uAnimation = _program.getUniformLocation("uAnimation");
+			_uCentre = _program.getUniformLocation("uCentre");
 			
 			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 			direct.order(ByteOrder.nativeOrder());
@@ -102,6 +106,8 @@ public class PassiveRenderer
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
+	private final float _halfWidth;
+	private final float _halfHeight;
 	private final Map<Integer, PartialPassive> _itemSlotPassives;
 
 	public PassiveRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
@@ -110,6 +116,8 @@ public class PassiveRenderer
 		_screenBrightness = screenBrightness;
 		_resources = resources.passiveResources();
 		
+		_halfWidth = PassiveType.ITEM_SLOT.volume().width() / 2.0f;
+		_halfHeight = PassiveType.ITEM_SLOT.volume().height() / 2.0f;
 		_itemSlotPassives = new HashMap<>();
 	}
 
@@ -130,6 +138,10 @@ public class PassiveRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
 		
+		// We want to set the animation frame from 0.0f - 1.0f based on the time in a second.
+		float animationTime = (float)(System.currentTimeMillis() % 1024L) / 1024.0f;
+		_gl.glUniform1f(_resources._uAnimation, animationTime * TWO_PI_RADIANS);
+		
 		// Render the passives.
 		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
 		for (PartialPassive itemSlotPassive : _itemSlotPassives.values())
@@ -137,9 +149,11 @@ public class PassiveRenderer
 			EntityLocation location = itemSlotPassive.location();
 			Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
 			
-			// We only translate for model matrix (currently).
-			Matrix model = Matrix.translate(location.x(), location.y(), location.z());
-			model.uploadAsUniform(_gl, _resources._uModelMatrix);
+			// Determine the centre of this for rotation.
+			float centreX = location.x() + _halfWidth;
+			float centreY = location.y() + _halfWidth;
+			float centreZ = location.z() + _halfHeight;
+			_gl.glUniform3f(_resources._uCentre, centreX, centreY, centreZ);
 			
 			// We need to pass in the base texture coordinates of this type.
 			float[] uvBase = _resources._itemAtlas.baseOfTexture(type.number());
