@@ -1481,7 +1481,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// We are just looking at the entity inventory so find the built-in crafting recipes.
 			validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
 			// We will convert these into CraftOperation instances so we can splice in the current craft.
-			currentOperation = thisEntity.localCraftOperation();
+			currentOperation = thisEntity.ephemeralShared().localCraftOperation();
 		}
 		
 		Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;

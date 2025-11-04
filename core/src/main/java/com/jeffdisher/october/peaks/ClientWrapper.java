@@ -248,7 +248,7 @@ public class ClientWrapper
 			IEntitySubAction<IMutablePlayerEntity> subAction = null;
 			
 			// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
-			CraftOperation ongoing = _thisEntity.localCraftOperation();
+			CraftOperation ongoing = _thisEntity.ephemeralShared().localCraftOperation();
 			if (null != ongoing)
 			{
 				subAction = new EntityChangeCraft(null);
@@ -653,7 +653,8 @@ public class ClientWrapper
 			NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
 			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
 			
-			if (EntityChangeUseSelectedItemOnEntity.canUseOnEntity(selectedType, selectedEntity.type()))
+			long gameTimeMillis = _client.serverState.millisPerTick * _client.serverState.latestTickNumber;
+			if (EntityChangeUseSelectedItemOnEntity.canUseOnEntity(selectedType, selectedEntity, gameTimeMillis))
 			{
 				EntityChangeUseSelectedItemOnEntity change = new EntityChangeUseSelectedItemOnEntity(selectedEntity.id());
 				long currentTimeMillis = System.currentTimeMillis();
@@ -925,9 +926,9 @@ public class ClientWrapper
 		_didJump = false;
 		
 		// We typically only see the ephemeral locally so check if it is here to update our last action time.
-		if ((null != thisEntity.ephemeral()) && (thisEntity.ephemeral().lastSpecialActionMillis() > 0L))
+		if ((null != thisEntity.ephemeralLocal()) && (thisEntity.ephemeralLocal().lastSpecialActionMillis() > 0L))
 		{
-			_lastSpecialActionMillis = thisEntity.ephemeral().lastSpecialActionMillis();
+			_lastSpecialActionMillis = thisEntity.ephemeralLocal().lastSpecialActionMillis();
 		}
 	}
 
