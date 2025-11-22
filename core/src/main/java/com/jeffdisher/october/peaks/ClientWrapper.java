@@ -91,6 +91,12 @@ public class ClientWrapper
 	 * distances.
 	 */
 	public static final long PICK_UP_COOLDOWN_MILLIS = 1000L;
+	/**
+	 * In order to avoid cases like placing blocks too quickly or aggressively breaking a block behind a target, we will
+	 * delay an action on a new block by this many milliseconds.
+	 * This will also be applied to things like right-click actions on entities/blocks.
+	 */
+	public static final long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
 
 	private final Environment _environment;
 	private final EntityVolume _playerVolume;
@@ -113,6 +119,8 @@ public class ClientWrapper
 	private boolean _didJump;
 	private long _lastSpecialActionMillis;
 	private long _nextPickUpAttemptMillis;
+	private AbsoluteLocation _lastBlockTarget;
+	private long _lastBlockActionMillis;
 	private int _currentViewDistance;
 
 	public ClientWrapper(Environment environment
@@ -414,20 +422,20 @@ public class ClientWrapper
 	 */
 	public boolean hitBlock(AbsoluteLocation blockLocation)
 	{
-		// Make sure that this is a block we can break.
-		IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
 		boolean didHit = false;
 		Assert.assertTrue(!_isPaused);
-		// This can be null when the action is taken due to loading issues, respawn, etc.
-		if (null != cuboid)
+		
+		// We need to make sure that we can interact with this block.
+		long currentTimeMillis = System.currentTimeMillis();
+		BlockProxy proxy = _readyProxyContinuous(blockLocation, currentTimeMillis);
+		if (null != proxy)
 		{
-			BlockProxy proxy = new BlockProxy(blockLocation.getBlockAddress(), cuboid);
-			long currentTimeMillis = System.currentTimeMillis();
 			if (!_environment.blocks.canBeReplaced(proxy.getBlock()))
 			{
 				// This block is not the kind which can be replaced, meaning it can potentially be broken.
 				EntityChangeIncrementalBlockBreak change = new EntityChangeIncrementalBlockBreak(blockLocation);
 				_client.sendAction(change, currentTimeMillis);
+				_resetBlockTarget(blockLocation, currentTimeMillis);
 				didHit = true;
 			}
 		}
@@ -455,6 +463,7 @@ public class ClientWrapper
 		
 		Block solidBlockType = _getBlockType(solidBlock);
 		Block emptyBlockType = _getBlockType(emptyBlock);
+		long currentTimeMillis = System.currentTimeMillis();
 		
 		// First, see if the target block has a general logic state we can change.
 		IEntitySubAction<IMutablePlayerEntity> change;
@@ -463,23 +472,26 @@ public class ClientWrapper
 			// The target isn't loaded.
 			change = null;
 		}
-		else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType))
+		else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
 		{
 			byte flags = _cuboids.get(solidBlock.getCuboidAddress()).getData7(AspectRegistry.FLAGS, solidBlock.getBlockAddress());
 			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType, flags);
 			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
+			_resetBlockTarget(solidBlock, currentTimeMillis);
 		}
-		else if (_environment.items.getItemById("op.bed") == solidBlockType.item())
+		else if ((_environment.items.getItemById("op.bed") == solidBlockType.item()) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
 		{
 			// This is a bed so we need to take a special action to set spawn and reset the day.
 			change = new EntityChangeSetDayAndSpawn(solidBlock);
+			_resetBlockTarget(solidBlock, currentTimeMillis);
 		}
-		else if (_environment.specialSlot.hasSpecialSlot(solidBlockType))
+		else if (_environment.specialSlot.hasSpecialSlot(solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
 		{
 			// This change will typically succeed even if nothing changes.
 			// For now, we will always send all.
 			boolean sendAll = true;
 			change = new EntitySubActionRequestSwapSpecialSlot(solidBlock, sendAll);
+			_resetBlockTarget(solidBlock, currentTimeMillis);
 		}
 		else if (Entity.NO_SELECTION != selectedKey)
 		{
@@ -491,14 +503,16 @@ public class ClientWrapper
 			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
 			
 			// First, can we use this on the block.
-			if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, solidBlockType))
+			if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
 			{
 				change = new EntityChangeUseSelectedItemOnBlock(solidBlock);
+				_resetBlockTarget(solidBlock, currentTimeMillis);
 			}
 			// See if we can use it on the emppty block
-			else if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, emptyBlockType))
+			else if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, emptyBlockType) && _readyToInteractOneOff(emptyBlock, currentTimeMillis))
 			{
 				change = new EntityChangeUseSelectedItemOnBlock(emptyBlock);
+				_resetBlockTarget(emptyBlock, currentTimeMillis);
 			}
 			else
 			{
@@ -515,7 +529,6 @@ public class ClientWrapper
 		Assert.assertTrue(!_isPaused);
 		if (null != change)
 		{
-			long currentTimeMillis = System.currentTimeMillis();
 			_client.sendAction(change, currentTimeMillis);
 		}
 		return (null != change);
@@ -561,6 +574,7 @@ public class ClientWrapper
 		{
 			long currentTimeMillis = System.currentTimeMillis();
 			_client.sendAction(change, currentTimeMillis);
+			_resetBlockTarget(null, currentTimeMillis);
 		}
 		return (null != change);
 	}
@@ -578,12 +592,16 @@ public class ClientWrapper
 		Assert.assertTrue(null != solidBlock);
 		Assert.assertTrue(null != emptyBlock);
 		
+		// See if this is loaded and we are at the right time to perform one-off block interactions.
+		long currentTimeMillis = System.currentTimeMillis();
+		boolean isReady = _readyToInteractOneOff(emptyBlock, currentTimeMillis);
+		
 		// We need to check our selected item and see what "action" is associated with it.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		
 		Assert.assertTrue(!_isPaused);
 		boolean didAttemptPlace = false;
-		if (Entity.NO_SELECTION != selectedKey)
+		if (isReady && (Entity.NO_SELECTION != selectedKey))
 		{
 			// Check this type to see if it is a block and, if so, if it is a multi-block.
 			Item type;
@@ -603,7 +621,6 @@ public class ClientWrapper
 			Block block = _environment.blocks.getAsPlaceableBlock(type);
 			if (null != block)
 			{
-				long currentTimeMillis = System.currentTimeMillis();
 				IEntitySubAction<IMutablePlayerEntity> change;
 				if (_environment.blocks.isMultiBlock(block))
 				{
@@ -617,6 +634,7 @@ public class ClientWrapper
 					change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
 				}
 				_client.sendAction(change, currentTimeMillis);
+				_resetBlockTarget(emptyBlock, currentTimeMillis);
 				didAttemptPlace = true;
 			}
 		}
@@ -626,16 +644,17 @@ public class ClientWrapper
 	public boolean runRepairBlock(AbsoluteLocation blockLocation)
 	{
 		// The only check we perform is to see if this block is damaged.
-		IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
+		long currentTimeMillis = System.currentTimeMillis();
+		BlockProxy proxy = _readyProxyContinuous(blockLocation, currentTimeMillis);
 		boolean didAttemptRepair = false;
-		if (null != cuboid)
+		if (null != proxy)
 		{
-			short damage = cuboid.getData15(AspectRegistry.DAMAGE, blockLocation.getBlockAddress());
+			short damage = proxy.getDamage();
 			if (damage > 0)
 			{
-				long currentTimeMillis = System.currentTimeMillis();
 				EntityChangeIncrementalBlockRepair change = new EntityChangeIncrementalBlockRepair(blockLocation);
 				_client.sendAction(change, currentTimeMillis);
+				_resetBlockTarget(blockLocation, currentTimeMillis);
 				didAttemptRepair = true;
 			}
 		}
@@ -660,6 +679,7 @@ public class ClientWrapper
 				EntityChangeUseSelectedItemOnEntity change = new EntityChangeUseSelectedItemOnEntity(selectedEntity.id());
 				long currentTimeMillis = System.currentTimeMillis();
 				_client.sendAction(change, currentTimeMillis);
+				_resetBlockTarget(null, currentTimeMillis);
 			}
 		}
 	}
@@ -839,6 +859,7 @@ public class ClientWrapper
 		EntityChangeAttackEntity attack = new EntityChangeAttackEntity(selectedEntity.id());
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(attack, currentTimeMillis);
+		_resetBlockTarget(null, currentTimeMillis);
 	}
 
 	public void dropItemSlot(int localInventoryId, boolean dropAll)
@@ -1001,6 +1022,41 @@ public class ClientWrapper
 			}
 		}
 		return id;
+	}
+
+	private BlockProxy _readyProxyContinuous(AbsoluteLocation blockLocation, long currentTimeMillis)
+	{
+		// Continuous interaction is possible if the block location is unchanged or the time has passed.
+		// We can interact with a block if there has been a long enough delay since other actions _or_ if the block is the same one we previously interacted with.
+		boolean timeReady = _readyToInteractOneOff(blockLocation, currentTimeMillis);
+		boolean isReady = timeReady
+			|| ((null != blockLocation) && blockLocation.equals(_lastBlockTarget))
+		;
+		BlockProxy proxy = null;
+		if (isReady)
+		{
+			IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
+			// This can be null when the action is taken due to loading issues, respawn, etc.
+			if (null != cuboid)
+			{
+				proxy = new BlockProxy(blockLocation.getBlockAddress(), cuboid);
+			}
+		}
+		return proxy;
+	}
+
+	private boolean _readyToInteractOneOff(AbsoluteLocation blockLocation, long currentTimeMillis)
+	{
+		// One-off interacts are only possible if the time has passed.
+		boolean timeReady = (_lastBlockActionMillis + MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS) <= currentTimeMillis;
+		return timeReady;
+	}
+
+	private void _resetBlockTarget(AbsoluteLocation blockLocation, long currentTimeMillis)
+	{
+		// Set this as our target.
+		_lastBlockTarget = blockLocation;
+		_lastBlockActionMillis = currentTimeMillis;
 	}
 
 

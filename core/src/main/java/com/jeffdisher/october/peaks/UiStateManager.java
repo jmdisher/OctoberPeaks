@@ -82,12 +82,6 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class UiStateManager implements GameSession.ICallouts
 {
-	/**
-	 * In order to avoid cases like placing blocks too quickly or aggressively breaking a block behind a target, we will
-	 * delay an action on a new block by this many milliseconds.
-	 * This will also be applied to things like right-click actions on entities/blocks.
-	 */
-	public static final long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
 	public static final float RETICLE_SIZE = 0.05f;
 	public static final Rect WINDOW_TOP_LEFT = new Rect(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
@@ -134,10 +128,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private Craft _continuousInInventory;
 	private Craft _continuousInBlock;
 	private boolean _isManualCraftingStation;
-
-	// Tracking related to delayed actions when switching targets.
-	private AbsoluteLocation _lastActionBlock;
-	private long _lastActionMillis;
 
 	// Tracking related to orientation change updates.
 	private boolean _orientationNeedsFlush;
@@ -1231,60 +1221,6 @@ public class UiStateManager implements GameSession.ICallouts
 		return didOpen;
 	}
 
-	private boolean _canAct(AbsoluteLocation selectedBlock)
-	{
-		// We apply our delay here.
-		boolean canAct;
-		long currentMillis = System.currentTimeMillis();
-		if (null == selectedBlock)
-		{
-			// This is placing a block or interacting with a block/entity so we always apply the delay.
-			if (currentMillis > (_lastActionMillis + MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS))
-			{
-				_lastActionMillis = currentMillis;
-				canAct = true;
-			}
-			else
-			{
-				canAct = false;
-			}
-		}
-		else
-		{
-			if (selectedBlock.equals(_lastActionBlock))
-			{
-				// We can continue breaking the current block, no matter the time.
-				_lastActionMillis = currentMillis;
-				canAct = true;
-			}
-			else
-			{
-				// If this is something else, apply the delay.
-				if (currentMillis > (_lastActionMillis + MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS))
-				{
-					_lastActionBlock = selectedBlock;
-					_lastActionMillis = currentMillis;
-					canAct = true;
-				}
-				else
-				{
-					canAct = false;
-				}
-			}
-		}
-		return canAct;
-	}
-
-	/**
-	 * Called when we perform some action which isn't directly breaking a block so that they next frame doesn't capture
-	 * the event and accidentally break/place a block.
-	 */
-	private void _updateLastActionMillis()
-	{
-		_lastActionBlock = null;
-		_lastActionMillis = System.currentTimeMillis();
-	}
-
 	private IAction _drawStartStateWindows()
 	{
 		// Draw whatever is common to states where we draw interactive buttons on top.
@@ -1789,18 +1725,13 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			if (null != stopBlock)
 			{
-				if (_canAct(stopBlock))
-				{
-					_currentGameSession.client.hitBlock(stopBlock);
-					didAct = true;
-				}
+				didAct = _currentGameSession.client.hitBlock(stopBlock);
 			}
 			else if (null != entity)
 			{
 				if (_mouseClicked0)
 				{
 					_currentGameSession.client.hitEntity(entity);
-					_updateLastActionMillis();
 					didAct = true;
 				}
 			}
@@ -1821,7 +1752,6 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
 					_currentGameSession.client.applyToEntity(entity);
-					_updateLastActionMillis();
 					didAct = true;
 				}
 			}
@@ -1830,33 +1760,18 @@ public class UiStateManager implements GameSession.ICallouts
 			if (!didAct && _mouseClicked1 && (null != stopBlock) && (null != preStopBlock))
 			{
 				didAct = _currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
-				if (didAct)
-				{
-					_updateLastActionMillis();
-				}
 			}
 			if (!didAct && _mouseClicked1)
 			{
 				didAct = _currentGameSession.client.runRightClickOnSelf();
-				if (didAct)
-				{
-					_updateLastActionMillis();
-				}
 			}
 			if (!didAct && (null != stopBlock) && (null != preStopBlock))
 			{
-				if (_canAct(stopBlock))
+				// In this case, we either want to place a block or repair a block.
+				didAct = _currentGameSession.client.runPlaceBlock(stopBlock, preStopBlock);
+				if (!didAct)
 				{
-					// In this case, we either want to place a block or repair a block.
-					didAct = _currentGameSession.client.runPlaceBlock(stopBlock, preStopBlock);
-					if (!didAct)
-					{
-						didAct = _currentGameSession.client.runRepairBlock(stopBlock);
-					}
-				}
-				else
-				{
-					didAct = false;
+					didAct = _currentGameSession.client.runRepairBlock(stopBlock);
 				}
 			}
 		}
