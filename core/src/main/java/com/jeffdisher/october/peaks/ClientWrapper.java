@@ -33,6 +33,7 @@ import com.jeffdisher.october.subactions.EntityChangeChangeHotbarSlot;
 import com.jeffdisher.october.subactions.EntityChangeCraft;
 import com.jeffdisher.october.subactions.EntityChangeCraftInBlock;
 import com.jeffdisher.october.subactions.EntityChangeIncrementalBlockBreak;
+import com.jeffdisher.october.subactions.EntityChangeIncrementalBlockRepair;
 import com.jeffdisher.october.subactions.EntityChangeJump;
 import com.jeffdisher.october.subactions.EntityChangePlaceMultiBlock;
 import com.jeffdisher.october.subactions.EntityChangeSetBlockLogicState;
@@ -622,18 +623,18 @@ public class ClientWrapper
 		return didAttemptPlace;
 	}
 
-	public boolean runRepairBlock(AbsoluteLocation solidBlock)
+	public boolean runRepairBlock(AbsoluteLocation blockLocation)
 	{
 		// The only check we perform is to see if this block is damaged.
-		IReadOnlyCuboidData cuboid = _cuboids.get(solidBlock.getCuboidAddress());
+		IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
 		boolean didAttemptRepair = false;
 		if (null != cuboid)
 		{
-			short damage = cuboid.getData15(AspectRegistry.DAMAGE, solidBlock.getBlockAddress());
+			short damage = cuboid.getData15(AspectRegistry.DAMAGE, blockLocation.getBlockAddress());
 			if (damage > 0)
 			{
 				long currentTimeMillis = System.currentTimeMillis();
-				EntityChangeIncrementalBlockBreak change = new EntityChangeIncrementalBlockBreak(solidBlock);
+				EntityChangeIncrementalBlockRepair change = new EntityChangeIncrementalBlockRepair(blockLocation);
 				_client.sendAction(change, currentTimeMillis);
 				didAttemptRepair = true;
 			}
