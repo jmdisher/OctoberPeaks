@@ -1,7 +1,6 @@
 package com.jeffdisher.october.peaks.scene;
 
 import java.nio.FloatBuffer;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -28,10 +27,8 @@ import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
-import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.ItemSlot;
-import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;
 
@@ -328,52 +325,7 @@ public class SceneMeshHelpers
 	)
 	{
 		float textureSize = itemAtlas.coordinateSize;
-		
-		// Dropped items will never have an aux texture.
-		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
-		float auxTextureSize = auxAtlas.coordinateSize;
-		
 		int cuboidZ = cuboid.getCuboidAddress().getBase().z();
-		
-		// See if there are any inventories in empty blocks in this cuboid.
-		cuboid.walkData(AspectRegistry.INVENTORY, new IOctree.IWalkerCallback<Inventory>() {
-			@Override
-			public void visit(BlockAddress base, byte size, Inventory blockInventory)
-			{
-				Assert.assertTrue((byte)1 == size);
-				BlockProxy proxy = new BlockProxy(base, cuboid);
-				Block blockType = proxy.getBlock();
-				boolean isActive = FlagsAspect.isSet(proxy.getFlags(), FlagsAspect.FLAG_ACTIVE);
-				boolean blockPermitsEntityMovement = !env.blocks.isSolid(blockType, isActive);
-				if (blockPermitsEntityMovement)
-				{
-					float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
-					Iterator<Integer> sortedKeys = blockInventory.sortedKeys().iterator();
-					for (int i = 0; (i < DEBRIS_BASES.length) && sortedKeys.hasNext(); ++i)
-					{
-						int key = sortedKeys.next();
-						Items stack = blockInventory.getStackForKey(key);
-						Item type = (null != stack)
-								? stack.type()
-								: blockInventory.getNonStackableForKey(key).type()
-						;
-						
-						float[] uvBase = itemAtlas.baseOfTexture(type.number());
-						float[] offset = DEBRIS_BASES[i];
-						float[] debrisBase = new float[] { blockBase[0] + offset[0], blockBase[1] + offset[1], blockBase[2] + offset[2] };
-						byte light = cuboid.getData7(AspectRegistry.LIGHT, base);
-						float blockLightMultiplier = _mapBlockLight(light);
-						float skyLightMultiplier = ((base.z() + cuboidZ - 1) == heightMap.getHeight(base.x(), base.y())) ? 1.0f : 0.0f;
-						_drawUpFacingSquare(builder, debrisBase, DEBRIS_ELEMENT_SIZE
-								, uvBase, textureSize
-								, auxUv, auxTextureSize
-								, blockLightMultiplier
-								, skyLightMultiplier
-						);
-					}
-				}
-			}
-		}, null);
 		
 		// See if there are any special slots in pedestals in this cuboid (we may generalize this later).
 		cuboid.walkData(AspectRegistry.SPECIAL_ITEM_SLOT, new IOctree.IWalkerCallback<ItemSlot>() {
@@ -400,7 +352,6 @@ public class SceneMeshHelpers
 					float skyLightMultiplier = ((base.z() + cuboidZ) == heightMap.getHeight(base.x(), base.y())) ? 1.0f : 0.0f;
 					_drawStandingSquare(builder, itemBase, itemEdge
 							, uvBase, textureSize
-							, auxUv, auxTextureSize
 							, blockLightMultiplier
 							, skyLightMultiplier
 					);
@@ -517,15 +468,12 @@ public class SceneMeshHelpers
 		float halfEdge = itemEdge / 2.0f;
 		float[] blockBase = new float[] { 0.0f, halfEdge, 0.0f };
 		
-		// We don't use aux texture or lighting.
-		float[] auxUv = new float[] { 0.0f, 0.0f };
-		float auxTextureSize = 0.0f;
+		// We don't use lighting for the passive items.
 		float blockLightMultiplier = 0.0f;
 		float skyLightMultiplier = 0.0f;
 		
 		_drawStandingSquare(builder, blockBase, itemEdge
 			, uvBase, textureSize
-			, auxUv, auxTextureSize
 			, blockLightMultiplier
 			, skyLightMultiplier
 		);
@@ -567,62 +515,19 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _drawUpFacingSquare(BufferBuilder builder
-			, float[] base
-			, float edgeSize
-			, float[] uvBase
-			, float textureSize
-			, float[] otherUvBase
-			, float otherTextureSize
-			, float blockLightMultiplier
-			, float skyLightMultiplier
-	)
-	{
-		float[] bottomLeft = new float[] {
-				0.0f,
-				0.0f,
-				0.0f,
-		};
-		float[] bottomRight = new float[] {
-				edgeSize,
-				0.0f,
-				0.0f,
-		};
-		float[] topRight = new float[] {
-				edgeSize,
-				edgeSize,
-				0.0f,
-		};
-		float[] topLeft = new float[] {
-				0.0f,
-				edgeSize,
-				0.0f,
-		};
-		// We won't bother light-blending the up-facing square.
-		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
-		float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
-		
-		_populateQuad(builder, base
-				, new float[][] {bottomLeft, bottomRight, topRight, topLeft }
-				, new float[] { 0.0f, 0.0f, 1.0f }
-				, uvBase, textureSize
-				, otherUvBase, otherTextureSize
-				, blockLightMultipliers
-				, skyLightMultipliers
-		);
-	}
-
 	private static void _drawStandingSquare(BufferBuilder builder
 			, float[] base
 			, float edgeSize
 			, float[] uvBase
 			, float textureSize
-			, float[] otherUvBase
-			, float otherTextureSize
 			, float blockLightMultiplier
 			, float skyLightMultiplier
 	)
 	{
+		// Note that standing squares never use AUX textures.
+		float[] otherUvBase = new float[] { 0.0f, 0.0f };
+		float otherTextureSize = 0.0f;
+		
 		// The idea here is that we draw 2 quads with the same texture:  One facing North and one South.
 		float[] OI = new float[] {
 				0.0f,
