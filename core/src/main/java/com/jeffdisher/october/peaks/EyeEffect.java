@@ -4,17 +4,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -38,8 +37,8 @@ public class EyeEffect
 		public Resources(GL20 gl)
 		{
 			_program = Program.fullyLinkedProgram(gl
-					, _readUtf8Asset("eye_effect.vert")
-					, _readUtf8Asset("eye_effect.frag")
+					, MiscPeaksHelpers.readUtf8Asset("eye_effect.vert")
+					, MiscPeaksHelpers.readUtf8Asset("eye_effect.frag")
 					, new String[] {
 							"aPosition",
 							"aTexture",
@@ -168,10 +167,5 @@ public class EyeEffect
 				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
 		);
 		return builder.finishOne().flush(gl);
-	}
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 }

@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -14,6 +12,7 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -42,8 +41,8 @@ public class SkyBox
 		public Resources(GL20 gl)
 		{
 			_program = Program.fullyLinkedProgram(gl
-					, _readUtf8Asset("sky.vert")
-					, _readUtf8Asset("sky.frag")
+					, MiscPeaksHelpers.readUtf8Asset("sky.vert")
+					, MiscPeaksHelpers.readUtf8Asset("sky.frag")
 					, new String[] {
 							"aPosition",
 					}
@@ -196,11 +195,6 @@ public class SkyBox
 		builder.appendVertex(new float[] {-1.0f, -1.0f, -1.0f});
 		builder.appendVertex(new float[] {-1.0f, -1.0f, 1.0f});
 		return builder.finishOne().flush(gl);
-	}
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
 	private static int _loadCubeMap(GL20 gl, ByteBuffer textureBufferData, String upName, String horizonName, String downName)

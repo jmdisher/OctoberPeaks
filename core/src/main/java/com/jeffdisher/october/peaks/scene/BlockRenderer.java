@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,7 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -29,6 +27,7 @@ import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -94,8 +93,8 @@ public class BlockRenderer
 			
 			// Create the shader program.
 			_program = Program.fullyLinkedProgram(gl
-					, _readUtf8Asset("scene.vert")
-					, _readUtf8Asset("scene.frag")
+					, MiscPeaksHelpers.readUtf8Asset("scene.vert")
+					, MiscPeaksHelpers.readUtf8Asset("scene.frag")
 					, new String[] {
 							"aPosition",
 							"aNormal",
@@ -358,11 +357,5 @@ public class BlockRenderer
 	{
 		// Resources are shut down on their own lifecycle.
 		_cuboidMeshes.shutdown();
-	}
-
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 }

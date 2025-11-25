@@ -3,11 +3,9 @@ package com.jeffdisher.october.peaks.ui;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.Attribute;
@@ -16,6 +14,7 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextManager;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
 
@@ -59,8 +58,8 @@ public class GlUi
 			// In order to simplify the usage, we will assume that all colour data originates in textures (but some of the
 			// textures may just be single-pixel colour data).
 			_program = Program.fullyLinkedProgram(gl
-					, _readUtf8Asset("windows.vert")
-					, _readUtf8Asset("windows.frag")
+					, MiscPeaksHelpers.readUtf8Asset("windows.vert")
+					, MiscPeaksHelpers.readUtf8Asset("windows.frag")
 					, new String[] {
 							"aPosition",
 							"aTexture",
@@ -228,11 +227,6 @@ public class GlUi
 		return right;
 	}
 
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
-	}
 
 	private static VertexArray _defineCommonVertices(GL20 gl, Program program, FloatBuffer meshBuffer, float textureSize)
 	{

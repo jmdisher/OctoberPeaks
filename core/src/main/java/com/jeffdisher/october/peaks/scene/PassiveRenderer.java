@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.peaks.LoadedResources;
@@ -19,6 +17,7 @@ import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.ItemSlot;
@@ -60,8 +59,8 @@ public class PassiveRenderer
 			// relative.
 			// TODO:  We will likely need to adapt how we are using this shader once other passive types are added.
 			_program = Program.fullyLinkedProgram(gl
-				, _readUtf8Asset("passive_item.vert")
-				, _readUtf8Asset("passive_item.frag")
+				, MiscPeaksHelpers.readUtf8Asset("passive_item.vert")
+				, MiscPeaksHelpers.readUtf8Asset("passive_item.frag")
 				, new String[] {
 					"aPosition",
 					"aNormal",
@@ -185,11 +184,5 @@ public class PassiveRenderer
 	public void passiveEntityDidUnload(int id)
 	{
 		_itemSlotPassives.remove(id);
-	}
-
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 }

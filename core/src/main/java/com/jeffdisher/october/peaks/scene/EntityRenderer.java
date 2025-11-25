@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +21,7 @@ import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
@@ -54,8 +54,8 @@ public class EntityRenderer
 		{
 			// Create the shader program.
 			_program = Program.fullyLinkedProgram(gl
-					, _readUtf8Asset("entity.vert")
-					, _readUtf8Asset("entity.frag")
+					, MiscPeaksHelpers.readUtf8Asset("entity.vert")
+					, MiscPeaksHelpers.readUtf8Asset("entity.frag")
 					, new String[] {
 							"aPosition",
 							"aNormal",
@@ -253,11 +253,6 @@ public class EntityRenderer
 		Matrix centreTranslate = Matrix.translate(-halfWidth, -halfWidth, -halfHeight);
 		Matrix model = Matrix.mutliply(translate, Matrix.mutliply(rotate, Matrix.mutliply(centreTranslate, scale)));
 		return model;
-	}
-
-	private static String _readUtf8Asset(String name)
-	{
-		return new String(Gdx.files.internal(name).readBytes(), StandardCharsets.UTF_8);
 	}
 
 	private static record _EntityData(VertexArray vertices
