@@ -41,41 +41,17 @@ public class Matrix
 
 	public static Matrix rotateX(float radians)
 	{
-		float sin = (float)Math.sin(radians);
-		float cos = (float)Math.cos(radians);
-		float[] rowInner = new float[] {
-				1.0f, 0.0f, 0.0f, 0.0f,
-				0.0f, cos, -sin, 0.0f,
-				0.0f, sin, cos, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f,
-		};
-		return new Matrix(rowInner);
+		return _rotateX(radians);
 	}
 
 	public static Matrix rotateY(float radians)
 	{
-		float sin = (float)Math.sin(radians);
-		float cos = (float)Math.cos(radians);
-		float[] rowInner = new float[] {
-				cos, 0.0f, sin, 0.0f,
-				0.0f, 1.0f, 0.0f, 0.0f,
-				-sin, 0.0f, cos, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f,
-		};
-		return new Matrix(rowInner);
+		return _rotateY(radians);
 	}
 
 	public static Matrix rotateZ(float radians)
 	{
-		float sin = (float)Math.sin(radians);
-		float cos = (float)Math.cos(radians);
-		float[] rowInner = new float[] {
-				cos, -sin, 0.0f, 0.0f,
-				sin, cos, 0.0f, 0.0f,
-				0.0f, 0.0f, 1.0f, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f,
-		};
-		return new Matrix(rowInner);
+		return _rotateZ(radians);
 	}
 
 	public static Matrix frustum(float left, float right, float bottom, float top, float zNear, float zFar)
@@ -112,29 +88,32 @@ public class Matrix
 		return new Matrix(rowInner);
 	}
 
-	public static Matrix mutliply(Matrix left, Matrix right)
+	public static Matrix multiply(Matrix left, Matrix right)
 	{
-		float[] l = left._rowInner4x4;
-		float[] r = right._rowInner4x4;
-		float[] rowInner = new float[] {
-				(l[0] * r[0]) + (l[1] * r[4]) + (l[2] * r[8]) + (l[3] * r[12]),
-					(l[0] * r[1]) + (l[1] * r[5]) + (l[2] * r[9]) + (l[3] * r[13]),
-					(l[0] * r[2]) + (l[1] * r[6]) + (l[2] * r[10]) + (l[3] * r[14]),
-					(l[0] * r[3]) + (l[1] * r[7]) + (l[2] * r[11]) + (l[3] * r[15]),
-				(l[4] * r[0]) + (l[5] * r[4]) + (l[6] * r[8]) + (l[7] * r[12]),
-					(l[4] * r[1]) + (l[5] * r[5]) + (l[6] * r[9]) + (l[7] * r[13]),
-					(l[4] * r[2]) + (l[5] * r[6]) + (l[6] * r[10]) + (l[7] * r[14]),
-					(l[4] * r[3]) + (l[5] * r[7]) + (l[6] * r[11]) + (l[7] * r[15]),
-				(l[8] * r[0]) + (l[9] * r[4]) + (l[10] * r[8]) + (l[11] * r[12]),
-					(l[8] * r[1]) + (l[9] * r[5]) + (l[10] * r[9]) + (l[11] * r[13]),
-					(l[8] * r[2]) + (l[9] * r[6]) + (l[10] * r[10]) + (l[11] * r[14]),
-					(l[8] * r[3]) + (l[9] * r[7]) + (l[10] * r[11]) + (l[11] * r[15]),
-				(l[12] * r[0]) + (l[13] * r[4]) + (l[14] * r[8]) + (l[15] * r[12]),
-					(l[12] * r[1]) + (l[13] * r[5]) + (l[14] * r[9]) + (l[15] * r[13]),
-					(l[12] * r[2]) + (l[13] * r[6]) + (l[14] * r[10]) + (l[15] * r[14]),
-					(l[12] * r[3]) + (l[13] * r[7]) + (l[14] * r[11]) + (l[15] * r[15]),
-		};
-		return new Matrix(rowInner);
+		return _multiply(left, right);
+	}
+
+	public static Matrix rotateToFace(Vector facingVector)
+	{
+		// We will determine the length of the XY vector, first.
+		float xySquared = (facingVector.x() * facingVector.x()) + (facingVector.y() * facingVector.y());
+		float xyLength = (float)Math.sqrt(xySquared);
+		double pitchRadians = (xyLength > 0.0f)
+			? Math.atan(facingVector.z() / xyLength)
+			: Math.signum(facingVector.z()) * 0.5f * Math.PI
+		;
+		Matrix rotatePitch = _rotateX((float)pitchRadians);
+		
+		// Note that the Y is North and the X is East, but the yaw is counter-clockwise radians from North, so we need to negate X.
+		double yawRadians = Math.atan(-facingVector.x() / facingVector.y());
+		if (facingVector.y() < 0.0f)
+		{
+			yawRadians += Math.PI;
+		}
+		Matrix rotateYaw = _rotateZ((float)yawRadians);
+		
+		Matrix rotate = _multiply(rotateYaw, rotatePitch);
+		return rotate;
 	}
 
 
@@ -158,6 +137,70 @@ public class Matrix
 				0.0f,  e11,    b, 0.0f,
 				0.0f, 0.0f,    c,    d,
 				0.0f, 0.0f, -1.0f, 0.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
+	private static Matrix _rotateX(float radians)
+	{
+		float sin = (float)Math.sin(radians);
+		float cos = (float)Math.cos(radians);
+		float[] rowInner = new float[] {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, cos, -sin, 0.0f,
+			0.0f, sin, cos, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
+	private static Matrix _rotateY(float radians)
+	{
+		float sin = (float)Math.sin(radians);
+		float cos = (float)Math.cos(radians);
+		float[] rowInner = new float[] {
+			cos, 0.0f, sin, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			-sin, 0.0f, cos, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
+	private static Matrix _rotateZ(float radians)
+	{
+		float sin = (float)Math.sin(radians);
+		float cos = (float)Math.cos(radians);
+		float[] rowInner = new float[] {
+			cos, -sin, 0.0f, 0.0f,
+			sin, cos, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f,
+		};
+		return new Matrix(rowInner);
+	}
+
+	private static Matrix _multiply(Matrix left, Matrix right)
+	{
+		float[] l = left._rowInner4x4;
+		float[] r = right._rowInner4x4;
+		float[] rowInner = new float[] {
+			(l[0] * r[0]) + (l[1] * r[4]) + (l[2] * r[8]) + (l[3] * r[12]),
+				(l[0] * r[1]) + (l[1] * r[5]) + (l[2] * r[9]) + (l[3] * r[13]),
+				(l[0] * r[2]) + (l[1] * r[6]) + (l[2] * r[10]) + (l[3] * r[14]),
+				(l[0] * r[3]) + (l[1] * r[7]) + (l[2] * r[11]) + (l[3] * r[15]),
+			(l[4] * r[0]) + (l[5] * r[4]) + (l[6] * r[8]) + (l[7] * r[12]),
+				(l[4] * r[1]) + (l[5] * r[5]) + (l[6] * r[9]) + (l[7] * r[13]),
+				(l[4] * r[2]) + (l[5] * r[6]) + (l[6] * r[10]) + (l[7] * r[14]),
+				(l[4] * r[3]) + (l[5] * r[7]) + (l[6] * r[11]) + (l[7] * r[15]),
+			(l[8] * r[0]) + (l[9] * r[4]) + (l[10] * r[8]) + (l[11] * r[12]),
+				(l[8] * r[1]) + (l[9] * r[5]) + (l[10] * r[9]) + (l[11] * r[13]),
+				(l[8] * r[2]) + (l[9] * r[6]) + (l[10] * r[10]) + (l[11] * r[14]),
+				(l[8] * r[3]) + (l[9] * r[7]) + (l[10] * r[11]) + (l[11] * r[15]),
+			(l[12] * r[0]) + (l[13] * r[4]) + (l[14] * r[8]) + (l[15] * r[12]),
+				(l[12] * r[1]) + (l[13] * r[5]) + (l[14] * r[9]) + (l[15] * r[13]),
+				(l[12] * r[2]) + (l[13] * r[6]) + (l[14] * r[10]) + (l[15] * r[14]),
+				(l[12] * r[3]) + (l[13] * r[7]) + (l[14] * r[11]) + (l[15] * r[15]),
 		};
 		return new Matrix(rowInner);
 	}

@@ -249,9 +249,9 @@ public class EntityRenderer
 		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(entity.yaw()));
 		Matrix translate = Matrix.translate(location.x() + halfWidth, location.y() + halfWidth, location.z() + halfHeight);
 		Matrix scale = Matrix.scale(width, width, height);
-		Matrix rotate = Matrix.mutliply(rotateYaw, rotatePitch);
+		Matrix rotate = Matrix.multiply(rotateYaw, rotatePitch);
 		Matrix centreTranslate = Matrix.translate(-halfWidth, -halfWidth, -halfHeight);
-		Matrix model = Matrix.mutliply(translate, Matrix.mutliply(rotate, Matrix.mutliply(centreTranslate, scale)));
+		Matrix model = Matrix.multiply(translate, Matrix.multiply(rotate, Matrix.multiply(centreTranslate, scale)));
 		return model;
 	}
 

@@ -89,10 +89,25 @@ public class TestMatrix
 	{
 		Matrix translate = Matrix.translate(10.0f, -20.0f, 0.1f);
 		Matrix scale = Matrix.scale(2.0f,  3.0f, 4.0f);
-		Matrix combine = Matrix.mutliply(translate, scale);
+		Matrix combine = Matrix.multiply(translate, scale);
 		float[] vec4 = new float[] {-1.0f, 1.0f, 0.5f, 1.0f};
 		float[] combined = combine.multiplyVector(vec4);
 		_vectorEquals(new float[] {8.0f, -17.0f, 2.1f, 1.0f}, combined);
+	}
+
+	@Test
+	public void rotateToFace() throws Throwable
+	{
+		float[] vec4 = new float[] {0.0f, 1.0f, 0.0f, 1.0f};
+		Matrix northEast = Matrix.rotateToFace(new Vector(5.0f, 10.0f, 1.0f));
+		Matrix northWest = Matrix.rotateToFace(new Vector(-5.0f, 10.0f, 1.0f));
+		Matrix southEast = Matrix.rotateToFace(new Vector(5.0f, -10.0f, 1.0f));
+		Matrix southWest = Matrix.rotateToFace(new Vector(-5.0f, -10.0f, 1.0f));
+		
+		_vectorEquals(new float[] {0.45f, 0.89f, 0.09f, 1.0f}, northEast.multiplyVector(vec4));
+		_vectorEquals(new float[] {-0.45f, 0.89f, 0.09f, 1.0f}, northWest.multiplyVector(vec4));
+		_vectorEquals(new float[] {0.45f, -0.89f, 0.09f, 1.0f}, southEast.multiplyVector(vec4));
+		_vectorEquals(new float[] {-0.45f, -0.89f, 0.09f, 1.0f}, southWest.multiplyVector(vec4));
 	}
 
 
