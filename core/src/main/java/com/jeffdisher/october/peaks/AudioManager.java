@@ -190,14 +190,19 @@ public class AudioManager
 	public void otherEntityHurt(AbsoluteLocation location, int entityTargetId)
 	{
 		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._orcInjury, _resources._cowInjury, _resources._takeDamage);
-		_playSoundIfInRange(location, soundToPlay);
+		if (null != soundToPlay)
+		{
+			_playSoundIfInRange(location, soundToPlay);
+		}
 	}
 
 	public void otherEntityKilled(AbsoluteLocation location, int entityTargetId)
 	{
-		// Entities don't have special death sounds so just play injury.
 		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._orcDeath, _resources._cowDeath, _resources._takeDamage);
-		_playSoundIfInRange(location, soundToPlay);
+		if (null != soundToPlay)
+		{
+			_playSoundIfInRange(location, soundToPlay);
+		}
 	}
 
 	public void shutdown()
@@ -270,8 +275,8 @@ public class AudioManager
 		}
 		else
 		{
-			// This would be an unkonwn type.
-			throw Assert.unreachable();
+			// For now, we will return null on an unknown type and they will have no sound.
+			soundToPlay = null;
 		}
 		return soundToPlay;
 	}
@@ -285,19 +290,4 @@ public class AudioManager
 			_playSound(soundToPlay, location);
 		}
 	}
-
-
-	public static enum Cue
-	{
-		WALK,
-		TAKE_DAMAGE,
-		BREAK_BLOCK,
-		PLACE_BLOCK,
-		COW_IDLE,
-		COW_INJURY,
-		COW_DEATH,
-		ORC_IDLE,
-		ORC_INJURY,
-		ORC_DEATH,
-	};
 }
