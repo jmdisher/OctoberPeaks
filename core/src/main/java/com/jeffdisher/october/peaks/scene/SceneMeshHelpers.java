@@ -387,68 +387,9 @@ public class SceneMeshHelpers
 				, prism.top() + outlineDistance
 		);
 		
-		// Note that no matter the scale, the quad vertices are the same magnitudes.
-		_PrismVertices v = _PrismVertices.from(outline);
+		// We always want the outline highlighted.
 		float blockLightMultiplier = 1.0f;
-		float[] base = new float[] { 0.0f, 0.0f, 0.0f };
-		// The selection prism has no light blending.
-		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
-		float[] skyLightMultipliers = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
-		
-		// X-normal plane.
-		_populateQuad(builder, base, new float[][] {
-				v.v010, v.v000, v.v001, v.v011
-			}, new float[] {-1.0f, 0.0f, 0.0f}
-			, uvBase, textureSize
-			, auxUv, auxTextureSize
-			, blockLightMultipliers
-			, skyLightMultipliers
-		);
-		_populateQuad(builder, base, new float[][] {
-				v.v100, v.v110, v.v111, v.v101
-			}, new float[] {1.0f, 0.0f, 0.0f}
-			, uvBase, textureSize
-			, auxUv, auxTextureSize
-			, blockLightMultipliers
-			, skyLightMultipliers
-		);
-		
-		// Y-normal plane.
-		_populateQuad(builder, base, new float[][] {
-				v.v000, v.v100, v.v101, v.v001
-			}, new float[] {0.0f, -1.0f,0.0f}
-			, uvBase, textureSize
-			, auxUv, auxTextureSize
-			, blockLightMultipliers
-			, skyLightMultipliers
-		);
-		_populateQuad(builder, base, new float[][] {
-				v.v110, v.v010, v.v011, v.v111
-			}, new float[] {0.0f, 1.0f, 0.0f}
-			, uvBase, textureSize
-			, auxUv, auxTextureSize
-			, blockLightMultipliers
-			, skyLightMultipliers
-		);
-		
-		// Z-normal plane.
-		// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
-		_populateQuad(builder, base, new float[][] {
-				v.v100, v.v000, v.v010, v.v110
-			}, new float[] {0.0f, 0.0f, -1.0f}
-			, uvBase, textureSize
-			, auxUv, auxTextureSize
-			, blockLightMultipliers
-			, skyLightMultipliers
-		);
-		_populateQuad(builder, base, new float[][] {
-				v.v001, v.v101, v.v111, v.v011
-			}, new float[] {0.0f, 0.0f, 1.0f}
-			, uvBase, textureSize
-			, auxUv, auxTextureSize
-			, blockLightMultipliers
-			, skyLightMultipliers
-		);
+		_buildCube(builder, uvBase, textureSize, auxUv, auxTextureSize, outline, blockLightMultiplier);
 		
 		return builder.finishOne().flush(gl);
 	}
@@ -477,6 +418,32 @@ public class SceneMeshHelpers
 			, blockLightMultiplier
 			, skyLightMultiplier
 		);
+	}
+
+	public static void drawPassiveCube(BufferBuilder builder
+		, float textureSize
+	)
+	{
+		// As with above, the passive cube for "falling block" is also a bit of a hack due to our assumptions around
+		// attributes.
+		float[] uvBase = new float[] { 0.0f, 0.0f };
+		
+		// We will use no AUX texture.
+		float[] auxUv = new float[] { 0.0f, 0.0f };
+		float auxTextureSize = 0.0f;
+		
+		// These are always drawn as unit cubes.
+		Prism outline = new Prism(0.0f
+			, 0.0f
+			, 0.0f
+			, 1.0f
+			, 1.0f
+			, 1.0f
+		);
+		
+		// Don't add any additional saturation to the cube.
+		float blockLightMultiplier = 0.0f;
+		_buildCube(builder, uvBase, textureSize, auxUv, auxTextureSize, outline, blockLightMultiplier);
 	}
 
 
@@ -1336,6 +1303,79 @@ public class SceneMeshHelpers
 			);
 		}
 	}
+
+	private static void _buildCube(BufferBuilder builder
+		, float[] uvBase
+		, float textureSize
+		, float[] auxUv
+		, float auxTextureSize
+		, Prism outline
+		, float blockLightMultiplier
+	)
+	{
+		// Note that no matter the scale, the quad vertices are the same magnitudes.
+		_PrismVertices v = _PrismVertices.from(outline);
+		float[] base = new float[] { 0.0f, 0.0f, 0.0f };
+		// The selection prism has no light blending.
+		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
+		float[] skyLightMultipliers = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
+		
+		// X-normal plane.
+		_populateQuad(builder, base, new float[][] {
+				v.v010, v.v000, v.v001, v.v011
+			}, new float[] {-1.0f, 0.0f, 0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultipliers
+			, skyLightMultipliers
+		);
+		_populateQuad(builder, base, new float[][] {
+				v.v100, v.v110, v.v111, v.v101
+			}, new float[] {1.0f, 0.0f, 0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultipliers
+			, skyLightMultipliers
+		);
+		
+		// Y-normal plane.
+		_populateQuad(builder, base, new float[][] {
+				v.v000, v.v100, v.v101, v.v001
+			}, new float[] {0.0f, -1.0f,0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultipliers
+			, skyLightMultipliers
+		);
+		_populateQuad(builder, base, new float[][] {
+				v.v110, v.v010, v.v011, v.v111
+			}, new float[] {0.0f, 1.0f, 0.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultipliers
+			, skyLightMultipliers
+		);
+		
+		// Z-normal plane.
+		// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+		_populateQuad(builder, base, new float[][] {
+				v.v100, v.v000, v.v010, v.v110
+			}, new float[] {0.0f, 0.0f, -1.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultipliers
+			, skyLightMultipliers
+		);
+		_populateQuad(builder, base, new float[][] {
+				v.v001, v.v101, v.v111, v.v011
+			}, new float[] {0.0f, 0.0f, 1.0f}
+			, uvBase, textureSize
+			, auxUv, auxTextureSize
+			, blockLightMultipliers
+			, skyLightMultipliers
+		);
+	}
+
 
 	/**
 	 * Packaged-up data passed into the mesh generation helpers.

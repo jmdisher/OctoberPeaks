@@ -18,6 +18,7 @@ import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.ItemSlot;
@@ -31,24 +32,27 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class PassiveRenderer
 {
-	public static final int BUFFER_SIZE = 1024;
+	public static final int BUFFER_SIZE = 2048;
 	public static final float TWO_PI_RADIANS = (float)(2.0 * Math.PI);
 
 	public static class Resources
 	{
 		private final ItemTextureAtlas _itemAtlas;
 		private final ItemSlotResources _itemSlotResources;
+		private final FallingBlockResources _fallingBlockResources;
 		
 		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
 		{
 			_itemAtlas = itemAtlas;
 			float textureSize = itemAtlas.coordinateSize;
 			_itemSlotResources = new ItemSlotResources(environment, gl, textureSize);
+			_fallingBlockResources = new FallingBlockResources(environment, gl, textureSize);
 		}
 		
 		public void shutdown(GL20 gl)
 		{
 			_itemSlotResources.shutdown(gl);
+			_fallingBlockResources.shutdown(gl);
 		}
 	}
 
@@ -115,6 +119,63 @@ public class PassiveRenderer
 		}
 	}
 
+	public static class FallingBlockResources
+	{
+		private final Program _program;
+		private final int _uModelMatrix;
+		private final int _uViewMatrix;
+		private final int _uProjectionMatrix;
+		private final int _uWorldLightLocation;
+		private final int _uTexture0;
+		private final int _uBrightness;
+		private final int _uUvBase;
+		// TODO:  We will need to generalize this for other passive types.
+		private final VertexArray _fallingBlockVertices;
+		
+		public FallingBlockResources(Environment environment, GL20 gl, float textureSize) throws IOException
+		{
+			// Create the shader program.
+			// Note that ItemSlot instances are typically what passives are used for, and they have a per-instance
+			// texture so we will need to pass in the base texture as a uniform and adjust the per-vertex coordinates as
+			// relative.
+			// TODO:  We will likely need to adapt how we are using this shader once other passive types are added.
+			_program = Program.fullyLinkedProgram(gl
+				, MiscPeaksHelpers.readUtf8Asset("passive_block.vert")
+				, MiscPeaksHelpers.readUtf8Asset("passive_block.frag")
+				, new String[] {
+					"aPosition",
+					"aNormal",
+					"aTexture0",
+					"aTexture1_ignored",
+					"aBlockLightMultiplier_ignored",
+					"aSkyLightMultiplier_ignored",
+				}
+			);
+			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
+			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
+			_uTexture0 = _program.getUniformLocation("uTexture0");
+			_uBrightness = _program.getUniformLocation("uBrightness");
+			_uUvBase = _program.getUniformLocation("uUvBase");
+			
+			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
+			direct.order(ByteOrder.nativeOrder());
+			FloatBuffer meshBuffer = direct.asFloatBuffer();
+			
+			// TODO:  We will need to generalize this for other passive types.
+			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
+			SceneMeshHelpers.drawPassiveCube(builder, textureSize);
+			_fallingBlockVertices = builder.finishOne().flush(gl);
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_fallingBlockVertices.delete(gl);
+			_program.delete();
+		}
+	}
+
 
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
@@ -122,6 +183,7 @@ public class PassiveRenderer
 	private final float _halfWidth;
 	private final float _halfHeight;
 	private final Map<Integer, PartialPassive> _itemSlotPassives;
+	private final Map<Integer, PartialPassive> _fallingBlockPassives;
 
 	public PassiveRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
 	{
@@ -132,6 +194,7 @@ public class PassiveRenderer
 		_halfWidth = PassiveType.ITEM_SLOT.volume().width() / 2.0f;
 		_halfHeight = PassiveType.ITEM_SLOT.volume().height() / 2.0f;
 		_itemSlotPassives = new HashMap<>();
+		_fallingBlockPassives = new HashMap<>();
 	}
 
 	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
@@ -144,6 +207,11 @@ public class PassiveRenderer
 		{
 			_renderItemSlots(_resources._itemSlotResources, viewMatrix, projectionMatrix, eye);
 		}
+		
+		if (_fallingBlockPassives.size() > 0)
+		{
+			_renderFallingBlocks(_resources._fallingBlockResources, viewMatrix, projectionMatrix, eye);
+		}
 	}
 
 	public void passiveEntityDidLoad(PartialPassive entity)
@@ -151,6 +219,11 @@ public class PassiveRenderer
 		if (PassiveType.ITEM_SLOT == entity.type())
 		{
 			Object old = _itemSlotPassives.put(entity.id(), entity);
+			Assert.assertTrue(null == old);
+		}
+		else if (PassiveType.FALLING_BLOCK == entity.type())
+		{
+			Object old = _fallingBlockPassives.put(entity.id(), entity);
 			Assert.assertTrue(null == old);
 		}
 	}
@@ -162,11 +235,17 @@ public class PassiveRenderer
 			Object old = _itemSlotPassives.put(entity.id(), entity);
 			Assert.assertTrue(null != old);
 		}
+		else if (PassiveType.FALLING_BLOCK == entity.type())
+		{
+			Object old = _fallingBlockPassives.put(entity.id(), entity);
+			Assert.assertTrue(null != old);
+		}
 	}
 
 	public void passiveEntityDidUnload(int id)
 	{
 		_itemSlotPassives.remove(id);
+		_fallingBlockPassives.remove(id);
 	}
 
 
@@ -207,6 +286,39 @@ public class PassiveRenderer
 			
 			// Just draw the square.
 			resources._itemSlotVertices.drawAllTriangles(_gl);
+		}
+	}
+
+	private void _renderFallingBlocks(FallingBlockResources resources, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	{
+		resources._program.useProgram();
+		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, resources._uProjectionMatrix);
+		_gl.glUniform1f(resources._uBrightness, _screenBrightness.get());
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// We will just use the item texture for all 6 faces of the cube.
+		_gl.glUniform1i(resources._uTexture0, 0);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
+		
+		// Render the passives.
+		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
+		for (PartialPassive fallingBlockPassive : _fallingBlockPassives.values())
+		{
+			// Create a model matrix just based on this translation.
+			EntityLocation location = fallingBlockPassive.location();
+			Matrix translation = Matrix.translate(location.x(), location.y(), location.z());
+			translation.uploadAsUniform(_gl, resources._uModelMatrix);
+			
+			// We need to pass in the base texture coordinates of this type.
+			Block block = (Block)fallingBlockPassive.extendedData();
+			float[] uvBase = _resources._itemAtlas.baseOfTexture(block.item().number());
+			_gl.glUniform2f(resources._uUvBase, uvBase[0], uvBase[1]);
+			
+			// Draw the cube.
+			resources._fallingBlockVertices.drawAllTriangles(_gl);
 		}
 	}
 }
