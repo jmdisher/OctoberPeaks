@@ -37,6 +37,23 @@ public class PassiveRenderer
 	public static class Resources
 	{
 		private final ItemTextureAtlas _itemAtlas;
+		private final ItemSlotResources _itemSlotResources;
+		
+		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
+		{
+			_itemAtlas = itemAtlas;
+			float textureSize = itemAtlas.coordinateSize;
+			_itemSlotResources = new ItemSlotResources(environment, gl, textureSize);
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_itemSlotResources.shutdown(gl);
+		}
+	}
+
+	public static class ItemSlotResources
+	{
 		private final Program _program;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
@@ -49,10 +66,8 @@ public class PassiveRenderer
 		// TODO:  We will need to generalize this for other passive types.
 		private final VertexArray _itemSlotVertices;
 		
-		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
+		public ItemSlotResources(Environment environment, GL20 gl, float textureSize) throws IOException
 		{
-			_itemAtlas = itemAtlas;
-			
 			// Create the shader program.
 			// Note that ItemSlot instances are typically what passives are used for, and they have a per-instance
 			// texture so we will need to pass in the base texture as a uniform and adjust the per-vertex coordinates as
@@ -86,7 +101,6 @@ public class PassiveRenderer
 			// TODO:  We will need to generalize this for other passive types.
 			float itemEdge = PassiveType.ITEM_SLOT.volume().width();
 			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			float textureSize = itemAtlas.coordinateSize;
 			SceneMeshHelpers.drawPassiveStandingSquare(builder
 				, itemEdge
 				, textureSize
@@ -125,41 +139,10 @@ public class PassiveRenderer
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
-		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
-		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
-		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
-		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
-		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// We just use the texture for the entity.
-		_gl.glUniform1i(_resources._uTexture0, 0);
-		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
-		
-		// We want to set the animation frame from 0.0f - 1.0f based on the time in a second.
-		float animationTime = (float)(System.currentTimeMillis() % 1024L) / 1024.0f;
-		_gl.glUniform1f(_resources._uAnimation, animationTime * TWO_PI_RADIANS);
-		
-		// Render the passives.
-		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
-		for (PartialPassive itemSlotPassive : _itemSlotPassives.values())
+		if (_itemSlotPassives.size() > 0)
 		{
-			EntityLocation location = itemSlotPassive.location();
-			Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
-			
-			// Determine the centre of this for rotation.
-			float centreX = location.x() + _halfWidth;
-			float centreY = location.y() + _halfWidth;
-			float centreZ = location.z() + _halfHeight;
-			_gl.glUniform3f(_resources._uCentre, centreX, centreY, centreZ);
-			
-			// We need to pass in the base texture coordinates of this type.
-			float[] uvBase = _resources._itemAtlas.baseOfTexture(type.number());
-			_gl.glUniform2f(_resources._uUvBase, uvBase[0], uvBase[1]);
-			
-			// Just draw the square.
-			_resources._itemSlotVertices.drawAllTriangles(_gl);
+			_renderItemSlots(_resources._itemSlotResources, viewMatrix, projectionMatrix, eye);
 		}
 	}
 
@@ -184,5 +167,46 @@ public class PassiveRenderer
 	public void passiveEntityDidUnload(int id)
 	{
 		_itemSlotPassives.remove(id);
+	}
+
+
+	private void _renderItemSlots(ItemSlotResources resources, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	{
+		resources._program.useProgram();
+		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, resources._uProjectionMatrix);
+		_gl.glUniform1f(resources._uBrightness, _screenBrightness.get());
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// We just use the texture for the entity.
+		_gl.glUniform1i(resources._uTexture0, 0);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
+		
+		// We want to set the animation frame from 0.0f - 1.0f based on the time in a second.
+		float animationTime = (float)(System.currentTimeMillis() % 1024L) / 1024.0f;
+		_gl.glUniform1f(resources._uAnimation, animationTime * TWO_PI_RADIANS);
+		
+		// Render the passives.
+		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
+		for (PartialPassive itemSlotPassive : _itemSlotPassives.values())
+		{
+			EntityLocation location = itemSlotPassive.location();
+			Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
+			
+			// Determine the centre of this for rotation.
+			float centreX = location.x() + _halfWidth;
+			float centreY = location.y() + _halfWidth;
+			float centreZ = location.z() + _halfHeight;
+			_gl.glUniform3f(resources._uCentre, centreX, centreY, centreZ);
+			
+			// We need to pass in the base texture coordinates of this type.
+			float[] uvBase = _resources._itemAtlas.baseOfTexture(type.number());
+			_gl.glUniform2f(resources._uUvBase, uvBase[0], uvBase[1]);
+			
+			// Just draw the square.
+			resources._itemSlotVertices.drawAllTriangles(_gl);
+		}
 	}
 }
