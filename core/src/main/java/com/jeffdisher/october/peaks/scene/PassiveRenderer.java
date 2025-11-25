@@ -7,6 +7,8 @@ import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.peaks.LoadedResources;
@@ -15,9 +17,11 @@ import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
+import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
+import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.Item;
@@ -32,7 +36,7 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class PassiveRenderer
 {
-	public static final int BUFFER_SIZE = 2048;
+	public static final int BUFFER_SIZE = 16 * 1024;
 	public static final float TWO_PI_RADIANS = (float)(2.0 * Math.PI);
 
 	public static class Resources
@@ -40,6 +44,7 @@ public class PassiveRenderer
 		private final ItemTextureAtlas _itemAtlas;
 		private final ItemSlotResources _itemSlotResources;
 		private final FallingBlockResources _fallingBlockResources;
+		private final ArrowResources _arrowResources;
 		
 		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
 		{
@@ -47,6 +52,7 @@ public class PassiveRenderer
 			float textureSize = itemAtlas.coordinateSize;
 			_itemSlotResources = new ItemSlotResources(environment, gl, textureSize);
 			_fallingBlockResources = new FallingBlockResources(environment, gl, textureSize);
+			_arrowResources = new ArrowResources(environment, gl);
 		}
 		
 		public void shutdown(GL20 gl)
@@ -176,6 +182,71 @@ public class PassiveRenderer
 		}
 	}
 
+	public static class ArrowResources
+	{
+		private final Program _program;
+		private final int _uModelMatrix;
+		private final int _uViewMatrix;
+		private final int _uProjectionMatrix;
+		private final int _uWorldLightLocation;
+		private final int _uTexture0;
+		private final int _uBrightness;
+		// TODO:  We will need to generalize this for other passive types.
+		private final VertexArray _arrowVertices;
+		private final int _arrowTexture;
+		
+		public ArrowResources(Environment environment, GL20 gl) throws IOException
+		{
+			// Note that this shader program is a slightly modified version of the entity.* program.
+			_program = Program.fullyLinkedProgram(gl
+				, MiscPeaksHelpers.readUtf8Asset("passive_arrow.vert")
+				, MiscPeaksHelpers.readUtf8Asset("passive_arrow.frag")
+				, new String[] {
+					"aPosition",
+					"aNormal",
+					"aTexture0",
+				}
+			);
+			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
+			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
+			_uTexture0 = _program.getUniformLocation("uTexture0");
+			_uBrightness = _program.getUniformLocation("uBrightness");
+			
+			// The arrow is just a model, much like the entities, so we use similar loading logic.
+			String name = "passive_arrow";
+			FileHandle meshFile = Gdx.files.internal(name + ".obj");
+			FileHandle textureFile = Gdx.files.internal(name + ".png");
+			
+			// We will require that the entity has a mesh definition and a texture.
+			Assert.assertTrue(meshFile.exists());
+			Assert.assertTrue(textureFile.exists());
+			
+			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
+			direct.order(ByteOrder.nativeOrder());
+			FloatBuffer meshBuffer = direct.asFloatBuffer();
+			
+			String rawMesh = meshFile.readString();
+			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
+			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
+				builder.appendVertex(position
+					, normal
+					, texture
+				);
+			}, rawMesh);
+			_arrowVertices = builder.finishOne().flush(gl);
+			_arrowTexture = TextureHelpers.loadHandleRGBA(gl, textureFile);
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_arrowVertices.delete(gl);
+			gl.glDeleteTexture(_arrowTexture);
+			_program.delete();
+		}
+	}
+
 
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
@@ -184,6 +255,7 @@ public class PassiveRenderer
 	private final float _halfHeight;
 	private final Map<Integer, PartialPassive> _itemSlotPassives;
 	private final Map<Integer, PartialPassive> _fallingBlockPassives;
+	private final Map<Integer, PartialPassive> _arrowPassives;
 
 	public PassiveRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
 	{
@@ -195,6 +267,7 @@ public class PassiveRenderer
 		_halfHeight = PassiveType.ITEM_SLOT.volume().height() / 2.0f;
 		_itemSlotPassives = new HashMap<>();
 		_fallingBlockPassives = new HashMap<>();
+		_arrowPassives = new HashMap<>();
 	}
 
 	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
@@ -212,6 +285,11 @@ public class PassiveRenderer
 		{
 			_renderFallingBlocks(_resources._fallingBlockResources, viewMatrix, projectionMatrix, eye);
 		}
+		
+		if (_arrowPassives.size() > 0)
+		{
+			_renderArrows(_resources._arrowResources, viewMatrix, projectionMatrix, eye);
+		}
 	}
 
 	public void passiveEntityDidLoad(PartialPassive entity)
@@ -224,6 +302,11 @@ public class PassiveRenderer
 		else if (PassiveType.FALLING_BLOCK == entity.type())
 		{
 			Object old = _fallingBlockPassives.put(entity.id(), entity);
+			Assert.assertTrue(null == old);
+		}
+		else if (PassiveType.PROJECTILE_ARROW == entity.type())
+		{
+			Object old = _arrowPassives.put(entity.id(), entity);
 			Assert.assertTrue(null == old);
 		}
 	}
@@ -240,12 +323,18 @@ public class PassiveRenderer
 			Object old = _fallingBlockPassives.put(entity.id(), entity);
 			Assert.assertTrue(null != old);
 		}
+		else if (PassiveType.PROJECTILE_ARROW == entity.type())
+		{
+			Object old = _arrowPassives.put(entity.id(), entity);
+			Assert.assertTrue(null != old);
+		}
 	}
 
 	public void passiveEntityDidUnload(int id)
 	{
 		_itemSlotPassives.remove(id);
 		_fallingBlockPassives.remove(id);
+		_arrowPassives.remove(id);
 	}
 
 
@@ -320,5 +409,41 @@ public class PassiveRenderer
 			// Draw the cube.
 			resources._fallingBlockVertices.drawAllTriangles(_gl);
 		}
+	}
+
+	private void _renderArrows(ArrowResources resources, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	{
+		resources._program.useProgram();
+		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, resources._uProjectionMatrix);
+		_gl.glUniform1f(resources._uBrightness, _screenBrightness.get());
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// We just use the texture for the entity.
+		_gl.glUniform1i(resources._uTexture0, 0);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, resources._arrowTexture);
+		
+		// Render the passives.
+		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
+		for (PartialPassive arrowPassive : _arrowPassives.values())
+		{
+			EntityLocation location = arrowPassive.location();
+			EntityLocation velocity = arrowPassive.velocity();
+			Matrix translation = _generateArrowModelMatrix(location, velocity);
+			translation.uploadAsUniform(_gl, resources._uModelMatrix);
+			
+			resources._arrowVertices.drawAllTriangles(_gl);
+		}
+	}
+
+	private static Matrix _generateArrowModelMatrix(EntityLocation location, EntityLocation velocity)
+	{
+		// Note that the arrow model is already the expected size, centred at (0,0,0), and facing North.
+		Matrix translate = Matrix.translate(location.x(), location.y(), location.z());
+		Matrix rotate = Matrix.rotateToFace(Vector.fromEntityLocation(velocity));
+		Matrix model = Matrix.multiply(translate, rotate);
+		return model;
 	}
 }
