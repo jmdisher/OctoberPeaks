@@ -2,8 +2,11 @@ package com.jeffdisher.october.peaks.lwjgl3;
 
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Window;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowListener;
 import com.jeffdisher.october.peaks.OctoberPeaks;
 import com.jeffdisher.october.peaks.Options;
+import com.jeffdisher.october.peaks.WindowListener;
 
 
 /** Launches the desktop (LWJGL3) application. */
@@ -18,10 +21,11 @@ public class Lwjgl3Launcher
 
 	private static Lwjgl3Application createApplication(Options options)
 	{
-		return new Lwjgl3Application(new OctoberPeaks(options), getDefaultConfiguration());
+		WindowListener windowListener = new WindowListener();
+		return new Lwjgl3Application(new OctoberPeaks(options, windowListener), getDefaultConfiguration(windowListener));
 	}
 
-	private static Lwjgl3ApplicationConfiguration getDefaultConfiguration()
+	private static Lwjgl3ApplicationConfiguration getDefaultConfiguration(WindowListener windowListener)
 	{
 		Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
 		configuration.setTitle("OctoberPeaks");
@@ -43,6 +47,43 @@ public class Lwjgl3Launcher
 		//// cause screen tearing.
 		configuration.setWindowedMode(1280, 960);
 		configuration.setWindowIcon("op_logo128.png", "op_logo64.png", "op_logo32.png", "op_logo16.png");
+		configuration.setWindowListener(new Lwjgl3WindowListener() {
+			@Override
+			public void created(Lwjgl3Window window)
+			{
+			}
+			@Override
+			public void iconified(boolean isIconified)
+			{
+			}
+			@Override
+			public void maximized(boolean isMaximized)
+			{
+			}
+			@Override
+			public void focusLost()
+			{
+				windowListener.focusLost();
+			}
+			@Override
+			public void focusGained()
+			{
+				windowListener.focusGained();
+			}
+			@Override
+			public boolean closeRequested()
+			{
+				return true;
+			}
+			@Override
+			public void filesDropped(String[] files)
+			{
+			}
+			@Override
+			public void refreshRequested()
+			{
+			}
+		});
 		return configuration;
 	}
 }

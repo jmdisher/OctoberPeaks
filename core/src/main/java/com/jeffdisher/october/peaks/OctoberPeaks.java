@@ -27,6 +27,8 @@ public class OctoberPeaks extends ApplicationAdapter
 {
 	public static final String ENV_VAR_OCTOBER_PEAKS_ROOT = "OCTOBER_PEAKS_ROOT";
 
+	private final WindowListener _windowListener;
+
 	// Note that these "no UI" ivars are only set when running in the testing mode where there is no top-level UI or local preferences.
 	private final String _noUiClientName;
 	private final InetSocketAddress _noUiServerSocketAddress;
@@ -38,8 +40,9 @@ public class OctoberPeaks extends ApplicationAdapter
 	private InputManager _input;
 	private UiStateManager _uiState;
 
-	public OctoberPeaks(Options options)
+	public OctoberPeaks(Options options, WindowListener windowListener)
 	{
+		_windowListener = windowListener;
 		if (null != options)
 		{
 			// We were told to start up in an explicit (no UI) mode so use that.
@@ -217,6 +220,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls(_localStorageDirectory);
 		_input = new InputManager(mutableControls, isNoUiMode);
+		_windowListener.setInputManager(_input);
 		_uiState = new UiStateManager(_environment, _gl, _localStorageDirectory, _resources, mutableControls, mutablePreferences, new UiStateManager.ICallouts() {
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
