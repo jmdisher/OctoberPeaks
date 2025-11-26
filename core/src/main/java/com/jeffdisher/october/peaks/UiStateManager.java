@@ -1087,21 +1087,69 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_drawRelevantWindows();
 		
-		if (_UiState.PLAY == _uiState)
-		{
-			// Finalize the event processing with this selection and accounting for inter-frame time.
-			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
-			_finalizeFrameEvents(entity, stopBlock, preStopBlock);
-		}
-		if (null != _currentGameSession)
-		{
-			// Complete any of the idle operations and account for time passing.
-			_idleInActiveFrame();
-		}
-		_clearEvents();
+		_handleEndOfFrameEvents(entity, stopBlock, preStopBlock);
 		
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
+	}
+
+	private void _handleEndOfFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
+	{
+		// We will switch on the UI state to be notified that this needs a change if more are ever added.
+		switch (_uiState)
+		{
+		case START:
+		case LIST_SINGLE_PLAYER:
+		case CONFIRM_DELETE_SINGLE_PLAYER:
+		case NEW_SINGLE_PLAYER:
+		case LIST_MULTI_PLAYER:
+		case NEW_MULTI_PLAYER:
+			// No events.
+			Assert.assertTrue(null == _currentGameSession);
+			break;
+		case OPTIONS:
+		case KEY_BINDINGS:
+			// We can be in these states while the game is running or while waiting to connect.
+			if (null != _currentGameSession)
+			{
+				// This mode is also accessible from the pause menu so check if we are on a server.
+				if (_isRunningOnServer)
+				{
+					_passTimeWhileRunning();
+				}
+				else
+				{
+					_currentGameSession.client.passTimeWhilePaused();
+				}
+			}
+			break;
+		case PLAY:
+			// This is the most common mode where events matter since it is where most of them start and passive events still need to be applied, in the background.
+			// Finalize the event processing with this selection and accounting for inter-frame time.
+			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
+			_finalizeFrameEvents(entity, stopBlock, preStopBlock);
+			_passTimeWhileRunning();
+			break;
+		case INVENTORY:
+			// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
+			_passTimeWhileRunning();
+			break;
+		case PAUSE:
+			if (_isRunningOnServer)
+			{
+				_passTimeWhileRunning();
+			}
+			else
+			{
+				_currentGameSession.client.passTimeWhilePaused();
+			}
+			break;
+		default:
+			// Hitting this will notify us that something is missing.
+			throw Assert.unreachable();
+		}
+		
+		_clearEvents();
 	}
 
 	public void handleScreenResize(int width, int height)
@@ -1809,12 +1857,13 @@ public class UiStateManager implements GameSession.ICallouts
 	 * Continues any active operations and completes accounting for time in a frame where the game is active and not
 	 * paused.
 	 */
-	private void _idleInActiveFrame()
+	private void _passTimeWhileRunning()
 	{
+		// Complete any of the idle operations and account for time passing.
 		// If we took no action, just tell the client to pass time.
 		if (!_didAccountForTimeInFrame)
 		{
-			_currentGameSession.client.doNothing(_continuousInInventory, _openStationLocation, _continuousInBlock);
+			_currentGameSession.client.passTimeWhileRunning(_continuousInInventory, _openStationLocation, _continuousInBlock);
 		}
 		
 		_didAccountForTimeInFrame = false;

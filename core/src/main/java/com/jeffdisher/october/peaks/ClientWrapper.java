@@ -107,7 +107,9 @@ public class ClientWrapper
 	private final ServerProcess _server;
 	private final ClientProcess _client;
 	private final ConsoleRunner _console;
-	private boolean _isPaused;
+
+	// We need to track if the monitoring agent was used to pause processing (in single-player) so we can resume it before shutdown.
+	private boolean _isAgentPaused;
 
 	// Data cached from the client listener.
 	private Entity _thisEntity;
@@ -245,81 +247,84 @@ public class ClientWrapper
 		}
 	}
 
-	public void doNothing(Craft rescheduleInInventory, AbsoluteLocation openStationLocation, Craft rescheduleInBlock)
+	public void passTimeWhilePaused()
 	{
+		Assert.assertTrue(_isAgentPaused);
+		
 		long currentTimeMillis = System.currentTimeMillis();
-		if (_isPaused)
+		_client.advanceTime(currentTimeMillis);
+	}
+
+	public void passTimeWhileRunning(Craft rescheduleInInventory, AbsoluteLocation openStationLocation, Craft rescheduleInBlock)
+	{
+		Assert.assertTrue(!_isAgentPaused);
+		
+		IEntitySubAction<IMutablePlayerEntity> subAction = null;
+		
+		// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
+		CraftOperation ongoing = _thisEntity.ephemeralShared().localCraftOperation();
+		long currentTimeMillis = System.currentTimeMillis();
+		if (null != ongoing)
 		{
-			_client.advanceTime(currentTimeMillis);
+			subAction = new EntityChangeCraft(null);
+		}
+		else if (null != rescheduleInInventory)
+		{
+			subAction = new EntityChangeCraft(rescheduleInInventory);
+		}
+		else if (null != openStationLocation)
+		{
+			IReadOnlyCuboidData cuboid = _cuboids.get(openStationLocation.getCuboidAddress());
+			// We already have this open in another view.
+			Assert.assertTrue(null != cuboid);
+			CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
+			if (null != blockOperation)
+			{
+				subAction = new EntityChangeCraftInBlock(openStationLocation, blockOperation.selectedCraft());
+			}
+			else if (null != rescheduleInBlock)
+			{
+				subAction = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
+			}
 		}
 		else
 		{
-			IEntitySubAction<IMutablePlayerEntity> subAction = null;
-			
-			// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
-			CraftOperation ongoing = _thisEntity.ephemeralShared().localCraftOperation();
-			if (null != ongoing)
+			// If we are standing in a portal, see if we are ready to pass through it.
+			if ((_lastSpecialActionMillis + EntitySubActionTravelViaBlock.TRAVEL_COOLDOWN_MILLIS) < currentTimeMillis)
 			{
-				subAction = new EntityChangeCraft(null);
-			}
-			else if (null != rescheduleInInventory)
-			{
-				subAction = new EntityChangeCraft(rescheduleInInventory);
-			}
-			else if (null != openStationLocation)
-			{
-				IReadOnlyCuboidData cuboid = _cuboids.get(openStationLocation.getCuboidAddress());
-				// We already have this open in another view.
-				Assert.assertTrue(null != cuboid);
-				CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
-				if (null != blockOperation)
+				AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _getBlockLookUp(), _thisEntity.location(), _playerVolume);
+				if (null != surfaceLocation)
 				{
-					subAction = new EntityChangeCraftInBlock(openStationLocation, blockOperation.selectedCraft());
-				}
-				else if (null != rescheduleInBlock)
-				{
-					subAction = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
+					subAction = new EntitySubActionTravelViaBlock(surfaceLocation);
 				}
 			}
-			else
-			{
-				// If we are standing in a portal, see if we are ready to pass through it.
-				if ((_lastSpecialActionMillis + EntitySubActionTravelViaBlock.TRAVEL_COOLDOWN_MILLIS) < currentTimeMillis)
-				{
-					AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _getBlockLookUp(), _thisEntity.location(), _playerVolume);
-					if (null != surfaceLocation)
-					{
-						subAction = new EntitySubActionTravelViaBlock(surfaceLocation);
-					}
-				}
-			}
-			
-			// If we aren't taking any other action, see if it is time for us to try to pick something up and if there is anything nearby.
-			if (null == subAction)
-			{
-				subAction = _tryPassivePickup(currentTimeMillis);
-			}
-			if (null != subAction)
-			{
-				_client.sendAction(subAction, currentTimeMillis);
-			}
-			// Now, just allow time to pass while standing.
-			_client.doNothing(currentTimeMillis);
 		}
+		
+		// If we aren't taking any other action, see if it is time for us to try to pick something up and if there is anything nearby.
+		if (null == subAction)
+		{
+			subAction = _tryPassivePickup(currentTimeMillis);
+		}
+		if (null != subAction)
+		{
+			_client.sendAction(subAction, currentTimeMillis);
+		}
+		// Now, just allow time to pass while standing.
+		_client.doNothing(currentTimeMillis);
 	}
 
 	public void setOrientation(float yawRadians, float pitchRadians)
 	{
 		byte yaw = OrientationHelpers.yawFromRadians(yawRadians);
 		byte pitch = OrientationHelpers.yawFromRadians(pitchRadians);
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		_client.setOrientation(yaw, pitch);
 	}
 
 	public void accelerateHorizontal(MovementAccumulator.Relative relativeDirection, boolean runningSpeed)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		
 		// Enqueue a passive action, if that makes sense.
 		IEntitySubAction<IMutablePlayerEntity> subAction = _tryPassivePickup(currentTimeMillis);
@@ -333,7 +338,7 @@ public class ClientWrapper
 	public void sneak(MovementAccumulator.Relative relativeDirection)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		
 		// Enqueue a passive action, if that makes sense.
 		IEntitySubAction<IMutablePlayerEntity> subAction = _tryPassivePickup(currentTimeMillis);
@@ -348,7 +353,7 @@ public class ClientWrapper
 	{
 		// See if we can jump or swim.
 		boolean didMove = false;
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		// Filter for redundant events.
 		if (!_didJump)
 		{
@@ -398,7 +403,7 @@ public class ClientWrapper
 	public boolean tryDescend()
 	{
 		// Try to descend, if we are on a ladder.
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		
 		long currentTimeMillis = System.currentTimeMillis();
 		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _getBlockLookUp();
@@ -423,7 +428,7 @@ public class ClientWrapper
 	public boolean hitBlock(AbsoluteLocation blockLocation)
 	{
 		boolean didHit = false;
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		
 		// We need to make sure that we can interact with this block.
 		long currentTimeMillis = System.currentTimeMillis();
@@ -526,7 +531,7 @@ public class ClientWrapper
 			change = null;
 		}
 		
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		if (null != change)
 		{
 			_client.sendAction(change, currentTimeMillis);
@@ -569,7 +574,7 @@ public class ClientWrapper
 			change = null;
 		}
 		
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		if (null != change)
 		{
 			long currentTimeMillis = System.currentTimeMillis();
@@ -599,7 +604,7 @@ public class ClientWrapper
 		// We need to check our selected item and see what "action" is associated with it.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		boolean didAttemptPlace = false;
 		if (isReady && (Entity.NO_SELECTION != selectedKey))
 		{
@@ -663,7 +668,7 @@ public class ClientWrapper
 
 	public void applyToEntity(PartialEntity selectedEntity)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		// We need to check our selected item and see if there is some interaction it has with this entity.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		if (Entity.NO_SELECTION != selectedKey)
@@ -686,7 +691,7 @@ public class ClientWrapper
 
 	public void changeHotbarIndex(int index)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		EntityChangeChangeHotbarSlot change = new EntityChangeChangeHotbarSlot(index);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(change, currentTimeMillis);
@@ -700,7 +705,7 @@ public class ClientWrapper
 				: itemInventoryKey
 		;
 		
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		MutationEntitySelectItem select = new MutationEntitySelectItem(keyToSelect);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(select, currentTimeMillis);
@@ -737,7 +742,7 @@ public class ClientWrapper
 			inventoryAspect = Inventory.INVENTORY_ASPECT_INVENTORY;
 		}
 		
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		boolean didSubmit = false;
 		if (null != blockInventory)
 		{
@@ -781,7 +786,7 @@ public class ClientWrapper
 		Items stack = entityInventory.getStackForKey(entityInventoryKey);
 		NonStackableItem nonStack = entityInventory.getNonStackableForKey(entityInventoryKey);
 		
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		boolean didSubmit = false;
 		if ((null != stack) != (null != nonStack))
 		{
@@ -829,7 +834,7 @@ public class ClientWrapper
 
 	public void beginCraftInInventory(Craft craft)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		long currentTimeMillis = System.currentTimeMillis();
 		EntityChangeCraft change = new EntityChangeCraft(craft);
 		_client.sendAction(change, currentTimeMillis);
@@ -837,7 +842,7 @@ public class ClientWrapper
 
 	public void beginCraftInBlock(AbsoluteLocation block, Craft craft)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		long currentTimeMillis = System.currentTimeMillis();
 		EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(block, craft);
 		_client.sendAction(change, currentTimeMillis);
@@ -845,7 +850,7 @@ public class ClientWrapper
 
 	public void swapArmour(BodyPart part)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		// In order to avoid gratuitous validation duplication, we will submit this mutation if it seems possible and rely on its own validation.
 		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
 		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
@@ -855,7 +860,7 @@ public class ClientWrapper
 
 	public void hitEntity(PartialEntity selectedEntity)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		EntityChangeAttackEntity attack = new EntityChangeAttackEntity(selectedEntity.id());
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(attack, currentTimeMillis);
@@ -864,7 +869,7 @@ public class ClientWrapper
 
 	public void dropItemSlot(int localInventoryId, boolean dropAll)
 	{
-		Assert.assertTrue(!_isPaused);
+		Assert.assertTrue(!_isAgentPaused);
 		EntitySubActionDropItemsAsPassive drop = new EntitySubActionDropItemsAsPassive(localInventoryId, dropAll);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(drop, currentTimeMillis);
@@ -875,9 +880,9 @@ public class ClientWrapper
 		if (null != _monitoringAgent)
 		{
 			_monitoringAgent.getCommandSink().pauseTickProcessing();
-			_isPaused = true;
+			_isAgentPaused = true;
 		}
-		return _isPaused;
+		return _isAgentPaused;
 	}
 
 	public void resumeGame()
@@ -885,7 +890,7 @@ public class ClientWrapper
 		if (null != _monitoringAgent)
 		{
 			_monitoringAgent.getCommandSink().resumeTickProcessing();
-			_isPaused = false;
+			_isAgentPaused = false;
 		}
 	}
 
@@ -902,7 +907,7 @@ public class ClientWrapper
 	public void disconnect()
 	{
 		// The server needs to be running in order for this shutdown to work.
-		if (_isPaused)
+		if (_isAgentPaused)
 		{
 			_monitoringAgent.getCommandSink().resumeTickProcessing();
 		}
