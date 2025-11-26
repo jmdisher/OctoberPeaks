@@ -43,10 +43,12 @@ import com.jeffdisher.october.subactions.EntityChangeSwim;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnBlock;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
 import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
+import com.jeffdisher.october.subactions.EntitySubActionChargeWeapon;
 import com.jeffdisher.october.subactions.EntitySubActionDropItemsAsPassive;
 import com.jeffdisher.october.subactions.EntitySubActionLadderAscend;
 import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
 import com.jeffdisher.october.subactions.EntitySubActionPickUpPassive;
+import com.jeffdisher.october.subactions.EntitySubActionReleaseWeapon;
 import com.jeffdisher.october.subactions.EntitySubActionRequestSwapSpecialSlot;
 import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
@@ -582,6 +584,66 @@ public class ClientWrapper
 			_resetBlockTarget(null, currentTimeMillis);
 		}
 		return (null != change);
+	}
+
+	/**
+	 * Should handle only the cases which matter if a right-click is held down, whether or not anything else is in range
+	 * or if this was just a momentary click (for example, charging a weapon).
+	 * 
+	 * @return True if some action was taken.
+	 */
+	public boolean holdRightClickOnSelf()
+	{
+		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		
+		IEntitySubAction<IMutablePlayerEntity> change;
+		if (Entity.NO_SELECTION != selectedKey)
+		{
+			// Check to see if this is a weapon we can charge.
+			Inventory inventory = _getEntityInventory();
+			Item type = inventory.getSlotForKey(selectedKey).getType();
+			int millisToCharge = _environment.tools.getChargeMillis(type);
+			if (millisToCharge > 0)
+			{
+				// We can charge this.
+				change = new EntitySubActionChargeWeapon();
+			}
+			else
+			{
+				// No valid action.
+				change = null;
+			}
+		}
+		else
+		{
+			// Nothing to do.
+			change = null;
+		}
+		
+		Assert.assertTrue(!_isAgentPaused);
+		if (null != change)
+		{
+			long currentTimeMillis = System.currentTimeMillis();
+			_client.sendAction(change, currentTimeMillis);
+			_resetBlockTarget(null, currentTimeMillis);
+		}
+		return (null != change);
+	}
+
+	/**
+	 * Used for "weapon release" support and is only called if holdRightClickOnSelf() recently returned true.
+	 * Note that this usage is currently very specialized and may be changed in the future.
+	 * 
+	 * @return True if the release weapon sub-action was sent, false if it isn't ready yet.
+	 */
+	public boolean releasedRightClickOnSelf()
+	{
+		Assert.assertTrue(!_isAgentPaused);
+		IEntitySubAction<IMutablePlayerEntity> change = new EntitySubActionReleaseWeapon();
+		long currentTimeMillis = System.currentTimeMillis();
+		boolean didApply = _client.sendAction(change, currentTimeMillis);
+		_resetBlockTarget(null, currentTimeMillis);
+		return didApply;
 	}
 
 	/**

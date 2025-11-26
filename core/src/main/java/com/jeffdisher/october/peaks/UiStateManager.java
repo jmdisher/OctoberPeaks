@@ -109,6 +109,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _mouseHeld1;
 	private boolean _mouseClicked0;
 	private boolean _mouseClicked1;
+	private boolean _waitingForMouseRelease1;
 	private Point _cursor;
 
 	// Variables related to the window overlay mode.
@@ -1786,17 +1787,25 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		else if (_mouseHeld1)
 		{
+			// We want to treat things like a bow as the highest priority, so we will handle that first, whether or not
+			// the mouse button is held or clicked (although these priorities may be reconsidered).
+			didAct = _currentGameSession.client.holdRightClickOnSelf();
+			if (didAct)
+			{
+				_waitingForMouseRelease1 = true;
+			}
+			
 			if (null != stopBlock)
 			{
 				// First, see if we need to change the UI state if this is a station we just clicked on.
-				if (_mouseClicked1)
+				if (!didAct && _mouseClicked1)
 				{
 					didAct = _didOpenStationInventory(stopBlock);
 				}
 			}
 			else if (null != entity)
 			{
-				if (_mouseClicked1)
+				if (!didAct && _mouseClicked1)
 				{
 					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
 					_currentGameSession.client.applyToEntity(entity);
@@ -1821,6 +1830,15 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					didAct = _currentGameSession.client.runRepairBlock(stopBlock);
 				}
+			}
+		}
+		else if (_waitingForMouseRelease1)
+		{
+			didAct = _currentGameSession.client.releasedRightClickOnSelf();
+			if (didAct)
+			{
+				// If we failed to send the release, just wait for our next frame (usually means that there is still a "charge" in the current accumulation).
+				_waitingForMouseRelease1 = false;
 			}
 		}
 		
