@@ -92,6 +92,10 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final float SINGLE_PLAYER_WORLD_ROW_HEIGHT = 0.1f;
 	public static final float MULTI_PLAYER_SERVER_ROW_WIDTH = 0.8f;
 	public static final float MULTI_PLAYER_SERVER_ROW_HEIGHT = 0.2f;
+	public static final float CHARGE_BAR_WIDTH_MAX = 0.4f;
+	public static final float CHARGE_BAR_LEFT = -0.2f;
+	public static final float CHARGE_BAR_BOTTOM = -0.25f;
+	public static final float CHARGE_BAR_TOP = -0.2f;
 
 	private final Environment _env;
 	private final GlUi _ui;
@@ -588,13 +592,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>(null);
 		_entityBinding = new Binding<>(null);
-		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> {
-			Inventory inventory = entity.isCreativeMode()
-					? CreativeInventory.fakeInventory()
-					: entity.inventory()
-			;
-			return inventory;
-		});
+		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> _getInventory(entity));
 		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(_entityBinding, (Entity entity) -> entity.armourSlots());
 		_bottomWindowInventoryBinding = new Binding<>(null);
 		_bottomWindowTitleBinding = new Binding<>(null);
@@ -1589,12 +1587,31 @@ public class UiStateManager implements GameSession.ICallouts
 		_handleEyeFilter();
 		
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _entityBinding.get())
+		Entity entity = _entityBinding.get();
+		if (null != entity)
 		{
 			IAction noAction = _hotbarWindow.doRender(_cursor);
 			Assert.assertTrue(null == noAction);
 			noAction = _metaDataWindow.doRender(_cursor);
 			Assert.assertTrue(null == noAction);
+			
+			int chargeMillis = entity.ephemeralShared().chargeMillis();
+			if (chargeMillis > 0)
+			{
+				// We want to show the weapon charge as a horizontal progress bar, from left to right.
+				int key = entity.hotbarItems()[entity.hotbarIndex()];
+				// If we have nothing selected, we should have cleared the charge.
+				Assert.assertTrue(0 != key);
+				int maxCharge = _env.tools.getChargeMillis(_getInventory(entity).getSlotForKey(key).getType());
+				// If we have a charge, we must be charging something.
+				Assert.assertTrue(maxCharge > 0);
+				float progress = (float)chargeMillis / (float)maxCharge;
+				float left = CHARGE_BAR_LEFT;
+				float bottom = CHARGE_BAR_BOTTOM;
+				float right = progress * CHARGE_BAR_WIDTH_MAX + CHARGE_BAR_LEFT;
+				float top = CHARGE_BAR_TOP;
+				_ui.drawWholeTextureRect(_ui.pixelGreenAlpha, left, bottom, right, top);
+			}
 		}
 		
 		// We are not in windowed mode so draw the selection (if any) and crosshairs.
@@ -2072,6 +2089,15 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		_didAccountForTimeInFrame = true;
 		_didWalkInFrame = true;
+	}
+
+	private static Inventory _getInventory(Entity entity)
+	{
+		Inventory inventory = entity.isCreativeMode()
+			? CreativeInventory.fakeInventory()
+			: entity.inventory()
+		;
+		return inventory;
 	}
 
 
