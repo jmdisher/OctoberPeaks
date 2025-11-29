@@ -92,7 +92,11 @@ public class ClientWrapper
 	 * Technically, we can pick up a passive on every tick but we use this cooldown so that we don't aggressively check
 	 * distances.
 	 */
-	public static final long PICK_UP_COOLDOWN_MILLIS = 1000L;
+	public static final long PICK_UP_COOLDOWN_MILLIS = 200L;
+	/**
+	 * We want to delay pick-up after dropping so we don't immediately pick the item up, again.
+	 */
+	public static final long PICK_UP_DELAY_AFTER_DROP_MILLIS = 5_000L;
 	/**
 	 * In order to avoid cases like placing blocks too quickly or aggressively breaking a block behind a target, we will
 	 * delay an action on a new block by this many milliseconds.
@@ -934,7 +938,12 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		EntitySubActionDropItemsAsPassive drop = new EntitySubActionDropItemsAsPassive(localInventoryId, dropAll);
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.sendAction(drop, currentTimeMillis);
+		boolean didDrop = _client.sendAction(drop, currentTimeMillis);
+		if (didDrop)
+		{
+			// We want to delay pick-up.
+			_nextPickUpAttemptMillis = currentTimeMillis + PICK_UP_DELAY_AFTER_DROP_MILLIS;
+		}
 	}
 
 	public boolean pauseGame()
