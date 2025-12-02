@@ -242,13 +242,13 @@ public class GeometryHelpers
 	private static float _findDistanceToIntersect(Vector start, Prism bounds, boolean isFixedX, float compX, boolean isFixedY, float compY, boolean isFixedZ, float compZ)
 	{
 		// We will calculate the t-values relative to the end of the vector so any match will be when all axes have t values in [0..1].
-		float closeX = Float.MIN_VALUE;
+		float closeX = -Float.MAX_VALUE;
 		float farX;
 		if (isFixedX)
 		{
 			farX = ((bounds.west() <= compX) && (compX <= bounds.east()))
-					? Float.MAX_VALUE
-					: Float.MIN_VALUE
+				? Float.MAX_VALUE
+				: -Float.MAX_VALUE
 			;
 		}
 		else
@@ -258,13 +258,13 @@ public class GeometryHelpers
 			closeX = Math.min(txLow, txHigh);
 			farX = Math.max(txLow, txHigh);
 		}
-		float closeY = Float.MIN_VALUE;
+		float closeY = -Float.MAX_VALUE;
 		float farY;
 		if (isFixedY)
 		{
 			farY = ((bounds.south() <= compY) && (compY <= bounds.north()))
-					? Float.MAX_VALUE
-					: Float.MIN_VALUE
+				? Float.MAX_VALUE
+				: -Float.MAX_VALUE
 			;
 		}
 		else
@@ -274,13 +274,13 @@ public class GeometryHelpers
 			closeY = Math.min(tyLow, tyHigh);
 			farY = Math.max(tyLow, tyHigh);
 		}
-		float closeZ = Float.MIN_VALUE;
+		float closeZ = -Float.MAX_VALUE;
 		float farZ;
 		if (isFixedZ)
 		{
 			farZ = ((bounds.bottom() <= compZ) && (compZ <= bounds.top()))
-					? Float.MAX_VALUE
-					: Float.MIN_VALUE
+				? Float.MAX_VALUE
+				: -Float.MAX_VALUE
 			;
 		}
 		else

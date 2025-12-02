@@ -164,11 +164,11 @@ public class BlockModelsAndAtlas
 	private static Prism _buildBounds(ModelBuffer buffer)
 	{
 		float west = Float.MAX_VALUE;
-		float east = Float.MIN_VALUE;
+		float east = -Float.MAX_VALUE;
 		float south = Float.MAX_VALUE;
-		float north = Float.MIN_VALUE;
+		float north = -Float.MAX_VALUE;
 		float bottom = Float.MAX_VALUE;
-		float top = Float.MIN_VALUE;
+		float top = -Float.MAX_VALUE;
 		for (int i = 0; i < buffer.vertexCount; ++i)
 		{
 			int index = 3 * i;
