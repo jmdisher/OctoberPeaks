@@ -43,7 +43,7 @@ public class TestCuboidMeshManager
 	private static short WATER_VALUE;
 	private static Block[] ALL_BLOCKS;
 	@BeforeClass
-	public static void setup()
+	public static void setup() throws Throwable
 	{
 		ENV = Environment.createSharedInstance();
 		ATTRIBUTES = new Attribute[] { new Attribute("aPosition", 3)

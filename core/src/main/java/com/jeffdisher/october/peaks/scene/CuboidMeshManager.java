@@ -413,7 +413,7 @@ public class CuboidMeshManager
 		// Collect information about the cuboid.
 		IReadOnlyCuboidData cuboid = request.inputs.cuboid();
 		ColumnHeightMap heightMap = request.inputs.height();
-		SparseShortProjection<AuxilliaryTextureAtlas.Variant> variantProjection = SceneMeshHelpers.buildAuxProjection(_env, cuboid);
+		AuxVariantMap variantMap = new AuxVariantMap(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
 		
@@ -421,7 +421,7 @@ public class CuboidMeshManager
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
 				, builder
 				, _blockTextures
-				, variantProjection
+				, variantMap
 				, _auxBlockTextures
 				, request.inputs
 				, true
@@ -433,7 +433,6 @@ public class CuboidMeshManager
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
 				, builder
 				, _blockTextures
-				, variantProjection
 				, _auxBlockTextures
 				, request.inputs
 				, lavaSourceNumber
@@ -447,7 +446,7 @@ public class CuboidMeshManager
 		SceneMeshHelpers.populateBufferWithComplexModels(_env
 				, builder
 				, _blockModels
-				, variantProjection
+				, variantMap
 				, _auxBlockTextures
 				, request.inputs
 		);
@@ -462,7 +461,7 @@ public class CuboidMeshManager
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
 				, builder
 				, _blockTextures
-				, variantProjection
+				, variantMap
 				, _auxBlockTextures
 				, request.inputs
 				, false
@@ -476,7 +475,6 @@ public class CuboidMeshManager
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
 				, builder
 				, _blockTextures
-				, variantProjection
 				, _auxBlockTextures
 				, request.inputs
 				, waterSourceNumber

@@ -11,7 +11,6 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.aspects.LightAspect;
-import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
@@ -27,6 +26,7 @@ import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.ItemSlot;
 import com.jeffdisher.october.utils.Assert;
@@ -50,45 +50,10 @@ public class SceneMeshHelpers
 		, new float[] { 0.2f, 0.3f, 0.15f }
 	};
 
-	public static SparseShortProjection<AuxilliaryTextureAtlas.Variant> buildAuxProjection(Environment env, IReadOnlyCuboidData cuboid)
-	{
-		// First, we will use the short callbacks based on damage.
-		SparseShortProjection<AuxilliaryTextureAtlas.Variant> variantProjection = SparseShortProjection.fromAspect(cuboid, AspectRegistry.DAMAGE, (short)0, AuxilliaryTextureAtlas.Variant.NONE, (BlockAddress blockAddress, Short value) -> {
-			short damage = value;
-			// We will favour showing cracks at a low damage, so the feedback is obvious
-			Block block = new BlockProxy(blockAddress, cuboid).getBlock();
-			float damaged = (float) damage / (float)env.damage.getToughness(block);
-			
-			AuxilliaryTextureAtlas.Variant aux;
-			if (damaged > 0.6f)
-			{
-				aux = AuxilliaryTextureAtlas.Variant.BREAK_HIGH;
-			}
-			else if (damaged > 0.3f)
-			{
-				aux = AuxilliaryTextureAtlas.Variant.BREAK_MEDIUM;
-			}
-			else
-			{
-				aux = AuxilliaryTextureAtlas.Variant.BREAK_LOW;
-			}
-			return aux;
-		});
-		
-		// Then, we will do a pass on the flags to override anything burning.
-		cuboid.walkData(AspectRegistry.FLAGS, (BlockAddress base, byte size, Byte value) -> {
-			if (FlagsAspect.isSet(value, FlagsAspect.FLAG_BURNING))
-			{
-				variantProjection.set(base, AuxilliaryTextureAtlas.Variant.BURNING);
-			}
-		}, (byte) 0);
-		return variantProjection;
-	}
-
 	public static void populateMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, BasicBlockAtlas blockAtlas
-			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxVariantMap variantMap
 			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, boolean opaqueVertices
@@ -124,7 +89,7 @@ public class SceneMeshHelpers
 		faces.populateMasks(inputData.cuboid, shouldInclude);
 		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(env
 				, builder
-				, projection
+				, variantMap
 				, blockAtlas
 				, auxAtlas
 				, shouldInclude
@@ -136,7 +101,7 @@ public class SceneMeshHelpers
 	public static void populateBufferWithComplexModels(Environment env
 			, BufferBuilder builder
 			, BlockModelsAndAtlas blockModels
-			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxVariantMap variantMap
 			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 	)
@@ -175,17 +140,17 @@ public class SceneMeshHelpers
 											? FlagsAspect.isSet(inputData.cuboid.getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
 											: false
 									;
-									OrientationAspect.Direction multiBlockDirection = OrientationAspect.byteToDirection(inputData.cuboid.getData7(AspectRegistry.ORIENTATION, thisAddress));
-									boolean isDown = (OrientationAspect.Direction.DOWN == multiBlockDirection);
+									FacingDirection multiBlockDirection = FacingDirection.byteToDirection(inputData.cuboid.getData7(AspectRegistry.ORIENTATION, thisAddress));
+									boolean isDown = (FacingDirection.DOWN == multiBlockDirection);
 									if (isDown)
 									{
 										// If this is facing down, we just use a north rotation.
-										multiBlockDirection = OrientationAspect.Direction.NORTH;
+										multiBlockDirection = FacingDirection.NORTH;
 									}
 									float[] uv = blockModels.baseOfModelTexture(includedBlock, isActive, isDown);
 									ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock, isActive, isDown);
 									_renderModel(builder
-											, projection
+											, variantMap
 											, auxAtlas
 											, inputData
 											, uvCoordinateSize
@@ -210,7 +175,6 @@ public class SceneMeshHelpers
 	public static void populateWaterMeshBufferForCuboid(Environment env
 			, BufferBuilder builder
 			, BasicBlockAtlas blockAtlas
-			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
 			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, short sourceNumber
@@ -698,7 +662,7 @@ public class SceneMeshHelpers
 	{
 		private final Environment _env;
 		private final BufferBuilder _builder;
-		private final SparseShortProjection<AuxilliaryTextureAtlas.Variant> _projection;
+		private final AuxVariantMap _variantMap;
 		private final BasicBlockAtlas _blockAtlas;
 		private final AuxilliaryTextureAtlas _auxAtlas;
 		private final Predicate<Short> _shouldInclude;
@@ -707,7 +671,7 @@ public class SceneMeshHelpers
 		
 		public _CommonVertexWriter(Environment env
 				, BufferBuilder builder
-				, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+				, AuxVariantMap variantMap
 				, BasicBlockAtlas blockAtlas
 				, AuxilliaryTextureAtlas auxAtlas
 				, Predicate<Short> shouldInclude
@@ -717,7 +681,7 @@ public class SceneMeshHelpers
 		{
 			_env = env;
 			_builder = builder;
-			_projection = projection;
+			_variantMap = variantMap;;
 			_blockAtlas = blockAtlas;
 			_auxAtlas = auxAtlas;
 			_shouldInclude = shouldInclude;
@@ -738,7 +702,7 @@ public class SceneMeshHelpers
 			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value);
 			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			float[] auxUv = _auxAtlas.baseOfTexture(_variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
 				byte z = (byte)(baseZ + 1);
@@ -819,7 +783,7 @@ public class SceneMeshHelpers
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			float[] auxUv = _auxAtlas.baseOfTexture(_variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
 				byte y = (byte)(baseY + 1);
@@ -880,7 +844,7 @@ public class SceneMeshHelpers
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture(_projection.get(new BlockAddress(baseX, baseY, baseZ)));
+			float[] auxUv = _auxAtlas.baseOfTexture(_variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
 			if (isPositiveNormal)
 			{
 				byte x = (byte)(baseX + 1);
@@ -1232,7 +1196,7 @@ public class SceneMeshHelpers
 	}
 
 	private static void _renderModel(BufferBuilder builder
-			, SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection
+			, AuxVariantMap variantMap
 			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, float uvCoordinateSize
@@ -1242,11 +1206,11 @@ public class SceneMeshHelpers
 			, byte baseX
 			, byte baseY
 			, byte baseZ
-			, OrientationAspect.Direction multiBlockDirection
+			, FacingDirection multiBlockDirection
 			, int blockHeight
 	)
 	{
-		float[] auxUv = auxAtlas.baseOfTexture(projection.get(new BlockAddress(baseX, baseY, baseZ)));
+		float[] auxUv = auxAtlas.baseOfTexture(variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
 		// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
 		float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
 		// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
@@ -1262,7 +1226,7 @@ public class SceneMeshHelpers
 			float x = bufferForType.positionValues[3 * i + 0];
 			float y = bufferForType.positionValues[3 * i + 1];
 			float z = bufferForType.positionValues[3 * i + 2];
-			if (OrientationAspect.Direction.NORTH != multiBlockDirection)
+			if (FacingDirection.NORTH != multiBlockDirection)
 			{
 				float[] out = multiBlockDirection.rotateXYTupleAboutZ(new float[] { x - centreX, y - centreY });
 				x = out[0] + centreY;

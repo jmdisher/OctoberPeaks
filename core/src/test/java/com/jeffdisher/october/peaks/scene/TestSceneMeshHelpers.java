@@ -14,7 +14,6 @@ import org.junit.Test;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.data.CuboidHeightMap;
@@ -31,6 +30,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.CuboidGenerator;
 
@@ -47,7 +47,7 @@ public class TestSceneMeshHelpers
 	private static Item LAVA_WEAK;
 	private static Attribute[] ATTRIBUTES;
 	@BeforeClass
-	public static void setup()
+	public static void setup() throws Throwable
 	{
 		ENV = Environment.createSharedInstance();
 		STONE = ENV.items.getItemById("op.stone");
@@ -215,7 +215,7 @@ public class TestSceneMeshHelpers
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
 		AbsoluteLocation root = cuboid.getCuboidAddress().getBase().getRelative(5, 5, 5);
 		cuboid.setData15(AspectRegistry.BLOCK, root.getBlockAddress(), multiDoor.number());
-		cuboid.setData7(AspectRegistry.ORIENTATION, root.getBlockAddress(), OrientationAspect.directionToByte(OrientationAspect.Direction.WEST));
+		cuboid.setData7(AspectRegistry.ORIENTATION, root.getBlockAddress(), FacingDirection.directionToByte(FacingDirection.WEST));
 		cuboid.setData15(AspectRegistry.BLOCK, root.getRelative(0, 1, 0).getBlockAddress(), multiDoor.number());
 		cuboid.setDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, root.getRelative(0, 1, 0).getBlockAddress(), root);
 		cuboid.setData15(AspectRegistry.BLOCK, root.getRelative(0, 1, 1).getBlockAddress(), multiDoor.number());
@@ -240,7 +240,7 @@ public class TestSceneMeshHelpers
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
-		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
+		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
@@ -285,7 +285,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builder, modelsAndAtlas, projection, auxAtlas, inputData);
+		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builder, modelsAndAtlas, variantMap, auxAtlas, inputData);
 		BufferBuilder.Buffer finished = builder.finishOne();
 		Set<_Vertex> vertices = _collectVerticesInBuffer(finished);
 		Assert.assertEquals(3, vertices.size());
@@ -497,7 +497,6 @@ public class TestSceneMeshHelpers
 				true,
 		};
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
-		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
@@ -545,7 +544,6 @@ public class TestSceneMeshHelpers
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(ENV
 				, builder
 				, blockAtlas
-				, projection
 				, auxAtlas
 				, inputData
 				, source.number()
@@ -570,7 +568,7 @@ public class TestSceneMeshHelpers
 				false,
 		};
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
-		SparseShortProjection<AuxilliaryTextureAtlas.Variant> projection = new SparseShortProjection<>(AuxilliaryTextureAtlas.Variant.NONE, Map.of());
+		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
 				, null, null
@@ -614,7 +612,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builder, blockAtlas, projection, auxAtlas, inputData, true);
+		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builder, blockAtlas, variantMap, auxAtlas, inputData, true);
 		return builder.finishOne();
 	}
 

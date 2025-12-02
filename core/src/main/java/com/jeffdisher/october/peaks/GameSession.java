@@ -158,7 +158,7 @@ public class GameSession
 			GameSession.this.scene.removeCuboid(address);
 		}
 		@Override
-		public void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity)
+		public void thisEntityUpdated(Entity projectedEntity)
 		{
 			EntityLocation eyeLocation = SpatialHelpers.getEyeLocation(MutableEntity.existing(projectedEntity));
 			GameSession.this.movement.setEye(Vector.fromEntityLocation(eyeLocation));
@@ -169,7 +169,7 @@ public class GameSession
 			GameSession.this.selectionManager.updatePosition(eye, target);
 			GameSession.this.selectionManager.setThisEntity(projectedEntity);
 			GameSession.this.eyeEffect.setThisEntity(projectedEntity);
-			GameSession.this.audioManager.setThisEntity(authoritativeEntity, projectedEntity);
+			GameSession.this.audioManager.setThisEntity(projectedEntity);
 			_callouts.thisEntityUpdated(projectedEntity);
 		}
 		@Override

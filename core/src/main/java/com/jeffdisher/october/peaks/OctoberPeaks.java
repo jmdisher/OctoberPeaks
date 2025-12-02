@@ -9,6 +9,7 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.config.TabListReader;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
@@ -158,7 +159,6 @@ public class OctoberPeaks extends ApplicationAdapter
 	{
 		// This is called during "create()" to establish all the resources which are common for both normal runs and testing no-UI runs.
 		_gl = Gdx.graphics.getGL20();
-		_environment = Environment.createSharedInstance();
 		
 		// Set common GL functionality for the view.
 		_gl.glEnable(GL20.GL_BLEND);
@@ -168,6 +168,7 @@ public class OctoberPeaks extends ApplicationAdapter
 		// Create the long-lived resources.
 		try
 		{
+			_environment = Environment.createSharedInstance();
 			ItemTextureAtlas itemAtlas = TextureHelpers.loadAtlasForItems(_gl
 					, _environment.items.ITEMS_BY_TYPE
 					, "missing_texture.png"
@@ -189,7 +190,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					, passive
 			);
 		}
-		catch (IOException e)
+		catch (IOException | TabListReader.TabListException e)
 		{
 			throw new AssertionError("Startup scene", e);
 		}

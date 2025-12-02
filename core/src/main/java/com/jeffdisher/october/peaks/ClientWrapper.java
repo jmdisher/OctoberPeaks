@@ -14,8 +14,8 @@ import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
-import com.jeffdisher.october.aspects.OrientationAspect;
 import com.jeffdisher.october.client.MovementAccumulator;
+import com.jeffdisher.october.config.TabListReader;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
@@ -68,6 +68,7 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.EventRecord;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.IEntitySubAction;
 import com.jeffdisher.october.types.IMutablePlayerEntity;
@@ -220,7 +221,7 @@ public class ClientWrapper
 			// This one we just want to throw back.
 			throw e;
 		}
-		catch (IOException e)
+		catch (IOException | TabListReader.TabListException e)
 		{
 			// TODO:  Handle this network start-up failure or make sure it can't happen.
 			throw Assert.unexpected(e);
@@ -697,7 +698,7 @@ public class ClientWrapper
 				{
 					// We will place the multi-block in the same orientation as this user.
 					byte yaw = _thisEntity.yaw();
-					OrientationAspect.Direction direction = OrientationHelpers.getYawDirection(yaw);
+					FacingDirection direction = OrientationHelpers.getYawDirection(yaw);
 					change = new EntityChangePlaceMultiBlock(emptyBlock, direction);
 				}
 				else
@@ -720,7 +721,7 @@ public class ClientWrapper
 		boolean didAttemptRepair = false;
 		if (null != proxy)
 		{
-			short damage = proxy.getDamage();
+			int damage = proxy.getDamage();
 			if (damage > 0)
 			{
 				EntityChangeIncrementalBlockRepair change = new EntityChangeIncrementalBlockRepair(blockLocation);
@@ -1187,16 +1188,16 @@ public class ClientWrapper
 			
 			// To start, we will use the authoritative data as the projection.
 			_setEntity(authoritativeEntity);
-			_updateConsumer.thisEntityUpdated(authoritativeEntity, authoritativeEntity);
+			_updateConsumer.thisEntityUpdated(authoritativeEntity);
 		}
 		@Override
-		public void thisEntityDidChange(Entity authoritativeEntity, Entity projectedEntity)
+		public void thisEntityDidChange(Entity projectedEntity)
 		{
-			Assert.assertTrue(_assignedLocalEntityId == authoritativeEntity.id());
+			Assert.assertTrue(_assignedLocalEntityId == projectedEntity.id());
 			
 			// Locally, we just use the projection.
 			_setEntity(projectedEntity);
-			_updateConsumer.thisEntityUpdated(authoritativeEntity, projectedEntity);
+			_updateConsumer.thisEntityUpdated(projectedEntity);
 		}
 		@Override
 		public void otherEntityDidChange(PartialEntity entity)
@@ -1319,7 +1320,7 @@ public class ClientWrapper
 		void blockPlaced(AbsoluteLocation location);
 		void blockBroken(AbsoluteLocation location);
 		
-		void thisEntityUpdated(Entity authoritativeEntity, Entity projectedEntity);
+		void thisEntityUpdated(Entity projectedEntity);
 		void thisEntityHurt();
 		
 		void otherClientJoined(int clientId, String name);

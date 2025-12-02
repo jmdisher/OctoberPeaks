@@ -100,7 +100,7 @@ public class AudioManager
 		_resources._walk.pause(_walkingId);
 	}
 
-	public void setThisEntity(Entity authoritativeEntity, Entity projectedEntity)
+	public void setThisEntity(Entity projectedEntity)
 	{
 		_projectedEntity = projectedEntity;
 	}

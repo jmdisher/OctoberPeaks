@@ -22,7 +22,7 @@ public class TestGeometryHelpers
 	private static Environment ENV;
 	private static EntityType COW;
 	@BeforeClass
-	public static void setup()
+	public static void setup() throws Throwable
 	{
 		ENV = Environment.createSharedInstance();
 		COW = ENV.creatures.getTypeById("op.cow");

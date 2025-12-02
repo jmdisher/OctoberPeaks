@@ -18,7 +18,7 @@ public class TestBasicBlockCollector
 	private static Block DIRT;
 	private static Block LOG;
 	@BeforeClass
-	public static void setup()
+	public static void setup() throws Throwable
 	{
 		ENV = Environment.createSharedInstance();
 		STONE = ENV.blocks.fromItem(ENV.items.getItemById("op.stone"));

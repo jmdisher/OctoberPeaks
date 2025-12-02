@@ -25,7 +25,7 @@ public class TestFaceBuilder
 	private static Item DIRT_ITEM;
 	private static Item STONE_ITEM;
 	@BeforeClass
-	public static void setup()
+	public static void setup() throws Throwable
 	{
 		ENV = Environment.createSharedInstance();
 		DIRT_ITEM = ENV.items.getItemById("op.dirt");
