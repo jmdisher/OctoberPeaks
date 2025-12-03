@@ -891,28 +891,27 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void moveForward(WalkType walk)
+	public void walk(MovementAccumulator.Relative relative)
 	{
-		MovementAccumulator.Relative relative = MovementAccumulator.Relative.FORWARD;
-		_commonWalk(relative, walk);
+		boolean runningSpeed = false;
+		_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
+		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
-	public void moveBackward(WalkType walk)
+	public void run(MovementAccumulator.Relative relative)
 	{
-		MovementAccumulator.Relative relative = MovementAccumulator.Relative.BACKWARD;
-		_commonWalk(relative, walk);
+		boolean runningSpeed = true;
+		_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
+		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
-	public void strafeRight(WalkType walk)
+	public void sneak(MovementAccumulator.Relative relative)
 	{
-		MovementAccumulator.Relative relative = MovementAccumulator.Relative.RIGHT;
-		_commonWalk(relative, walk);
-	}
-
-	public void strafeLeft(WalkType walk)
-	{
-		MovementAccumulator.Relative relative = MovementAccumulator.Relative.LEFT;
-		_commonWalk(relative, walk);
+		_currentGameSession.client.sneak(relative);
+		_didAccountForTimeInFrame = true;
+		_didWalkInFrame = true;
 	}
 
 	public void ascendOrJumpOrSwim()
@@ -2076,21 +2075,6 @@ public class UiStateManager implements GameSession.ICallouts
 		directory.delete();
 	}
 
-	private void _commonWalk(MovementAccumulator.Relative relative, WalkType walk)
-	{
-		if (WalkType.SNEAK == walk)
-		{
-			_currentGameSession.client.sneak(relative);
-		}
-		else
-		{
-			boolean runningSpeed = (WalkType.RUN == walk);
-			_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
-		}
-		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
-	}
-
 	private static Inventory _getInventory(Entity entity)
 	{
 		Inventory inventory = entity.isCreativeMode()
@@ -2168,12 +2152,5 @@ public class UiStateManager implements GameSession.ICallouts
 	public static interface ICallouts
 	{
 		public void shouldCaptureMouse(boolean setCapture);
-	}
-
-	public static enum WalkType
-	{
-		WALK,
-		RUN,
-		SNEAK,
 	}
 }

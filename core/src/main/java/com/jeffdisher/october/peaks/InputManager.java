@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
+import com.jeffdisher.october.client.MovementAccumulator;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.badlogic.gdx.Input.Keys;
@@ -240,25 +241,21 @@ public class InputManager
 			}
 			
 			// Check out movement controls.
-			UiStateManager.WalkType walk = _activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()]
-				? UiStateManager.WalkType.SNEAK
-				: (_activeControls[MutableControls.Control.MOVE_SPRINT.ordinal()] ? UiStateManager.WalkType.RUN : UiStateManager.WalkType.WALK)
-			;
-			if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
+			MovementAccumulator.Relative relativeMove = _getCurrentMove();
+			if (null != relativeMove)
 			{
-				uiManager.moveForward(walk);
-			}
-			else if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
-			{
-				uiManager.moveBackward(walk);
-			}
-			else if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
-			{
-				uiManager.strafeRight(walk);
-			}
-			else if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
-			{
-				uiManager.strafeLeft(walk);
+				if (_activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
+				{
+					uiManager.sneak(relativeMove);
+				}
+				else if (_activeControls[MutableControls.Control.MOVE_SPRINT.ordinal()])
+				{
+					uiManager.run(relativeMove);
+				}
+				else
+				{
+					uiManager.walk(relativeMove);
+				}
 			}
 			
 			// See if we want to jump or try descending a ladder.
@@ -371,5 +368,27 @@ public class InputManager
 		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
 		float y = (2.0f * (screenHeight - mouseY) / screenHeight) - 1.0f;
 		return new Point(x, y);
+	}
+
+	private MovementAccumulator.Relative _getCurrentMove()
+	{
+		MovementAccumulator.Relative relative = null;
+		if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
+		{
+			relative = MovementAccumulator.Relative.FORWARD;
+		}
+		else if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
+		{
+			relative = MovementAccumulator.Relative.BACKWARD;
+		}
+		else if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
+		{
+			relative = MovementAccumulator.Relative.RIGHT;
+		}
+		else if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
+		{
+			relative = MovementAccumulator.Relative.LEFT;
+		}
+		return relative;
 	}
 }
