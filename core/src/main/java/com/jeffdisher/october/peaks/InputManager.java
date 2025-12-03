@@ -372,22 +372,71 @@ public class InputManager
 
 	private MovementAccumulator.Relative _getCurrentMove()
 	{
-		MovementAccumulator.Relative relative = null;
+		// Given that we can mix directions (forward + right, for example), this function handles that combination logic.
+		int forward = 0;
 		if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
 		{
-			relative = MovementAccumulator.Relative.FORWARD;
+			forward += 1;
 		}
-		else if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
+		if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
 		{
-			relative = MovementAccumulator.Relative.BACKWARD;
+			forward -= 1;
 		}
-		else if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
+		int right = 0;
+		if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
 		{
-			relative = MovementAccumulator.Relative.RIGHT;
+			right += 1;
 		}
-		else if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
+		if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
 		{
-			relative = MovementAccumulator.Relative.LEFT;
+			right -= 1;
+		}
+		
+		MovementAccumulator.Relative relative;
+		if (forward > 0)
+		{
+			if (right > 0)
+			{
+				relative = MovementAccumulator.Relative.FORWARD_RIGHT;
+			}
+			else if (right < 0)
+			{
+				relative = MovementAccumulator.Relative.FORWARD_LEFT;
+			}
+			else
+			{
+				relative = MovementAccumulator.Relative.FORWARD;
+			}
+		}
+		else if (forward < 0)
+		{
+			if (right > 0)
+			{
+				relative = MovementAccumulator.Relative.BACKWARD_RIGHT;
+			}
+			else if (right < 0)
+			{
+				relative = MovementAccumulator.Relative.BACKWARD_LEFT;
+			}
+			else
+			{
+				relative = MovementAccumulator.Relative.BACKWARD;
+			}
+		}
+		else
+		{
+			if (right > 0)
+			{
+				relative = MovementAccumulator.Relative.RIGHT;
+			}
+			else if (right < 0)
+			{
+				relative = MovementAccumulator.Relative.LEFT;
+			}
+			else
+			{
+				relative = null;
+			}
 		}
 		return relative;
 	}
