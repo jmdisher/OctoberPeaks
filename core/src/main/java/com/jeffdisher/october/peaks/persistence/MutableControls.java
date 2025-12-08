@@ -34,10 +34,11 @@ public class MutableControls
 		MOVE_LEFT(Keys.A, false, "Move Left"),
 		MOVE_BACKWARD(Keys.S, false, "Move Backward"),
 		MOVE_JUMP(Keys.SPACE, false, "Jump/Swim"),
-		MOVE_INVENTORY(Keys.I, true, "Open/Close Inventory"),
-		MOVE_FUEL(Keys.F, true, "Toggle Fuel Inventory"),
+		TOGGLE_INVENTORY(Keys.I, true, "Open/Close Inventory"),
+		TOGGLE_FUEL(Keys.F, true, "Toggle Fuel Inventory"),
 		MOVE_SPRINT(Keys.CONTROL_LEFT, false, "Sprint"),
 		MOVE_SNEAK(Keys.SHIFT_LEFT, false, "Sneak"),
+		DROP_ITEM(Keys.Q, true, "Drop Item"),
 		;
 		
 		private int keyCode;
@@ -77,10 +78,17 @@ public class MutableControls
 				TabListReader.readEntireFile(callbacks, stream);
 				for (Map.Entry<String, Integer> entry : callbacks.data.entrySet())
 				{
-					Control control = Control.valueOf(entry.getKey());
-					// TODO:  Determine how to handle corrupt data.
-					Assert.assertTrue(null != control);
-					_setKeyForControl(control, entry.getValue());
+					try
+					{
+						Control control = Control.valueOf(entry.getKey());
+						// This will fail with an exception and not return null.
+						Assert.assertTrue(null != control);
+						_setKeyForControl(control, entry.getValue());
+					}
+					catch (IllegalArgumentException ignored)
+					{
+						// We might see stale data from older version so we just want to ignore those.
+					}
 				}
 			}
 			catch (FileNotFoundException e)

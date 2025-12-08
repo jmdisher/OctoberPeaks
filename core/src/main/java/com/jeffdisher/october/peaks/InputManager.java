@@ -40,7 +40,6 @@ public class InputManager
 	private boolean _didHandleButton0;
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
-	private boolean _didHandleQ;
 
 	public InputManager(MutableControls mutableControls, boolean startInCaptureMode)
 	{
@@ -144,10 +143,6 @@ public class InputManager
 				case Keys.CONTROL_LEFT:
 					_leftCtrlDown = false;
 					break;
-				case Keys.Q:
-					// TODO:  Generalize this with the other keys (once we decide how to add in ctrl).
-					_didHandleQ = false;
-					break;
 				}
 				
 				// See if one of our dynamic controls matches this.
@@ -213,7 +208,6 @@ public class InputManager
 		_didHandleButton0 = true;
 		_didHandleButton1 = true;
 		_didHandleKeyEsc = true;
-		_didHandleQ = true;
 	}
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
@@ -303,20 +297,20 @@ public class InputManager
 			uiManager.handleHotbarIndex(_lastPressedNumber - 1);
 			_didHandlePressedNumber = true;
 		}
-		if (_activeControls[MutableControls.Control.MOVE_INVENTORY.ordinal()])
+		if (_activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
 		{
 			uiManager.handleKeyI();
-			_activeControls[MutableControls.Control.MOVE_INVENTORY.ordinal()] = false;
+			_activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
 		}
-		if (_activeControls[MutableControls.Control.MOVE_FUEL.ordinal()])
+		if (_activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()])
 		{
 			uiManager.handleKeyF();
-			_activeControls[MutableControls.Control.MOVE_FUEL.ordinal()] = false;
+			_activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
 		}
-		if (!_didHandleQ)
+		if (_activeControls[MutableControls.Control.DROP_ITEM.ordinal()])
 		{
 			uiManager.handleKeyQ(_leftCtrlDown);
-			_didHandleQ = true;
+			_activeControls[MutableControls.Control.DROP_ITEM.ordinal()] = false;
 		}
 		
 		if (Keys.UNKNOWN != _lastKeyUp)
