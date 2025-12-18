@@ -232,6 +232,10 @@ public class ClientWrapper
 		_currentViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 	}
 
+	/**
+	 * Blocks until the user's entity is loaded.
+	 * NOTE:  This blocks the calling thread so should only be used in the "No UI" mode.
+	 */
 	public void finishStartup()
 	{
 		// Wait for the initial entity data to appear.
@@ -252,6 +256,18 @@ public class ClientWrapper
 			// TODO:  Implement this correctly once we no longer call "System.exit(0)" on disconnect, below.
 			throw Assert.unreachable();
 		}
+	}
+
+	/**
+	 * Polls to see if we are connected.
+	 * 
+	 * @return True if we are connected, false if we are still connecting.
+	 */
+	public boolean isConnectionReady()
+	{
+		// We just poll if the client has received the local entity.
+		_client.advanceTime(System.currentTimeMillis());
+		return (null != _thisEntity);
 	}
 
 	public void passTimeWhilePaused()
@@ -1137,6 +1153,7 @@ public class ClientWrapper
 	}
 
 
+	// Note that these calls all arrive on the main thread (they are dispatched when our main thread calls into ClientProcess).
 	private class _ClientListener implements ClientProcess.IListener
 	{
 		private int _assignedLocalEntityId;

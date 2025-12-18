@@ -112,6 +112,11 @@ public class GameSession
 		this.client.finishStartup();
 	}
 
+	public boolean isConnectionReady()
+	{
+		return this.client.isConnectionReady();
+	}
+
 	public void shutdown()
 	{
 		// Disconnect from the server.

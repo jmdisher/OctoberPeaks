@@ -174,6 +174,9 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _testServerButton;
 	private final ViewTextButton<String> _saveServerButton;
 
+	// UI for the "CONNECTING" state.
+	private final ViewTextButton<String> _cancelConnectButton;
+
 	// Bindings defined/owned here and referenced by various UI components.
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
@@ -218,6 +221,8 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// The current game session (can be null if not in the right state).
 	private GameSession _currentGameSession;
+	// The session is "pending" only when in the CONNECTING state.
+	private GameSession _pendingGameSession;
 
 	public UiStateManager(Environment environment
 			, GL20 gl
@@ -585,6 +590,17 @@ public class UiStateManager implements GameSession.ICallouts
 						// We can escape this state.
 						_doBackStateTransition();
 					}
+				}
+			}
+		);
+		
+		_cancelConnectButton = new ViewTextButton<>(_ui, new Binding<>("Cancel Connection")
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				if (_leftClick)
+				{
+					// We just want to back out.
+					_doBackStateTransition();
 				}
 			}
 		);
@@ -1119,6 +1135,18 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					_currentGameSession.client.passTimeWhilePaused();
 				}
+			}
+			break;
+		case CONNECTING:
+			// This is a bit of a hack but we can easily poll for state change here instead of coming up with a cross-
+			// thread callback mechanism (some kind of message queue)just for this.
+			Assert.assertTrue(null == _currentGameSession);
+			if (_pendingGameSession.isConnectionReady())
+			{
+				_currentGameSession = _pendingGameSession;
+				_pendingGameSession = null;
+				_uiState = _UiState.PLAY;
+				_captureState.shouldCaptureMouse(true);
 			}
 			break;
 		case PLAY:
@@ -1669,6 +1697,18 @@ public class UiStateManager implements GameSession.ICallouts
 		return action;
 	}
 
+	private IAction _drawConnectingStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		String menuTitle = "Connecting...";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.3f, menuTitle);
+		IAction action = null;
+		action = _renderViewChainAction(_cancelConnectButton, new Rect(-0.3f, -0.4f, 0.3f, -0.3f), action);
+		
+		return action;
+	}
+
 	private void _drawCommonPauseBackground()
 	{
 		// Draw whatever is common to states where we draw interactive buttons on top.
@@ -1754,6 +1794,9 @@ public class UiStateManager implements GameSession.ICallouts
 			break;
 		case KEY_BINDINGS:
 			action = _drawKeyBindingStateWindows();
+			break;
+		case CONNECTING:
+			action = _drawConnectingStateWindows();
 			break;
 		case PLAY:
 			action = _drawPlayStateWindows();
@@ -1952,6 +1995,13 @@ public class UiStateManager implements GameSession.ICallouts
 			_captureState.shouldCaptureMouse(true);
 			_currentGameSession.client.resumeGame();
 			break;
+		case CONNECTING:
+			// We need to cancel the disconnect and switch back to start.
+			Assert.assertTrue(null == _currentGameSession);
+			_pendingGameSession.shutdown();
+			_pendingGameSession = null;
+			_uiState = _UiState.START;
+			break;
 		case PLAY:
 			_uiState = _UiState.PAUSE;
 			_openStationLocation = null;
@@ -2003,12 +2053,12 @@ public class UiStateManager implements GameSession.ICallouts
 		, Integer basicWorldGeneratorSeed
 	)
 	{
-		_uiState = _UiState.PLAY;
-		_captureState.shouldCaptureMouse(true);
+		Assert.assertTrue(null == _pendingGameSession);
+		_uiState = _UiState.CONNECTING;
 		File localWorldDirectory = new File(localStorageDirectory, directoryName);
 		try
 		{
-			_currentGameSession = new GameSession(_env
+			_pendingGameSession = new GameSession(_env
 				, gl
 				, _mutablePreferences.screenBrightness
 				, resources
@@ -2028,8 +2078,6 @@ public class UiStateManager implements GameSession.ICallouts
 			// There are no connections in this case.
 			throw Assert.unexpected(e);
 		}
-		// TODO:  Use an intermediate state for this delay.
-		_currentGameSession.finishStartup();
 		_isRunningOnServer = false;
 		// We can exit from here since we have a return-to state.
 		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
@@ -2037,16 +2085,12 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress) throws ConnectException
 	{
-		_currentGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
-		// TODO:  Use an intermediate state for this delay.
-		_currentGameSession.finishStartup();
+		Assert.assertTrue(null == _pendingGameSession);
+		_uiState = _UiState.CONNECTING;
+		_pendingGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
 		_isRunningOnServer = true;
 		// We can exit from here since we have a return-to state.
 		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
-		
-		// We will only change state if nothing went wrong.
-		_uiState = _UiState.PLAY;
-		_captureState.shouldCaptureMouse(true);
 	}
 
 	private static void _rebuildSinglePlayerListBinding(Binding<List<String>> worldListBinding, File localStorageDirectory)
@@ -2125,6 +2169,11 @@ public class UiStateManager implements GameSession.ICallouts
 		 * If there is a _currentGameSession, it will be shown in the background.
 		 */
 		KEY_BINDINGS,
+		/**
+		 * The mode where we are waiting for the connection to complete.  This will naturally change into play on
+		 * success.
+		 */
+		CONNECTING,
 		
 		// These modes are specific to something involving a running game .
 		/**
