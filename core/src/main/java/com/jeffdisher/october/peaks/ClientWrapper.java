@@ -88,7 +88,6 @@ import com.jeffdisher.october.worldgen.WorldGenHelpers;
 
 public class ClientWrapper
 {
-	public static final int PORT = 5678;
 	/**
 	 * Technically, we can pick up a passive on every tick but we use this cooldown so that we don't aggressively check
 	 * distances.
@@ -191,14 +190,15 @@ public class ClientWrapper
 						, _config
 				);
 				_monitoringAgent = new MonitoringAgent();
-				_server = new ServerProcess(PORT
+				_server = new ServerProcess(0
 						, ServerRunner.DEFAULT_MILLIS_PER_TICK
 						, _loader
 						, () -> System.currentTimeMillis()
 						, _monitoringAgent
 						, _config
 				);
-				_client = new ClientProcess(new _ClientListener(), InetAddress.getLocalHost(), PORT, clientName, startingViewDistance);
+				int ephemeralPort = _server.getPort();
+				_client = new ClientProcess(new _ClientListener(), InetAddress.getLoopbackAddress(), ephemeralPort, clientName, startingViewDistance);
 				_console = ConsoleRunner.runInBackground(System.in
 						, System.out
 						, _monitoringAgent
