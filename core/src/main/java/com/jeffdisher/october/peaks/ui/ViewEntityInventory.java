@@ -68,6 +68,7 @@ public class ViewEntityInventory implements IView
 		_internalGridBinding = new Binding<>(null);
 		_itemGrid = new PaginatedItemView<>(ui
 				, _internalGridBinding
+				, (List<_ItemTuple> in) -> in
 				, shouldChangePage
 				, stateless
 		);

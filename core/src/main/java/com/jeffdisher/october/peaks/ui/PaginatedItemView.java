@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks.ui;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 
@@ -17,18 +18,21 @@ public class PaginatedItemView<T> implements IView
 
 	private final GlUi _ui;
 	private final Binding<List<T>> _binding;
+	private final Function<List<T>, List<T>> _bindingFilter;
 	private final BooleanSupplier _shouldChangePage;
 	private final IStatelessView<T> _innerView;
 	private int _currentPage;
 
 	public PaginatedItemView(GlUi ui
 			, Binding<List<T>> binding
+			, Function<List<T>, List<T>> bindingFilter
 			, BooleanSupplier shouldChangePage
 			, IStatelessView<T> innerView
 	)
 	{
 		_ui = ui;
 		_binding = binding;
+		_bindingFilter = bindingFilter;
 		_shouldChangePage = shouldChangePage;
 		_innerView = innerView;
 	}
@@ -36,7 +40,7 @@ public class PaginatedItemView<T> implements IView
 	@Override
 	public IAction render(Rect location, Point cursor)
 	{
-		List<T> itemList = _binding.get();
+		List<T> itemList = _bindingFilter.apply(_binding.get());
 		
 		// We want to draw these in a grid, in rows.  Leave space for the right margin since we count the left margin in the element sizing.
 		float xSpace = location.rightX() - location.leftX() - WINDOW_MARGIN;

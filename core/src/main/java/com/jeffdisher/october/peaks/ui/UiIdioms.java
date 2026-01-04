@@ -47,7 +47,7 @@ public class UiIdioms
 		if (canPageBack)
 		{
 			float left = rightX - 0.25f;
-			boolean isMouseOver = _drawTextInFrameWithHoverCheck(ui, left, buttonBase, "<", cursor);
+			boolean isMouseOver = _drawTextInColouredFrameWithHoverCheck(ui, ui.pixelLightGrey, left, buttonBase, "<", cursor);
 			if (isMouseOver)
 			{
 				eventHoverChangePage.accept(currentPage - 1);
@@ -58,7 +58,7 @@ public class UiIdioms
 		if (canPageForward)
 		{
 			float left = rightX - 0.1f;
-			boolean isMouseOver = _drawTextInFrameWithHoverCheck(ui, left, buttonBase, ">", cursor);
+			boolean isMouseOver = _drawTextInColouredFrameWithHoverCheck(ui, ui.pixelLightGrey, left, buttonBase, ">", cursor);
 			if (isMouseOver)
 			{
 				eventHoverChangePage.accept(currentPage + 1);
@@ -146,6 +146,23 @@ public class UiIdioms
 		return element.aspectRatio() * height;
 	}
 
+	/**
+	 * Draws the given text string into a coloured frame based at the bottom left point and returns if the cursor is
+	 * over the space where it was drawn.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param outlineTexture The texture number to use for the outline.
+	 * @param left The left edge of the frame.
+	 * @param bottom The bottom edge of the frame.
+	 * @param text The text.
+	 * @param cursor The current mouse location.
+	 * @return True if the cursor falls into the area where the frame was drawn.
+	 */
+	public static boolean drawTextInColouredFrameWithHoverCheck(GlUi ui, int outlineTexture, float left, float bottom, String text, Point cursor)
+	{
+		return _drawTextInColouredFrameWithHoverCheck(ui, outlineTexture, left, bottom, text, cursor);
+	}
+
 
 	private static void _drawOverlayFrame(GlUi gl, int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{
@@ -184,7 +201,7 @@ public class UiIdioms
 		}
 	}
 
-	private static boolean _drawTextInFrameWithHoverCheck(GlUi ui, float left, float bottom, String text, Point cursor)
+	private static boolean _drawTextInColouredFrameWithHoverCheck(GlUi ui, int outlineTexture, float left, float bottom, String text, Point cursor)
 	{
 		TextManager.Element element = ui.textManager.lazilyLoadStringTexture(text);
 		float top = bottom + GENERAL_TEXT_HEIGHT;
@@ -196,7 +213,7 @@ public class UiIdioms
 				: ui.pixelDarkGreyAlpha
 		;
 		
-		_drawOverlayFrame(ui, backgroundTexture, ui.pixelLightGrey, left, bottom, right, top);
+		_drawOverlayFrame(ui, backgroundTexture, outlineTexture, left, bottom, right, top);
 		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
 		return isMouseOver;
 	}
