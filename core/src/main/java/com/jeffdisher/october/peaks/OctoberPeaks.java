@@ -2,8 +2,6 @@ package com.jeffdisher.october.peaks;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -17,10 +15,7 @@ import com.jeffdisher.october.peaks.scene.EntityRenderer;
 import com.jeffdisher.october.peaks.scene.PassiveRenderer;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
-import com.jeffdisher.october.types.Difficulty;
-import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -30,10 +25,6 @@ public class OctoberPeaks extends ApplicationAdapter
 
 	private final WindowListener _windowListener;
 
-	// Note that these "no UI" ivars are only set when running in the testing mode where there is no top-level UI or local preferences.
-	private final String _noUiClientName;
-	private final InetSocketAddress _noUiServerSocketAddress;
-
 	private GL20 _gl;
 	private Environment _environment;
 	private File _localStorageDirectory;
@@ -41,25 +32,9 @@ public class OctoberPeaks extends ApplicationAdapter
 	private InputManager _input;
 	private UiStateManager _uiState;
 
-	public OctoberPeaks(Options options, WindowListener windowListener)
+	public OctoberPeaks(WindowListener windowListener)
 	{
 		_windowListener = windowListener;
-		if (null != options)
-		{
-			// We were told to start up in an explicit (no UI) mode so use that.
-			String givenName = options.clientName();
-			_noUiClientName = (null != givenName)
-					? givenName
-					: "Local"
-			;
-			_noUiServerSocketAddress = options.serverAddress();
-		}
-		else
-		{
-			// We were told to start up with an interactive UI to choose the mode.
-			_noUiClientName = null;
-			_noUiServerSocketAddress = null;
-		}
 	}
 
 	@Override
@@ -67,58 +42,9 @@ public class OctoberPeaks extends ApplicationAdapter
 	{
 		_initializeCommonResources();
 		
-		// Normally, these "no-UI" ivars are left null but some testing modes explicitly set them to bypass normal top-level UI.
-		boolean isNoUiMode = (null != _noUiClientName);
-		_initializeLocalStorage(isNoUiMode);
+		_initializeLocalStorage();
 		MutablePreferences prefs = new MutablePreferences(_localStorageDirectory);
-		_initializeInputAndState(isNoUiMode, prefs);
-		if (isNoUiMode)
-		{
-			// In this testing mode, we start directly in the game, never creating the top-level UI.
-			File localWorldDirectory = new File(_localStorageDirectory, "world");
-			GameSession currentGameSession;
-			try
-			{
-				// In this running mode, we always just use the defaults so pass nulls or local/ephemeral bindings.
-				Binding<Float> screenBrightness = prefs.screenBrightness;
-				int startingViewDistance = prefs.preferredViewDistance.get();
-				WorldConfig.WorldGeneratorName worldGeneratorName = null;
-				WorldConfig.DefaultPlayerMode defaultPlayerMode = null;
-				Difficulty difficulty = null;
-				Integer basicWorldGeneratorSeed = null;
-				currentGameSession = new GameSession(_environment
-					, _gl
-					, screenBrightness
-					, _resources
-					, _noUiClientName
-					, startingViewDistance
-					, _noUiServerSocketAddress
-					, localWorldDirectory
-					, worldGeneratorName
-					, defaultPlayerMode
-					, difficulty
-					, basicWorldGeneratorSeed
-					, _uiState
-				);
-			}
-			catch (ConnectException e)
-			{
-				// In this start-up mode, we just want to print the error and exit.
-				System.err.println("Failed to connect to server: " + _noUiServerSocketAddress);
-				e.printStackTrace();
-				System.exit(1);
-				throw Assert.unreachable();
-			}
-			boolean onServer = (null != _noUiServerSocketAddress);
-			_uiState.startPlay(currentGameSession, onServer);
-			
-			// Finish the rest of the startup now that the pieces are in place.
-			currentGameSession.finishStartup();
-		}
-		else
-		{
-			// In this normal mode, we start at the top-level UI, so the UI state is managed internally to the _uiState.
-		}
+		_initializeInputAndState(prefs);
 	}
 
 	@Override
@@ -197,30 +123,22 @@ public class OctoberPeaks extends ApplicationAdapter
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 	}
 
-	private void _initializeLocalStorage(boolean isNoUiMode)
+	private void _initializeLocalStorage()
 	{
 		String envVar = System.getenv(ENV_VAR_OCTOBER_PEAKS_ROOT);
-		if (isNoUiMode)
-		{
-			// In no-UI mode, just put this in /tmp (this is only for testing unless over-ridden).
-			_localStorageDirectory = new File("/tmp/OctoberPeaks");
-		}
-		else
-		{
-			// We will just use external storage, which should put this in home, unless our env var is specified.
-			_localStorageDirectory = (null != envVar)
-					? new File(envVar)
-					: new File(new File(Gdx.files.getExternalStoragePath()), "OctoberPeaks")
-			;
-		}
+		// We will just use external storage, which should put this in home, unless our env var is specified.
+		_localStorageDirectory = (null != envVar)
+			? new File(envVar)
+			: new File(new File(Gdx.files.getExternalStoragePath()), "OctoberPeaks")
+		;
 		Assert.assertTrue(_localStorageDirectory.isDirectory() || _localStorageDirectory.mkdirs());
 	}
 
-	private void _initializeInputAndState(boolean isNoUiMode, MutablePreferences mutablePreferences)
+	private void _initializeInputAndState(MutablePreferences mutablePreferences)
 	{
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls(_localStorageDirectory);
-		_input = new InputManager(mutableControls, isNoUiMode);
+		_input = new InputManager(mutableControls);
 		_windowListener.setInputManager(_input);
 		_uiState = new UiStateManager(_environment, _gl, _localStorageDirectory, _resources, mutableControls, mutablePreferences, new UiStateManager.ICallouts() {
 			@Override

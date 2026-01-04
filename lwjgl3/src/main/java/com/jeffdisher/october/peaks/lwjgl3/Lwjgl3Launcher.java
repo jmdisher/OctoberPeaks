@@ -5,7 +5,6 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Window;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowListener;
 import com.jeffdisher.october.peaks.OctoberPeaks;
-import com.jeffdisher.october.peaks.Options;
 import com.jeffdisher.october.peaks.WindowListener;
 
 
@@ -16,13 +15,13 @@ public class Lwjgl3Launcher
 	{
 		if (StartupHelper.startNewJvmIfRequired())
 			return; // This handles macOS support and helps on Windows.
-		createApplication(Options.fromCommandLine(args));
+		createApplication();
 	}
 
-	private static Lwjgl3Application createApplication(Options options)
+	private static Lwjgl3Application createApplication()
 	{
 		WindowListener windowListener = new WindowListener();
-		return new Lwjgl3Application(new OctoberPeaks(options, windowListener), getDefaultConfiguration(windowListener));
+		return new Lwjgl3Application(new OctoberPeaks(windowListener), getDefaultConfiguration(windowListener));
 	}
 
 	private static Lwjgl3ApplicationConfiguration getDefaultConfiguration(WindowListener windowListener)

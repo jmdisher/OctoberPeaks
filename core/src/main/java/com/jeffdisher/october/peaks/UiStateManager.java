@@ -126,7 +126,6 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
-	private boolean _shouldQuitDirectly;
 	private boolean _isRunningOnServer;
 	private AbsoluteLocation _openStationLocation;
 	private boolean _viewingFuelInventory;
@@ -694,17 +693,9 @@ public class UiStateManager implements GameSession.ICallouts
 			, (ViewTextButton<String> button, String text) -> {
 				if (_leftClick)
 				{
-					// The exit button should default to quitting if we started up directly into play state.
-					if (_shouldQuitDirectly)
-					{
-						Gdx.app.exit();
-					}
-					else
-					{
-						_currentGameSession.shutdown();
-						_currentGameSession = null;
-						_uiState = _UiState.START;
-					}
+					_currentGameSession.shutdown();
+					_currentGameSession = null;
+					_uiState = _UiState.START;
 				}
 		});
 		_optionsButton = new ViewTextButton<>(_ui, new Binding<>("Game Options")
@@ -862,17 +853,6 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		Object old = _otherPlayersById.remove(clientId);
 		Assert.assertTrue(null != old);
-	}
-
-	public void startPlay(GameSession currentGameSession, boolean onServer)
-	{
-		Assert.assertTrue(_UiState.START == _uiState);
-		_uiState = _UiState.PLAY;
-		_currentGameSession = currentGameSession;
-		_isRunningOnServer = onServer;
-		// We will quit directly from the entry-point, given that there is no return-to state.
-		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Quit");
-		_shouldQuitDirectly = true;
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
