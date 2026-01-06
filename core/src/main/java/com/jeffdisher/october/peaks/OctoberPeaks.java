@@ -144,7 +144,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			@Override
 			public void shouldCaptureMouse(boolean setCapture)
 			{
-				_input.enterCaptureState(setCapture);
+				_windowListener.setLogicMouseCaptureState(setCapture);
 			}
 		});
 	}

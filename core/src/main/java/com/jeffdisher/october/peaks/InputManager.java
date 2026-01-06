@@ -324,22 +324,6 @@ public class InputManager
 		_enterCaptureState(state);
 	}
 
-	/**
-	 * Disables the capture state, if active, returning whether or not mouse movements were being captured before this
-	 * call.
-	 * 
-	 * @return True if capturing was active (so it can be reenabled by the caller, later).
-	 */
-	public boolean suspendCaptureState()
-	{
-		boolean wasCapturing = _shouldCaptureMouseMovements;
-		if (wasCapturing)
-		{
-			_enterCaptureState(false);
-		}
-		return wasCapturing;
-	}
-
 
 	private void _enterCaptureState(boolean state)
 	{
