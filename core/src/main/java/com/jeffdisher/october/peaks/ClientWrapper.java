@@ -1162,19 +1162,16 @@ public class ClientWrapper
 		@Override
 		public void connectionClosed()
 		{
-			// TODO:  Handle this more gracefully in the future (we have no "connection interface" so there is not much to do beyond exit, at the moment).
-			System.out.println("Connection closed");
-			if (null != _server)
-			{
-				_server.stop();
-			}
-			System.exit(0);
+			// We don't expect this disconnect callback in a single-player run since we explicitly disconnect the client before stopping the server.
+			Assert.assertTrue(null == _server);
+			
+			_updateConsumer.didDisconnect();
 		}
 		@Override
 		public void connectionEstablished(int assignedEntityId, int currentViewDistance)
 		{
 			_assignedLocalEntityId = assignedEntityId;
-			// TODO: We should probably pass currentViewDistance back so that this can initialize the UI.
+			_updateConsumer.didConnect(currentViewDistance);
 		}
 		@Override
 		public void cuboidDidChange(IReadOnlyCuboidData cuboid
@@ -1331,6 +1328,9 @@ public class ClientWrapper
 
 	public static interface IUpdateConsumer
 	{
+		void didConnect(int currentViewDistance);
+		void didDisconnect();
+		
 		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
 		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks);
 		void unload(CuboidAddress address);

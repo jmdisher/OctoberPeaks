@@ -131,10 +131,13 @@ public class GameSession
 	/**
 	 * These are implemented by the UI state manager since it needs to be able to display information about the current
 	 * entity and other clients.  These aren't used for game logic (the state manager doesn't contain any), just
-	 * displaying information.
+	 * displaying information and determining when to change top-level UI state.
 	 */
 	public static interface ICallouts
 	{
+		void didConnect(int currentViewDistance);
+		void didDisconnect();
+		
 		void thisEntityUpdated(Entity projectedEntity);
 		void otherClientJoined(int clientId, String name);
 		void otherClientLeft(int clientId);
@@ -143,6 +146,16 @@ public class GameSession
 
 	private class _UpdateConsumer implements ClientWrapper.IUpdateConsumer
 	{
+		@Override
+		public void didConnect(int currentViewDistance)
+		{
+			_callouts.didConnect(currentViewDistance);
+		}
+		@Override
+		public void didDisconnect()
+		{
+			_callouts.didDisconnect();
+		}
 		@Override
 		public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 		{

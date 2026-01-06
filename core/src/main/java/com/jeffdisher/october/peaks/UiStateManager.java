@@ -825,6 +825,28 @@ public class UiStateManager implements GameSession.ICallouts
 	}
 
 	@Override
+	public void didConnect(int currentViewDistance)
+	{
+		// We just use this to initialize our preferences.
+		_mutablePreferences.preferredViewDistance.set(currentViewDistance);
+	}
+
+	@Override
+	public void didDisconnect()
+	{
+		// This is called when the server unexpectedly disconnects us so we want to change top-level state.
+		_currentGameSession.shutdown();
+		_currentGameSession = null;
+		
+		// If we were in the active play state, release the mouse capture (this check just makes the transition more explicit).
+		if (_UiState.PLAY == _uiState)
+		{
+			_captureState.shouldCaptureMouse(false);
+		}
+		_uiState = _UiState.START;
+	}
+
+	@Override
 	public void thisEntityUpdated(Entity projectedEntity)
 	{
 		_entityBinding.set(projectedEntity);
