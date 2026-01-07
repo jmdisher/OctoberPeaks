@@ -13,6 +13,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.PropertyHelpers;
 import com.jeffdisher.october.properties.PropertyRegistry;
 import com.jeffdisher.october.properties.PropertyType;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.ItemSlot;
@@ -166,6 +167,7 @@ public class ViewEntityInventory implements IView
 				byte durability = _getValue(properties, PropertyRegistry.ENCHANT_DURABILITY);
 				byte weaponMelee = _getValue(properties, PropertyRegistry.ENCHANT_WEAPON_MELEE);
 				byte toolEfficiency = _getValue(properties, PropertyRegistry.ENCHANT_TOOL_EFFICIENCY);
+				AbsoluteLocation locationBinding = _getGenericValue(properties, PropertyRegistry.LOCATION);
 				
 				List<String> strings = new ArrayList<>();
 				float width = UiIdioms.getTextWidth(_ui, name, UiIdioms.GENERAL_TEXT_HEIGHT);
@@ -195,6 +197,14 @@ public class ViewEntityInventory implements IView
 					height += UiIdioms.GENERAL_TEXT_HEIGHT;
 					strings.add(enchant);
 				}
+				if (null != locationBinding)
+				{
+					String enchant = String.format("+location: (%d, %d, %d)", locationBinding.x(), locationBinding.y(), locationBinding.z());
+					float thisWidth = UiIdioms.getTextWidth(_ui, enchant, UiIdioms.GENERAL_TEXT_HEIGHT);
+					width = Math.max(width, thisWidth);
+					height += UiIdioms.GENERAL_TEXT_HEIGHT;
+					strings.add(enchant);
+				}
 				
 				Rect bounds = new Rect(cursor.x(), cursor.y() - height, cursor.x() + width + (2.0f * UiIdioms.OUTLINE_SIZE), cursor.y());
 				UiIdioms.drawOutline(_ui, bounds, false);
@@ -211,7 +221,15 @@ public class ViewEntityInventory implements IView
 		}
 		private static byte _getValue(Map<PropertyType<?>, Object> properties, PropertyType<Byte> type)
 		{
-			byte value = 0;
+			Byte value = _getGenericValue(properties, type);
+			return (null != value)
+				? value.byteValue()
+				: 0
+			;
+		}
+		private static <T> T _getGenericValue(Map<PropertyType<?>, Object> properties, PropertyType<T> type)
+		{
+			T value = null;
 			if (properties.containsKey(type))
 			{
 				Object raw = properties.get(type);
