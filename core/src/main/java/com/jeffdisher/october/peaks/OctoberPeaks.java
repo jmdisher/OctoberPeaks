@@ -147,5 +147,27 @@ public class OctoberPeaks extends ApplicationAdapter
 				_windowListener.setLogicMouseCaptureState(setCapture);
 			}
 		});
+		
+		// Install an exception handler and send it to the state manager.
+		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()
+		{
+			@Override
+			public void uncaughtException(Thread t, Throwable e)
+			{
+				// We will print the information to the console but also enter the error state.
+				String title = "Fatal error in thread: " + t;
+				System.err.println(title);
+				e.printStackTrace(System.err);
+				
+				StackTraceElement[] stack = e.getStackTrace();
+				String[] payload = new String[stack.length + 1];
+				payload[0] = title;
+				for (int i = 0; i < stack.length; ++i)
+				{
+					payload[i + 1] = stack[i].toString();
+				}
+				_uiState.enterErrorState(payload);
+			}
+		});
 	}
 }

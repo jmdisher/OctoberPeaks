@@ -213,6 +213,11 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewKeyControlSelector _keyBindingSelectorControl;
 	// We also use _returnToPauseButton here.
 
+	// UI and state related to the fatal ERROR state.
+	private final ViewTextButton<String> _copyToClipboardButton;
+	private String[] _errorPayload;
+	// Note that we also use the _quitButton in this state.
+
 	// Data related to the liquid overlay.
 	private final Set<Block> _waterBlockTypes;
 	private final Set<Block> _lavaBlockTypes;
@@ -278,7 +283,15 @@ public class UiStateManager implements GameSession.ICallouts
 				if (_leftClick)
 				{
 					// From here, we quit directly, as this is top-level.
-					Gdx.app.exit();
+					if (null == _errorPayload)
+					{
+						Gdx.app.exit();
+					}
+					else
+					{
+						// (if there is an error payload, we won't wait for the app to quit).
+						System.exit(1);
+					}
 				}
 		});
 		
@@ -813,6 +826,22 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		);
 		
+		_copyToClipboardButton = new ViewTextButton<>(_ui, new Binding<>("Copy to Clipboard")
+			, (String value) -> value
+			, (ViewTextButton<String> button, String ignored) -> {
+				if (_leftClick)
+				{
+					// Just copy the payload to the clipbaord.
+					StringBuilder builder = new StringBuilder();
+					for (String elt : _errorPayload)
+					{
+						builder.append(elt);
+						builder.append('\n');
+					}
+					Gdx.app.getClipboard().setContents(builder.toString());
+				}
+		});
+		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
 				, _env.blocks.fromItem(_env.items.getItemById("op.water_strong"))
@@ -1172,9 +1201,9 @@ public class UiStateManager implements GameSession.ICallouts
 				_currentGameSession.client.passTimeWhilePaused();
 			}
 			break;
-		default:
-			// Hitting this will notify us that something is missing.
-			throw Assert.unreachable();
+		case ERROR:
+			// No special events in this case.
+			break;
 		}
 		
 		_clearEvents();
@@ -1227,6 +1256,13 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		}
+	}
+
+	public void enterErrorState(String[] payload)
+	{
+		_uiState = _UiState.ERROR;
+		_errorPayload = payload;
+		_captureState.shouldCaptureMouse(false);
 	}
 
 	public void shutdown()
@@ -1608,6 +1644,29 @@ public class UiStateManager implements GameSession.ICallouts
 		return action;
 	}
 
+	private IAction _drawErrorStateWindows()
+	{
+		// We just draw the message on a black screen.
+		String title = "Fatal Error";
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.7f, title);
+		float topY = 0.6f;
+		for (String elt : _errorPayload)
+		{
+			float bottomY = topY - UiIdioms.GENERAL_TEXT_HEIGHT;
+			UiIdioms.drawTextLeft(_ui, new Rect(-0.8f, bottomY, 0.8f, topY), elt);
+			topY = bottomY;
+			if (topY < -0.6f)
+			{
+				break;
+			}
+		}
+		IAction action = null;
+		action = _renderViewChainAction(_copyToClipboardButton, new Rect(-0.6f, -0.8f, -0.1f, -0.7f), action);
+		action = _renderViewChainAction(_quitButton, new Rect(0.1f, -0.8f, 0.6f, -0.7f), action);
+		
+		return action;
+	}
+
 	private IAction _drawPlayStateWindows()
 	{
 		// In this case, just draw the common UI elements.
@@ -1809,7 +1868,11 @@ public class UiStateManager implements GameSession.ICallouts
 		case PAUSE:
 			action = _drawPauseStateWindows();
 			break;
+		case ERROR:
+			action = _drawErrorStateWindows();
+			break;
 		default:
+			// We need this case since action is otherwise not initialized.
 			throw Assert.unreachable();
 		}
 		
@@ -2041,6 +2104,9 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 			break;
+		case ERROR:
+			// There is no transition from this state.
+			break;
 		}
 		// Any meaning of "back" should stop text input.
 		_typingCapture = null;
@@ -2193,6 +2259,10 @@ public class UiStateManager implements GameSession.ICallouts
 		 * difference).
 		 */
 		PAUSE,
+		/**
+		 * A state used to display a fatal error message before exiting.
+		 */
+		ERROR,
 	}
 
 
