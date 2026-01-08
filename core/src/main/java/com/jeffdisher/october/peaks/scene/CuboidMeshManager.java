@@ -43,7 +43,8 @@ public class CuboidMeshManager
 	public static final int BUFFER_SIZE = 64 * 1024 * 1024;
 
 	// Block type IDs which have some special use.
-	public static final String PEDESTAL_ITEM_ID = "op.pedestal";
+	public static final String ITEM_ID_PEDESTAL = "op.pedestal";
+	public static final String ITEM_ID_ENCHANTING_TABLE = "op.enchanting_table";
 
 	// Non-mutated data.
 	private final Environment _env;
@@ -53,7 +54,7 @@ public class CuboidMeshManager
 	private final BlockModelsAndAtlas _blockModels;
 	private final BasicBlockAtlas _blockTextures;
 	private final AuxilliaryTextureAtlas _auxBlockTextures;
-	private final Block _pedestalBlock;
+	private final Set<Block> _itemSlotBlocks;
 
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
@@ -83,7 +84,9 @@ public class CuboidMeshManager
 		_blockModels = blockModels;
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
-		_pedestalBlock = env.blocks.fromItem(env.items.getItemById(PEDESTAL_ITEM_ID));
+		_itemSlotBlocks = Set.of(env.blocks.fromItem(env.items.getItemById(ITEM_ID_PEDESTAL))
+			, env.blocks.fromItem(env.items.getItemById(ITEM_ID_ENCHANTING_TABLE))
+		);
 		
 		// Foreground-only data.
 		_foregroundCuboids = new HashMap<>();
@@ -453,7 +456,7 @@ public class CuboidMeshManager
 		BufferBuilder.Buffer modelBuffer = builder.finishOne();
 		
 		// Create the vertex array for any items visible in the world.
-		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _pedestalBlock);
+		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _itemSlotBlocks);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
 		// Create the transparent (non-water) cuboid vertices.

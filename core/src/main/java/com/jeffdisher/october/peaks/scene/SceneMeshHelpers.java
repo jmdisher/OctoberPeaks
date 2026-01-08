@@ -285,7 +285,7 @@ public class SceneMeshHelpers
 			, AuxilliaryTextureAtlas auxAtlas
 			, IReadOnlyCuboidData cuboid
 			, ColumnHeightMap heightMap
-			, Block pedestal
+			, Set<Block> itemSlotRender
 	)
 	{
 		float textureSize = itemAtlas.coordinateSize;
@@ -299,7 +299,7 @@ public class SceneMeshHelpers
 				Assert.assertTrue((byte)1 == size);
 				BlockProxy proxy = new BlockProxy(base, cuboid);
 				Block blockType = proxy.getBlock();
-				if (pedestal == blockType)
+				if (itemSlotRender.contains(blockType))
 				{
 					Item type = specialSlot.getType();
 					float[] uvBase = itemAtlas.baseOfTexture(type.number());
