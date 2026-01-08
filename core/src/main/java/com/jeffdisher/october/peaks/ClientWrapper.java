@@ -1296,6 +1296,11 @@ public class ClientWrapper
 				break;
 			case LIQUID_PLACED:
 			case LIQUID_REMOVED:
+			case ENTITY_ATE_FOOD:
+			case ENTITY_PICKED_UP_PASSIVE:
+			case CRAFT_IN_INVENTORY_COMPLETE:
+			case CRAFT_IN_BLOCK_COMPLETE:
+			case ENCHANT_COMPLETE:
 				// Ignore these.
 				break;
 			default:
