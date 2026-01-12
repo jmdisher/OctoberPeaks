@@ -19,6 +19,8 @@ import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.LoadedResources;
+import com.jeffdisher.october.peaks.graphics.Attribute;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
@@ -118,13 +120,13 @@ public class BlockRenderer
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
 			_blockModelBounds = _blockModels.buildModelBoundingBoxes();
 			_highlightTexture = TextureHelpers.loadSinglePixelImageRGBA(gl, new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, 0x7f});
-			_defaultHighlightCube = SceneMeshHelpers.createOutlinePrism(gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
+			_defaultHighlightCube = _createOutlinePrism(gl, _program.attributes, meshBuffer, Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f), _auxBlockTextures);
 			Map<Block, VertexArray> blockModelHighlightCubes = new HashMap<>();
 			for (Map.Entry<Block, Prism> elt : _blockModelBounds.entrySet())
 			{
 				Block key = elt.getKey();
 				Prism value = elt.getValue();
-				VertexArray specialCube = SceneMeshHelpers.createOutlinePrism(gl, _program.attributes, meshBuffer, value, _auxBlockTextures);
+				VertexArray specialCube = _createOutlinePrism(gl, _program.attributes, meshBuffer, value, _auxBlockTextures);
 				blockModelHighlightCubes.put(key, specialCube);
 			}
 			_blockModelHighlightCubes = Collections.unmodifiableMap(blockModelHighlightCubes);
@@ -357,5 +359,19 @@ public class BlockRenderer
 	{
 		// Resources are shut down on their own lifecycle.
 		_cuboidMeshes.shutdown();
+	}
+
+
+	private static VertexArray _createOutlinePrism(GL20 gl
+		, Attribute[] attributes
+		, FloatBuffer meshBuffer
+		, Prism prism
+		, AuxilliaryTextureAtlas auxAtlas
+	)
+	{
+		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
+		MeshHelperBufferBuilder meshBuilder = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		SceneMeshHelpers.populateOutlinePrism(gl, meshBuilder, prism, auxAtlas);
+		return builder.finishOne().flush(gl);
 	}
 }

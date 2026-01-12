@@ -419,10 +419,11 @@ public class CuboidMeshManager
 		AuxVariantMap variantMap = new AuxVariantMap(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
 		
 		// Create the opaque cuboid vertices.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
-				, builder
+				, builderWrapper
 				, _blockTextures
 				, variantMap
 				, _auxBlockTextures
@@ -434,7 +435,7 @@ public class CuboidMeshManager
 		short lavaStrongNumber = _env.items.getItemById("op.lava_strong").number();
 		short lavaWeakNumber = _env.items.getItemById("op.lava_weak").number();
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
-				, builder
+				, builderWrapper
 				, _blockTextures
 				, _auxBlockTextures
 				, request.inputs
@@ -456,13 +457,13 @@ public class CuboidMeshManager
 		BufferBuilder.Buffer modelBuffer = builder.finishOne();
 		
 		// Create the vertex array for any items visible in the world.
-		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builder, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _itemSlotBlocks);
+		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builderWrapper, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _itemSlotBlocks);
 		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
 		
 		// Create the transparent (non-water) cuboid vertices.
 		// Note that this may be removed in the future if we end up with no transparent block textures after converting associated blocks to models.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
-				, builder
+				, builderWrapper
 				, _blockTextures
 				, variantMap
 				, _auxBlockTextures
@@ -476,7 +477,7 @@ public class CuboidMeshManager
 		short waterStrongNumber = _env.items.getItemById("op.water_strong").number();
 		short waterWeakNumber = _env.items.getItemById("op.water_weak").number();
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
-				, builder
+				, builderWrapper
 				, _blockTextures
 				, _auxBlockTextures
 				, request.inputs

@@ -111,7 +111,8 @@ public class PassiveRenderer
 			// TODO:  We will need to generalize this for other passive types.
 			float itemEdge = PassiveType.ITEM_SLOT.volume().width();
 			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			SceneMeshHelpers.drawPassiveStandingSquare(builder
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
 				, itemEdge
 				, textureSize
 			);
@@ -171,7 +172,8 @@ public class PassiveRenderer
 			
 			// TODO:  We will need to generalize this for other passive types.
 			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			SceneMeshHelpers.drawPassiveCube(builder, textureSize);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+			SceneMeshHelpers.drawPassiveCube(builderWrapper, textureSize);
 			_fallingBlockVertices = builder.finishOne().flush(gl);
 		}
 		

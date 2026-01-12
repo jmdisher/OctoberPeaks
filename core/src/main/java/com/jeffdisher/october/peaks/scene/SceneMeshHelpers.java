@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks.scene;
 
-import java.nio.FloatBuffer;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -15,10 +14,8 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
-import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
@@ -51,7 +48,7 @@ public class SceneMeshHelpers
 	};
 
 	public static void populateMeshBufferForCuboid(Environment env
-			, BufferBuilder builder
+			, MeshHelperBufferBuilder builder
 			, BasicBlockAtlas blockAtlas
 			, AuxVariantMap variantMap
 			, AuxilliaryTextureAtlas auxAtlas
@@ -173,7 +170,7 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateWaterMeshBufferForCuboid(Environment env
-			, BufferBuilder builder
+			, MeshHelperBufferBuilder builder
 			, BasicBlockAtlas blockAtlas
 			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
@@ -280,7 +277,7 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateMeshForItemsInWorld(Environment env
-			, BufferBuilder builder
+			, MeshHelperBufferBuilder builder
 			, ItemTextureAtlas itemAtlas
 			, AuxilliaryTextureAtlas auxAtlas
 			, IReadOnlyCuboidData cuboid
@@ -324,11 +321,10 @@ public class SceneMeshHelpers
 		}, null);
 	}
 
-	public static VertexArray createOutlinePrism(GL20 gl
-			, Attribute[] attributes
-			, FloatBuffer meshBuffer
-			, Prism prism
-			, AuxilliaryTextureAtlas auxAtlas
+	public static void populateOutlinePrism(GL20 gl
+		, MeshHelperBufferBuilder builder
+		, Prism prism
+		, AuxilliaryTextureAtlas auxAtlas
 	)
 	{
 		// This is currently how we render entities so we can use the hard-coded coordinates.
@@ -338,8 +334,6 @@ public class SceneMeshHelpers
 		// We will use no AUX texture.
 		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
-		
-		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
 		
 		// This is an outline so we want to increase the space around the prism before making the vertices.
 		float outlineDistance = 0.01f;
@@ -354,11 +348,9 @@ public class SceneMeshHelpers
 		// We always want the outline highlighted.
 		float blockLightMultiplier = 1.0f;
 		_buildCube(builder, uvBase, textureSize, auxUv, auxTextureSize, outline, blockLightMultiplier);
-		
-		return builder.finishOne().flush(gl);
 	}
 
-	public static void drawPassiveStandingSquare(BufferBuilder builder
+	public static void drawPassiveStandingSquare(MeshHelperBufferBuilder builder
 		, float itemEdge
 		, float textureSize
 	)
@@ -384,7 +376,7 @@ public class SceneMeshHelpers
 		);
 	}
 
-	public static void drawPassiveCube(BufferBuilder builder
+	public static void drawPassiveCube(MeshHelperBufferBuilder builder
 		, float textureSize
 	)
 	{
@@ -446,7 +438,7 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _drawStandingSquare(BufferBuilder builder
+	private static void _drawStandingSquare(MeshHelperBufferBuilder builder
 			, float[] base
 			, float edgeSize
 			, float[] uvBase
@@ -502,7 +494,7 @@ public class SceneMeshHelpers
 		);
 	}
 
-	private static void _populateQuad(BufferBuilder builder
+	private static void _populateQuad(MeshHelperBufferBuilder builder
 			, float[] base
 			, float[][] vertices
 			, float[] normal
@@ -661,7 +653,7 @@ public class SceneMeshHelpers
 	private static class _CommonVertexWriter implements FaceBuilder.IWriter
 	{
 		private final Environment _env;
-		private final BufferBuilder _builder;
+		private final MeshHelperBufferBuilder _builder;
 		private final AuxVariantMap _variantMap;
 		private final BasicBlockAtlas _blockAtlas;
 		private final AuxilliaryTextureAtlas _auxAtlas;
@@ -670,7 +662,7 @@ public class SceneMeshHelpers
 		private final MeshInputData _inputData;
 		
 		public _CommonVertexWriter(Environment env
-				, BufferBuilder builder
+				, MeshHelperBufferBuilder builder
 				, AuxVariantMap variantMap
 				, BasicBlockAtlas blockAtlas
 				, AuxilliaryTextureAtlas auxAtlas
@@ -1268,7 +1260,7 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _buildCube(BufferBuilder builder
+	private static void _buildCube(MeshHelperBufferBuilder builder
 		, float[] uvBase
 		, float textureSize
 		, float[] auxUv
