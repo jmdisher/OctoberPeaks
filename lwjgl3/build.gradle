@@ -88,7 +88,7 @@ construo {
         // macOS needs an identifier
         identifier.set("com.jeffdisher.october.peaks." + appName)
         // Optional: icon for macOS
-        macIcon.set(project.file("icons/logo.icns"))
+        //macIcon.set(project.file("icons/logo.icns"))
       }
       create("macX64", Target.MacOs) {
         architecture.set(Target.Architecture.X86_64)
