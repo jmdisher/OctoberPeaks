@@ -82,7 +82,6 @@ public class PassiveRenderer
 			// Note that ItemSlot instances are typically what passives are used for, and they have a per-instance
 			// texture so we will need to pass in the base texture as a uniform and adjust the per-vertex coordinates as
 			// relative.
-			// TODO:  We will likely need to adapt how we are using this shader once other passive types are added.
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("passive_item.vert")
 				, MiscPeaksHelpers.readUtf8Asset("passive_item.frag")
@@ -90,9 +89,6 @@ public class PassiveRenderer
 					"aPosition",
 					"aNormal",
 					"aTexture0",
-					"aTexture1_ignored",
-					"aBlockLightMultiplier_ignored",
-					"aSkyLightMultiplier_ignored",
 				}
 			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
@@ -108,10 +104,10 @@ public class PassiveRenderer
 			direct.order(ByteOrder.nativeOrder());
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
 			
-			// TODO:  We will need to generalize this for other passive types.
 			float itemEdge = PassiveType.ITEM_SLOT.volume().width();
 			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+			boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(_program.attributes);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, attributesToUse);
 			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
 				, itemEdge
 				, textureSize
@@ -145,7 +141,6 @@ public class PassiveRenderer
 			// Note that ItemSlot instances are typically what passives are used for, and they have a per-instance
 			// texture so we will need to pass in the base texture as a uniform and adjust the per-vertex coordinates as
 			// relative.
-			// TODO:  We will likely need to adapt how we are using this shader once other passive types are added.
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("passive_block.vert")
 				, MiscPeaksHelpers.readUtf8Asset("passive_block.frag")
@@ -153,9 +148,6 @@ public class PassiveRenderer
 					"aPosition",
 					"aNormal",
 					"aTexture0",
-					"aTexture1_ignored",
-					"aBlockLightMultiplier_ignored",
-					"aSkyLightMultiplier_ignored",
 				}
 			);
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
@@ -170,9 +162,9 @@ public class PassiveRenderer
 			direct.order(ByteOrder.nativeOrder());
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
 			
-			// TODO:  We will need to generalize this for other passive types.
 			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+			boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(_program.attributes);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, attributesToUse);
 			SceneMeshHelpers.drawPassiveCube(builderWrapper, textureSize);
 			_fallingBlockVertices = builder.finishOne().flush(gl);
 		}

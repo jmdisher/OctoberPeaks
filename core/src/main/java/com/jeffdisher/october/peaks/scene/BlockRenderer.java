@@ -97,14 +97,7 @@ public class BlockRenderer
 			_program = Program.fullyLinkedProgram(gl
 					, MiscPeaksHelpers.readUtf8Asset("scene.vert")
 					, MiscPeaksHelpers.readUtf8Asset("scene.frag")
-					, new String[] {
-							"aPosition",
-							"aNormal",
-							"aTexture0",
-							"aTexture1",
-							"aBlockLightMultiplier",
-							"aSkyLightMultiplier",
-					}
+					, MeshHelperBufferBuilder.ATTRIBUTE_NAME_SUPERSET
 			);
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
