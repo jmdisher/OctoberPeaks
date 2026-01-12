@@ -483,12 +483,12 @@ public class TestSceneMeshHelpers
 		BufferBuilder.Buffer vertexBuffer = builder.finishOne();
 		float[] vertexData = new float[fullFloatsPerVertex * 6];
 		vertexBuffer.testGetFloats(vertexData);
-		Assert.assertArrayEquals(new float[] { 0.0f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 1.0f, 0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 0.0f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 1.0f, 0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 0.0f, 0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
+		Assert.assertArrayEquals(new float[] { -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
+			, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
 		}, vertexData, 0.01f);
 		
 		Attribute[] attributeSubset = new Attribute[] {ATTRIBUTES[0], ATTRIBUTES[2]};
@@ -511,12 +511,12 @@ public class TestSceneMeshHelpers
 		vertexBuffer = builder.finishOne();
 		vertexData = new float[minFloatsPerVertex * 6];
 		vertexBuffer.testGetFloats(vertexData);
-		Assert.assertArrayEquals(new float[] { 0.0f, 0.5f, 0.0f, 0.0f, 0.0f
-			, 1.0f, 0.5f, 0.0f, 0.25f, 0.0f
-			, 1.0f, 0.5f, 1.0f, 0.25f, 0.25f
-			, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f
-			, 1.0f, 0.5f, 1.0f, 0.25f, 0.25f
-			, 0.0f, 0.5f, 1.0f, 0.0f, 0.25f
+		Assert.assertArrayEquals(new float[] {-0.5f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
+			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
+			, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
+			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
 		}, vertexData, 0.01f);
 	}
 

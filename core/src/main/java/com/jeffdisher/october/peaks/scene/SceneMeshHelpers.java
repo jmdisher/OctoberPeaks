@@ -301,17 +301,16 @@ public class SceneMeshHelpers
 					Item type = specialSlot.getType();
 					float[] uvBase = itemAtlas.baseOfTexture(type.number());
 					float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
-					float pedestalTopHeight = 0.7f;
+					float pedestalTopHeight = 0.8f;
 					float itemEdge = 0.4f;
-					float itemInset = 0.3f;
 					
-					// We don't want to offset in X since that is the direction we currently draw into.
-					float[] itemBase = new float[] { blockBase[0] + itemInset, blockBase[1] + 0.5f, blockBase[2] + pedestalTopHeight };
+					// Note that we need to provide the base as the XY centre and Z base.
+					float[] centreBase = new float[] { blockBase[0] + 0.5f, blockBase[1] + 0.5f, blockBase[2] + pedestalTopHeight };
 					// We assume that things on pedestals have some kind of "internal" light.
 					float blockLightMultiplier = 0.5f;
 					// And we check the block light above them.
 					float skyLightMultiplier = ((base.z() + cuboidZ) == heightMap.getHeight(base.x(), base.y())) ? 1.0f : 0.0f;
-					_drawStandingSquare(builder, itemBase, itemEdge
+					_drawStandingSquareAtHorizontalCentre(builder, centreBase, itemEdge
 							, uvBase, textureSize
 							, blockLightMultiplier
 							, skyLightMultiplier
@@ -361,15 +360,13 @@ public class SceneMeshHelpers
 		// texture is done the same way: The base coordinates are passed in via uniform per-instance.
 		// TODO:  Change this (and the pedestal items) to use a more specific shader and vertex array shape.
 		float[] uvBase = new float[] { 0.0f, 0.0f };
-		// We draw this as a square in the XZ plane.
-		float halfEdge = itemEdge / 2.0f;
-		float[] blockBase = new float[] { 0.0f, halfEdge, 0.0f };
+		float[] centreBase = new float[] { 0.0f, 0.0f, 0.0f };
 		
 		// We don't use lighting for the passive items.
 		float blockLightMultiplier = 0.0f;
 		float skyLightMultiplier = 0.0f;
 		
-		_drawStandingSquare(builder, blockBase, itemEdge
+		_drawStandingSquareAtHorizontalCentre(builder, centreBase, itemEdge
 			, uvBase, textureSize
 			, blockLightMultiplier
 			, skyLightMultiplier
@@ -438,8 +435,8 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _drawStandingSquare(MeshHelperBufferBuilder builder
-			, float[] base
+	private static void _drawStandingSquareAtHorizontalCentre(MeshHelperBufferBuilder builder
+			, float[] centre
 			, float edgeSize
 			, float[] uvBase
 			, float textureSize
@@ -476,6 +473,9 @@ public class SceneMeshHelpers
 		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
 		float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
 		
+		// Note that this draws the vertices around centre, such that the XY coordinates are offset, but Z is at the base.
+		float halfEdge = edgeSize / 2.0f;
+		float[] base = new float[] {centre[0] - halfEdge, centre[1], centre[2]};
 		_populateQuad(builder, base
 				, new float[][] { OO, IO, II, OI }
 				, new float[] { 0.0f, 1.0f, 0.0f }
