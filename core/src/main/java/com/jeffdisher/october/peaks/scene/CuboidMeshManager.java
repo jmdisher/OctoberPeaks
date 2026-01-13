@@ -283,15 +283,15 @@ public class CuboidMeshManager
 				// We will still store an empty CuboidData if all of these are null, just for simplicity.
 				VertexArray opaqueData = (null != response.opaqueBuffer) ? _gpu.uploadBuffer(response.opaqueBuffer) : null;
 				VertexArray modelData = (null != response.modelBuffer) ? _gpu.uploadBuffer(response.modelBuffer) : null;
-				VertexArray itemsOnGroundArray = (null != response.itemsOnGroundBuffer) ? _gpu.uploadBuffer(response.itemsOnGroundBuffer) : null;
+				VertexArray itemSlotArray = (null != response.itemSlotArray) ? _gpu.uploadBuffer(response.itemSlotArray) : null;
 				VertexArray transparentData = (null != response.transparentBuffer) ? _gpu.uploadBuffer(response.transparentBuffer) : null;
 				VertexArray waterData = (null != response.waterBuffer) ? _gpu.uploadBuffer(response.waterBuffer) : null;
 				CuboidMeshes newData = new CuboidMeshes(response.cuboid.getCuboidAddress()
-						, opaqueData
-						, modelData
-						, itemsOnGroundArray
-						, transparentData
-						, waterData
+					, opaqueData
+					, modelData
+					, transparentData
+					, waterData
+					, itemSlotArray
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
 				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
@@ -456,10 +456,6 @@ public class CuboidMeshManager
 		);
 		BufferBuilder.Buffer modelBuffer = builder.finishOne();
 		
-		// Create the vertex array for any items visible in the world.
-		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builderWrapper, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _itemSlotBlocks);
-		BufferBuilder.Buffer itemsOnGroundBuffer = builder.finishOne();
-		
 		// Create the transparent (non-water) cuboid vertices.
 		// Note that this may be removed in the future if we end up with no transparent block textures after converting associated blocks to models.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
@@ -488,13 +484,17 @@ public class CuboidMeshManager
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
 		
+		// Create the vertex array for any item slots.
+		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builderWrapper, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _itemSlotBlocks);
+		BufferBuilder.Buffer itemSlotArray = builder.finishOne();
+		
 		return new _Response(request.meshBuffer
-				, cuboid
-				, opaqueBuffer
-				, modelBuffer
-				, itemsOnGroundBuffer
-				, transparentBuffer
-				, waterBuffer
+			, cuboid
+			, opaqueBuffer
+			, modelBuffer
+			, transparentBuffer
+			, waterBuffer
+			, itemSlotArray
 		);
 	}
 
@@ -508,10 +508,6 @@ public class CuboidMeshManager
 		{
 			_gpu.deleteBuffer(previous.modelArray);
 		}
-		if (null != previous.itemsOnGroundArray)
-		{
-			_gpu.deleteBuffer(previous.itemsOnGroundArray);
-		}
 		if (null != previous.transparentArray)
 		{
 			_gpu.deleteBuffer(previous.transparentArray);
@@ -519,6 +515,10 @@ public class CuboidMeshManager
 		if (null != previous.waterArray)
 		{
 			_gpu.deleteBuffer(previous.waterArray);
+		}
+		if (null != previous.itemSlotArray)
+		{
+			_gpu.deleteBuffer(previous.itemSlotArray);
 		}
 	}
 
@@ -652,11 +652,11 @@ public class CuboidMeshManager
 	}
 
 	public static record CuboidMeshes(CuboidAddress address
-			, VertexArray opaqueArray
-			, VertexArray modelArray
-			, VertexArray itemsOnGroundArray
-			, VertexArray transparentArray
-			, VertexArray waterArray
+		, VertexArray opaqueArray
+		, VertexArray modelArray
+		, VertexArray transparentArray
+		, VertexArray waterArray
+		, VertexArray itemSlotArray
 	) {}
 
 	private static record _InternalData(boolean requiresProcessing
@@ -669,12 +669,12 @@ public class CuboidMeshManager
 	) {}
 
 	private static record _Response(FloatBuffer meshBuffer
-			, IReadOnlyCuboidData cuboid
-			, BufferBuilder.Buffer opaqueBuffer
-			, BufferBuilder.Buffer modelBuffer
-			, BufferBuilder.Buffer itemsOnGroundBuffer
-			, BufferBuilder.Buffer transparentBuffer
-			, BufferBuilder.Buffer waterBuffer
+		, IReadOnlyCuboidData cuboid
+		, BufferBuilder.Buffer opaqueBuffer
+		, BufferBuilder.Buffer modelBuffer
+		, BufferBuilder.Buffer transparentBuffer
+		, BufferBuilder.Buffer waterBuffer
+		, BufferBuilder.Buffer itemSlotArray
 	) {}
 
 	private static record _HeightWrapper(int refCount

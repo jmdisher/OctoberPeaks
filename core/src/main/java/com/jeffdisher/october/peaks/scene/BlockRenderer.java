@@ -258,20 +258,6 @@ public class BlockRenderer
 		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
 		// this may not work for complex models.
 		
-		// Render any dropped items - these are typically transparent but we render them before water since we want to see them under water.
-		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
-		{
-			CuboidAddress key = value.address();
-			if (null != value.itemsOnGroundArray())
-			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
-				value.itemsOnGroundArray().drawAllTriangles(_gl);
-			}
-		}
-		
 		// We want to render the water before other transparent blocks since we don't want to see through the water if looking at leaves, for example.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
@@ -296,6 +282,45 @@ public class BlockRenderer
 				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
 				model.uploadAsUniform(_gl, _resources._uModelMatrix);
 				value.transparentArray().drawAllTriangles(_gl);
+			}
+		}
+	}
+
+	public void renderItemSlots(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
+	{
+		// We want to use the perspective projection and depth buffer for the main scene.
+		_gl.glEnable(GL20.GL_DEPTH_TEST);
+		_gl.glDepthFunc(GL20.GL_LESS);
+		_resources._program.useProgram();
+		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
+		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
+		
+		// This shader uses 2 textures.
+		_gl.glUniform1i(_resources._uTexture0, 0);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glUniform1i(_resources._uTexture1, 1);
+		_gl.glActiveTexture(GL20.GL_TEXTURE1);
+		
+		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
+		
+		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
+		
+		// These are now just item slot objects so we render them as transparent objects since they are just item textures.
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		{
+			CuboidAddress key = value.address();
+			if (null != value.itemSlotArray())
+			{
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _resources._uModelMatrix);
+				value.itemSlotArray().drawAllTriangles(_gl);
 			}
 		}
 	}

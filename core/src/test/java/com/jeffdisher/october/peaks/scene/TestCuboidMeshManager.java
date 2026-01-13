@@ -103,8 +103,8 @@ public class TestCuboidMeshManager
 		// We shouldn't see the finished result, yet.
 		CuboidMeshManager.CuboidMeshes data = manager.viewCuboids().iterator().next();
 		Assert.assertNull(data.opaqueArray());
-		Assert.assertNull(data.itemsOnGroundArray());
 		Assert.assertNull(data.transparentArray());
+		Assert.assertNull(data.itemSlotArray());
 		
 		_waitForOpaqueArray(manager, address);
 		Assert.assertEquals(36, manager.viewCuboids().iterator().next().opaqueArray().totalVertices);

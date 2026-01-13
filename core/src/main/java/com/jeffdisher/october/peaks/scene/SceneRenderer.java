@@ -90,6 +90,7 @@ public class SceneRenderer
 		{
 			_entityRenderer.renderSelectedEntity(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedEntity);
 		}
+		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye);
 		
 		_blockRenderer.handleEndOfFrame();
