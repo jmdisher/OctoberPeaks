@@ -18,15 +18,11 @@ import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.FacingDirection;
-import com.jeffdisher.october.types.Item;
-import com.jeffdisher.october.types.ItemSlot;
-import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;
 
 
@@ -274,50 +270,6 @@ public class SceneMeshHelpers
 				}
 			}
 		});
-	}
-
-	public static void populateMeshForItemsInWorld(Environment env
-			, MeshHelperBufferBuilder builder
-			, ItemTextureAtlas itemAtlas
-			, AuxilliaryTextureAtlas auxAtlas
-			, IReadOnlyCuboidData cuboid
-			, ColumnHeightMap heightMap
-			, Set<Block> itemSlotRender
-	)
-	{
-		float textureSize = itemAtlas.coordinateSize;
-		int cuboidZ = cuboid.getCuboidAddress().getBase().z();
-		
-		// See if there are any special slots in pedestals in this cuboid (we may generalize this later).
-		cuboid.walkData(AspectRegistry.SPECIAL_ITEM_SLOT, new IOctree.IWalkerCallback<ItemSlot>() {
-			@Override
-			public void visit(BlockAddress base, byte size, ItemSlot specialSlot)
-			{
-				Assert.assertTrue((byte)1 == size);
-				BlockProxy proxy = new BlockProxy(base, cuboid);
-				Block blockType = proxy.getBlock();
-				if (itemSlotRender.contains(blockType))
-				{
-					Item type = specialSlot.getType();
-					float[] uvBase = itemAtlas.baseOfTexture(type.number());
-					float[] blockBase = new float[] { (float) base.x(), (float) base.y(), (float) base.z() };
-					float pedestalTopHeight = 0.8f;
-					float itemEdge = 0.4f;
-					
-					// Note that we need to provide the base as the XY centre and Z base.
-					float[] centreBase = new float[] { blockBase[0] + 0.5f, blockBase[1] + 0.5f, blockBase[2] + pedestalTopHeight };
-					// We assume that things on pedestals have some kind of "internal" light.
-					float blockLightMultiplier = 0.5f;
-					// And we check the block light above them.
-					float skyLightMultiplier = ((base.z() + cuboidZ) == heightMap.getHeight(base.x(), base.y())) ? 1.0f : 0.0f;
-					_drawStandingSquareAtHorizontalCentre(builder, centreBase, itemEdge
-							, uvBase, textureSize
-							, blockLightMultiplier
-							, skyLightMultiplier
-					);
-				}
-			}
-		}, null);
 	}
 
 	public static void populateOutlinePrism(GL20 gl

@@ -100,6 +100,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					, "missing_texture.png"
 			);
 			BlockRenderer.Resources blockRenderer = new BlockRenderer.Resources(_environment, _gl, itemAtlas);
+			BlockRenderer.ItemSlotResources blockItemSlotRenderer = new BlockRenderer.ItemSlotResources(_gl, itemAtlas);
 			EntityRenderer.Resources entityRenderer = new EntityRenderer.Resources(_environment, _gl);
 			SkyBox.Resources skyBox = new SkyBox.Resources(_gl);
 			EyeEffect.Resources eyeEffect = new EyeEffect.Resources(_gl);
@@ -107,13 +108,14 @@ public class OctoberPeaks extends ApplicationAdapter
 			AudioManager.Resources audioManager = new AudioManager.Resources();
 			PassiveRenderer.Resources passive = new PassiveRenderer.Resources(_environment, _gl, itemAtlas);
 			_resources = new LoadedResources(itemAtlas
-					, blockRenderer
-					, entityRenderer
-					, skyBox
-					, eyeEffect
-					, glui
-					, audioManager
-					, passive
+				, blockRenderer
+				, blockItemSlotRenderer
+				, entityRenderer
+				, skyBox
+				, eyeEffect
+				, glui
+				, audioManager
+				, passive
 			);
 		}
 		catch (IOException | TabListReader.TabListException e)

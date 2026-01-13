@@ -5,6 +5,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -16,18 +17,21 @@ import java.util.stream.Collectors;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
+import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
-import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.CuboidColumnAddress;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.ItemSlot;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;
 
@@ -50,11 +54,10 @@ public class CuboidMeshManager
 	private final Environment _env;
 	private final IGpu _gpu;
 	private final Attribute[] _programAttributes;
-	private final ItemTextureAtlas _itemAtlas;
 	private final BlockModelsAndAtlas _blockModels;
 	private final BasicBlockAtlas _blockTextures;
 	private final AuxilliaryTextureAtlas _auxBlockTextures;
-	private final Set<Block> _itemSlotBlocks;
+	private final Map<Block, Float> _itemSlotBlocksHeights;
 
 	// Foreground-only data.
 	private final Map<CuboidAddress, _InternalData> _foregroundCuboids;
@@ -71,7 +74,6 @@ public class CuboidMeshManager
 	public CuboidMeshManager(Environment env
 			, IGpu gpu
 			, Attribute[] programAttributes
-			, ItemTextureAtlas itemAtlas
 			, BlockModelsAndAtlas blockModels
 			, BasicBlockAtlas blockTextures
 			, AuxilliaryTextureAtlas auxBlockTextures
@@ -80,12 +82,11 @@ public class CuboidMeshManager
 		_env = env;
 		_gpu = gpu;
 		_programAttributes = programAttributes;;
-		_itemAtlas = itemAtlas;
 		_blockModels = blockModels;
 		_blockTextures = blockTextures;
 		_auxBlockTextures = auxBlockTextures;
-		_itemSlotBlocks = Set.of(env.blocks.fromItem(env.items.getItemById(ITEM_ID_PEDESTAL))
-			, env.blocks.fromItem(env.items.getItemById(ITEM_ID_ENCHANTING_TABLE))
+		_itemSlotBlocksHeights = Map.of(env.blocks.fromItem(env.items.getItemById(ITEM_ID_PEDESTAL)), 0.8f
+			, env.blocks.fromItem(env.items.getItemById(ITEM_ID_ENCHANTING_TABLE)), 1.0f
 		);
 		
 		// Foreground-only data.
@@ -283,7 +284,6 @@ public class CuboidMeshManager
 				// We will still store an empty CuboidData if all of these are null, just for simplicity.
 				VertexArray opaqueData = (null != response.opaqueBuffer) ? _gpu.uploadBuffer(response.opaqueBuffer) : null;
 				VertexArray modelData = (null != response.modelBuffer) ? _gpu.uploadBuffer(response.modelBuffer) : null;
-				VertexArray itemSlotArray = (null != response.itemSlotArray) ? _gpu.uploadBuffer(response.itemSlotArray) : null;
 				VertexArray transparentData = (null != response.transparentBuffer) ? _gpu.uploadBuffer(response.transparentBuffer) : null;
 				VertexArray waterData = (null != response.waterBuffer) ? _gpu.uploadBuffer(response.waterBuffer) : null;
 				CuboidMeshes newData = new CuboidMeshes(response.cuboid.getCuboidAddress()
@@ -291,7 +291,7 @@ public class CuboidMeshManager
 					, modelData
 					, transparentData
 					, waterData
-					, itemSlotArray
+					, response.itemSlotArray
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
 				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
@@ -415,7 +415,6 @@ public class CuboidMeshManager
 	{
 		// Collect information about the cuboid.
 		IReadOnlyCuboidData cuboid = request.inputs.cuboid();
-		ColumnHeightMap heightMap = request.inputs.height();
 		AuxVariantMap variantMap = new AuxVariantMap(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
@@ -484,9 +483,34 @@ public class CuboidMeshManager
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
 		
+		// Find the list of visible item slots in this cuboid.
+		List<VisibleItemSlot> buildingItemSlotArray = new ArrayList<>();
 		// Create the vertex array for any item slots.
-		SceneMeshHelpers.populateMeshForItemsInWorld(_env, builderWrapper, _itemAtlas, _auxBlockTextures, cuboid, heightMap, _itemSlotBlocks);
-		BufferBuilder.Buffer itemSlotArray = builder.finishOne();
+		cuboid.walkData(AspectRegistry.SPECIAL_ITEM_SLOT, new IOctree.IWalkerCallback<ItemSlot>() {
+			@Override
+			public void visit(BlockAddress base, byte size, ItemSlot specialSlot)
+			{
+				Assert.assertTrue((byte)1 == size);
+				BlockProxy proxy = new BlockProxy(base, cuboid);
+				Block blockType = proxy.getBlock();
+				if (_itemSlotBlocksHeights.containsKey(blockType))
+				{
+					Item type = specialSlot.getType();
+					float blockX = (float) base.x();
+					float blockY = (float) base.y();
+					float blockZ = (float) base.z();
+					
+					// Note that we need to provide the base as the XY centre and Z base.
+					float topHeight = _itemSlotBlocksHeights.get(blockType);
+					VisibleItemSlot visible = new VisibleItemSlot(type, blockX + 0.5f, blockY + 0.5f, blockZ + topHeight);
+					buildingItemSlotArray.add(visible);
+				}
+			}
+		}, null);
+		List<VisibleItemSlot> itemSlotArray = buildingItemSlotArray.isEmpty()
+			? null
+			: Collections.unmodifiableList(buildingItemSlotArray)
+		;
 		
 		return new _Response(request.meshBuffer
 			, cuboid
@@ -515,10 +539,6 @@ public class CuboidMeshManager
 		if (null != previous.waterArray)
 		{
 			_gpu.deleteBuffer(previous.waterArray);
-		}
-		if (null != previous.itemSlotArray)
-		{
-			_gpu.deleteBuffer(previous.itemSlotArray);
 		}
 	}
 
@@ -656,8 +676,15 @@ public class CuboidMeshManager
 		, VertexArray modelArray
 		, VertexArray transparentArray
 		, VertexArray waterArray
-		, VertexArray itemSlotArray
+		, List<VisibleItemSlot> itemSlotArray
 	) {}
+
+	public static record VisibleItemSlot(Item item
+		, float centreX
+		, float centreY
+		, float baseZ
+	) {}
+
 
 	private static record _InternalData(boolean requiresProcessing
 			, IReadOnlyCuboidData cuboid
@@ -674,7 +701,7 @@ public class CuboidMeshManager
 		, BufferBuilder.Buffer modelBuffer
 		, BufferBuilder.Buffer transparentBuffer
 		, BufferBuilder.Buffer waterBuffer
-		, BufferBuilder.Buffer itemSlotArray
+		, List<VisibleItemSlot> itemSlotArray
 	) {}
 
 	private static record _HeightWrapper(int refCount

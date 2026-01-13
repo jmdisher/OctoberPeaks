@@ -34,7 +34,9 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.PassiveType;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -45,6 +47,7 @@ import com.jeffdisher.october.utils.Assert;
 public class BlockRenderer
 {
 	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
+	public static final float TWO_PI_RADIANS = (float)(2.0 * Math.PI);
 
 	public static class Resources
 	{
@@ -140,10 +143,72 @@ public class BlockRenderer
 		}
 	}
 
+	/**
+	 * Just the scene_itemSlot program and associated uniforms.
+	 */
+	public static class ItemSlotResources
+	{
+		private final Program _program;
+		private final int _uViewMatrix;
+		private final int _uProjectionMatrix;
+		private final int _uWorldLightLocation;
+		private final int _uTexture0;
+		private final int _uBrightness;
+		private final int _uUvBase;
+		private final int _uAnimation;
+		private final int _uCentre;
+		private final VertexArray _itemSlotVertices;
+		
+		public ItemSlotResources(GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
+		{
+			// Create the shader program.
+			_program = Program.fullyLinkedProgram(gl
+					, MiscPeaksHelpers.readUtf8Asset("scene_itemSlot.vert")
+					, MiscPeaksHelpers.readUtf8Asset("scene_itemSlot.frag")
+					, new String[] {
+						"aPosition",
+						"aNormal",
+						"aTexture0",
+					}
+				);
+			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
+			_uTexture0 = _program.getUniformLocation("uTexture0");
+			_uBrightness = _program.getUniformLocation("uBrightness");
+			_uUvBase = _program.getUniformLocation("uUvBase");
+			_uAnimation = _program.getUniformLocation("uAnimation");
+			_uCentre = _program.getUniformLocation("uCentre");
+			
+			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
+			direct.order(ByteOrder.nativeOrder());
+			FloatBuffer meshBuffer = direct.asFloatBuffer();
+			
+			float itemEdge = PassiveType.ITEM_SLOT.volume().width();
+			float textureSize = itemAtlas.coordinateSize;
+			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
+			boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(_program.attributes);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, attributesToUse);
+			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
+				, itemEdge
+				, textureSize
+			);
+			_itemSlotVertices = builder.finishOne().flush(gl);
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			_itemSlotVertices.delete(gl);
+			_program.delete();
+		}
+	}
+
+
 	private final Environment _environment;
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
+	private final ItemSlotResources _itemSlotResources;
 	private final CuboidMeshManager _cuboidMeshes;
 
 	public BlockRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
@@ -152,6 +217,7 @@ public class BlockRenderer
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.blockRenderer();
+		_itemSlotResources = resources.blockItemSlotRenderer();
 		
 		_cuboidMeshes = new CuboidMeshManager(_environment, new CuboidMeshManager.IGpu() {
 			@Override
@@ -164,7 +230,7 @@ public class BlockRenderer
 			{
 				array.delete(_gl);
 			}
-		}, _resources._program.attributes, _resources._itemAtlas, _resources._blockModels, _resources._blockTextures, _resources._auxBlockTextures);
+		}, _resources._program.attributes, _resources._blockModels, _resources._blockTextures, _resources._auxBlockTextures);
 	}
 
 	public Map<Block, Prism> getModelBoundingBoxes()
@@ -288,39 +354,42 @@ public class BlockRenderer
 
 	public void renderItemSlots(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
 	{
-		// We want to use the perspective projection and depth buffer for the main scene.
-		_gl.glEnable(GL20.GL_DEPTH_TEST);
-		_gl.glDepthFunc(GL20.GL_LESS);
-		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
-		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
-		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
-		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
-		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
+		_itemSlotResources._program.useProgram();
+		_gl.glUniform3f(_itemSlotResources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, _itemSlotResources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _itemSlotResources._uProjectionMatrix);
+		_gl.glUniform1f(_itemSlotResources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// This shader uses 2 textures.
-		_gl.glUniform1i(_resources._uTexture0, 0);
-		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glUniform1i(_resources._uTexture1, 1);
-		_gl.glActiveTexture(GL20.GL_TEXTURE1);
-		
-		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
-		
-		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		
-		// These are now just item slot objects so we render them as transparent objects since they are just item textures.
+		// The texture is just the item texture so we reach into that common atlas.
+		_gl.glUniform1i(_itemSlotResources._uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._itemAtlas.texture);
+		
+		// We want to set the animation frame from 0.0f - 1.0f based on the time in a second.
+		float animationTime = (float)(System.currentTimeMillis() % 2048L) / 2048.0f;
+		_gl.glUniform1f(_itemSlotResources._uAnimation, animationTime * TWO_PI_RADIANS);
+		
+		// Render any item slot locations in this cuboid.
+		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
-			CuboidAddress key = value.address();
 			if (null != value.itemSlotArray())
 			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
-				value.itemSlotArray().drawAllTriangles(_gl);
+				CuboidAddress key = value.address();
+				EntityLocation base = key.getBase().toEntityLocation();
+				for (CuboidMeshManager.VisibleItemSlot slot : value.itemSlotArray())
+				{
+					// We precomputed the centre of this when creating it, since it is based on what block it is part of.
+					_gl.glUniform3f(_itemSlotResources._uCentre, base.x() + slot.centreX(), base.y() + slot.centreY(), base.z() + slot.baseZ());
+					
+					// We need to pass in the base texture coordinates of this type.
+					float[] uvBase = _resources._itemAtlas.baseOfTexture(slot.item().number());
+					_gl.glUniform2f(_itemSlotResources._uUvBase, uvBase[0], uvBase[1]);
+					
+					// Just draw the square.
+					_itemSlotResources._itemSlotVertices.drawAllTriangles(_gl);
+				}
 			}
 		}
 	}
