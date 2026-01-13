@@ -229,15 +229,16 @@ public class SceneMeshHelpers
 					float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
 					
 					_populateQuad(builder
-							, _base
-							, counterClockWiseVertices
-							, normal
-							, uvBase
-							, textureSize
-							, auxUv
-							, auxTextureSize
-							, blockLightMultipliers
-							, skyLightMultipliers
+						, _base
+						, counterClockWiseVertices
+						, normal
+						, uvBase
+						, textureSize
+						, auxUv
+						, auxTextureSize
+						, blockLightMultipliers
+						, skyLightMultipliers
+						, false
 					);
 					
 					if (drawInternalSurfaces)
@@ -256,15 +257,16 @@ public class SceneMeshHelpers
 								-1.0f * normal[2],
 						};
 						_populateQuad(builder
-								, _base
-								, reverseVertices
-								, reverseNormal
-								, uvBase
-								, textureSize
-								, auxUv
-								, auxTextureSize
-								, blockLightMultipliers
-								, skyLightMultipliers
+							, _base
+							, reverseVertices
+							, reverseNormal
+							, uvBase
+							, textureSize
+							, auxUv
+							, auxTextureSize
+							, blockLightMultipliers
+							, skyLightMultipliers
+							, true
 						);
 					}
 				}
@@ -306,22 +308,61 @@ public class SceneMeshHelpers
 		, float textureSize
 	)
 	{
-		// This way of handling passives is a bit of a hack:  We use the same attribute arrangement in the passive item
-		// shader just to reuse the quad helper here (even though the shader ignores most of the data).  The actual
-		// positioning of the passive is set by the PassiveRenderer, in the model matrix, prior to invocation.  The
-		// texture is done the same way: The base coordinates are passed in via uniform per-instance.
-		// TODO:  Change this (and the pedestal items) to use a more specific shader and vertex array shape.
 		float[] uvBase = new float[] { 0.0f, 0.0f };
-		float[] centreBase = new float[] { 0.0f, 0.0f, 0.0f };
 		
 		// We don't use lighting for the passive items.
 		float blockLightMultiplier = 0.0f;
 		float skyLightMultiplier = 0.0f;
 		
-		_drawStandingSquareAtHorizontalCentre(builder, centreBase, itemEdge
-			, uvBase, textureSize
-			, blockLightMultiplier
-			, skyLightMultiplier
+		// Note that standing squares never use AUX textures.
+		float[] otherUvBase = new float[] { 0.0f, 0.0f };
+		float otherTextureSize = 0.0f;
+		
+		// The idea here is that we draw 2 quads with the same texture:  One facing North and one South.
+		float[] OI = new float[] {
+			0.0f,
+			0.0f,
+			itemEdge,
+		};
+		float[] II = new float[] {
+			itemEdge,
+			0.0f,
+			itemEdge,
+		};
+		float[] IO = new float[] {
+			itemEdge,
+			0.0f,
+			0.0f,
+		};
+		float[] OO = new float[] {
+			0.0f,
+			0.0f,
+			0.0f,
+		};
+		// We won't bother light-blending single items.
+		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
+		float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
+		
+		// Note that this draws the vertices around centre, such that the XY coordinates are offset, but Z is at the base.
+		float halfEdge = itemEdge / 2.0f;
+		float[] base = new float[] { -halfEdge, 0.0f, 0.0f};
+		_populateQuad(builder, base
+				, new float[][] { OO, IO, II, OI }
+				, new float[] { 0.0f, 1.0f, 0.0f }
+				, uvBase, textureSize
+				, otherUvBase, otherTextureSize
+				, blockLightMultipliers
+				, skyLightMultipliers
+				, false
+		);
+		_populateQuad(builder, base
+				, new float[][] { IO, OO, OI, II }
+				, new float[] { 0.0f, -1.0f, 0.0f }
+				, uvBase, textureSize
+				, otherUvBase, otherTextureSize
+				, blockLightMultipliers
+				, skyLightMultipliers
+				, true
 		);
 	}
 
@@ -387,65 +428,6 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _drawStandingSquareAtHorizontalCentre(MeshHelperBufferBuilder builder
-			, float[] centre
-			, float edgeSize
-			, float[] uvBase
-			, float textureSize
-			, float blockLightMultiplier
-			, float skyLightMultiplier
-	)
-	{
-		// Note that standing squares never use AUX textures.
-		float[] otherUvBase = new float[] { 0.0f, 0.0f };
-		float otherTextureSize = 0.0f;
-		
-		// The idea here is that we draw 2 quads with the same texture:  One facing North and one South.
-		float[] OI = new float[] {
-				0.0f,
-				0.0f,
-				edgeSize,
-		};
-		float[] II = new float[] {
-				edgeSize,
-				0.0f,
-				edgeSize,
-		};
-		float[] IO = new float[] {
-				edgeSize,
-				0.0f,
-				0.0f,
-		};
-		float[] OO = new float[] {
-				0.0f,
-				0.0f,
-				0.0f,
-		};
-		// We won't bother light-blending single items.
-		float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
-		float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
-		
-		// Note that this draws the vertices around centre, such that the XY coordinates are offset, but Z is at the base.
-		float halfEdge = edgeSize / 2.0f;
-		float[] base = new float[] {centre[0] - halfEdge, centre[1], centre[2]};
-		_populateQuad(builder, base
-				, new float[][] { OO, IO, II, OI }
-				, new float[] { 0.0f, 1.0f, 0.0f }
-				, uvBase, textureSize
-				, otherUvBase, otherTextureSize
-				, blockLightMultipliers
-				, skyLightMultipliers
-		);
-		_populateQuad(builder, base
-				, new float[][] { IO, OO, OI, II }
-				, new float[] { 0.0f, -1.0f, 0.0f }
-				, uvBase, textureSize
-				, otherUvBase, otherTextureSize
-				, blockLightMultipliers
-				, skyLightMultipliers
-		);
-	}
-
 	private static void _populateQuad(MeshHelperBufferBuilder builder
 			, float[] base
 			, float[][] vertices
@@ -456,6 +438,7 @@ public class SceneMeshHelpers
 			, float otherTextureSize
 			, float[] blockLightMultipliers
 			, float[] skyLightMultipliers
+			, boolean flipTexture
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -486,9 +469,9 @@ public class SceneMeshHelpers
 		};
 		float[] topLeftBlockLight = new float[] {blockLightMultipliers[3]};
 		float[] topLeftSkyLight = new float[] {skyLightMultipliers[3]};
-		float u = uvBase[0];
+		float u = flipTexture ? (uvBase[0] + textureSize) : uvBase[0];
 		float v = uvBase[1];
-		float uEdge = u + textureSize;
+		float uEdge = flipTexture ? uvBase[0] : (u + textureSize);
 		float vEdge = v + textureSize;
 		
 		float otherU = otherUvBase[0];
@@ -692,6 +675,7 @@ public class SceneMeshHelpers
 							_blendSkyLight(skyE, skyN, skyNE, sky),
 							_blendSkyLight(skyW, skyN, skyNW, sky),
 					}
+					, false
 				);
 			}
 			else
@@ -717,6 +701,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
 					}
 					, new float[] {SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW}
+					, false
 				);
 			}
 		}
@@ -752,6 +737,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(eastBlockLight, thisBlockLight, upBlockLight, EUBlockLight)
 					}
 					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
+					, false
 				);
 			}
 			else
@@ -778,6 +764,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(westBlockLight, thisBlockLight, upBlockLight, WUBlockLight)
 					}
 					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
+					, false
 				);
 			}
 		}
@@ -813,6 +800,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(thisBlockLight, southBlockLight, upBlockLight, SUBlockLight)
 					}
 					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
+					, false
 				);
 			}
 			else
@@ -839,6 +827,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(thisBlockLight, northBlockLight, upBlockLight, NUBlockLight)
 					}
 					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
+					, false
 				);
 			}
 		}
@@ -1236,6 +1225,7 @@ public class SceneMeshHelpers
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
 			, skyLightMultipliers
+			, false
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v100, v.v110, v.v111, v.v101
@@ -1244,6 +1234,7 @@ public class SceneMeshHelpers
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
 			, skyLightMultipliers
+			, false
 		);
 		
 		// Y-normal plane.
@@ -1254,6 +1245,7 @@ public class SceneMeshHelpers
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
 			, skyLightMultipliers
+			, false
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v110, v.v010, v.v011, v.v111
@@ -1262,6 +1254,7 @@ public class SceneMeshHelpers
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
 			, skyLightMultipliers
+			, false
 		);
 		
 		// Z-normal plane.
@@ -1273,6 +1266,7 @@ public class SceneMeshHelpers
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
 			, skyLightMultipliers
+			, false
 		);
 		_populateQuad(builder, base, new float[][] {
 				v.v001, v.v101, v.v111, v.v011
@@ -1281,6 +1275,7 @@ public class SceneMeshHelpers
 			, auxUv, auxTextureSize
 			, blockLightMultipliers
 			, skyLightMultipliers
+			, false
 		);
 	}
 

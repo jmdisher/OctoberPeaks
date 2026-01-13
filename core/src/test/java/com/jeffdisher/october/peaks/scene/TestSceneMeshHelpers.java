@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks.scene;
 
+import java.nio.BufferUnderflowException;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -481,14 +482,22 @@ public class TestSceneMeshHelpers
 			, 0.25f
 		);
 		BufferBuilder.Buffer vertexBuffer = builder.finishOne();
-		float[] vertexData = new float[fullFloatsPerVertex * 6];
+		float[] vertexData = new float[fullFloatsPerVertex * 12];
 		vertexBuffer.testGetFloats(vertexData);
+		_verifyBufferDrained(vertexBuffer);
 		Assert.assertArrayEquals(new float[] { -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 			, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 			, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
 			, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
 			, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
 			, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
+			
+			, 0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+			, -0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
+			, 0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
 		}, vertexData, 0.01f);
 		
 		Attribute[] attributeSubset = new Attribute[] {ATTRIBUTES[0], ATTRIBUTES[2]};
@@ -509,14 +518,22 @@ public class TestSceneMeshHelpers
 			, 0.25f
 		);
 		vertexBuffer = builder.finishOne();
-		vertexData = new float[minFloatsPerVertex * 6];
+		vertexData = new float[minFloatsPerVertex * 12];
 		vertexBuffer.testGetFloats(vertexData);
+		_verifyBufferDrained(vertexBuffer);
 		Assert.assertArrayEquals(new float[] {-0.5f, 0.0f, 0.0f, 0.0f, 0.0f
 			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
 			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
 			, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f
 			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
 			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
+			
+			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
+			, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
+			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
+			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
 		}, vertexData, 0.01f);
 	}
 
@@ -761,6 +778,19 @@ public class TestSceneMeshHelpers
 	{
 		RawTextureAtlas raw = TextureHelpers.testRawAtlas(textureCount);
 		return BlockModelsAndAtlas.testInstance(blockToIndex, models, raw);
+	}
+
+	private static void _verifyBufferDrained(BufferBuilder.Buffer vertexBuffer)
+	{
+		try
+		{
+			vertexBuffer.testGetFloats(new float[1]);
+			Assert.fail();
+		}
+		catch (BufferUnderflowException e)
+		{
+			// Expected.
+		}
 	}
 
 
