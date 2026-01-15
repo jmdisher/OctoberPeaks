@@ -30,6 +30,7 @@ public class SceneRenderer
 	private final BlockRenderer _blockRenderer;
 	private final EntityRenderer _entityRenderer;
 	private final PassiveRenderer _passiveRenderer;
+	private final ParticleEngine _particleEngine;
 	private final SkyBox _skyBox;
 
 	private Matrix _viewMatrix;
@@ -43,6 +44,7 @@ public class SceneRenderer
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
 		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources);
 		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources);
+		_particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
 		_skyBox = new SkyBox(gl, resources);
 		
 		_viewMatrix = Matrix.identity();
@@ -69,6 +71,8 @@ public class SceneRenderer
 
 	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType)
 	{
+		long currentTimeMillis = System.currentTimeMillis();
+		
 		// We will begin with the sky box since we don't know if there are transparent blocks to render on top of it.
 		_skyBox.render(_projectionMatrix);
 		
@@ -79,6 +83,11 @@ public class SceneRenderer
 		_blockRenderer.renderOpaqueBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_gl.glEnable(GL20.GL_BLEND);
+		
+		// Render the particles, then transparent blocks (since we will make the depth buffer read-only for particles).
+		_gl.glDepthMask(false);
+		_particleEngine.renderAllParticles(_viewMatrix, _projectionMatrix, currentTimeMillis);
+		_gl.glDepthMask(true);
 		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
@@ -93,7 +102,9 @@ public class SceneRenderer
 		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye);
 		
+		// Do any other end-of-frame cleanup or processing.
 		_blockRenderer.handleEndOfFrame();
+		_particleEngine.freeDeadParticles(currentTimeMillis);
 	}
 
 	public void setCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)

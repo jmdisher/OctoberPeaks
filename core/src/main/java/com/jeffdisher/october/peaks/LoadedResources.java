@@ -3,6 +3,7 @@ package com.jeffdisher.october.peaks;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
+import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.scene.PassiveRenderer;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.ui.GlUi;
@@ -21,6 +22,7 @@ public record LoadedResources(ItemTextureAtlas itemAtlas
 		, GlUi.Resources glui
 		, AudioManager.Resources audioManager
 		, PassiveRenderer.Resources passiveResources
+		, ParticleEngine.Resources particleResources
 )
 {
 	public void shutdown(GL20 gl)
@@ -34,5 +36,6 @@ public record LoadedResources(ItemTextureAtlas itemAtlas
 		glui.shutdown(gl);
 		audioManager.shutdown();
 		passiveResources.shutdown(gl);
+		particleResources.shutdown(gl);
 	}
 }

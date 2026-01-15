@@ -12,6 +12,7 @@ import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
+import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.scene.PassiveRenderer;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
@@ -107,6 +108,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			GlUi.Resources glui = new GlUi.Resources(_gl, itemAtlas);
 			AudioManager.Resources audioManager = new AudioManager.Resources();
 			PassiveRenderer.Resources passive = new PassiveRenderer.Resources(_environment, _gl, itemAtlas);
+			ParticleEngine.Resources particles = new ParticleEngine.Resources(_gl);
 			_resources = new LoadedResources(itemAtlas
 				, blockRenderer
 				, blockItemSlotRenderer
@@ -116,6 +118,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				, glui
 				, audioManager
 				, passive
+				, particles
 			);
 		}
 		catch (IOException | TabListReader.TabListException e)
