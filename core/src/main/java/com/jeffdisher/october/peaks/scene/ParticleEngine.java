@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -64,8 +66,11 @@ public class ParticleEngine
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			_uAnimationFraction = _program.getUniformLocation("uAnimationFraction");
 			
-			// TODO:  Replace this with a particle texture.
-			_particleTexture = TextureHelpers.loadSinglePixelImageRGBA(gl, new byte[] {0x0, 0x0, 0x0, (byte)0xff});
+			// In the future, if we want multiple ParticleEngine instances with different textures, we will need to
+			// store these in a different way, in Resources.  For now, we just hard-code the one name.
+			FileHandle textureFile = Gdx.files.internal("particle.png");
+			Assert.assertTrue(textureFile.exists());
+			_particleTexture = TextureHelpers.loadHandleRGBA(gl, textureFile);
 			
 			_singleTransferBuffer = ByteBuffer.allocateDirect(BYTES_PER_PARTICLE);
 			_singleTransferBuffer.order(ByteOrder.nativeOrder());
@@ -161,6 +166,8 @@ public class ParticleEngine
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_gl.glEnable(GL20.GL_VERTEX_PROGRAM_POINT_SIZE);
+		// NOTE:  We need to manually enable GL_POINT_SPRITE, although this should be enabled in this version (otherwise, gl_PointCoord is always vec2(0,0)).
+		_gl.glEnable(0x8861);
 		
 		_resources._program.useProgram();
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
