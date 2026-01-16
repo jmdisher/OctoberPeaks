@@ -65,7 +65,15 @@ public class GameSession
 		this.blockLookup = _worldCache.blockLookup;
 		
 		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
-		this.scene = new SceneRenderer(environment, gl, screenBrightness, particleEngine, resources, _worldCache);
+		this.animationManager = new AnimationManager(particleEngine, _worldCache);
+		this.scene = new SceneRenderer(environment
+			, gl
+			, screenBrightness
+			, particleEngine
+			, resources
+			, _worldCache
+			, this.animationManager
+		);
 		this.scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		
 		this.eyeEffect = new EyeEffect(gl, resources);
@@ -99,7 +107,6 @@ public class GameSession
 		
 		// Load the audio.
 		this.audioManager = new AudioManager(environment, resources, _worldCache);
-		this.animationManager = new AnimationManager(particleEngine, _worldCache);
 	}
 
 	public void finishStartup()
@@ -199,12 +206,12 @@ public class GameSession
 		@Override
 		public void otherEntityDidUnload(int id)
 		{
-			GameSession.this.scene.removeEntity(id);
+			GameSession.this.animationManager.removeEntity(id);
 		}
 		@Override
 		public void otherEntityHurt(int id, AbsoluteLocation location)
 		{
-			GameSession.this.scene.entityHurt(id);
+			GameSession.this.animationManager.entityHurt(id);
 			GameSession.this.audioManager.otherEntityHurt(location, id);
 		}
 		@Override

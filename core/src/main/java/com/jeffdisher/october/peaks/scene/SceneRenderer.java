@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.peaks.AnimationManager;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.SkyBox;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -38,11 +39,18 @@ public class SceneRenderer
 	private Vector _eye;
 	private float _skyLightMultiplier;
 
-	public SceneRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, ParticleEngine particleEngine, LoadedResources resources, WorldCache worldCache)
+	public SceneRenderer(Environment environment
+		, GL20 gl
+		, Binding<Float> screenBrightness
+		, ParticleEngine particleEngine
+		, LoadedResources resources
+		, WorldCache worldCache
+		, AnimationManager animationManager
+	)
 	{
 		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
-		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache);
+		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache, animationManager);
 		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources, worldCache);
 		_particleEngine = particleEngine;
 		_skyBox = new SkyBox(gl, resources);
@@ -115,16 +123,6 @@ public class SceneRenderer
 	public void removeCuboid(CuboidAddress address)
 	{
 		_blockRenderer.removeCuboid(address);
-	}
-
-	public void removeEntity(int id)
-	{
-		_entityRenderer.removeEntity(id);
-	}
-
-	public void entityHurt(int id)
-	{
-		_entityRenderer.entityHurt(id);
 	}
 
 	public void setDayTime(float dayProgression, float skyLightMultiplier)

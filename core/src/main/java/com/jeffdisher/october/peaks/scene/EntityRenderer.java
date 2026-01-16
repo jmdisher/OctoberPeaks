@@ -13,6 +13,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.OrientationHelpers;
+import com.jeffdisher.october.peaks.AnimationManager;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -37,7 +38,6 @@ import com.jeffdisher.october.utils.Assert;
 public class EntityRenderer
 {
 	public static final int BUFFER_SIZE = 1 * 1024 * 1024;
-	public static final long DAMAGE_DURATION_MILLIS = 1000L;
 	public static class Resources
 	{
 		private final Program _program;
@@ -104,17 +104,16 @@ public class EntityRenderer
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
 	private final WorldCache _worldCache;
-	// TODO:  Move this data information to AnimationManager and interrogate it, instead of tracking this information here.
-	private final Map<Integer, Long> _entityDamageMillis;
+	private final AnimationManager _animationManager;
 
-	public EntityRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources, WorldCache worldCache)
+	public EntityRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources, WorldCache worldCache, AnimationManager animationManager)
 	{
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.entityRenderer();
 		
 		_worldCache = worldCache;
-		_entityDamageMillis = new HashMap<>();
+		_animationManager = animationManager;
 	}
 
 	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
@@ -144,26 +143,11 @@ public class EntityRenderer
 			_EntityData data = _resources._entityData.get(type);
 			_gl.glActiveTexture(GL20.GL_TEXTURE0);
 			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
-			if (_entityDamageMillis.containsKey(entity.id()))
-			{
-				// We want to set the damage.
-				long effectEndMillis = _entityDamageMillis.get(entity.id());
-				if (effectEndMillis > currentMillis)
-				{
-					long millisLeft = effectEndMillis - currentMillis;
-					float magnitude = (float)millisLeft / (float)DAMAGE_DURATION_MILLIS;
-					_gl.glUniform1f(_resources._uDamage, magnitude);
-				}
-				else
-				{
-					_gl.glUniform1f(_resources._uDamage, 0.0f);
-					_entityDamageMillis.remove(entity.id());
-				}
-			}
-			else
-			{
-				_gl.glUniform1f(_resources._uDamage, 0.0f);
-			}
+			
+			// Ask the animation manager if this entity recently took damage (as we discolour it in reponse for a short time).
+			float fraction = _animationManager.getDamageFreshnessFraction(currentMillis, entity.id());
+			_gl.glUniform1f(_resources._uDamage, fraction);
+			
 			data.vertices.drawAllTriangles(_gl);
 		}
 	}
@@ -191,17 +175,6 @@ public class EntityRenderer
 		Matrix model = _generateEntityModelMatrix(selectedEntity, type);
 		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		_resources._entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
-	}
-
-	public void removeEntity(int id)
-	{
-		_entityDamageMillis.remove(id);
-	}
-
-	public void entityHurt(int id)
-	{
-		long endOfEffectMillis = System.currentTimeMillis() + DAMAGE_DURATION_MILLIS;
-		_entityDamageMillis.put(id, endOfEffectMillis);
 	}
 
 

@@ -1,5 +1,8 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -12,13 +15,17 @@ import com.jeffdisher.october.types.EntityLocation;
  */
 public class AnimationManager
 {
+	public static final long DAMAGE_DURATION_MILLIS = 1000L;
+
 	private final ParticleEngine _particleEngine;
 	private final WorldCache _worldCache;
+	private final Map<Integer, Long> _entityDamageMillis;
 
 	public AnimationManager(ParticleEngine particleEngine, WorldCache worldCache)
 	{
 		_particleEngine = particleEngine;
 		_worldCache = worldCache;
+		_entityDamageMillis = new HashMap<>();
 	}
 
 	public void craftInInventoryComplete(int entityId)
@@ -37,6 +44,42 @@ public class AnimationManager
 	{
 		EntityLocation centre = _getTopCentreOfBlock(location);
 		_upwardBurst(centre);
+	}
+
+	public void removeEntity(int id)
+	{
+		_entityDamageMillis.remove(id);
+	}
+
+	public void entityHurt(int id)
+	{
+		long endOfEffectMillis = System.currentTimeMillis() + DAMAGE_DURATION_MILLIS;
+		_entityDamageMillis.put(id, endOfEffectMillis);
+	}
+
+	public float getDamageFreshnessFraction(long currentTimeMillis, int id)
+	{
+		float fraction;
+		if (_entityDamageMillis.containsKey(id))
+		{
+			// We want to set the damage.
+			long effectEndMillis = _entityDamageMillis.get(id);
+			if (effectEndMillis > currentTimeMillis)
+			{
+				long millisLeft = effectEndMillis - currentTimeMillis;
+				fraction = (float)millisLeft / (float)DAMAGE_DURATION_MILLIS;
+			}
+			else
+			{
+				fraction = 0.0f;
+				_entityDamageMillis.remove(id);
+			}
+		}
+		else
+		{
+			fraction = 0.0f;
+		}
+		return fraction;
 	}
 
 
