@@ -3,7 +3,6 @@ package com.jeffdisher.october.peaks;
 import java.io.File;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -20,6 +19,7 @@ import com.jeffdisher.october.peaks.scene.SceneRenderer;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -28,14 +28,12 @@ import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.MutableEntity;
-import com.jeffdisher.october.types.PartialEntity;
-import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.WorldConfig;
-import com.jeffdisher.october.utils.Assert;
 
 
 public class GameSession
 {
+	private final WorldCache _worldCache;
 	private final ICallouts _callouts;
 	public final SceneRenderer scene;
 	public final EyeEffect eyeEffect;
@@ -44,7 +42,6 @@ public class GameSession
 	public final ClientWrapper client;
 	public final AudioManager audioManager;
 	public final AnimationManager animationManager;
-	public final Map<CuboidAddress, IReadOnlyCuboidData> cuboids;
 	public final Function<AbsoluteLocation, BlockProxy> blockLookup;
 
 	public GameSession(Environment environment
@@ -62,20 +59,13 @@ public class GameSession
 			, ICallouts callouts
 	) throws ConnectException
 	{
+		_worldCache = new WorldCache(environment.creatures.PLAYER);
 		_callouts = callouts;
-		this.cuboids = new HashMap<>();
-		this.blockLookup = (AbsoluteLocation location) -> {
-			BlockProxy proxy = null;
-			IReadOnlyCuboidData cuboid = this.cuboids.get(location.getCuboidAddress());
-			if (null != cuboid)
-			{
-				proxy = new BlockProxy(location.getBlockAddress(), cuboid);
-			}
-			return proxy;
-		};
+		// We just expose this lookup here for the UiStateManager to use.
+		this.blockLookup = _worldCache.blockLookup;
 		
 		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
-		this.scene = new SceneRenderer(environment, gl, screenBrightness, particleEngine, resources);
+		this.scene = new SceneRenderer(environment, gl, screenBrightness, particleEngine, resources, _worldCache);
 		this.scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		
 		this.eyeEffect = new EyeEffect(gl, resources);
@@ -83,12 +73,13 @@ public class GameSession
 		this.scene.updatePosition(this.movement.computeEye(), this.movement.computeTarget(), this.movement.computeUpVector());
 		
 		Map<Block, Prism> specialBlockBounds = this.scene.getModelBoundingBoxes();
-		this.selectionManager = new SelectionManager(environment, specialBlockBounds, this.blockLookup);
+		this.selectionManager = new SelectionManager(environment, specialBlockBounds, _worldCache);
 		
 		try
 		{
 			this.client = new ClientWrapper(environment
 				, new _UpdateConsumer()
+				, _worldCache
 				, clientName
 				, startingViewDistance
 				, serverSocketAddress
@@ -107,8 +98,8 @@ public class GameSession
 		}
 		
 		// Load the audio.
-		this.audioManager = new AudioManager(environment, resources);
-		this.animationManager = new AnimationManager(particleEngine);
+		this.audioManager = new AudioManager(environment, resources, _worldCache);
+		this.animationManager = new AnimationManager(particleEngine, _worldCache);
 	}
 
 	public void finishStartup()
@@ -163,20 +154,16 @@ public class GameSession
 		@Override
 		public void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 		{
-			GameSession.this.cuboids.put(cuboid.getCuboidAddress(), cuboid);
 			GameSession.this.scene.setCuboid(cuboid, heightMap, null);
 		}
 		@Override
 		public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 		{
-			GameSession.this.cuboids.put(cuboid.getCuboidAddress(), cuboid);
 			GameSession.this.scene.setCuboid(cuboid, heightMap, changedBlocks);
 		}
 		@Override
 		public void unload(CuboidAddress address)
 		{
-			IReadOnlyCuboidData removed = GameSession.this.cuboids.remove(address);
-			Assert.assertTrue(null != removed);
 			GameSession.this.scene.removeCuboid(address);
 		}
 		@Override
@@ -190,12 +177,7 @@ public class GameSession
 			GameSession.this.scene.updatePosition(eye, target, upVector);
 			GameSession.this.selectionManager.updatePosition(eye, target);
 			GameSession.this.selectionManager.setThisEntity(projectedEntity);
-			GameSession.this.eyeEffect.setThisEntity(projectedEntity);
-			GameSession.this.audioManager.setThisEntity(projectedEntity);
-			GameSession.this.animationManager.setEntityOrCreatureLocation(projectedEntity.id()
-				, Environment.getShared().creatures.PLAYER
-				, projectedEntity.location()
-			);
+			GameSession.this.eyeEffect.setHealth(projectedEntity.health());
 			_callouts.thisEntityUpdated(projectedEntity);
 		}
 		@Override
@@ -215,23 +197,9 @@ public class GameSession
 			_callouts.otherClientLeft(clientId);
 		}
 		@Override
-		public void otherEntityUpdated(PartialEntity entity)
-		{
-			GameSession.this.scene.setEntity(entity);
-			GameSession.this.selectionManager.setEntity(entity);
-			GameSession.this.audioManager.setOtherEntity(entity);
-			GameSession.this.animationManager.setEntityOrCreatureLocation(entity.id()
-				, entity.type()
-				, entity.location()
-			);
-		}
-		@Override
 		public void otherEntityDidUnload(int id)
 		{
 			GameSession.this.scene.removeEntity(id);
-			GameSession.this.selectionManager.removeEntity(id);
-			GameSession.this.audioManager.removeOtherEntity(id);
-			GameSession.this.animationManager.removeEntityOrCreature(id);
 		}
 		@Override
 		public void otherEntityHurt(int id, AbsoluteLocation location)
@@ -246,23 +214,7 @@ public class GameSession
 			if (null != location)
 			{
 				GameSession.this.audioManager.otherEntityKilled(location, id);
-				GameSession.this.animationManager.removeEntityOrCreature(id);
 			}
-		}
-		@Override
-		public void passiveEntityDidLoad(PartialPassive entity)
-		{
-			GameSession.this.scene.passiveEntityDidLoad(entity);
-		}
-		@Override
-		public void passiveEntityDidChange(PartialPassive entity)
-		{
-			GameSession.this.scene.passiveEntityDidChange(entity);
-		}
-		@Override
-		public void passiveEntityDidUnload(int id)
-		{
-			GameSession.this.scene.passiveEntityDidUnload(id);
 		}
 		@Override
 		public void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression)

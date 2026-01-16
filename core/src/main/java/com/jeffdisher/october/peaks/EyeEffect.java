@@ -14,7 +14,6 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
-import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -119,9 +118,8 @@ public class EyeEffect
 		_effectEndMillis = System.currentTimeMillis() + EYE_EFFECT_DURATION_MILLIS;
 	}
 
-	public void setThisEntity(Entity projectedEntity)
+	public void setHealth(byte health)
 	{
-		byte health = projectedEntity.health();
 		if (health > _health)
 		{
 			// We healed set this to something short, if not busy.

@@ -4,8 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collection;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
@@ -21,6 +20,7 @@ import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.EntityLocation;
@@ -245,23 +245,19 @@ public class PassiveRenderer
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
+	private final WorldCache _worldCache;
 	private final float _halfWidth;
 	private final float _halfHeight;
-	private final Map<Integer, PartialPassive> _itemSlotPassives;
-	private final Map<Integer, PartialPassive> _fallingBlockPassives;
-	private final Map<Integer, PartialPassive> _arrowPassives;
 
-	public PassiveRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
+	public PassiveRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources, WorldCache worldCache)
 	{
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.passiveResources();
+		_worldCache = worldCache;
 		
 		_halfWidth = PassiveType.ITEM_SLOT.volume().width() / 2.0f;
 		_halfHeight = PassiveType.ITEM_SLOT.volume().height() / 2.0f;
-		_itemSlotPassives = new HashMap<>();
-		_fallingBlockPassives = new HashMap<>();
-		_arrowPassives = new HashMap<>();
 	}
 
 	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
@@ -270,69 +266,27 @@ public class PassiveRenderer
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		
-		if (_itemSlotPassives.size() > 0)
+		Collection<PartialPassive> itemSlotPassives = _worldCache.getItemSlotPassives();
+		if (itemSlotPassives.size() > 0)
 		{
-			_renderItemSlots(_resources._itemSlotResources, viewMatrix, projectionMatrix, eye);
+			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, viewMatrix, projectionMatrix, eye);
 		}
 		
-		if (_fallingBlockPassives.size() > 0)
+		Collection<PartialPassive> fallingBlockPassives = _worldCache.getFallingBlockPassives();
+		if (fallingBlockPassives.size() > 0)
 		{
-			_renderFallingBlocks(_resources._fallingBlockResources, viewMatrix, projectionMatrix, eye);
+			_renderFallingBlocks(_resources._fallingBlockResources, fallingBlockPassives, viewMatrix, projectionMatrix, eye);
 		}
 		
-		if (_arrowPassives.size() > 0)
+		Collection<PartialPassive> arrowPassives = _worldCache.getArrowPassives();
+		if (arrowPassives.size() > 0)
 		{
-			_renderArrows(_resources._arrowResources, viewMatrix, projectionMatrix, eye);
+			_renderArrows(_resources._arrowResources, arrowPassives, viewMatrix, projectionMatrix, eye);
 		}
 	}
 
-	public void passiveEntityDidLoad(PartialPassive entity)
-	{
-		if (PassiveType.ITEM_SLOT == entity.type())
-		{
-			Object old = _itemSlotPassives.put(entity.id(), entity);
-			Assert.assertTrue(null == old);
-		}
-		else if (PassiveType.FALLING_BLOCK == entity.type())
-		{
-			Object old = _fallingBlockPassives.put(entity.id(), entity);
-			Assert.assertTrue(null == old);
-		}
-		else if (PassiveType.PROJECTILE_ARROW == entity.type())
-		{
-			Object old = _arrowPassives.put(entity.id(), entity);
-			Assert.assertTrue(null == old);
-		}
-	}
 
-	public void passiveEntityDidChange(PartialPassive entity)
-	{
-		if (PassiveType.ITEM_SLOT == entity.type())
-		{
-			Object old = _itemSlotPassives.put(entity.id(), entity);
-			Assert.assertTrue(null != old);
-		}
-		else if (PassiveType.FALLING_BLOCK == entity.type())
-		{
-			Object old = _fallingBlockPassives.put(entity.id(), entity);
-			Assert.assertTrue(null != old);
-		}
-		else if (PassiveType.PROJECTILE_ARROW == entity.type())
-		{
-			Object old = _arrowPassives.put(entity.id(), entity);
-			Assert.assertTrue(null != old);
-		}
-	}
-
-	public void passiveEntityDidUnload(int id)
-	{
-		_itemSlotPassives.remove(id);
-		_fallingBlockPassives.remove(id);
-		_arrowPassives.remove(id);
-	}
-
-
-	private void _renderItemSlots(ItemSlotResources resources, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderItemSlots(ItemSlotResources resources, Collection<PartialPassive> itemSlotPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
 	{
 		resources._program.useProgram();
 		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
@@ -352,7 +306,7 @@ public class PassiveRenderer
 		
 		// Render the passives.
 		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
-		for (PartialPassive itemSlotPassive : _itemSlotPassives.values())
+		for (PartialPassive itemSlotPassive : itemSlotPassives)
 		{
 			EntityLocation location = itemSlotPassive.location();
 			Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
@@ -372,7 +326,7 @@ public class PassiveRenderer
 		}
 	}
 
-	private void _renderFallingBlocks(FallingBlockResources resources, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderFallingBlocks(FallingBlockResources resources, Collection<PartialPassive> fallingBlockPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
 	{
 		resources._program.useProgram();
 		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
@@ -388,7 +342,7 @@ public class PassiveRenderer
 		
 		// Render the passives.
 		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
-		for (PartialPassive fallingBlockPassive : _fallingBlockPassives.values())
+		for (PartialPassive fallingBlockPassive : fallingBlockPassives)
 		{
 			// Create a model matrix just based on this translation.
 			EntityLocation location = fallingBlockPassive.location();
@@ -405,7 +359,7 @@ public class PassiveRenderer
 		}
 	}
 
-	private void _renderArrows(ArrowResources resources, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderArrows(ArrowResources resources, Collection<PartialPassive> arrowPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
 	{
 		resources._program.useProgram();
 		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
@@ -421,7 +375,7 @@ public class PassiveRenderer
 		
 		// Render the passives.
 		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
-		for (PartialPassive arrowPassive : _arrowPassives.values())
+		for (PartialPassive arrowPassive : arrowPassives)
 		{
 			EntityLocation location = arrowPassive.location();
 			EntityLocation velocity = arrowPassive.velocity();

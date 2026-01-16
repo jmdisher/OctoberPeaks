@@ -1,9 +1,7 @@
 package com.jeffdisher.october.peaks;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
@@ -12,6 +10,7 @@ import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.CreativeInventory;
@@ -19,8 +18,6 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.NonStackableItem;
-import com.jeffdisher.october.types.PartialEntity;
-import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -31,21 +28,22 @@ import com.jeffdisher.october.utils.Assert;
 public class SelectionManager
 {
 	private final Map<Block, Prism> _specialBounds;
+	private final WorldCache _worldCache;
 	private final Set<Block> _ignoreCommon;
 	private final Set<Block> _ignoreCommonAndWaterSource;
 	private final Item _emptyBucketItem;
-	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
-	private final Map<Integer, PartialEntity> _entities;
 	private Vector _eye;
 	private Vector _target;
 	private boolean _isEmptyBucketSelected;
 
 	public SelectionManager(Environment environment
-			, Map<Block, Prism> specialBounds
-			, Function<AbsoluteLocation, BlockProxy> blockLookup
+		, Map<Block, Prism> specialBounds
+		, WorldCache worldCache
 	)
 	{
 		_specialBounds = specialBounds;
+		_worldCache = worldCache;
+		
 		Block waterSource = environment.blocks.fromItem(environment.items.getItemById("op.water_source"));
 		Block waterStrong = environment.blocks.fromItem(environment.items.getItemById("op.water_strong"));
 		Block waterWeak = environment.blocks.fromItem(environment.items.getItemById("op.water_weak"));
@@ -67,25 +65,12 @@ public class SelectionManager
 				, lavaSource
 		);
 		_emptyBucketItem = environment.items.getItemById("op.bucket_empty");
-		_blockLookup = blockLookup;
-		_entities = new HashMap<>();
 	}
 
 	public void updatePosition(Vector eye, Vector target)
 	{
 		_eye = eye;
 		_target = target;
-	}
-
-	public void setEntity(PartialEntity entity)
-	{
-		_entities.put(entity.id(), entity);
-	}
-
-	public void removeEntity(int id)
-	{
-		PartialEntity removed = _entities.remove(id);
-		Assert.assertTrue(null != removed);
 	}
 
 	public void setThisEntity(Entity projectedEntity)
@@ -120,7 +105,7 @@ public class SelectionManager
 		Vector delta = Vector.delta(_eye, _target).normalize();
 		// Even though the reach to an entity is shorter than that to a block, we will use the block limit and check the entity, later, so that the entity will mask out blocks behind it but still in range.
 		Vector end = _eye.add(delta.scale(MiscConstants.REACH_BLOCK));
-		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, end, _entities.values());
+		GeometryHelpers.SelectedEntity selectedEntity = GeometryHelpers.findSelectedEntity(_eye, end, _worldCache.getOtherEntities());
 		if (null != selectedEntity)
 		{
 			float entityDistance = selectedEntity.distance();
@@ -128,7 +113,7 @@ public class SelectionManager
 		}
 		final Vector finalEnd = end;
 		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, end, (AbsoluteLocation location) -> {
-			BlockProxy proxy = _blockLookup.apply(location);
+			BlockProxy proxy = _worldCache.blockLookup.apply(location);
 			boolean shouldStop = true;
 			if (null != proxy)
 			{

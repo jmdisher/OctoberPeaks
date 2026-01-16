@@ -1,14 +1,9 @@
 package com.jeffdisher.october.peaks;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.peaks.scene.ParticleEngine;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.EntityLocation;
-import com.jeffdisher.october.types.EntityType;
-import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -18,30 +13,17 @@ import com.jeffdisher.october.utils.Assert;
 public class AnimationManager
 {
 	private final ParticleEngine _particleEngine;
-	private final Map<Integer, EntityLocation> _entityAndCreatureLocations;
+	private final WorldCache _worldCache;
 
-	public AnimationManager(ParticleEngine particleEngine)
+	public AnimationManager(ParticleEngine particleEngine, WorldCache worldCache)
 	{
 		_particleEngine = particleEngine;
-		_entityAndCreatureLocations = new HashMap<>();
-	}
-
-	public void setEntityOrCreatureLocation(int id, EntityType type, EntityLocation location)
-	{
-		EntityLocation centre = SpatialHelpers.getCentreOfRegion(location, type.volume());
-		// We use the same helper for new and updated so we ignore the return value.
-		_entityAndCreatureLocations.put(id, centre);
-	}
-
-	public void removeEntityOrCreature(int id)
-	{
-		Object old = _entityAndCreatureLocations.remove(id);
-		Assert.assertTrue(null != old);
+		_worldCache = worldCache;
 	}
 
 	public void craftInInventoryComplete(int entityId)
 	{
-		EntityLocation centre = _entityAndCreatureLocations.get(entityId);
+		EntityLocation centre = _worldCache.getCentreOfPlayerOrCreature(entityId);
 		_flatBurst(centre, false);
 	}
 

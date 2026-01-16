@@ -22,6 +22,7 @@ import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
@@ -102,16 +103,17 @@ public class EntityRenderer
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
-	private final Map<Integer, PartialEntity> _entities;
+	private final WorldCache _worldCache;
+	// TODO:  Move this data information to AnimationManager and interrogate it, instead of tracking this information here.
 	private final Map<Integer, Long> _entityDamageMillis;
 
-	public EntityRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
+	public EntityRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources, WorldCache worldCache)
 	{
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.entityRenderer();
 		
-		_entities = new HashMap<>();
+		_worldCache = worldCache;
 		_entityDamageMillis = new HashMap<>();
 	}
 
@@ -133,7 +135,7 @@ public class EntityRenderer
 		
 		// Render any entities.
 		long currentMillis = System.currentTimeMillis();
-		for (PartialEntity entity : _entities.values())
+		for (PartialEntity entity : _worldCache.getOtherEntities())
 		{
 			EntityType type = entity.type();
 			Matrix model = _generateEntityModelMatrix(entity, type);
@@ -191,14 +193,8 @@ public class EntityRenderer
 		_resources._entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 	}
 
-	public void setEntity(PartialEntity entity)
-	{
-		_entities.put(entity.id(), entity);
-	}
-
 	public void removeEntity(int id)
 	{
-		_entities.remove(id);
 		_entityDamageMillis.remove(id);
 	}
 

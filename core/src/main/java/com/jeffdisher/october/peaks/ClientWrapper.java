@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -22,6 +20,7 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
 import com.jeffdisher.october.logic.SpatialHelpers;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.persistence.ResourceLoader;
 import com.jeffdisher.october.process.ClientProcess;
 import com.jeffdisher.october.process.ServerProcess;
@@ -105,8 +104,9 @@ public class ClientWrapper
 	public static final long MILLIS_DELAY_BETWEEN_BLOCK_ACTIONS = 200L;
 
 	private final Environment _environment;
-	private final EntityVolume _playerVolume;
 	private final IUpdateConsumer _updateConsumer;
+	// NOTE:  This is updated here since it is closest point to the underlying library, in terms of updates.
+	private final WorldCache _worldCache;
 	private final WorldConfig _config;
 	private final ResourceLoader _loader;
 	private final MonitoringAgent _monitoringAgent;
@@ -116,12 +116,6 @@ public class ClientWrapper
 
 	// We need to track if the monitoring agent was used to pause processing (in single-player) so we can resume it before shutdown.
 	private boolean _isAgentPaused;
-
-	// Data cached from the client listener.
-	private Entity _thisEntity;
-	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
-	// We want to pick up passive items as a background kind of operation:  We will do it passively when nothing else is being done.
-	private final Map<Integer, PartialPassive> _passiveItems;
 
 	// Local state information to avoid redundant events, etc.
 	private boolean _didJump;
@@ -133,6 +127,7 @@ public class ClientWrapper
 
 	public ClientWrapper(Environment environment
 			, IUpdateConsumer updateConsumer
+			, WorldCache worldCache
 			, String clientName
 			, int startingViewDistance
 			, InetSocketAddress serverAddress
@@ -144,8 +139,8 @@ public class ClientWrapper
 	) throws ConnectException
 	{
 		_environment = environment;
-		_playerVolume = environment.creatures.PLAYER.volume();
 		_updateConsumer = updateConsumer;
+		_worldCache = worldCache;
 		
 		try
 		{
@@ -227,8 +222,6 @@ public class ClientWrapper
 			throw Assert.unexpected(e);
 		}
 		
-		_cuboids = new HashMap<>();
-		_passiveItems = new HashMap<>();
 		_currentViewDistance = MiscConstants.DEFAULT_CUBOID_VIEW_DISTANCE;
 	}
 
@@ -267,7 +260,7 @@ public class ClientWrapper
 	{
 		// We just poll if the client has received the local entity.
 		_client.advanceTime(System.currentTimeMillis());
-		return (null != _thisEntity);
+		return (null != _worldCache.getThisEntity());
 	}
 
 	public void passTimeWhilePaused()
@@ -285,7 +278,8 @@ public class ClientWrapper
 		IEntitySubAction<IMutablePlayerEntity> subAction = null;
 		
 		// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
-		CraftOperation ongoing = _thisEntity.ephemeralShared().localCraftOperation();
+		Entity thisEntity = _worldCache.getThisEntity();
+		CraftOperation ongoing = thisEntity.ephemeralShared().localCraftOperation();
 		long currentTimeMillis = System.currentTimeMillis();
 		if (null != ongoing)
 		{
@@ -297,7 +291,7 @@ public class ClientWrapper
 		}
 		else if (null != openStationLocation)
 		{
-			IReadOnlyCuboidData cuboid = _cuboids.get(openStationLocation.getCuboidAddress());
+			IReadOnlyCuboidData cuboid = _worldCache.getCuboid(openStationLocation.getCuboidAddress());
 			// We already have this open in another view.
 			Assert.assertTrue(null != cuboid);
 			CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
@@ -315,7 +309,7 @@ public class ClientWrapper
 			// If we are standing in a portal, see if we are ready to pass through it.
 			if ((_lastSpecialActionMillis + EntitySubActionTravelViaBlock.TRAVEL_COOLDOWN_MILLIS) < currentTimeMillis)
 			{
-				AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _getBlockLookUp(), _thisEntity.location(), _playerVolume);
+				AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _worldCache.blockLookup, thisEntity.location(), _worldCache.playerType.volume());
 				if (null != surfaceLocation)
 				{
 					subAction = new EntitySubActionTravelViaBlock(surfaceLocation);
@@ -380,25 +374,21 @@ public class ClientWrapper
 		// Filter for redundant events.
 		if (!_didJump)
 		{
-			Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = (AbsoluteLocation location) -> {
-				IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
-				return (null != cuboid)
-						? new BlockProxy(location.getBlockAddress(), cuboid)
-						: null
-				;
-			};
-			EntityLocation location = _thisEntity.location();
-			EntityLocation vector = _thisEntity.velocity();
+			Entity thisEntity = _worldCache.getThisEntity();
+			Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _worldCache.blockLookup;
+			EntityLocation location = thisEntity.location();
+			EntityLocation vector = thisEntity.velocity();
+			EntityVolume playerVolume = _worldCache.playerType.volume();
 			
 			IEntitySubAction<IMutablePlayerEntity> subAction = null;
-			if (EntitySubActionLadderAscend.canAscend(previousBlockLookUp, location, _playerVolume))
+			if (EntitySubActionLadderAscend.canAscend(previousBlockLookUp, location, playerVolume))
 			{
 				subAction = new EntitySubActionLadderAscend<>();
 			}
 			else if (EntityChangeJump.canJump(previousBlockLookUp
-					, location
-					, _playerVolume
-					, vector
+				, location
+				, playerVolume
+				, vector
 			))
 			{
 				subAction = new EntityChangeJump<>();
@@ -429,11 +419,11 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		
 		long currentTimeMillis = System.currentTimeMillis();
-		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _getBlockLookUp();
-		EntityLocation location = _thisEntity.location();
+		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _worldCache.blockLookup;
+		EntityLocation location = _worldCache.getThisEntity().location();
 		
 		boolean didMove = false;
-		if (EntitySubActionLadderDescend.canDescend(previousBlockLookUp, location, _playerVolume))
+		if (EntitySubActionLadderDescend.canDescend(previousBlockLookUp, location, _worldCache.playerType.volume()))
 		{
 			EntitySubActionLadderDescend<IMutablePlayerEntity> subAction = new EntitySubActionLadderDescend<>();
 			_client.sendAction(subAction, currentTimeMillis);
@@ -487,7 +477,8 @@ public class ClientWrapper
 		Assert.assertTrue(null != emptyBlock);
 		
 		// We need to check our selected item and see what "action" is associated with it.
-		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		
 		Block solidBlockType = _getBlockType(solidBlock);
 		Block emptyBlockType = _getBlockType(emptyBlock);
@@ -502,7 +493,7 @@ public class ClientWrapper
 		}
 		else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
 		{
-			byte flags = _cuboids.get(solidBlock.getCuboidAddress()).getData7(AspectRegistry.FLAGS, solidBlock.getBlockAddress());
+			byte flags = _worldCache.getCuboid(solidBlock.getCuboidAddress()).getData7(AspectRegistry.FLAGS, solidBlock.getBlockAddress());
 			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType, flags);
 			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
 			_resetBlockTarget(solidBlock, currentTimeMillis);
@@ -571,7 +562,8 @@ public class ClientWrapper
 	public boolean runRightClickOnSelf()
 	{
 		// We need to check our selected item and see what "action" is associated with it.
-		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		
 		IEntitySubAction<IMutablePlayerEntity> change;
 		if (Entity.NO_SELECTION != selectedKey)
@@ -615,7 +607,8 @@ public class ClientWrapper
 	 */
 	public boolean holdRightClickOnSelf()
 	{
-		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		
 		IEntitySubAction<IMutablePlayerEntity> change;
 		if (Entity.NO_SELECTION != selectedKey)
@@ -685,7 +678,8 @@ public class ClientWrapper
 		boolean isReady = _readyToInteractOneOff(emptyBlock, currentTimeMillis);
 		
 		// We need to check our selected item and see what "action" is associated with it.
-		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		
 		Assert.assertTrue(!_isAgentPaused);
 		boolean didAttemptPlace = false;
@@ -693,7 +687,7 @@ public class ClientWrapper
 		{
 			// Check this type to see if it is a block and, if so, if it is a multi-block.
 			Item type;
-			if (_thisEntity.isCreativeMode())
+			if (thisEntity.isCreativeMode())
 			{
 				CreativeInventory inv = new CreativeInventory();
 				Items stack = inv.getStackForKey(selectedKey);
@@ -702,8 +696,8 @@ public class ClientWrapper
 			}
 			else
 			{
-				Items stack = _thisEntity.inventory().getStackForKey(selectedKey);
-				NonStackableItem nonStack = _thisEntity.inventory().getNonStackableForKey(selectedKey);
+				Items stack = thisEntity.inventory().getStackForKey(selectedKey);
+				NonStackableItem nonStack = thisEntity.inventory().getNonStackableForKey(selectedKey);
 				type = (null != stack) ? stack.type() : nonStack.type();
 			}
 			Block block = _environment.blocks.getAsPlaceableBlock(type);
@@ -713,7 +707,7 @@ public class ClientWrapper
 				if (_environment.blocks.isMultiBlock(block))
 				{
 					// We will place the multi-block in the same orientation as this user.
-					byte yaw = _thisEntity.yaw();
+					byte yaw = thisEntity.yaw();
 					FacingDirection direction = OrientationHelpers.getYawDirection(yaw);
 					change = new EntityChangePlaceMultiBlock(emptyBlock, direction);
 				}
@@ -753,7 +747,8 @@ public class ClientWrapper
 	{
 		Assert.assertTrue(!_isAgentPaused);
 		// We need to check our selected item and see if there is some interaction it has with this entity.
-		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		if (Entity.NO_SELECTION != selectedKey)
 		{
 			Inventory inventory = _getEntityInventory();
@@ -782,7 +777,8 @@ public class ClientWrapper
 
 	public void setSelectedItemKeyOrClear(int itemInventoryKey)
 	{
-		int current = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int current = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		int keyToSelect = (current == itemInventoryKey)
 				? 0
 				: itemInventoryKey
@@ -807,7 +803,7 @@ public class ClientWrapper
 	 */
 	public boolean pullItemsFromBlockInventory(AbsoluteLocation location, int blockInventoryKey, TransferQuantity quantity, boolean useFuel)
 	{
-		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _cuboids.get(location.getCuboidAddress()));
+		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _worldCache.getCuboid(location.getCuboidAddress()));
 		Inventory blockInventory;
 		byte inventoryAspect;
 		if (useFuel)
@@ -864,7 +860,7 @@ public class ClientWrapper
 	 */
 	public boolean pushItemsToBlockInventory(AbsoluteLocation location, int entityInventoryKey, TransferQuantity quantity, boolean useFuel)
 	{
-		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _cuboids.get(location.getCuboidAddress()));
+		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _worldCache.getCuboid(location.getCuboidAddress()));
 		Inventory entityInventory = _getEntityInventory();
 		Items stack = entityInventory.getStackForKey(entityInventoryKey);
 		NonStackableItem nonStack = entityInventory.getNonStackableForKey(entityInventoryKey);
@@ -935,7 +931,8 @@ public class ClientWrapper
 	{
 		Assert.assertTrue(!_isAgentPaused);
 		// In order to avoid gratuitous validation duplication, we will submit this mutation if it seems possible and rely on its own validation.
-		int selectedKey = _thisEntity.hotbarItems()[_thisEntity.hotbarIndex()];
+		Entity thisEntity = _worldCache.getThisEntity();
+		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
 		long currentTimeMillis = System.currentTimeMillis();
 		_client.sendAction(swap, currentTimeMillis);
@@ -1037,7 +1034,7 @@ public class ClientWrapper
 
 	private void _setEntity(Entity thisEntity)
 	{
-		_thisEntity = thisEntity;
+		_worldCache.setThisEntity(thisEntity);
 		_didJump = false;
 		
 		// We typically only see the ephemeral locally so check if it is here to update our last action time.
@@ -1049,35 +1046,23 @@ public class ClientWrapper
 
 	private Inventory _getEntityInventory()
 	{
-		Inventory inventory = _thisEntity.isCreativeMode()
-				? CreativeInventory.fakeInventory()
-				: _thisEntity.inventory()
+		Entity thisEntity = _worldCache.getThisEntity();
+		Inventory inventory = thisEntity.isCreativeMode()
+			? CreativeInventory.fakeInventory()
+			: thisEntity.inventory()
 		;
 		return inventory;
 	}
 
 	private Block _getBlockType(AbsoluteLocation block)
 	{
-		CuboidAddress address = block.getCuboidAddress();
-		IReadOnlyCuboidData cuboid = _cuboids.get(address);
 		// This can be null when the action is taken due to loading issues, respawn, etc.
-		Block blockType = (null != cuboid)
-				? new BlockProxy(block.getBlockAddress(), _cuboids.get(address)).getBlock()
-				: null
+		BlockProxy proxy = _worldCache.blockLookup.apply(block);
+		Block blockType = (null != proxy)
+			? proxy.getBlock()
+			: null
 		;
 		return blockType;
-	}
-
-	private Function<AbsoluteLocation, BlockProxy> _getBlockLookUp()
-	{
-		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = (AbsoluteLocation location) -> {
-			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
-			return (null != cuboid)
-				? new BlockProxy(location.getBlockAddress(), cuboid)
-				: null
-			;
-		};
-		return previousBlockLookUp;
 	}
 
 	private IEntitySubAction<IMutablePlayerEntity> _tryPassivePickup(long currentTimeMillis)
@@ -1103,14 +1088,14 @@ public class ClientWrapper
 		float closest = Float.MAX_VALUE;
 		// All the passives we store are the ItemSlot type.
 		EntityVolume volume = PassiveType.ITEM_SLOT.volume();
+		Entity thisEntity = _worldCache.getThisEntity();
 		// TODO:  We need to organize this data better since we shouldn't always search all of them.
-		for (Map.Entry<Integer, PartialPassive> elt : _passiveItems.entrySet())
+		for (PartialPassive passive : _worldCache.getItemSlotPassives())
 		{
-			PartialPassive passive = elt.getValue();
-			float distance = SpatialHelpers.distanceFromPlayerEyeToVolume(_thisEntity.location(), _environment.creatures.PLAYER, passive.location(), volume);
+			float distance = SpatialHelpers.distanceFromPlayerEyeToVolume(thisEntity.location(), _environment.creatures.PLAYER, passive.location(), volume);
 			if ((distance <= EntitySubActionPickUpPassive.PICKUP_DISTANCE) && (distance < closest))
 			{
-				id = elt.getKey();
+				id = passive.id();
 				closest = distance;
 			}
 		}
@@ -1128,7 +1113,7 @@ public class ClientWrapper
 		BlockProxy proxy = null;
 		if (isReady)
 		{
-			IReadOnlyCuboidData cuboid = _cuboids.get(blockLocation.getCuboidAddress());
+			IReadOnlyCuboidData cuboid = _worldCache.getCuboid(blockLocation.getCuboidAddress());
 			// This can be null when the action is taken due to loading issues, respawn, etc.
 			if (null != cuboid)
 			{
@@ -1180,19 +1165,19 @@ public class ClientWrapper
 				, Set<Aspect<?, ?>> changedAspects
 		)
 		{
-			_cuboids.put(cuboid.getCuboidAddress(), cuboid);
+			_worldCache.updateCuboid(cuboid);
 			_updateConsumer.updateExisting(cuboid, heightMap, changedBlocks);
 		}
 		@Override
 		public void cuboidDidLoad(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 		{
-			_cuboids.put(cuboid.getCuboidAddress(), cuboid);
+			_worldCache.addCuboid(cuboid);
 			_updateConsumer.loadNew(cuboid, heightMap);
 		}
 		@Override
 		public void cuboidDidUnload(CuboidAddress address)
 		{
-			_cuboids.remove(address);
+			_worldCache.removeCuboid(address);
 			_updateConsumer.unload(address);
 		}
 		@Override
@@ -1218,45 +1203,35 @@ public class ClientWrapper
 		{
 			Assert.assertTrue(_assignedLocalEntityId != entity.id());
 			
-			_updateConsumer.otherEntityUpdated(entity);
+			_worldCache.updateOtherEntity(entity);
 		}
 		@Override
 		public void otherEntityDidLoad(PartialEntity entity)
 		{
 			Assert.assertTrue(_assignedLocalEntityId != entity.id());
 			
-			_updateConsumer.otherEntityUpdated(entity);
+			_worldCache.addOtherEntity(entity);
 		}
 		@Override
 		public void otherEntityDidUnload(int id)
 		{
+			_worldCache.removeOtherEntity(id);
 			_updateConsumer.otherEntityDidUnload(id);
 		}
 		@Override
 		public void passiveEntityDidLoad(PartialPassive entity)
 		{
-			_updateConsumer.passiveEntityDidLoad(entity);
-			if (PassiveType.ITEM_SLOT == entity.type())
-			{
-				Object old = _passiveItems.put(entity.id(), entity);
-				Assert.assertTrue(null == old);
-			}
+			_worldCache.addPassive(entity);
 		}
 		@Override
 		public void passiveEntityDidChange(PartialPassive entity)
 		{
-			_updateConsumer.passiveEntityDidChange(entity);
-			if (PassiveType.ITEM_SLOT == entity.type())
-			{
-				Object old = _passiveItems.put(entity.id(), entity);
-				Assert.assertTrue(null != old);
-			}
+			_worldCache.updatePassive(entity);
 		}
 		@Override
 		public void passiveEntityDidUnload(int id)
 		{
-			_updateConsumer.passiveEntityDidUnload(id);
-			_passiveItems.remove(id);
+			_worldCache.removePassiveEntity(id);
 		}
 		@Override
 		public void tickDidComplete(long tickNumber)
@@ -1355,14 +1330,9 @@ public class ClientWrapper
 		void otherClientJoined(int clientId, String name);
 		void otherClientLeft(int clientId);
 		
-		void otherEntityUpdated(PartialEntity entity);
 		void otherEntityDidUnload(int id);
 		void otherEntityHurt(int id, AbsoluteLocation location);
 		void otherEntityKilled(int id, AbsoluteLocation location);
-		
-		void passiveEntityDidLoad(PartialPassive entity);
-		void passiveEntityDidChange(PartialPassive entity);
-		void passiveEntityDidUnload(int id);
 		
 		void enchantComplete(AbsoluteLocation location);
 		void craftInBlockComplete(AbsoluteLocation location);

@@ -1,13 +1,12 @@
 package com.jeffdisher.october.peaks;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.OrientationHelpers;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
@@ -79,49 +78,32 @@ public class AudioManager
 	private final Resources _resources;
 	private final long _walkingId;
 
-	private Entity _projectedEntity;
-	private final Map<Integer, PartialEntity> _otherEntities;
+	private final WorldCache _worldCache;
 	private boolean _isWalking;
 
 	public AudioManager(Environment environment
-			, LoadedResources resources
+		, LoadedResources resources
+		, WorldCache worldCache
 	)
 	{
 		_random = new Random();
 		_resources = resources.audioManager();
+		_worldCache = worldCache;
 		_player = environment.creatures.PLAYER;
 		_cow = environment.creatures.getTypeById("op.cow");
 		_orc = environment.creatures.getTypeById("op.orc");
-		
-		_otherEntities = new HashMap<>();
 		
 		// We will start the walking sound as looping and pause it.
 		_walkingId = _resources._walk.loop();
 		_resources._walk.pause(_walkingId);
 	}
 
-	public void setThisEntity(Entity projectedEntity)
-	{
-		_projectedEntity = projectedEntity;
-	}
-
-	public void setOtherEntity(PartialEntity otherEntity)
-	{
-		// This is called whether the entity is new or updated so we can't check if it is already here.
-		_otherEntities.put(otherEntity.id(), otherEntity);
-	}
-
-	public void removeOtherEntity(int entityId)
-	{
-		PartialEntity other  = _otherEntities.remove(entityId);
-		Assert.assertTrue(null != other);
-	}
-
 	public void tickCompleted()
 	{
 		// See if there is a nearby entity which should make a noise.
-		AbsoluteLocation entityLocation = _projectedEntity.location().getBlockLocation();
-		for (PartialEntity other : _otherEntities.values())
+		Entity thisEntity = _worldCache.getThisEntity();
+		AbsoluteLocation entityLocation = thisEntity.location().getBlockLocation();
+		for (PartialEntity other : _worldCache.getOtherEntities())
 		{
 			// We only care abut orcs and cows.
 			Sound soundToPlay = null;
@@ -224,7 +206,8 @@ public class AudioManager
 
 	private void _playSound(Sound soundToPlay, AbsoluteLocation otherLocation)
 	{
-		EntityLocation entityLocation = _projectedEntity.location();
+		Entity thisEntity = _worldCache.getThisEntity();
+		EntityLocation entityLocation = thisEntity.location();
 		float xDistance = (float)otherLocation.x() - entityLocation.x();
 		float yDistance = (float)otherLocation.y() - entityLocation.y();
 		float zDistance = (float)otherLocation.z() - entityLocation.z();
@@ -233,7 +216,7 @@ public class AudioManager
 		float volume = closeness / AUDIO_RANGE_SQUARED_FLOAT;
 		
 		// To figure out the pan, we figure out which way we are currently facing:  yaw 0 is north and positive turns counter-clockwise.
-		byte yaw = _projectedEntity.yaw();
+		byte yaw = thisEntity.yaw();
 		float yawRadians = OrientationHelpers.getYawRadians(yaw);
 		float distance = (float)Math.sqrt(floatSquaredDistance);
 		Assert.assertTrue(xDistance <= distance);
@@ -260,7 +243,7 @@ public class AudioManager
 	private Sound _selectSoundForEntity(int entityTargetId, Sound orc, Sound cow, Sound player)
 	{
 		Sound soundToPlay;
-		EntityType type = _otherEntities.get(entityTargetId).type();
+		EntityType type = _worldCache.getCreatureOrEntityType(entityTargetId);
 		if (_cow == type)
 		{
 			soundToPlay = cow;
@@ -283,7 +266,8 @@ public class AudioManager
 
 	private void _playSoundIfInRange(AbsoluteLocation location, Sound soundToPlay)
 	{
-		AbsoluteLocation entityLocation = _projectedEntity.location().getBlockLocation();
+		Entity thisEntity = _worldCache.getThisEntity();
+		AbsoluteLocation entityLocation = thisEntity.location().getBlockLocation();
 		int distanceSquared = _squaredDistance(entityLocation, location);
 		if (distanceSquared <= AUDIO_RANGE_SQUARED)
 		{

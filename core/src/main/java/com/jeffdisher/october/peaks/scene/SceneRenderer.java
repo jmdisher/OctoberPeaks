@@ -13,12 +13,12 @@ import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
+import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.PartialEntity;
-import com.jeffdisher.october.types.PartialPassive;
 
 
 /**
@@ -38,12 +38,12 @@ public class SceneRenderer
 	private Vector _eye;
 	private float _skyLightMultiplier;
 
-	public SceneRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, ParticleEngine particleEngine, LoadedResources resources)
+	public SceneRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, ParticleEngine particleEngine, LoadedResources resources, WorldCache worldCache)
 	{
 		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
-		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources);
-		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources);
+		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache);
+		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources, worldCache);
 		_particleEngine = particleEngine;
 		_skyBox = new SkyBox(gl, resources);
 		
@@ -117,11 +117,6 @@ public class SceneRenderer
 		_blockRenderer.removeCuboid(address);
 	}
 
-	public void setEntity(PartialEntity entity)
-	{
-		_entityRenderer.setEntity(entity);
-	}
-
 	public void removeEntity(int id)
 	{
 		_entityRenderer.removeEntity(id);
@@ -130,21 +125,6 @@ public class SceneRenderer
 	public void entityHurt(int id)
 	{
 		_entityRenderer.entityHurt(id);
-	}
-
-	public void passiveEntityDidLoad(PartialPassive entity)
-	{
-		_passiveRenderer.passiveEntityDidLoad(entity);
-	}
-
-	public void passiveEntityDidChange(PartialPassive entity)
-	{
-		_passiveRenderer.passiveEntityDidChange(entity);
-	}
-
-	public void passiveEntityDidUnload(int id)
-	{
-		_passiveRenderer.passiveEntityDidUnload(id);
 	}
 
 	public void setDayTime(float dayProgression, float skyLightMultiplier)
