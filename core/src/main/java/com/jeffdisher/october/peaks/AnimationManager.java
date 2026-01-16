@@ -3,9 +3,12 @@ package com.jeffdisher.october.peaks;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.logic.CraftingBlockSupport;
 import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.EntityLocation;
 
 
@@ -17,12 +20,14 @@ public class AnimationManager
 {
 	public static final long DAMAGE_DURATION_MILLIS = 1000L;
 
+	private final Environment _environment;
 	private final ParticleEngine _particleEngine;
 	private final WorldCache _worldCache;
 	private final Map<Integer, Long> _entityDamageMillis;
 
-	public AnimationManager(ParticleEngine particleEngine, WorldCache worldCache)
+	public AnimationManager(Environment environment, ParticleEngine particleEngine, WorldCache worldCache)
 	{
+		_environment = environment;
 		_particleEngine = particleEngine;
 		_worldCache = worldCache;
 		_entityDamageMillis = new HashMap<>();
@@ -34,8 +39,10 @@ public class AnimationManager
 		_flatBurst(centre, false);
 	}
 
-	public void craftInBlockComplete(AbsoluteLocation location, boolean isFurnace)
+	public void craftInBlockComplete(AbsoluteLocation location)
 	{
+		Block craftingBlock = _worldCache.blockLookup.apply(location).getBlock();
+		boolean isFurnace = _environment.stations.getCraftingClasses(craftingBlock).contains(CraftingBlockSupport.FUELLED_CLASSIFICATION);
 		EntityLocation centre = _getTopCentreOfBlock(location);
 		_flatBurst(centre, isFurnace);
 	}

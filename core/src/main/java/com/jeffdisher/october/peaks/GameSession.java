@@ -65,7 +65,7 @@ public class GameSession
 		this.blockLookup = _worldCache.blockLookup;
 		
 		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
-		this.animationManager = new AnimationManager(particleEngine, _worldCache);
+		this.animationManager = new AnimationManager(environment, particleEngine, _worldCache);
 		this.scene = new SceneRenderer(environment
 			, gl
 			, screenBrightness
@@ -247,8 +247,7 @@ public class GameSession
 		@Override
 		public void craftInBlockComplete(AbsoluteLocation location)
 		{
-			// TODO:  Determine how to best determine if this is a furnace without yet more duplication of the cuboid map.
-			GameSession.this.animationManager.craftInBlockComplete(location, false);
+			GameSession.this.animationManager.craftInBlockComplete(location);
 		}
 		@Override
 		public void enchantComplete(AbsoluteLocation location)
