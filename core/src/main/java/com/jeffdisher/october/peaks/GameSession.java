@@ -15,6 +15,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SpatialHelpers;
+import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.scene.SceneRenderer;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.types.Vector;
@@ -42,6 +43,7 @@ public class GameSession
 	public final SelectionManager selectionManager;
 	public final ClientWrapper client;
 	public final AudioManager audioManager;
+	public final AnimationManager animationManager;
 	public final Map<CuboidAddress, IReadOnlyCuboidData> cuboids;
 	public final Function<AbsoluteLocation, BlockProxy> blockLookup;
 
@@ -72,7 +74,8 @@ public class GameSession
 			return proxy;
 		};
 		
-		this.scene = new SceneRenderer(environment, gl, screenBrightness, resources);
+		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
+		this.scene = new SceneRenderer(environment, gl, screenBrightness, particleEngine, resources);
 		this.scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		
 		this.eyeEffect = new EyeEffect(gl, resources);
@@ -105,6 +108,7 @@ public class GameSession
 		
 		// Load the audio.
 		this.audioManager = new AudioManager(environment, resources);
+		this.animationManager = new AnimationManager(particleEngine);
 	}
 
 	public void finishStartup()
@@ -188,6 +192,10 @@ public class GameSession
 			GameSession.this.selectionManager.setThisEntity(projectedEntity);
 			GameSession.this.eyeEffect.setThisEntity(projectedEntity);
 			GameSession.this.audioManager.setThisEntity(projectedEntity);
+			GameSession.this.animationManager.setEntityOrCreatureLocation(projectedEntity.id()
+				, Environment.getShared().creatures.PLAYER
+				, projectedEntity.location()
+			);
 			_callouts.thisEntityUpdated(projectedEntity);
 		}
 		@Override
@@ -212,6 +220,10 @@ public class GameSession
 			GameSession.this.scene.setEntity(entity);
 			GameSession.this.selectionManager.setEntity(entity);
 			GameSession.this.audioManager.setOtherEntity(entity);
+			GameSession.this.animationManager.setEntityOrCreatureLocation(entity.id()
+				, entity.type()
+				, entity.location()
+			);
 		}
 		@Override
 		public void otherEntityDidUnload(int id)
@@ -219,6 +231,7 @@ public class GameSession
 			GameSession.this.scene.removeEntity(id);
 			GameSession.this.selectionManager.removeEntity(id);
 			GameSession.this.audioManager.removeOtherEntity(id);
+			GameSession.this.animationManager.removeEntityOrCreature(id);
 		}
 		@Override
 		public void otherEntityHurt(int id, AbsoluteLocation location)
@@ -233,6 +246,7 @@ public class GameSession
 			if (null != location)
 			{
 				GameSession.this.audioManager.otherEntityKilled(location, id);
+				GameSession.this.animationManager.removeEntityOrCreature(id);
 			}
 		}
 		@Override
@@ -265,6 +279,22 @@ public class GameSession
 		public void blockBroken(AbsoluteLocation location)
 		{
 			GameSession.this.audioManager.blockBroken(location);
+		}
+		@Override
+		public void craftInInventoryComplete(int entityId)
+		{
+			GameSession.this.animationManager.craftInInventoryComplete(entityId);
+		}
+		@Override
+		public void craftInBlockComplete(AbsoluteLocation location)
+		{
+			// TODO:  Determine how to best determine if this is a furnace without yet more duplication of the cuboid map.
+			GameSession.this.animationManager.craftInBlockComplete(location, false);
+		}
+		@Override
+		public void enchantComplete(AbsoluteLocation location)
+		{
+			GameSession.this.animationManager.enchantComplete(location);
 		}
 	}
 }

@@ -1294,13 +1294,20 @@ public class ClientWrapper
 					_updateConsumer.otherEntityKilled(event.entityTarget(), event.location());
 				}
 				break;
+			case CRAFT_IN_INVENTORY_COMPLETE:
+				// Either of these entity references are the same, for this event.
+				_updateConsumer.craftInInventoryComplete(event.entitySource());
+				break;
+			case CRAFT_IN_BLOCK_COMPLETE:
+				_updateConsumer.craftInBlockComplete(event.location());
+				break;
+			case ENCHANT_COMPLETE:
+				_updateConsumer.enchantComplete(event.location());
+				break;
 			case LIQUID_PLACED:
 			case LIQUID_REMOVED:
 			case ENTITY_ATE_FOOD:
 			case ENTITY_PICKED_UP_PASSIVE:
-			case CRAFT_IN_INVENTORY_COMPLETE:
-			case CRAFT_IN_BLOCK_COMPLETE:
-			case ENCHANT_COMPLETE:
 				// Ignore these.
 				break;
 			default:
@@ -1356,6 +1363,10 @@ public class ClientWrapper
 		void passiveEntityDidLoad(PartialPassive entity);
 		void passiveEntityDidChange(PartialPassive entity);
 		void passiveEntityDidUnload(int id);
+		
+		void enchantComplete(AbsoluteLocation location);
+		void craftInBlockComplete(AbsoluteLocation location);
+		void craftInInventoryComplete(int entityId);
 		
 		void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression);
 	}

@@ -38,13 +38,13 @@ public class SceneRenderer
 	private Vector _eye;
 	private float _skyLightMultiplier;
 
-	public SceneRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
+	public SceneRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, ParticleEngine particleEngine, LoadedResources resources)
 	{
 		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
 		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources);
 		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources);
-		_particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
+		_particleEngine = particleEngine;
 		_skyBox = new SkyBox(gl, resources);
 		
 		_viewMatrix = Matrix.identity();
