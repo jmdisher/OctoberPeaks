@@ -274,5 +274,10 @@ public class GameSession
 		{
 			GameSession.this.animationManager.enchantComplete(location);
 		}
+		@Override
+		public void passiveWasPickedUp(int passiveId, int pickingUpEntityId)
+		{
+			GameSession.this.ghostManager.passiveWasPickedUp(System.currentTimeMillis(), passiveId, pickingUpEntityId);
+		}
 	}
 }

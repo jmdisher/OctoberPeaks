@@ -10,6 +10,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.GhostManager;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -246,15 +247,22 @@ public class PassiveRenderer
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
 	private final WorldCache _worldCache;
+	private final GhostManager _ghostManager;
 	private final float _halfWidth;
 	private final float _halfHeight;
 
-	public PassiveRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources, WorldCache worldCache)
+	public PassiveRenderer(GL20 gl
+		, Binding<Float> screenBrightness
+		, LoadedResources resources
+		, WorldCache worldCache
+		, GhostManager ghostManager
+	)
 	{
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.passiveResources();
 		_worldCache = worldCache;
+		_ghostManager = ghostManager;
 		
 		_halfWidth = PassiveType.ITEM_SLOT.volume().width() / 2.0f;
 		_halfHeight = PassiveType.ITEM_SLOT.volume().height() / 2.0f;
@@ -266,10 +274,12 @@ public class PassiveRenderer
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		
+		long currentMillis = System.currentTimeMillis();
 		Collection<PartialPassive> itemSlotPassives = _worldCache.getItemSlotPassives();
-		if (itemSlotPassives.size() > 0)
+		Collection<PartialPassive> itemSlotGhosts = _ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
+		if (!itemSlotPassives.isEmpty() || !itemSlotGhosts.isEmpty())
 		{
-			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, viewMatrix, projectionMatrix, eye);
+			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, itemSlotGhosts, viewMatrix, projectionMatrix, eye);
 		}
 		
 		Collection<PartialPassive> fallingBlockPassives = _worldCache.getFallingBlockPassives();
@@ -286,7 +296,7 @@ public class PassiveRenderer
 	}
 
 
-	private void _renderItemSlots(ItemSlotResources resources, Collection<PartialPassive> itemSlotPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderItemSlots(ItemSlotResources resources, Collection<PartialPassive> itemSlotPassives, Collection<PartialPassive> itemSlotGhosts, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
 	{
 		resources._program.useProgram();
 		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
@@ -308,22 +318,33 @@ public class PassiveRenderer
 		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
 		for (PartialPassive itemSlotPassive : itemSlotPassives)
 		{
-			EntityLocation location = itemSlotPassive.location();
-			Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
-			
-			// Determine the centre of this for rotation.
-			float centreX = location.x() + _halfWidth;
-			float centreY = location.y() + _halfWidth;
-			float centreZ = location.z() + _halfHeight;
-			_gl.glUniform3f(resources._uCentre, centreX, centreY, centreZ);
-			
-			// We need to pass in the base texture coordinates of this type.
-			float[] uvBase = _resources._itemAtlas.baseOfTexture(type.number());
-			_gl.glUniform2f(resources._uUvBase, uvBase[0], uvBase[1]);
-			
-			// Just draw the square.
-			resources._itemSlotVertices.drawAllTriangles(_gl);
+			_renderItemSlotPassive(resources, itemSlotPassive);
 		}
+		
+		// Walk any ghosts.
+		for (PartialPassive itemSlotPassive : itemSlotGhosts)
+		{
+			_renderItemSlotPassive(resources, itemSlotPassive);
+		}
+	}
+
+	private void _renderItemSlotPassive(ItemSlotResources resources, PartialPassive itemSlotPassive)
+	{
+		EntityLocation location = itemSlotPassive.location();
+		Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
+		
+		// Determine the centre of this for rotation.
+		float centreX = location.x() + _halfWidth;
+		float centreY = location.y() + _halfWidth;
+		float centreZ = location.z() + _halfHeight;
+		_gl.glUniform3f(resources._uCentre, centreX, centreY, centreZ);
+		
+		// We need to pass in the base texture coordinates of this type.
+		float[] uvBase = _resources._itemAtlas.baseOfTexture(type.number());
+		_gl.glUniform2f(resources._uUvBase, uvBase[0], uvBase[1]);
+		
+		// Just draw the square.
+		resources._itemSlotVertices.drawAllTriangles(_gl);
 	}
 
 	private void _renderFallingBlocks(FallingBlockResources resources, Collection<PartialPassive> fallingBlockPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)

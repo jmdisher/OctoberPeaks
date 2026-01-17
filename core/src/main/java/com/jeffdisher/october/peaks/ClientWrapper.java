@@ -1279,10 +1279,12 @@ public class ClientWrapper
 			case ENCHANT_COMPLETE:
 				_updateConsumer.enchantComplete(event.location());
 				break;
+			case ENTITY_PICKED_UP_PASSIVE:
+				_updateConsumer.passiveWasPickedUp(event.entitySource(), event.entityTarget());
+				break;
 			case LIQUID_PLACED:
 			case LIQUID_REMOVED:
 			case ENTITY_ATE_FOOD:
-			case ENTITY_PICKED_UP_PASSIVE:
 				// Ignore these.
 				break;
 			default:
@@ -1337,6 +1339,7 @@ public class ClientWrapper
 		void enchantComplete(AbsoluteLocation location);
 		void craftInBlockComplete(AbsoluteLocation location);
 		void craftInInventoryComplete(int entityId);
+		void passiveWasPickedUp(int passiveId, int pickingUpEntityId);
 		
 		void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression);
 	}
