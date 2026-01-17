@@ -123,6 +123,26 @@ public class WorldCache
 		return type;
 	}
 
+	public PartialEntity getCreatureOrEntityPartial(int id)
+	{
+		// Note that this can also return a partial for the local entity.
+		PartialEntity partial;
+		if (_thisEntity.id() == id)
+		{
+			partial = PartialEntity.fromEntity(_thisEntity);
+		}
+		else
+		{
+			partial = _otherEntities.get(id);
+		}
+		return partial;
+	}
+
+	public PartialPassive getItemSlotPassive(int id)
+	{
+		return _itemSlotPassives.get(id);
+	}
+
 	// ----- Methods to update the cache state -----
 	public void addCuboid(IReadOnlyCuboidData cuboid)
 	{
