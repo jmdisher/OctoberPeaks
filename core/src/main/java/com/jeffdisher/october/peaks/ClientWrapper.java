@@ -1166,7 +1166,7 @@ public class ClientWrapper
 		)
 		{
 			_worldCache.updateCuboid(cuboid);
-			_updateConsumer.updateExisting(cuboid, heightMap, changedBlocks);
+			_updateConsumer.updateExisting(cuboid, heightMap, changedBlocks, changedAspects);
 		}
 		@Override
 		public void cuboidDidLoad(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
@@ -1319,7 +1319,7 @@ public class ClientWrapper
 		void didDisconnect();
 		
 		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
-		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks);
+		void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks, Set<Aspect<?, ?>> changedAspects);
 		void unload(CuboidAddress address);
 		void blockPlaced(AbsoluteLocation location);
 		void blockBroken(AbsoluteLocation location);

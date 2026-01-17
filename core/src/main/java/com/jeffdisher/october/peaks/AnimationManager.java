@@ -2,13 +2,17 @@ package com.jeffdisher.october.peaks;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
+import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.CraftingBlockSupport;
 import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.EntityLocation;
 
 
@@ -31,6 +35,39 @@ public class AnimationManager
 		_particleEngine = particleEngine;
 		_worldCache = worldCache;
 		_entityDamageMillis = new HashMap<>();
+	}
+
+	public void craftingBlockChanged(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
+	{
+		// We will just generate particles for this, but first check to see what type it is.
+		AbsoluteLocation base = cuboid.getCuboidAddress().getBase();
+		for (BlockAddress b : changedBlocks)
+		{
+			// This may be null if it ended.
+			if (null != cuboid.getDataSpecial(AspectRegistry.CRAFTING, b))
+			{
+				short blockNumber = cuboid.getData15(AspectRegistry.BLOCK, b);
+				Block craftingBlock = _environment.blocks.fromItem(_environment.items.ITEMS_BY_TYPE[blockNumber]);
+				boolean isFurnace = _environment.stations.getCraftingClasses(craftingBlock).contains(CraftingBlockSupport.FUELLED_CLASSIFICATION);
+				EntityLocation centre = _getTopCentreOfBlock(base.relativeForBlock(b));
+				_flatBurst(centre, isFurnace);
+			}
+		}
+	}
+
+	public void enchantingBlockChanged(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
+	{
+		// We will just generate particles for this.
+		AbsoluteLocation base = cuboid.getCuboidAddress().getBase();
+		for (BlockAddress b : changedBlocks)
+		{
+			// This may be null if it ended.
+			if (null != cuboid.getDataSpecial(AspectRegistry.ENCHANTING, b))
+			{
+				EntityLocation centre = _getTopCentreOfBlock(base.relativeForBlock(b));
+				_upwardBurst(centre);
+			}
+		}
 	}
 
 	public void craftInInventoryComplete(int entityId)

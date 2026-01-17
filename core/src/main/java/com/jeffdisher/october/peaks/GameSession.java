@@ -9,6 +9,8 @@ import java.util.function.Function;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.aspects.Aspect;
+import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -164,9 +166,23 @@ public class GameSession
 			GameSession.this.scene.setCuboid(cuboid, heightMap, null);
 		}
 		@Override
-		public void updateExisting(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
+		public void updateExisting(IReadOnlyCuboidData cuboid
+			, ColumnHeightMap heightMap
+			, Set<BlockAddress> changedBlocks
+			, Set<Aspect<?, ?>> changedAspects
+		)
 		{
 			GameSession.this.scene.setCuboid(cuboid, heightMap, changedBlocks);
+			
+			// Since we need to pass events on to the AnimationManager, synthesize events for any crafting/enchanting changes.
+			if (changedAspects.contains(AspectRegistry.CRAFTING))
+			{
+				GameSession.this.animationManager.craftingBlockChanged(cuboid, changedBlocks);
+			}
+			if (changedAspects.contains(AspectRegistry.ENCHANTING))
+			{
+				GameSession.this.animationManager.enchantingBlockChanged(cuboid, changedBlocks);
+			}
 		}
 		@Override
 		public void unload(CuboidAddress address)
