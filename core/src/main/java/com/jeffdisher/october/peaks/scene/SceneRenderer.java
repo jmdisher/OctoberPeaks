@@ -8,6 +8,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.AnimationManager;
+import com.jeffdisher.october.peaks.GhostManager;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.SkyBox;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -46,11 +47,12 @@ public class SceneRenderer
 		, LoadedResources resources
 		, WorldCache worldCache
 		, AnimationManager animationManager
+		, GhostManager ghostManager
 	)
 	{
 		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
-		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache, animationManager);
+		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache, animationManager, ghostManager);
 		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources, worldCache);
 		_particleEngine = particleEngine;
 		_skyBox = new SkyBox(gl, resources);

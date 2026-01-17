@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.peaks.AnimationManager;
+import com.jeffdisher.october.peaks.GhostManager;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
@@ -105,8 +106,15 @@ public class EntityRenderer
 	private final Resources _resources;
 	private final WorldCache _worldCache;
 	private final AnimationManager _animationManager;
+	private final GhostManager _ghostManager;
 
-	public EntityRenderer(GL20 gl, Binding<Float> screenBrightness, LoadedResources resources, WorldCache worldCache, AnimationManager animationManager)
+	public EntityRenderer(GL20 gl
+		, Binding<Float> screenBrightness
+		, LoadedResources resources
+		, WorldCache worldCache
+		, AnimationManager animationManager
+		, GhostManager ghostManager
+	)
 	{
 		_gl = gl;
 		_screenBrightness = screenBrightness;
@@ -114,6 +122,7 @@ public class EntityRenderer
 		
 		_worldCache = worldCache;
 		_animationManager = animationManager;
+		_ghostManager = ghostManager;
 	}
 
 	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
@@ -136,19 +145,13 @@ public class EntityRenderer
 		long currentMillis = System.currentTimeMillis();
 		for (PartialEntity entity : _worldCache.getOtherEntities())
 		{
-			EntityType type = entity.type();
-			Matrix model = _generateEntityModelMatrix(entity, type);
-			model.uploadAsUniform(_gl, _resources._uModelMatrix);
-			// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
-			_EntityData data = _resources._entityData.get(type);
-			_gl.glActiveTexture(GL20.GL_TEXTURE0);
-			_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
-			
-			// Ask the animation manager if this entity recently took damage (as we discolour it in reponse for a short time).
-			float fraction = _animationManager.getDamageFreshnessFraction(currentMillis, entity.id());
-			_gl.glUniform1f(_resources._uDamage, fraction);
-			
-			data.vertices.drawAllTriangles(_gl);
+			_drawPartialEntity(currentMillis, entity);
+		}
+		
+		// Walk any ghosts.
+		for (PartialEntity entity : _ghostManager.pruneAndSnapshotEntities(currentMillis))
+		{
+			_drawPartialEntity(currentMillis, entity);
 		}
 	}
 
@@ -223,6 +226,24 @@ public class EntityRenderer
 		Matrix model = Matrix.multiply(translate, Matrix.multiply(rotate, Matrix.multiply(centreTranslate, scale)));
 		return model;
 	}
+
+	private void _drawPartialEntity(long currentMillis, PartialEntity entity)
+	{
+		EntityType type = entity.type();
+		Matrix model = _generateEntityModelMatrix(entity, type);
+		model.uploadAsUniform(_gl, _resources._uModelMatrix);
+		// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
+		_EntityData data = _resources._entityData.get(type);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, data.texture);
+		
+		// Ask the animation manager if this entity recently took damage (as we discolour it in reponse for a short time).
+		float fraction = _animationManager.getDamageFreshnessFraction(currentMillis, entity.id());
+		_gl.glUniform1f(_resources._uDamage, fraction);
+		
+		data.vertices.drawAllTriangles(_gl);
+	}
+
 
 	private static record _EntityData(VertexArray vertices
 			, int texture

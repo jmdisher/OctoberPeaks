@@ -44,6 +44,7 @@ public class GameSession
 	public final ClientWrapper client;
 	public final AudioManager audioManager;
 	public final AnimationManager animationManager;
+	public final GhostManager ghostManager;
 	public final Function<AbsoluteLocation, BlockProxy> blockLookup;
 
 	public GameSession(Environment environment
@@ -68,6 +69,7 @@ public class GameSession
 		
 		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
 		this.animationManager = new AnimationManager(environment, particleEngine, _worldCache);
+		this.ghostManager = new GhostManager(_worldCache);
 		this.scene = new SceneRenderer(environment
 			, gl
 			, screenBrightness
@@ -75,6 +77,7 @@ public class GameSession
 			, resources
 			, _worldCache
 			, this.animationManager
+			, this.ghostManager
 		);
 		this.scene.rebuildProjection(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		
@@ -237,6 +240,7 @@ public class GameSession
 			if (null != location)
 			{
 				GameSession.this.audioManager.otherEntityKilled(location, id);
+				GameSession.this.ghostManager.entityWasKilled(System.currentTimeMillis(), id);
 			}
 		}
 		@Override
