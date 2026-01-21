@@ -864,8 +864,24 @@ public class UiStateManager implements GameSession.ICallouts
 	public void didDisconnect()
 	{
 		// This is called when the server unexpectedly disconnects us so we want to change top-level state.
-		_currentGameSession.shutdown();
-		_currentGameSession = null;
+		// It can only happen if we are in the PLAY state or CONNECTING state (that is, we haven't completed the handshake).
+		if (_UiState.PLAY == _uiState)
+		{
+			Assert.assertTrue(null == _pendingGameSession);
+			_currentGameSession.shutdown();
+			_currentGameSession = null;
+		}
+		else if (_UiState.CONNECTING == _uiState)
+		{
+			Assert.assertTrue(null == _currentGameSession);
+			_pendingGameSession.shutdown();
+			_pendingGameSession = null;
+		}
+		else
+		{
+			// How did we disconnect when not playing or connecting?
+			throw Assert.unreachable();
+		}
 		
 		// If we were in the active play state, release the mouse capture (this check just makes the transition more explicit).
 		if (_UiState.PLAY == _uiState)
