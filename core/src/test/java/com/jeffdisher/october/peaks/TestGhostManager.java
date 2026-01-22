@@ -57,12 +57,16 @@ public class TestGhostManager
 		
 		long currentMillis = 1000L;
 		ghostManager.passiveWasPickedUp(currentMillis, passiveId, otherEntityId);
-		List<PartialPassive> ghosts = ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
+		List<GhostManager.GhostSnapshot<PartialPassive>> ghosts = ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
 		Assert.assertEquals(1, ghosts.size());
-		Assert.assertEquals(new EntityLocation(0.0f, 0.0f, 0.0f), ghosts.get(0).location());
+		GhostManager.GhostSnapshot<PartialPassive> ghost = ghosts.get(0);
+		Assert.assertEquals(new EntityLocation(0.0f, 0.0f, 0.0f), ghost.location());
+		Assert.assertEquals(0.0f, ghost.animationCompleteFraction(), 0.01f);
 		ghosts = ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis + GhostManager.PICK_UP_DELAY_MILLIS / 2L);
 		Assert.assertEquals(1, ghosts.size());
-		Assert.assertEquals(new EntityLocation(0.6f, 0.6f, 0.93f), ghosts.get(0).location());
+		ghost = ghosts.get(0);
+		Assert.assertEquals(new EntityLocation(0.6f, 0.6f, 0.93f), ghost.location());
+		Assert.assertEquals(0.5f, ghost.animationCompleteFraction(), 0.01f);
 		ghosts = ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis + GhostManager.PICK_UP_DELAY_MILLIS);
 		Assert.assertEquals(0, ghosts.size());
 	}
@@ -87,12 +91,16 @@ public class TestGhostManager
 		
 		long currentMillis = 1000L;
 		ghostManager.entityWasKilled(currentMillis, otherEntityId);
-		List<PartialEntity> ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis);
+		List<GhostManager.GhostSnapshot<PartialEntity>> ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis);
 		Assert.assertEquals(1, ghosts.size());
-		Assert.assertEquals(new EntityLocation(1.0f, 1.0f, 1.0f), ghosts.get(0).location());
+		GhostManager.GhostSnapshot<PartialEntity> ghost = ghosts.get(0);
+		Assert.assertEquals(new EntityLocation(1.0f, 1.0f, 1.0f), ghost.location());
+		Assert.assertEquals(0.0f, ghost.animationCompleteFraction(), 0.01f);
 		ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis + GhostManager.DEATH_DELAY_MILLIS / 2L);
 		Assert.assertEquals(1, ghosts.size());
-		Assert.assertEquals(new EntityLocation(1.0f, 1.0f, 0.5f), ghosts.get(0).location());
+		ghost = ghosts.get(0);
+		Assert.assertEquals(new EntityLocation(1.0f, 1.0f, 0.5f), ghost.location());
+		Assert.assertEquals(0.5f, ghost.animationCompleteFraction(), 0.01f);
 		ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis + GhostManager.DEATH_DELAY_MILLIS);
 		Assert.assertEquals(0, ghosts.size());
 	}
@@ -108,12 +116,16 @@ public class TestGhostManager
 		
 		long currentMillis = 1000L;
 		ghostManager.entityWasKilled(currentMillis, entityId);
-		List<PartialEntity> ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis);
+		List<GhostManager.GhostSnapshot<PartialEntity>> ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis);
 		Assert.assertEquals(1, ghosts.size());
-		Assert.assertEquals(new EntityLocation(0.0f, 0.0f, 0.0f), ghosts.get(0).location());
+		GhostManager.GhostSnapshot<PartialEntity> ghost = ghosts.get(0);
+		Assert.assertEquals(new EntityLocation(0.0f, 0.0f, 0.0f), ghost.location());
+		Assert.assertEquals(0.0f, ghost.animationCompleteFraction(), 0.01f);
 		ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis + GhostManager.DEATH_DELAY_MILLIS / 2L);
 		Assert.assertEquals(1, ghosts.size());
-		Assert.assertEquals(new EntityLocation(0.0f, 0.0f, -0.5f), ghosts.get(0).location());
+		ghost = ghosts.get(0);
+		Assert.assertEquals(new EntityLocation(0.0f, 0.0f, -0.5f), ghost.location());
+		Assert.assertEquals(0.5f, ghost.animationCompleteFraction(), 0.01f);
 		ghosts = ghostManager.pruneAndSnapshotEntities(currentMillis + GhostManager.DEATH_DELAY_MILLIS);
 		Assert.assertEquals(0, ghosts.size());
 	}

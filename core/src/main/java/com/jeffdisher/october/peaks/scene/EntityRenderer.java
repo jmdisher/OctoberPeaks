@@ -149,8 +149,17 @@ public class EntityRenderer
 		}
 		
 		// Walk any ghosts.
-		for (PartialEntity entity : _ghostManager.pruneAndSnapshotEntities(currentMillis))
+		for (GhostManager.GhostSnapshot<PartialEntity> snapshot : _ghostManager.pruneAndSnapshotEntities(currentMillis))
 		{
+			PartialEntity corpse = snapshot.corpse();
+			PartialEntity entity = new PartialEntity(corpse.id()
+				, corpse.type()
+				, snapshot.location()
+				, corpse.yaw()
+				, corpse.pitch()
+				, corpse.health()
+				, corpse.extendedData()
+			);
 			_drawPartialEntity(currentMillis, entity);
 		}
 	}

@@ -65,7 +65,7 @@ public class GhostManager
 		}
 	}
 
-	public List<PartialEntity> pruneAndSnapshotEntities(long currentTimeMillis)
+	public List<GhostSnapshot<PartialEntity>> pruneAndSnapshotEntities(long currentTimeMillis)
 	{
 		// Prune the list - we know that it is sorted since everything in it has the same TTL.
 		while (!_ghostEntities.isEmpty() && (_ghostEntities.get(0).endOfLifeMillis <= currentTimeMillis))
@@ -79,22 +79,19 @@ public class GhostManager
 				PartialEntity corpse = ghost.corpse;
 				
 				long millisRemaining = ghost.endOfLifeMillis - currentTimeMillis;
-				EntityLocation location = _getTweenLocation(corpse.location(), ghost.endLocation, millisRemaining, DEATH_DELAY_MILLIS);
+				float fractionComplete = _getAnimationCompleteFraction(millisRemaining, DEATH_DELAY_MILLIS);
+				EntityLocation location = _getTweenLocation(corpse.location(), ghost.endLocation, fractionComplete);
 				
-				return new PartialEntity(corpse.id()
-					, corpse.type()
+				return new GhostSnapshot<>(corpse
 					, location
-					, corpse.yaw()
-					, corpse.pitch()
-					, corpse.health()
-					, corpse.extendedData()
+					, fractionComplete
 				);
 			})
 			.toList()
 		;
 	}
 
-	public List<PartialPassive> pruneAndSnapshotItemSlotPassives(long currentTimeMillis)
+	public List<GhostSnapshot<PartialPassive>> pruneAndSnapshotItemSlotPassives(long currentTimeMillis)
 	{
 		// Prune the list - we know that it is sorted since everything in it has the same TTL.
 		while (!_ghostPassives.isEmpty() && (_ghostPassives.get(0).endOfLifeMillis <= currentTimeMillis))
@@ -108,13 +105,12 @@ public class GhostManager
 				PartialPassive corpse = ghost.corpse;
 				
 				long millisRemaining = ghost.endOfLifeMillis - currentTimeMillis;
-				EntityLocation location = _getTweenLocation(corpse.location(), ghost.endLocation, millisRemaining, PICK_UP_DELAY_MILLIS);
+				float fractionComplete = _getAnimationCompleteFraction(millisRemaining, PICK_UP_DELAY_MILLIS);
+				EntityLocation location = _getTweenLocation(corpse.location(), ghost.endLocation, fractionComplete);
 				
-				return new PartialPassive(corpse.id()
-					, corpse.type()
+				return new GhostSnapshot<>(corpse
 					, location
-					, corpse.velocity()
-					, corpse.extendedData()
+					, fractionComplete
 				);
 			})
 			.toList()
@@ -122,15 +118,20 @@ public class GhostManager
 	}
 
 
-	private static EntityLocation _getTweenLocation(EntityLocation start
-		, EntityLocation end
-		, long millisRemaining
+	private static float _getAnimationCompleteFraction(long millisRemaining
 		, long millisTotal
 	)
 	{
 		long millisPassed = millisTotal - millisRemaining;
 		float fractionCompleted = (float)millisPassed / (float)millisTotal;
-		
+		return fractionCompleted;
+	}
+
+	private static EntityLocation _getTweenLocation(EntityLocation start
+		, EntityLocation end
+		, float fractionCompleted
+	)
+	{
 		float deltaX = end.x() - start.x();
 		float deltaY = end.y() - start.y();
 		float deltaZ = end.z() - start.z();
@@ -140,6 +141,11 @@ public class GhostManager
 		);
 	}
 
+
+	public static record GhostSnapshot<T>(T corpse
+		, EntityLocation location
+		, float animationCompleteFraction
+	) {}
 
 	private static record _Ghost<T>(T corpse
 		, long endOfLifeMillis

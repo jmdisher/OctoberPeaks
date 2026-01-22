@@ -276,7 +276,7 @@ public class PassiveRenderer
 		
 		long currentMillis = System.currentTimeMillis();
 		Collection<PartialPassive> itemSlotPassives = _worldCache.getItemSlotPassives();
-		Collection<PartialPassive> itemSlotGhosts = _ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
+		Collection<GhostManager.GhostSnapshot<PartialPassive>> itemSlotGhosts = _ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
 		if (!itemSlotPassives.isEmpty() || !itemSlotGhosts.isEmpty())
 		{
 			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, itemSlotGhosts, viewMatrix, projectionMatrix, eye);
@@ -296,7 +296,13 @@ public class PassiveRenderer
 	}
 
 
-	private void _renderItemSlots(ItemSlotResources resources, Collection<PartialPassive> itemSlotPassives, Collection<PartialPassive> itemSlotGhosts, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderItemSlots(ItemSlotResources resources
+		, Collection<PartialPassive> itemSlotPassives
+		, Collection<GhostManager.GhostSnapshot<PartialPassive>> itemSlotGhosts
+		, Matrix viewMatrix
+		, Matrix projectionMatrix
+		, Vector eye
+	)
 	{
 		resources._program.useProgram();
 		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
@@ -318,21 +324,24 @@ public class PassiveRenderer
 		// TODO:  In the future, we should put all of these into a mutable VertexArray, or something, since this is very chatty and probably slow.
 		for (PartialPassive itemSlotPassive : itemSlotPassives)
 		{
-			_renderItemSlotPassive(resources, itemSlotPassive);
+			EntityLocation location = itemSlotPassive.location();
+			Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
+			
+			_renderItemSlotPassive(resources, location, type);
 		}
 		
 		// Walk any ghosts.
-		for (PartialPassive itemSlotPassive : itemSlotGhosts)
+		for (GhostManager.GhostSnapshot<PartialPassive> ghost : itemSlotGhosts)
 		{
-			_renderItemSlotPassive(resources, itemSlotPassive);
+			EntityLocation location = ghost.location();
+			Item type = ((ItemSlot)ghost.corpse().extendedData()).getType();
+			
+			_renderItemSlotPassive(resources, location, type);
 		}
 	}
 
-	private void _renderItemSlotPassive(ItemSlotResources resources, PartialPassive itemSlotPassive)
+	private void _renderItemSlotPassive(ItemSlotResources resources, EntityLocation location, Item type)
 	{
-		EntityLocation location = itemSlotPassive.location();
-		Item type = ((ItemSlot)itemSlotPassive.extendedData()).getType();
-		
 		// Determine the centre of this for rotation.
 		float centreX = location.x() + _halfWidth;
 		float centreY = location.y() + _halfWidth;
