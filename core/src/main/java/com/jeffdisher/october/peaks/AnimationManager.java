@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +15,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.PartialPassive;
 
 
 /**
@@ -28,6 +30,7 @@ public class AnimationManager
 	private final ParticleEngine _particleEngine;
 	private final WorldCache _worldCache;
 	private final Map<Integer, Long> _entityDamageMillis;
+	private long _lastTickTimeEndMillis;
 
 	public AnimationManager(Environment environment, ParticleEngine particleEngine, WorldCache worldCache)
 	{
@@ -126,6 +129,44 @@ public class AnimationManager
 		return fraction;
 	}
 
+	public void setEndOfTickTime(long currentTimeMillis)
+	{
+		_lastTickTimeEndMillis = currentTimeMillis;
+	}
+
+	public Collection<PartialPassive> getTweenedItemSlotPassives(long currentTimeMillis)
+	{
+		float secondsAdvanced = _getSecondsSinceTick(currentTimeMillis);
+		return _worldCache.getItemSlotPassives().stream()
+			.map((PartialPassive logical) -> {
+				return _getTweenedInstance(logical, secondsAdvanced);
+			})
+			.toList()
+		;
+	}
+
+	public Collection<PartialPassive> getTweenedFallingBlockPassives(long currentTimeMillis)
+	{
+		float secondsAdvanced = _getSecondsSinceTick(currentTimeMillis);
+		return _worldCache.getFallingBlockPassives().stream()
+			.map((PartialPassive logical) -> {
+				return _getTweenedInstance(logical, secondsAdvanced);
+			})
+			.toList()
+		;
+	}
+
+	public Collection<PartialPassive> getTweenedArrowPassives(long currentTimeMillis)
+	{
+		float secondsAdvanced = _getSecondsSinceTick(currentTimeMillis);
+		return _worldCache.getArrowPassives().stream()
+			.map((PartialPassive logical) -> {
+				return _getTweenedInstance(logical, secondsAdvanced);
+			})
+			.toList()
+		;
+	}
+
 
 	private EntityLocation _getTopCentreOfBlock(AbsoluteLocation location)
 	{
@@ -157,5 +198,32 @@ public class AnimationManager
 		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y() - 1.0f, location.z() + 0.5f), r, g, b, currentTimeMillis);
 		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y() + 1.0f, location.z() + 0.5f), r, g, b, currentTimeMillis);
 		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y(), location.z() + 1.0f), r, g, b, currentTimeMillis);
+	}
+
+	private float _getSecondsSinceTick(long currentTimeMillis)
+	{
+		long delta = currentTimeMillis - _lastTickTimeEndMillis;
+		float secondsAdvanced = (float)delta / 1000.0f;
+		return secondsAdvanced;
+	}
+
+	private PartialPassive _getTweenedInstance(PartialPassive logical, float secondsAdvanced)
+	{
+		EntityLocation location = logical.location();
+		EntityLocation velocity = logical.velocity();
+		EntityLocation offset = new EntityLocation(secondsAdvanced * velocity.x()
+			, secondsAdvanced * velocity.y()
+			, secondsAdvanced * velocity.z()
+		);
+		EntityLocation updated = new EntityLocation(location.x() + offset.x()
+			, location.y() + offset.y()
+			, location.z() + offset.z()
+		);
+		return new PartialPassive(logical.id()
+			, logical.type()
+			, updated
+			, velocity
+			, logical.extendedData()
+		);
 	}
 }

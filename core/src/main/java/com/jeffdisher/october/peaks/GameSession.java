@@ -247,6 +247,7 @@ public class GameSession
 		public void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression)
 		{
 			GameSession.this.scene.setDayTime(dayProgression, skyLightMultiplier);
+			GameSession.this.animationManager.setEndOfTickTime(System.currentTimeMillis());
 			GameSession.this.audioManager.tickCompleted();
 		}
 		@Override

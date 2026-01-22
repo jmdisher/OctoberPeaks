@@ -10,6 +10,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.AnimationManager;
 import com.jeffdisher.october.peaks.GhostManager;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
@@ -21,7 +22,6 @@ import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
-import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.peaks.wavefront.WavefrontReader;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.EntityLocation;
@@ -246,7 +246,7 @@ public class PassiveRenderer
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
-	private final WorldCache _worldCache;
+	private final AnimationManager _animationManager;
 	private final GhostManager _ghostManager;
 	private final float _halfWidth;
 	private final float _halfHeight;
@@ -254,14 +254,14 @@ public class PassiveRenderer
 	public PassiveRenderer(GL20 gl
 		, Binding<Float> screenBrightness
 		, LoadedResources resources
-		, WorldCache worldCache
+		, AnimationManager animationManager
 		, GhostManager ghostManager
 	)
 	{
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.passiveResources();
-		_worldCache = worldCache;
+		_animationManager = animationManager;
 		_ghostManager = ghostManager;
 		
 		_halfWidth = PassiveType.ITEM_SLOT.volume().width() / 2.0f;
@@ -275,20 +275,20 @@ public class PassiveRenderer
 		_gl.glDepthFunc(GL20.GL_LESS);
 		
 		long currentMillis = System.currentTimeMillis();
-		Collection<PartialPassive> itemSlotPassives = _worldCache.getItemSlotPassives();
+		Collection<PartialPassive> itemSlotPassives = _animationManager.getTweenedItemSlotPassives(currentMillis);
 		Collection<GhostManager.GhostSnapshot<PartialPassive>> itemSlotGhosts = _ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
 		if (!itemSlotPassives.isEmpty() || !itemSlotGhosts.isEmpty())
 		{
 			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, itemSlotGhosts, viewMatrix, projectionMatrix, eye);
 		}
 		
-		Collection<PartialPassive> fallingBlockPassives = _worldCache.getFallingBlockPassives();
+		Collection<PartialPassive> fallingBlockPassives = _animationManager.getTweenedFallingBlockPassives(currentMillis);
 		if (fallingBlockPassives.size() > 0)
 		{
 			_renderFallingBlocks(_resources._fallingBlockResources, fallingBlockPassives, viewMatrix, projectionMatrix, eye);
 		}
 		
-		Collection<PartialPassive> arrowPassives = _worldCache.getArrowPassives();
+		Collection<PartialPassive> arrowPassives = _animationManager.getTweenedArrowPassives(currentMillis);
 		if (arrowPassives.size() > 0)
 		{
 			_renderArrows(_resources._arrowResources, arrowPassives, viewMatrix, projectionMatrix, eye);

@@ -53,7 +53,7 @@ public class SceneRenderer
 		_gl = gl;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
 		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache, animationManager, ghostManager);
-		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources, worldCache, ghostManager);
+		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources, animationManager, ghostManager);
 		_particleEngine = particleEngine;
 		_skyBox = new SkyBox(gl, resources);
 		
