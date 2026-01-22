@@ -49,6 +49,7 @@ public class EntityRenderer
 		private final int _uTexture0;
 		private final int _uDamage;
 		private final int _uBrightness;
+		private final int _uOpacity;
 		private final Map<EntityType, _EntityData> _entityData;
 		private final int _highlightTexture;
 		
@@ -71,6 +72,7 @@ public class EntityRenderer
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uDamage = _program.getUniformLocation("uDamage");
 			_uBrightness = _program.getUniformLocation("uBrightness");
+			_uOpacity = _program.getUniformLocation("uOpacity");
 			
 			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 			direct.order(ByteOrder.nativeOrder());
@@ -143,14 +145,19 @@ public class EntityRenderer
 		
 		// Render any entities.
 		long currentMillis = System.currentTimeMillis();
+		_gl.glUniform1f(_resources._uOpacity, 1.0f);
 		for (PartialEntity entity : _worldCache.getOtherEntities())
 		{
 			_drawPartialEntity(currentMillis, entity);
 		}
 		
 		// Walk any ghosts.
+		// Note that blending is normally disabled for entities, since they are all opaque, but ghosts have partial opacity.
+		_gl.glEnable(GL20.GL_BLEND);
 		for (GhostManager.GhostSnapshot<PartialEntity> snapshot : _ghostManager.pruneAndSnapshotEntities(currentMillis))
 		{
+			float opacity = 1.0f - snapshot.animationCompleteFraction();
+			_gl.glUniform1f(_resources._uOpacity, opacity);
 			PartialEntity corpse = snapshot.corpse();
 			PartialEntity entity = new PartialEntity(corpse.id()
 				, corpse.type()
@@ -162,6 +169,7 @@ public class EntityRenderer
 			);
 			_drawPartialEntity(currentMillis, entity);
 		}
+		_gl.glDisable(GL20.GL_BLEND);
 	}
 
 	public void renderSelectedEntity(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier, PartialEntity selectedEntity)

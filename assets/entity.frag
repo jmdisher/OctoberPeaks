@@ -4,6 +4,7 @@ precision mediump float;
 uniform sampler2D uTexture0;
 uniform float uDamage;
 uniform float uBrightness;
+uniform float uOpacity;
 
 varying float vDiffuseStrength;
 varying vec2 vTexture0;
@@ -17,4 +18,6 @@ void main()
 	gl_FragColor = vec4(uBrightness * lightingMultiplier * vDiffuseStrength * texture.rgb, texture.a);
 	// We just add the base colour in since it will clamp on overflow.
 	gl_FragColor.r += uDamage;
+	// We will modify the opacity for the cases of a dying entity.
+	gl_FragColor.a *= uOpacity;
 }
