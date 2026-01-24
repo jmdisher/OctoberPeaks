@@ -192,7 +192,8 @@ public class EntityRenderer
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
 		EntityType type = selectedEntity.type();
-		Matrix model = _generateEntityModelMatrix(selectedEntity, type);
+		EntityLocation entityLocation = selectedEntity.location();
+		Matrix model = _generateEntityBodyModelMatrix(type, entityLocation, selectedEntity.yaw());
 		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		_resources._entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
 	}
@@ -223,22 +224,19 @@ public class EntityRenderer
 		return data;
 	}
 
-	private static Matrix _generateEntityModelMatrix(PartialEntity entity, EntityType type)
+	private static Matrix _generateEntityBodyModelMatrix(EntityType type, EntityLocation location, byte yaw)
 	{
 		// Note that the model definitions are within the unit cube from [0..1] on all axes.
 		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
 		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
-		EntityLocation location = entity.location();
 		EntityVolume volume = type.volume();
 		float width = volume.width();
 		float height = volume.height();
 		float halfWidth = width / 2.0f;
 		float halfHeight = height / 2.0f;
-		Matrix rotatePitch = Matrix.rotateX(OrientationHelpers.getPitchRadians(entity.pitch()));
-		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(entity.yaw()));
 		Matrix translate = Matrix.translate(location.x() + halfWidth, location.y() + halfWidth, location.z() + halfHeight);
 		Matrix scale = Matrix.scale(width, width, height);
-		Matrix rotate = Matrix.multiply(rotateYaw, rotatePitch);
+		Matrix rotate = Matrix.rotateZ(OrientationHelpers.getYawRadians(yaw));
 		Matrix centreTranslate = Matrix.translate(-halfWidth, -halfWidth, -halfHeight);
 		Matrix model = Matrix.multiply(translate, Matrix.multiply(rotate, Matrix.multiply(centreTranslate, scale)));
 		return model;
@@ -247,8 +245,6 @@ public class EntityRenderer
 	private void _drawPartialEntity(long currentMillis, PartialEntity entity)
 	{
 		EntityType type = entity.type();
-		Matrix model = _generateEntityModelMatrix(entity, type);
-		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		// In the future, we should change how we do this drawing to avoid so many state changes (either batch by type or combine the types into fewer GL objects).
 		_EntityData data = _resources._entityData.get(type);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
@@ -258,6 +254,9 @@ public class EntityRenderer
 		float fraction = _animationManager.getDamageFreshnessFraction(currentMillis, entity.id());
 		_gl.glUniform1f(_resources._uDamage, fraction);
 		
+		EntityLocation entityLocation = entity.location();
+		Matrix bodyModel = _generateEntityBodyModelMatrix(type, entityLocation, entity.yaw());
+		bodyModel.uploadAsUniform(_gl, _resources._uModelMatrix);
 		data.vertices.drawAllTriangles(_gl);
 	}
 
