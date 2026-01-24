@@ -202,25 +202,67 @@ public class EntityRenderer
 	private static _EntityData _loadEntityResources(GL20 gl, Program program, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
 		String name = type.name().toUpperCase();
-		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
-		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
 		
-		// We will require that the entity has a mesh definition and a texture.
-		Assert.assertTrue(meshFile.exists());
+		// We always require the texture.
+		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
 		Assert.assertTrue(textureFile.exists());
 		
-		String rawMesh = meshFile.readString();
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-		WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
-			builder.appendVertex(position
+		// We either need a file for the entire entity mesh, or one split out into body parts.
+		VertexArray bodyBuffer;
+		VertexArray headBuffer;
+		EntityLocation headOffset;
+		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
+		if (meshFile.exists())
+		{
+			String rawMesh = meshFile.readString();
+			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
+				builder.appendVertex(position
 					, normal
 					, texture
-			);
-		}, rawMesh);
-		VertexArray buffer = builder.finishOne().flush(gl);
+				);
+			}, rawMesh);
+			bodyBuffer = builder.finishOne().flush(gl);
+			headBuffer = null;
+			headOffset = null;
+		}
+		else
+		{
+			FileHandle bodyMeshFile = Gdx.files.internal("entity_" + name + "_BODY.obj");
+			Assert.assertTrue(bodyMeshFile.exists());
+			
+			FileHandle headMeshFile = Gdx.files.internal("entity_" + name + "_HEAD.obj");
+			
+			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
+				builder.appendVertex(position
+					, normal
+					, texture
+				);
+			}, bodyMeshFile.readString());
+			bodyBuffer = builder.finishOne().flush(gl);
+			if (headMeshFile.exists())
+			{
+				// TODO:  In the future, this offset location needs to be stored in a data file along with the mesh.
+				headOffset = new EntityLocation(0.5f, 0.5f, 0.88f);
+				WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
+					builder.appendVertex(new float[] {position[0] - headOffset.x(), position[1] - headOffset.y(), position[2] - headOffset.z()}
+						, normal
+						, texture
+					);
+				}, headMeshFile.readString());
+				headBuffer = builder.finishOne().flush(gl);
+			}
+			else
+			{
+				headBuffer = null;
+				headOffset = null;
+			}
+		}
+		
 		
 		int texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
-		_EntityData data = new _EntityData(buffer, texture);
+		_EntityData data = new _EntityData(bodyBuffer, texture, headOffset, headBuffer);
 		return data;
 	}
 
@@ -242,6 +284,26 @@ public class EntityRenderer
 		return model;
 	}
 
+	private static Matrix _generateEntityHeadModelMatrix(EntityType type, EntityLocation base, EntityLocation offset, byte yaw, byte pitch)
+	{
+		// Note that the model definitions are within the unit cube from [0..1] on all axes.
+		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
+		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
+		EntityVolume volume = type.volume();
+		float width = volume.width();
+		float height = volume.height();
+		Matrix rotatePitch = Matrix.rotateX(OrientationHelpers.getPitchRadians(pitch));
+		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(yaw));
+		Matrix translate = Matrix.translate(base.x() + width * offset.x()
+			, base.y() + width * offset.y()
+			, base.z() + height * offset.z()
+		);
+		Matrix scale = Matrix.scale(width, width, height);
+		Matrix rotate = Matrix.multiply(rotateYaw, rotatePitch);
+		Matrix model = Matrix.multiply(translate, Matrix.multiply(rotate, scale));
+		return model;
+	}
+
 	private void _drawPartialEntity(long currentMillis, PartialEntity entity)
 	{
 		EntityType type = entity.type();
@@ -258,10 +320,18 @@ public class EntityRenderer
 		Matrix bodyModel = _generateEntityBodyModelMatrix(type, entityLocation, entity.yaw());
 		bodyModel.uploadAsUniform(_gl, _resources._uModelMatrix);
 		data.vertices.drawAllTriangles(_gl);
+		if (null != data.headVertices)
+		{
+			Matrix headModel = _generateEntityHeadModelMatrix(type, entityLocation, data.headOffset, entity.yaw(), entity.pitch());
+			headModel.uploadAsUniform(_gl, _resources._uModelMatrix);
+			data.headVertices.drawAllTriangles(_gl);
+		}
 	}
 
 
 	private static record _EntityData(VertexArray vertices
-			, int texture
+		, int texture
+		, EntityLocation headOffset
+		, VertexArray headVertices
 	) {}
 }
