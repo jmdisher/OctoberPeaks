@@ -216,12 +216,7 @@ public class EntityRenderer
 		{
 			String rawMesh = meshFile.readString();
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
-				builder.appendVertex(position
-					, normal
-					, texture
-				);
-			}, rawMesh);
+			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null), rawMesh);
 			bodyBuffer = builder.finishOne().flush(gl);
 			headBuffer = null;
 			headOffset = null;
@@ -234,23 +229,13 @@ public class EntityRenderer
 			FileHandle headMeshFile = Gdx.files.internal("entity_" + name + "_HEAD.obj");
 			
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
-				builder.appendVertex(position
-					, normal
-					, texture
-				);
-			}, bodyMeshFile.readString());
+			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null), bodyMeshFile.readString());
 			bodyBuffer = builder.finishOne().flush(gl);
 			if (headMeshFile.exists())
 			{
 				// TODO:  In the future, this offset location needs to be stored in a data file along with the mesh.
 				headOffset = new EntityLocation(0.5f, 0.5f, 0.88f);
-				WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
-					builder.appendVertex(new float[] {position[0] - headOffset.x(), position[1] - headOffset.y(), position[2] - headOffset.z()}
-						, normal
-						, texture
-					);
-				}, headMeshFile.readString());
+				WavefrontReader.readFile(new _AdaptingVertexLoader(builder, headOffset), headMeshFile.readString());
 				headBuffer = builder.finishOne().flush(gl);
 			}
 			else
@@ -259,7 +244,6 @@ public class EntityRenderer
 				headOffset = null;
 			}
 		}
-		
 		
 		int texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
 		_EntityData data = new _EntityData(bodyBuffer, texture, headOffset, headBuffer);
@@ -334,4 +318,37 @@ public class EntityRenderer
 		, EntityLocation headOffset
 		, VertexArray headVertices
 	) {}
+
+	private static class _AdaptingVertexLoader implements WavefrontReader.VertexConsumer
+	{
+		private final BufferBuilder _builder;
+		private final EntityLocation _relativeBase;
+		
+		public _AdaptingVertexLoader(BufferBuilder builder, EntityLocation relativeBase)
+		{
+			_builder = builder;
+			_relativeBase = relativeBase;
+		}
+		@Override
+		public void consume(float[] position, float[] texture, float[] normal)
+		{
+			float[] shiftedPosition;
+			if (null != _relativeBase)
+			{
+				shiftedPosition = new float[] {
+					position[0] - _relativeBase.x(),
+					position[1] - _relativeBase.y(),
+					position[2] - _relativeBase.z(),
+				};
+			}
+			else
+			{
+				shiftedPosition = position;
+			}
+			_builder.appendVertex(shiftedPosition
+				, normal
+				, texture
+			);
+		}
+	}
 }
