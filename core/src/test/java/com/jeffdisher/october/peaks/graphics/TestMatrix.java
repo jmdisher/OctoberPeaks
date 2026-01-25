@@ -110,6 +110,16 @@ public class TestMatrix
 		_vectorEquals(new float[] {-0.45f, -0.89f, 0.09f, 1.0f}, southWest.multiplyVector(vec4));
 	}
 
+	@Test
+	public void scaleAndTranslateComponents() throws Throwable
+	{
+		Matrix translate = Matrix.translate(10.0f, -20.0f, 0.1f);
+		Matrix scale = Matrix.scale(2.0f,  3.0f, 4.0f);
+		Matrix combine = Matrix.multiply(translate, scale);
+		float[] combined = combine.multiplyVectorComponents(-1.0f, 1.0f, 0.5f, 1.0f);
+		_vectorEquals(new float[] {8.0f, -17.0f, 2.1f, 1.0f}, combined);
+	}
+
 
 	private static void _vectorEquals(float[] expected, float[] test)
 	{

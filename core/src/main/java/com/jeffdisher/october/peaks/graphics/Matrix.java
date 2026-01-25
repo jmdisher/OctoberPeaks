@@ -219,14 +219,31 @@ public class Matrix
 		gl.glUniformMatrix4fv(uniform, 1, true, _rowInner4x4, 0);
 	}
 
+	/**
+	 * Multiplies the receiver against the given vec4 as though it were an affine transform being applied to a 4-element
+	 * vector (x, y, z, w).
+	 * 
+	 * @param vec4 The 4-element vector to multiply.
+	 * @return A 4-element vector of the result.
+	 */
 	public float[] multiplyVector(float[] vec4)
 	{
-		return new float[] {
-				(_rowInner4x4[0] * vec4[0]) + (_rowInner4x4[1] * vec4[1]) + (_rowInner4x4[2] * vec4[2]) + (_rowInner4x4[3] * vec4[3]),
-				(_rowInner4x4[4] * vec4[0]) + (_rowInner4x4[5] * vec4[1]) + (_rowInner4x4[6] * vec4[2]) + (_rowInner4x4[7] * vec4[3]),
-				(_rowInner4x4[8] * vec4[0]) + (_rowInner4x4[9] * vec4[1]) + (_rowInner4x4[10] * vec4[2]) + (_rowInner4x4[11] * vec4[3]),
-				(_rowInner4x4[12] * vec4[0]) + (_rowInner4x4[13] * vec4[1]) + (_rowInner4x4[14] * vec4[2]) + (_rowInner4x4[15] * vec4[3]),
-		};
+		return _multiplyVectorComponents(vec4[0], vec4[1], vec4[2], vec4[3]);
+	}
+
+	/**
+	 * Multiplies the receiver against the given vec4 as though it were an affine transform being applied to a 4-element
+	 * vector derived from the input parameters.  This is just a convenience method for the a vec4 isn't available.
+	 * 
+	 * @param x X vector component.
+	 * @param y Y vector component.
+	 * @param z Z vector component.
+	 * @param w W vector component.
+	 * @return A 4-element vector of the result.
+	 */
+	public float[] multiplyVectorComponents(float x, float y, float z, float w)
+	{
+		return _multiplyVectorComponents(x, y, z, w);
 	}
 
 	@Override
@@ -243,5 +260,16 @@ public class Matrix
 			builder.append("\n");
 		}
 		return builder.toString();
+	}
+
+
+	private float[] _multiplyVectorComponents(float x, float y, float z, float w)
+	{
+		return new float[] {
+			(_rowInner4x4[0] * x) + (_rowInner4x4[1] * y) + (_rowInner4x4[2] * z) + (_rowInner4x4[3] * w),
+			(_rowInner4x4[4] * x) + (_rowInner4x4[5] * y) + (_rowInner4x4[6] * z) + (_rowInner4x4[7] * w),
+			(_rowInner4x4[8] * x) + (_rowInner4x4[9] * y) + (_rowInner4x4[10] * z) + (_rowInner4x4[11] * w),
+			(_rowInner4x4[12] * x) + (_rowInner4x4[13] * y) + (_rowInner4x4[14] * z) + (_rowInner4x4[15] * w),
+		};
 	}
 }
