@@ -202,6 +202,9 @@ public class EntityRenderer
 	private static _EntityData _loadEntityResources(GL20 gl, Program program, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
 		String name = type.name().toUpperCase();
+		EntityVolume volume = type.volume();
+		float width = volume.width();
+		float height = volume.height();
 		
 		// We always require the texture.
 		FileHandle textureFile = Gdx.files.internal("entity_" + name + ".png");
@@ -210,16 +213,16 @@ public class EntityRenderer
 		// We either need a file for the entire entity mesh, or one split out into body parts.
 		VertexArray bodyBuffer;
 		VertexArray headBuffer;
-		EntityLocation headOffset;
+		EntityLocation headOffsetWorldCoords;
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 		if (meshFile.exists())
 		{
 			String rawMesh = meshFile.readString();
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null), rawMesh);
+			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), rawMesh);
 			bodyBuffer = builder.finishOne().flush(gl);
 			headBuffer = null;
-			headOffset = null;
+			headOffsetWorldCoords = null;
 		}
 		else
 		{
@@ -229,24 +232,28 @@ public class EntityRenderer
 			FileHandle headMeshFile = Gdx.files.internal("entity_" + name + "_HEAD.obj");
 			
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null), bodyMeshFile.readString());
+			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), bodyMeshFile.readString());
 			bodyBuffer = builder.finishOne().flush(gl);
 			if (headMeshFile.exists())
 			{
 				// TODO:  In the future, this offset location needs to be stored in a data file along with the mesh.
-				headOffset = new EntityLocation(0.5f, 0.5f, 0.88f);
-				WavefrontReader.readFile(new _AdaptingVertexLoader(builder, headOffset), headMeshFile.readString());
+				EntityLocation headOffsetFileCoords = new EntityLocation(0.5f, 0.5f, 0.88f);
+				WavefrontReader.readFile(new _AdaptingVertexLoader(builder, headOffsetFileCoords, width, height), headMeshFile.readString());
 				headBuffer = builder.finishOne().flush(gl);
+				headOffsetWorldCoords = new EntityLocation(headOffsetFileCoords.x() * width
+					, headOffsetFileCoords.y() * width
+					, headOffsetFileCoords.z() * height
+				);
 			}
 			else
 			{
 				headBuffer = null;
-				headOffset = null;
+				headOffsetWorldCoords = null;
 			}
 		}
 		
 		int texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
-		_EntityData data = new _EntityData(bodyBuffer, texture, headOffset, headBuffer);
+		_EntityData data = new _EntityData(bodyBuffer, texture, headOffsetWorldCoords, headBuffer);
 		return data;
 	}
 
@@ -261,10 +268,8 @@ public class EntityRenderer
 		float halfWidth = width / 2.0f;
 		float halfHeight = height / 2.0f;
 		Matrix translate = Matrix.translate(location.x() + halfWidth, location.y() + halfWidth, location.z() + halfHeight);
-		Matrix scale = Matrix.scale(width, width, height);
 		Matrix rotate = Matrix.rotateZ(OrientationHelpers.getYawRadians(yaw));
-		Matrix centreTranslate = Matrix.translate(-halfWidth, -halfWidth, -halfHeight);
-		Matrix model = Matrix.multiply(translate, Matrix.multiply(rotate, Matrix.multiply(centreTranslate, scale)));
+		Matrix model = Matrix.multiply(translate, rotate);
 		return model;
 	}
 
@@ -273,18 +278,14 @@ public class EntityRenderer
 		// Note that the model definitions are within the unit cube from [0..1] on all axes.
 		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
 		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
-		EntityVolume volume = type.volume();
-		float width = volume.width();
-		float height = volume.height();
 		Matrix rotatePitch = Matrix.rotateX(OrientationHelpers.getPitchRadians(pitch));
 		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(yaw));
-		Matrix translate = Matrix.translate(base.x() + width * offset.x()
-			, base.y() + width * offset.y()
-			, base.z() + height * offset.z()
+		Matrix translate = Matrix.translate(base.x() + offset.x()
+			, base.y() + offset.y()
+			, base.z() + offset.z()
 		);
-		Matrix scale = Matrix.scale(width, width, height);
 		Matrix rotate = Matrix.multiply(rotateYaw, rotatePitch);
-		Matrix model = Matrix.multiply(translate, Matrix.multiply(rotate, scale));
+		Matrix model = Matrix.multiply(translate, rotate);
 		return model;
 	}
 
@@ -306,7 +307,7 @@ public class EntityRenderer
 		data.vertices.drawAllTriangles(_gl);
 		if (null != data.headVertices)
 		{
-			Matrix headModel = _generateEntityHeadModelMatrix(type, entityLocation, data.headOffset, entity.yaw(), entity.pitch());
+			Matrix headModel = _generateEntityHeadModelMatrix(type, entityLocation, data.headOffsetWorldCoords, entity.yaw(), entity.pitch());
 			headModel.uploadAsUniform(_gl, _resources._uModelMatrix);
 			data.headVertices.drawAllTriangles(_gl);
 		}
@@ -315,36 +316,45 @@ public class EntityRenderer
 
 	private static record _EntityData(VertexArray vertices
 		, int texture
-		, EntityLocation headOffset
+		, EntityLocation headOffsetWorldCoords
 		, VertexArray headVertices
 	) {}
 
 	private static class _AdaptingVertexLoader implements WavefrontReader.VertexConsumer
 	{
 		private final BufferBuilder _builder;
-		private final EntityLocation _relativeBase;
+		private final Matrix _transform;
 		
-		public _AdaptingVertexLoader(BufferBuilder builder, EntityLocation relativeBase)
+		public _AdaptingVertexLoader(BufferBuilder builder, EntityLocation relativeBase, float width, float height)
 		{
 			_builder = builder;
-			_relativeBase = relativeBase;
+			
+			Matrix scale = Matrix.scale(width, width, height);
+			
+			// We will translate from file coordinates to the origin before scaling.
+			Matrix fileCoordsToOrigin;
+			if (null != relativeBase)
+			{
+				// This is for a rigged extension of the body (head, for example), so we want to map the rigging point to the origin.
+				fileCoordsToOrigin = Matrix.translate(-relativeBase.x(), -relativeBase.y(), -relativeBase.z());
+			}
+			else
+			{
+				// This must be for the body, itself, so the origin is always in the middle of the unit cube.
+				fileCoordsToOrigin = Matrix.translate(-0.5f, -0.5f, -0.5f);
+			}
+			_transform = Matrix.multiply(scale, fileCoordsToOrigin);
 		}
 		@Override
 		public void consume(float[] position, float[] texture, float[] normal)
 		{
-			float[] shiftedPosition;
-			if (null != _relativeBase)
-			{
-				shiftedPosition = new float[] {
-					position[0] - _relativeBase.x(),
-					position[1] - _relativeBase.y(),
-					position[2] - _relativeBase.z(),
-				};
-			}
-			else
-			{
-				shiftedPosition = position;
-			}
+			float x = position[0];
+			float y = position[1];
+			float z = position[2];
+			float w = 1.0f;
+			
+			float[] temp = _transform.multiplyVectorComponents(x, y, z, w);
+			float[] shiftedPosition = new float[] { temp[0], temp[1], temp[2] };
 			_builder.appendVertex(shiftedPosition
 				, normal
 				, texture
