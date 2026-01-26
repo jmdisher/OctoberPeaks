@@ -6,6 +6,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.badlogic.gdx.Gdx;
@@ -212,8 +213,8 @@ public class EntityRenderer
 		
 		// We either need a file for the entire entity mesh, or one split out into body parts.
 		VertexArray bodyBuffer;
-		VertexArray headBuffer;
-		EntityLocation headOffsetWorldCoords;
+		_RiggingData headRig;
+		_RiggingData[] limbRigs;
 		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 		if (meshFile.exists())
 		{
@@ -221,47 +222,50 @@ public class EntityRenderer
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
 			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), rawMesh);
 			bodyBuffer = builder.finishOne().flush(gl);
-			headBuffer = null;
-			headOffsetWorldCoords = null;
+			headRig = null;
+			limbRigs = new _RiggingData[0];
 		}
 		else
 		{
 			FileHandle bodyMeshFile = Gdx.files.internal("entity_" + name + "_BODY.obj");
 			Assert.assertTrue(bodyMeshFile.exists());
 			
-			FileHandle headMeshFile = Gdx.files.internal("entity_" + name + "_HEAD.obj");
-			
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
 			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), bodyMeshFile.readString());
 			bodyBuffer = builder.finishOne().flush(gl);
-			if (headMeshFile.exists())
-			{
-				// TODO:  In the future, this offset location needs to be stored in a data file along with the mesh.
-				EntityLocation headOffsetFileCoords = new EntityLocation(0.5f, 0.5f, 0.88f);
-				WavefrontReader.readFile(new _AdaptingVertexLoader(builder, headOffsetFileCoords, width, height), headMeshFile.readString());
-				headBuffer = builder.finishOne().flush(gl);
-				headOffsetWorldCoords = new EntityLocation(headOffsetFileCoords.x() * width
-					, headOffsetFileCoords.y() * width
-					, headOffsetFileCoords.z() * height
-				);
-			}
-			else
-			{
-				headBuffer = null;
-				headOffsetWorldCoords = null;
-			}
+			
+			// TODO:  In the future, this rigging offset needs to be stored in a per-entity data file.
+			EntityLocation headOffsetFileCoords = new EntityLocation(0.5f, 0.5f, 0.88f);
+			EntityLocation frontRightOffsetFileCoords = new EntityLocation(0.89f, 0.46f, 0.85f);
+			EntityLocation frontLeftOffsetFileCoords = new EntityLocation(0.11f, 0.46f, 0.85f);
+			EntityLocation backRightOffsetFileCoords = new EntityLocation(0.66f, 0.46f, 0.4f);
+			EntityLocation backLeftOffsetFileCoords = new EntityLocation(0.44f, 0.46f, 0.4f);
+			
+			FileHandle headMeshFile = Gdx.files.internal("entity_" + name + "_HEAD.obj");
+			FileHandle frontRighMeshFile = Gdx.files.internal("entity_" + name + "_FR.obj");
+			FileHandle frontLeftMeshFile = Gdx.files.internal("entity_" + name + "_FL.obj");
+			FileHandle backRighMeshFile = Gdx.files.internal("entity_" + name + "_BR.obj");
+			FileHandle backLeftMeshFile = Gdx.files.internal("entity_" + name + "_BL.obj");
+			
+			headRig = _loadRig(gl, builder, _RigType.PITCH, headOffsetFileCoords, headMeshFile, width, height);
+			_RiggingData frontRightRig = _loadRig(gl, builder, _RigType.POSITIVE, frontRightOffsetFileCoords, frontRighMeshFile, width, height);
+			_RiggingData frontLeftRig = _loadRig(gl, builder, _RigType.NEGATIVE, frontLeftOffsetFileCoords, frontLeftMeshFile, width, height);
+			_RiggingData backRightRig = _loadRig(gl, builder, _RigType.NEGATIVE, backRightOffsetFileCoords, backRighMeshFile, width, height);
+			_RiggingData backLeftRig = _loadRig(gl, builder, _RigType.POSITIVE, backLeftOffsetFileCoords, backLeftMeshFile, width, height);
+			
+			limbRigs = List.of(frontRightRig, frontLeftRig, backRightRig, backLeftRig).toArray((int size) -> new _RiggingData[size]);
 		}
 		
 		int texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
-		_EntityData data = new _EntityData(bodyBuffer, texture, headOffsetWorldCoords, headBuffer);
+		_EntityData data = new _EntityData(bodyBuffer, texture, headRig, limbRigs);
 		return data;
 	}
 
 	private static Matrix _generateEntityBodyModelMatrix(EntityType type, EntityLocation location, byte yaw)
 	{
-		// Note that the model definitions are within the unit cube from [0..1] on all axes.
-		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
-		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
+		// Note that model definitions are moved to be centred on 0,0,0 during load, and scaled.
+		// This means that we need to add half the width and height to the base location when positioning them but that
+		// rotation can be done first, without changing anything.
 		EntityVolume volume = type.volume();
 		float width = volume.width();
 		float height = volume.height();
@@ -273,20 +277,28 @@ public class EntityRenderer
 		return model;
 	}
 
-	private static Matrix _generateEntityHeadModelMatrix(EntityType type, EntityLocation base, EntityLocation offset, byte yaw, byte pitch)
+	private static Matrix _generateEntityPartModelMatrix(EntityType type, EntityLocation base, EntityLocation offset, byte yaw, byte pitch)
 	{
-		// Note that the model definitions are within the unit cube from [0..1] on all axes.
-		// This means that we need to translate by half a block before rotation and then translate back + 0.5.
-		// This translation needs to account for the scale, though, since it is being applied twice (and both can't be before scale).
+		// Note that model part definitions are moved to be centred on 0,0,0 during load, and scaled.
+		
+		// We want to rotate by pitch before anything else, since that just orients the limb, not where it is in space.
 		Matrix rotatePitch = Matrix.rotateX(OrientationHelpers.getPitchRadians(pitch));
+		
+		// Then, we will translate to where in the entity it should be.
+		EntityVolume volume = type.volume();
+		float width = volume.width();
+		float height = volume.height();
+		float halfWidth = width / 2.0f;
+		float halfHeight = height / 2.0f;
+		Matrix translateToEntity = Matrix.translate(offset.x() - halfWidth, offset.y() - halfWidth, offset.z() - halfHeight);
+		
+		// Then, we will rotate by yaw so that it moves in sync with the rest of the model.
 		Matrix rotateYaw = Matrix.rotateZ(OrientationHelpers.getYawRadians(yaw));
-		Matrix translate = Matrix.translate(base.x() + offset.x()
-			, base.y() + offset.y()
-			, base.z() + offset.z()
-		);
-		Matrix rotate = Matrix.multiply(rotateYaw, rotatePitch);
-		Matrix model = Matrix.multiply(translate, rotate);
-		return model;
+		
+		// Finally, translate to where the entity would be drawn in the world.
+		Matrix translateToWorld = Matrix.translate(base.x() + halfWidth, base.y() + halfWidth, base.z() + halfHeight);
+		
+		return Matrix.multiply(translateToWorld, Matrix.multiply(rotateYaw, Matrix.multiply(translateToEntity, rotatePitch)));
 	}
 
 	private void _drawPartialEntity(long currentMillis, PartialEntity entity)
@@ -305,20 +317,70 @@ public class EntityRenderer
 		Matrix bodyModel = _generateEntityBodyModelMatrix(type, entityLocation, entity.yaw());
 		bodyModel.uploadAsUniform(_gl, _resources._uModelMatrix);
 		data.vertices.drawAllTriangles(_gl);
-		if (null != data.headVertices)
+		
+		// Draw rigged limbs.
+		_RiggingData headRig = data.headRig;
+		if (null != headRig)
 		{
-			Matrix headModel = _generateEntityHeadModelMatrix(type, entityLocation, data.headOffsetWorldCoords, entity.yaw(), entity.pitch());
+			Matrix headModel = _generateEntityPartModelMatrix(type, entityLocation, headRig.offsetWorldCoords, entity.yaw(), entity.pitch());
 			headModel.uploadAsUniform(_gl, _resources._uModelMatrix);
-			data.headVertices.drawAllTriangles(_gl);
+			headRig.vertices.drawAllTriangles(_gl);
 		}
+		for (_RiggingData limb : data.limbRigs)
+		{
+			byte animation = (_RigType.POSITIVE == limb.type) ? (byte)10 : (byte)-10;
+			Matrix model = _generateEntityPartModelMatrix(type, entityLocation, limb.offsetWorldCoords, entity.yaw(), animation);
+			model.uploadAsUniform(_gl, _resources._uModelMatrix);
+			limb.vertices.drawAllTriangles(_gl);
+		}
+	}
+
+	private static _RiggingData _loadRig(GL20 gl
+		, BufferBuilder builder
+		, _RigType type
+		, EntityLocation offsetFileCoords
+		, FileHandle meshFile
+		, float width
+		, float height
+	)
+	{
+		_RiggingData rig;
+		if (meshFile.exists())
+		{
+			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, offsetFileCoords, width, height), meshFile.readString());
+			VertexArray buffer = builder.finishOne().flush(gl);
+			EntityLocation offsetWorldCoords = new EntityLocation(offsetFileCoords.x() * width
+				, offsetFileCoords.y() * width
+				, offsetFileCoords.z() * height
+			);
+			rig = new _RiggingData(type, offsetWorldCoords, buffer);
+		}
+		else
+		{
+			rig = null;
+		}
+		return rig;
 	}
 
 
 	private static record _EntityData(VertexArray vertices
 		, int texture
-		, EntityLocation headOffsetWorldCoords
-		, VertexArray headVertices
+		, _RiggingData headRig
+		, _RiggingData[] limbRigs
 	) {}
+
+	private static record _RiggingData(_RigType type
+		, EntityLocation offsetWorldCoords
+		, VertexArray vertices
+	) {}
+
+	private static enum _RigType
+	{
+		PITCH,
+		POSITIVE,
+		NEGATIVE,
+		;
+	}
 
 	private static class _AdaptingVertexLoader implements WavefrontReader.VertexConsumer
 	{
