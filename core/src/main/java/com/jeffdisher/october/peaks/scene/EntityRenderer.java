@@ -326,9 +326,10 @@ public class EntityRenderer
 			headModel.uploadAsUniform(_gl, _resources._uModelMatrix);
 			headRig.vertices.drawAllTriangles(_gl);
 		}
+		byte animationFrame = _animationManager.getWalkingAnimationFrame(entity);
 		for (_RiggingData limb : data.limbRigs)
 		{
-			byte animation = (_RigType.POSITIVE == limb.type) ? (byte)10 : (byte)-10;
+			byte animation = (_RigType.POSITIVE == limb.type) ? (byte)animationFrame : (byte)-animationFrame;
 			Matrix model = _generateEntityPartModelMatrix(type, entityLocation, limb.offsetWorldCoords, entity.yaw(), animation);
 			model.uploadAsUniform(_gl, _resources._uModelMatrix);
 			limb.vertices.drawAllTriangles(_gl);

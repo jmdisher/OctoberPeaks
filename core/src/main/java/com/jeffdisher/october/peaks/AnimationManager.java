@@ -15,6 +15,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 
 
@@ -32,12 +33,18 @@ public class AnimationManager
 	private final Map<Integer, Long> _entityDamageMillis;
 	private long _lastTickTimeEndMillis;
 
-	public AnimationManager(Environment environment, ParticleEngine particleEngine, WorldCache worldCache)
+	private byte _frameAnimationStep;
+	private long _lastAnimationUpdateMillis;
+
+	public AnimationManager(Environment environment, ParticleEngine particleEngine, WorldCache worldCache, long currentTimeMillis)
 	{
 		_environment = environment;
 		_particleEngine = particleEngine;
 		_worldCache = worldCache;
 		_entityDamageMillis = new HashMap<>();
+		
+		_frameAnimationStep = 0;
+		_lastAnimationUpdateMillis = currentTimeMillis;
 	}
 
 	public void craftingBlockChanged(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
@@ -165,6 +172,36 @@ public class AnimationManager
 			})
 			.toList()
 		;
+	}
+
+	/**
+	 * Updates any internal per-frame animation advance timers.
+	 * 
+	 * @param currentTimeMillis The current time when the frame started.
+	 */
+	public void startNewFrame(long currentTimeMillis)
+	{
+		// Make sure that it is time to update the frame animation.
+		long millisSinceLast = (currentTimeMillis - _lastAnimationUpdateMillis);
+		if (millisSinceLast > 10L)
+		{
+			_frameAnimationStep += 1;
+			_lastAnimationUpdateMillis = currentTimeMillis;
+		}
+	}
+
+	/**
+	 * Looks up the walking animation frame for the given entity.  Note that it is acceptable and expected to ask this
+	 * about entities it may not be tracking or which may have already died and it will return (byte)0 in those cases.
+	 * Animation walking frames start at 0, then climb to 66, then fall to -64, then climb back to 0 and repeat.
+	 * 
+	 * @param entity The entity to look up.
+	 * @return The animation frame (in the range [-64..64]) or 0, if not known.
+	 */
+	public byte getWalkingAnimationFrame(PartialEntity entity)
+	{
+		byte animationFrame = (byte) (Math.abs((byte)(_frameAnimationStep + 64)) - 64);
+		return animationFrame;
 	}
 
 

@@ -67,8 +67,9 @@ public class GameSession
 		// We just expose this lookup here for the UiStateManager to use.
 		this.blockLookup = _worldCache.blockLookup;
 		
-		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, System.currentTimeMillis());
-		this.animationManager = new AnimationManager(environment, particleEngine, _worldCache);
+		long currentTimeMillis = System.currentTimeMillis();
+		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, currentTimeMillis);
+		this.animationManager = new AnimationManager(environment, particleEngine, _worldCache, currentTimeMillis);
 		this.ghostManager = new GhostManager(_worldCache);
 		this.scene = new SceneRenderer(environment
 			, gl

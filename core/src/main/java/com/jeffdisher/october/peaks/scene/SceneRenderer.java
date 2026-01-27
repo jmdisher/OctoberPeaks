@@ -29,6 +29,7 @@ import com.jeffdisher.october.types.PartialEntity;
 public class SceneRenderer
 {
 	private final GL20 _gl;
+	private final AnimationManager _animationManager;
 	private final BlockRenderer _blockRenderer;
 	private final EntityRenderer _entityRenderer;
 	private final PassiveRenderer _passiveRenderer;
@@ -51,6 +52,7 @@ public class SceneRenderer
 	)
 	{
 		_gl = gl;
+		_animationManager = animationManager;
 		_blockRenderer = new BlockRenderer(environment, gl, screenBrightness, resources);
 		_entityRenderer = new EntityRenderer(gl, screenBrightness, resources, worldCache, animationManager, ghostManager);
 		_passiveRenderer = new PassiveRenderer(gl, screenBrightness, resources, animationManager, ghostManager);
@@ -82,6 +84,7 @@ public class SceneRenderer
 	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
+		_animationManager.startNewFrame(currentTimeMillis);
 		
 		// We will begin with the sky box since we don't know if there are transparent blocks to render on top of it.
 		_skyBox.render(_projectionMatrix);
