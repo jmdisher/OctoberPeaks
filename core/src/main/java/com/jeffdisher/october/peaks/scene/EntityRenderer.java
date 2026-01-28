@@ -194,11 +194,8 @@ public class EntityRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
-		EntityType type = selectedEntity.type();
-		EntityLocation entityLocation = selectedEntity.location();
-		Matrix model = _generateEntityBodyModelMatrix(type, entityLocation, selectedEntity.yaw());
-		model.uploadAsUniform(_gl, _resources._uModelMatrix);
-		_resources._entityData.get(selectedEntity.type()).vertices.drawAllTriangles(_gl);
+		
+		_renderEntityWithExistingTexture(selectedEntity);
 	}
 
 
@@ -333,27 +330,7 @@ public class EntityRenderer
 		float fraction = _animationManager.getDamageFreshnessFraction(currentMillis, entity.id());
 		_gl.glUniform1f(_resources._uDamage, fraction);
 		
-		EntityLocation entityLocation = entity.location();
-		Matrix bodyModel = _generateEntityBodyModelMatrix(type, entityLocation, entity.yaw());
-		bodyModel.uploadAsUniform(_gl, _resources._uModelMatrix);
-		data.vertices.drawAllTriangles(_gl);
-		
-		// Draw rigged limbs.
-		_RiggingData headRig = data.headRig;
-		if (null != headRig)
-		{
-			Matrix headModel = _generateEntityPartModelMatrix(type, entityLocation, headRig.offsetWorldCoords, entity.yaw(), entity.pitch());
-			headModel.uploadAsUniform(_gl, _resources._uModelMatrix);
-			headRig.vertices.drawAllTriangles(_gl);
-		}
-		byte animationFrame = _animationManager.getWalkingAnimationFrame(entity);
-		for (_RiggingData limb : data.limbRigs)
-		{
-			byte animation = (_RigType.POSITIVE == limb.type) ? (byte)animationFrame : (byte)-animationFrame;
-			Matrix model = _generateEntityPartModelMatrix(type, entityLocation, limb.offsetWorldCoords, entity.yaw(), animation);
-			model.uploadAsUniform(_gl, _resources._uModelMatrix);
-			limb.vertices.drawAllTriangles(_gl);
-		}
+		_renderEntityWithExistingTexture(entity);
 	}
 
 	private static _RiggingData _loadRig(GL20 gl
@@ -381,6 +358,33 @@ public class EntityRenderer
 			rig = null;
 		}
 		return rig;
+	}
+
+	private void _renderEntityWithExistingTexture(PartialEntity entity)
+	{
+		EntityType type = entity.type();
+		_EntityData data = _resources._entityData.get(type);
+		EntityLocation entityLocation = entity.location();
+		Matrix bodyModel = _generateEntityBodyModelMatrix(type, entityLocation, entity.yaw());
+		bodyModel.uploadAsUniform(_gl, _resources._uModelMatrix);
+		data.vertices.drawAllTriangles(_gl);
+		
+		// Draw rigged limbs.
+		_RiggingData headRig = data.headRig;
+		if (null != headRig)
+		{
+			Matrix headModel = _generateEntityPartModelMatrix(type, entityLocation, headRig.offsetWorldCoords, entity.yaw(), entity.pitch());
+			headModel.uploadAsUniform(_gl, _resources._uModelMatrix);
+			headRig.vertices.drawAllTriangles(_gl);
+		}
+		byte animationFrame = _animationManager.getWalkingAnimationFrame(entity);
+		for (_RiggingData limb : data.limbRigs)
+		{
+			byte animation = (_RigType.POSITIVE == limb.type) ? (byte)animationFrame : (byte)-animationFrame;
+			Matrix model = _generateEntityPartModelMatrix(type, entityLocation, limb.offsetWorldCoords, entity.yaw(), animation);
+			model.uploadAsUniform(_gl, _resources._uModelMatrix);
+			limb.vertices.drawAllTriangles(_gl);
+		}
 	}
 
 
