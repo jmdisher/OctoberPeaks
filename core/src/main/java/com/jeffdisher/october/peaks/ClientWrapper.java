@@ -1203,6 +1203,7 @@ public class ClientWrapper
 		{
 			Assert.assertTrue(_assignedLocalEntityId != entity.id());
 			
+			_updateConsumer.otherEntityWillUpdate(entity);
 			_worldCache.updateOtherEntity(entity);
 		}
 		@Override
@@ -1332,6 +1333,7 @@ public class ClientWrapper
 		void otherClientJoined(int clientId, String name);
 		void otherClientLeft(int clientId);
 		
+		void otherEntityWillUpdate(PartialEntity entity);
 		void otherEntityDidUnload(int id);
 		void otherEntityHurt(int id, AbsoluteLocation location);
 		void otherEntityKilled(int id, AbsoluteLocation location);

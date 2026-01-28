@@ -30,6 +30,7 @@ import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.MutableEntity;
+import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 
 
@@ -222,6 +223,11 @@ public class GameSession
 		public void otherClientLeft(int clientId)
 		{
 			_callouts.otherClientLeft(clientId);
+		}
+		@Override
+		public void otherEntityWillUpdate(PartialEntity entity)
+		{
+			GameSession.this.animationManager.otherEntityWillUpdate(entity);
 		}
 		@Override
 		public void otherEntityDidUnload(int id)

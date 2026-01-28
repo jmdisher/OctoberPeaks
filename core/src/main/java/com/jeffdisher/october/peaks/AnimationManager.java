@@ -17,6 +17,7 @@ import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
+import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -35,6 +36,8 @@ public class AnimationManager
 
 	private byte _frameAnimationStep;
 	private long _lastAnimationUpdateMillis;
+	private Map<Integer, Byte> _activeEntityAnimationOffset;
+	private Map<Integer, Byte> _buildingEntityAnimationOffset;
 
 	public AnimationManager(Environment environment, ParticleEngine particleEngine, WorldCache worldCache, long currentTimeMillis)
 	{
@@ -45,6 +48,8 @@ public class AnimationManager
 		
 		_frameAnimationStep = 0;
 		_lastAnimationUpdateMillis = currentTimeMillis;
+		_activeEntityAnimationOffset = new HashMap<>();
+		_buildingEntityAnimationOffset = new HashMap<>();
 	}
 
 	public void craftingBlockChanged(IReadOnlyCuboidData cuboid, Set<BlockAddress> changedBlocks)
@@ -139,6 +144,10 @@ public class AnimationManager
 	public void setEndOfTickTime(long currentTimeMillis)
 	{
 		_lastTickTimeEndMillis = currentTimeMillis;
+		
+		// The end of tick also means we can stop building the new entity animation map.
+		_activeEntityAnimationOffset = _buildingEntityAnimationOffset;
+		_buildingEntityAnimationOffset = new HashMap<>();
 	}
 
 	public Collection<PartialPassive> getTweenedItemSlotPassives(long currentTimeMillis)
@@ -200,8 +209,60 @@ public class AnimationManager
 	 */
 	public byte getWalkingAnimationFrame(PartialEntity entity)
 	{
-		byte animationFrame = (byte) (Math.abs((byte)(_frameAnimationStep + 64)) - 64);
+		byte animationFrame;
+		Byte offset = _activeEntityAnimationOffset.get(entity.id());
+		if (null != offset)
+		{
+			animationFrame = (byte) (Math.abs((byte)(offset.byteValue() + _frameAnimationStep + 64)) - 64);
+		}
+		else
+		{
+			// "0" means "not animated".
+			animationFrame = 0;
+		}
 		return animationFrame;
+	}
+
+	/**
+	 * Called when processing updates from the end of a game tick to notify the receiver that the given entity is about
+	 * to be updated in the rest of the system.  This allows it a chance to load the previous version from the
+	 * WorldCache, if it is required, in order to check what changed.
+	 * 
+	 * @param entity The new entity instance which is about to overwrite an old instance of the same ID, in WorldCache.
+	 */
+	public void otherEntityWillUpdate(PartialEntity entity)
+	{
+		// We use this call to infer if an entity is animating.
+		int id = entity.id();
+		PartialEntity old = _worldCache.getCreatureOrEntityPartial(id);
+		
+		// This can only be called for something which already exists.
+		Assert.assertTrue(null != old);
+		
+		EntityLocation oldLocation = old.location();
+		EntityLocation newLocation = entity.location();
+		
+		// Ignore z movement but animate for horizontal movement.
+		boolean didMove = (oldLocation.x() != newLocation.x()) || (oldLocation.y() != newLocation.y());
+		if (didMove)
+		{
+			// If this isn't already present, add it.
+			if (_activeEntityAnimationOffset.containsKey(id))
+			{
+				// We want to carry this forward.
+				_buildingEntityAnimationOffset.put(id, _activeEntityAnimationOffset.get(id));
+			}
+			else
+			{
+				// We want to initialize this such that it will return 0 from getWalkingAnimationFrame on the first call.
+				byte frameStart = (byte)(-_frameAnimationStep);
+				_buildingEntityAnimationOffset.put(id, frameStart);
+			}
+		}
+		else
+		{
+			// If this was in the active map, it will be dropped when the building map becomes active.
+		}
 	}
 
 
