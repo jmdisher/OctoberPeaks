@@ -1,4 +1,4 @@
-package com.jeffdisher.october.peaks.scene;
+package com.jeffdisher.october.peaks.animation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

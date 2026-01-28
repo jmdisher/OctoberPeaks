@@ -1,9 +1,9 @@
 package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.peaks.animation.ParticleEngine;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.EntityRenderer;
-import com.jeffdisher.october.peaks.scene.ParticleEngine;
 import com.jeffdisher.october.peaks.scene.PassiveRenderer;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.ui.GlUi;
