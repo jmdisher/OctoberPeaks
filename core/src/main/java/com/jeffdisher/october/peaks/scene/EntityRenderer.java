@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +18,7 @@ import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.animation.AnimationManager;
 import com.jeffdisher.october.peaks.animation.GhostManager;
+import com.jeffdisher.october.peaks.animation.Rigging;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -215,45 +217,63 @@ public class EntityRenderer
 		VertexArray bodyBuffer;
 		_RiggingData headRig;
 		_RiggingData[] limbRigs;
-		FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
-		if (meshFile.exists())
+		
+		FileHandle riggingFile = Gdx.files.internal("entity_" + name + "_rigging.tablist");
+		if (riggingFile.exists())
 		{
+			// There is a rigging definition so load that and then process referenced files.
+			List<Rigging.LimbRig> limbs = Rigging.loadFromTablistFile(riggingFile);
+			
+			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+			bodyBuffer = null;
+			headRig = null;
+			List<_RiggingData> otherRigs = new ArrayList<>();
+			for (Rigging.LimbRig limb : limbs)
+			{
+				FileHandle meshFile = Gdx.files.internal("entity_" + name + "_" + limb.name() + ".obj");
+				Assert.assertTrue(meshFile.exists());
+				
+				switch (limb.type())
+				{
+					case BODY:
+					{
+						Assert.assertTrue(null == bodyBuffer);
+						WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), meshFile.readString());
+						bodyBuffer = builder.finishOne().flush(gl);
+						break;
+					}
+					case PITCH:
+					{
+						Assert.assertTrue(null == headRig);
+						headRig = _loadRig(gl, builder, _RigType.PITCH, limb.base(), meshFile, width, height);
+						break;
+					}
+					case POSITIVE:
+					{
+						_RiggingData other = _loadRig(gl, builder, _RigType.POSITIVE, limb.base(), meshFile, width, height);
+						otherRigs.add(other);
+						break;
+					}
+					case NEGATIVE:
+					{
+						_RiggingData other = _loadRig(gl, builder, _RigType.NEGATIVE, limb.base(), meshFile, width, height);
+						otherRigs.add(other);
+						break;
+					}
+				}
+			}
+			
+			limbRigs = otherRigs.toArray((int size) -> new _RiggingData[size]);
+		}
+		else
+		{
+			FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 			String rawMesh = meshFile.readString();
 			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
 			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), rawMesh);
 			bodyBuffer = builder.finishOne().flush(gl);
 			headRig = null;
 			limbRigs = new _RiggingData[0];
-		}
-		else
-		{
-			FileHandle bodyMeshFile = Gdx.files.internal("entity_" + name + "_BODY.obj");
-			Assert.assertTrue(bodyMeshFile.exists());
-			
-			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), bodyMeshFile.readString());
-			bodyBuffer = builder.finishOne().flush(gl);
-			
-			// TODO:  In the future, this rigging offset needs to be stored in a per-entity data file.
-			EntityLocation headOffsetFileCoords = new EntityLocation(0.5f, 0.5f, 0.88f);
-			EntityLocation frontRightOffsetFileCoords = new EntityLocation(0.89f, 0.46f, 0.85f);
-			EntityLocation frontLeftOffsetFileCoords = new EntityLocation(0.11f, 0.46f, 0.85f);
-			EntityLocation backRightOffsetFileCoords = new EntityLocation(0.66f, 0.46f, 0.4f);
-			EntityLocation backLeftOffsetFileCoords = new EntityLocation(0.44f, 0.46f, 0.4f);
-			
-			FileHandle headMeshFile = Gdx.files.internal("entity_" + name + "_HEAD.obj");
-			FileHandle frontRighMeshFile = Gdx.files.internal("entity_" + name + "_FR.obj");
-			FileHandle frontLeftMeshFile = Gdx.files.internal("entity_" + name + "_FL.obj");
-			FileHandle backRighMeshFile = Gdx.files.internal("entity_" + name + "_BR.obj");
-			FileHandle backLeftMeshFile = Gdx.files.internal("entity_" + name + "_BL.obj");
-			
-			headRig = _loadRig(gl, builder, _RigType.PITCH, headOffsetFileCoords, headMeshFile, width, height);
-			_RiggingData frontRightRig = _loadRig(gl, builder, _RigType.POSITIVE, frontRightOffsetFileCoords, frontRighMeshFile, width, height);
-			_RiggingData frontLeftRig = _loadRig(gl, builder, _RigType.NEGATIVE, frontLeftOffsetFileCoords, frontLeftMeshFile, width, height);
-			_RiggingData backRightRig = _loadRig(gl, builder, _RigType.NEGATIVE, backRightOffsetFileCoords, backRighMeshFile, width, height);
-			_RiggingData backLeftRig = _loadRig(gl, builder, _RigType.POSITIVE, backLeftOffsetFileCoords, backLeftMeshFile, width, height);
-			
-			limbRigs = List.of(frontRightRig, frontLeftRig, backRightRig, backLeftRig).toArray((int size) -> new _RiggingData[size]);
 		}
 		
 		int texture = TextureHelpers.loadHandleRGBA(gl, textureFile);
