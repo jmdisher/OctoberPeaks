@@ -1,0 +1,14 @@
+# The tablist which defines rigging for the COW entity model.
+
+BODY	BODY
+	base	0.0	0.0	0.0
+HEAD	PITCH
+	base	0.5	0.5	0.8
+FR	POSITIVE
+	base	0.77	0.49	0.75
+FL	NEGATIVE
+	base	0.23	0.49	0.75
+BR	NEGATIVE
+	base	0.64	0.49	0.3
+BL	POSITIVE
+	base	0.36	0.49	0.3
