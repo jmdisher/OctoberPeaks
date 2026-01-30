@@ -1,8 +1,5 @@
 package com.jeffdisher.october.peaks.scene;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.FlagsAspect;
@@ -20,25 +17,22 @@ public class AuxVariantMap
 {
 	private final Environment _env;
 	private final IReadOnlyCuboidData _cuboid;
-	private final Map<BlockAddress, AuxilliaryTextureAtlas.Variant> _overlay;
 
 	public AuxVariantMap(Environment env, IReadOnlyCuboidData cuboid)
 	{
 		_env = env;
 		_cuboid = cuboid;
-		_overlay = new HashMap<>();
-		cuboid.walkData(AspectRegistry.FLAGS, (BlockAddress base, byte size, Byte value) -> {
-			if (FlagsAspect.isSet(value, FlagsAspect.FLAG_BURNING))
-			{
-				_overlay.put(base, AuxilliaryTextureAtlas.Variant.BURNING);
-			}
-		}, (byte) 0);
 	}
 
 	public AuxilliaryTextureAtlas.Variant get(BlockAddress blockAddress)
 	{
-		AuxilliaryTextureAtlas.Variant variant = _overlay.get(blockAddress);
-		if (null == variant)
+		AuxilliaryTextureAtlas.Variant variant;
+		byte flags = _cuboid.getData7(AspectRegistry.FLAGS, blockAddress);
+		if (FlagsAspect.isSet(flags, FlagsAspect.FLAG_BURNING))
+		{
+			variant = AuxilliaryTextureAtlas.Variant.BURNING;
+		}
+		else
 		{
 			Integer obj = _cuboid.getDataSpecial(AspectRegistry.DAMAGE, blockAddress);
 			if (null != obj)
