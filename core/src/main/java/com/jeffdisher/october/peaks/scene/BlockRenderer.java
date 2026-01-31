@@ -10,11 +10,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
@@ -424,6 +426,19 @@ public class BlockRenderer
 		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		VertexArray highlighter = _resources._blockModelHighlightCubes.getOrDefault(selectedType, _resources._defaultHighlightCube);
 		highlighter.drawAllTriangles(_gl);
+	}
+
+	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces()
+	{
+		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
+		
+		// TODO:  Track and render the faces of burning blocks.
+		
+		// We now return the valid fire faces.
+		return cuboids.stream()
+			.filter((CuboidMeshManager.CuboidMeshes mesh) -> (null != mesh.fireFaces()))
+			.collect(Collectors.toMap((CuboidMeshManager.CuboidMeshes mesh) -> mesh.address(), (CuboidMeshManager.CuboidMeshes mesh) -> mesh.fireFaces()))
+		;
 	}
 
 	public void handleEndOfFrame()

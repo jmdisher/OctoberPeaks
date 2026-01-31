@@ -98,6 +98,10 @@ public class SceneRenderer
 		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		_gl.glEnable(GL20.GL_BLEND);
 		
+		// Ask the AnimationManager to animate any fire (includes rendering but also particle generation).
+		// This requires the BlockRenderer since fire is logically associated with blocks.
+		_animationManager.handleFireAnimation(_blockRenderer, currentTimeMillis);
+		
 		// Render the particles, then transparent blocks (since we will make the depth buffer read-only for particles).
 		_gl.glDepthMask(false);
 		_particleEngine.renderAllParticles(_viewMatrix, _projectionMatrix, currentTimeMillis);

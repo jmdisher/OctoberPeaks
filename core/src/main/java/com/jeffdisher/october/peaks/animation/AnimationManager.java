@@ -9,14 +9,19 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.CraftingBlockSupport;
+import com.jeffdisher.october.logic.SparseByteCube;
+import com.jeffdisher.october.peaks.scene.BlockRenderer;
+import com.jeffdisher.october.peaks.scene.FireFaceBuilder;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
+import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.utils.Assert;
+import com.jeffdisher.october.utils.Encoding;
 
 
 /**
@@ -26,6 +31,7 @@ import com.jeffdisher.october.utils.Assert;
 public class AnimationManager
 {
 	public static final long DAMAGE_DURATION_MILLIS = 1000L;
+	public static final long FIRE_PARTICLE_PERIOD_MILLIS = 100L;
 
 	private final Environment _environment;
 	private final ParticleEngine _particleEngine;
@@ -35,6 +41,7 @@ public class AnimationManager
 
 	private byte _frameAnimationStep;
 	private long _lastAnimationUpdateMillis;
+	private long _lastFireParticleMillis;
 	private Map<Integer, Byte> _activeEntityAnimationOffset;
 	private Map<Integer, Byte> _buildingEntityAnimationOffset;
 
@@ -47,6 +54,7 @@ public class AnimationManager
 		
 		_frameAnimationStep = 0;
 		_lastAnimationUpdateMillis = currentTimeMillis;
+		_lastFireParticleMillis = currentTimeMillis;
 		_activeEntityAnimationOffset = new HashMap<>();
 		_buildingEntityAnimationOffset = new HashMap<>();
 	}
@@ -264,6 +272,56 @@ public class AnimationManager
 		}
 	}
 
+	public void handleFireAnimation(BlockRenderer blockRenderer, long currentTimeMillis)
+	{
+		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces();
+		
+		if ((currentTimeMillis - _lastFireParticleMillis) >= FIRE_PARTICLE_PERIOD_MILLIS)
+		{
+			for (Map.Entry<CuboidAddress, SparseByteCube> elt : fireFaces.entrySet())
+			{
+				CuboidAddress address = elt.getKey();
+				SparseByteCube cube = elt.getValue();
+				
+				// TODO:  We need to update the particles periodically, but this will allow us to see the visible change, for now.
+				AbsoluteLocation base = address.getBase();
+				SparseByteCube.Walker walker = (int x, int y, int z, byte value) -> {
+					float fullX = (float)(base.x() + x);
+					float fullY = (float)(base.y() + y);
+					float fullZ = (float)(base.z() + z);
+					float midX = fullX + 0.5f;
+					float midY = fullY + 0.5f;
+					_createFireParticle(midX, fullY + 1.0f, fullZ
+						, 0.0f, 0.2f
+						, value, FireFaceBuilder.FACE_NORTH, currentTimeMillis
+					);
+					_createFireParticle(midX, fullY, fullZ
+						, 0.0f, -0.2f
+						, value, FireFaceBuilder.FACE_SOUTH, currentTimeMillis
+					);
+					_createFireParticle(fullX + 1.0f, midY, fullZ
+						, 0.2f, 0.0f
+						, value, FireFaceBuilder.FACE_EAST, currentTimeMillis
+					);
+					_createFireParticle(fullX, midY, fullZ
+						, -0.2f, 0.0f
+						, value, FireFaceBuilder.FACE_WEST, currentTimeMillis
+					);
+					_createFireParticle(midX, midY, fullZ + 1.0f
+						, 0.0f, 0.0f
+						, value, FireFaceBuilder.FACE_UP, currentTimeMillis
+					);
+					_createFireParticle(midX, midY, fullZ - 0.5f
+						, 0.0f, 0.0f
+						, value, FireFaceBuilder.FACE_DOWN, currentTimeMillis
+					);
+				};
+				cube.walkAllValues(walker, 0, 0, 0, Encoding.CUBOID_EDGE_SIZE);
+			}
+			_lastFireParticleMillis = currentTimeMillis;
+		}
+	}
+
 
 	private EntityLocation _getTopCentreOfBlock(AbsoluteLocation location)
 	{
@@ -322,5 +380,15 @@ public class AnimationManager
 			, velocity
 			, logical.extendedData()
 		);
+	}
+
+	private void _createFireParticle(float startX, float startY, float startZ, float endOffX, float endOffY, byte bits, byte bit, long currentTimeMillis)
+	{
+		if (bit == (bits & bit))
+		{
+			EntityLocation location = new EntityLocation(startX, startY, startZ);
+			float endOffZ = 0.5f;
+			_particleEngine.addNewParticle(location, new EntityLocation(startX + endOffX, startY + endOffY, startZ + endOffZ), 1.0f, 0.0f, 0.0f, currentTimeMillis);
+		}
 	}
 }
