@@ -21,6 +21,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
@@ -137,7 +138,7 @@ public class CuboidMeshManager
 		{
 			internal = new _InternalData(true
 					, cuboid
-					, new CuboidMeshes(address, null, null, null, null, null)
+					, new CuboidMeshes(address, null, null, null, null, null, null)
 			);
 		}
 		_foregroundCuboids.put(address, internal);
@@ -292,6 +293,7 @@ public class CuboidMeshManager
 					, transparentData
 					, waterData
 					, response.itemSlotArray
+					, response.fireFaces
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
 				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
@@ -420,12 +422,16 @@ public class CuboidMeshManager
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
 		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
 		
+		// We need to track which visible faces are on fire, for animation reasons.
+		FireFaceBuilder fireTracker = new FireFaceBuilder();
+		
 		// Create the opaque cuboid vertices.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
 				, builderWrapper
 				, _blockTextures
 				, variantMap
 				, _auxBlockTextures
+				, fireTracker
 				, request.inputs
 				, true
 		);
@@ -462,6 +468,7 @@ public class CuboidMeshManager
 				, _blockTextures
 				, variantMap
 				, _auxBlockTextures
+				, fireTracker
 				, request.inputs
 				, false
 		);
@@ -519,6 +526,7 @@ public class CuboidMeshManager
 			, transparentBuffer
 			, waterBuffer
 			, itemSlotArray
+			, fireTracker.extractNonEmptyCollection()
 		);
 	}
 
@@ -671,12 +679,14 @@ public class CuboidMeshManager
 		void deleteBuffer(VertexArray array);
 	}
 
+	// Note that most of these fields prefer null instead of empty (all but address).
 	public static record CuboidMeshes(CuboidAddress address
 		, VertexArray opaqueArray
 		, VertexArray modelArray
 		, VertexArray transparentArray
 		, VertexArray waterArray
 		, List<VisibleItemSlot> itemSlotArray
+		, SparseByteCube fireFaces
 	) {}
 
 	public static record VisibleItemSlot(Item item
@@ -695,6 +705,7 @@ public class CuboidMeshManager
 			, SceneMeshHelpers.MeshInputData inputs
 	) {}
 
+	// Note that most of these fields prefer null instead of empty (all but meshBuffer and cuboid).
 	private static record _Response(FloatBuffer meshBuffer
 		, IReadOnlyCuboidData cuboid
 		, BufferBuilder.Buffer opaqueBuffer
@@ -702,6 +713,7 @@ public class CuboidMeshManager
 		, BufferBuilder.Buffer transparentBuffer
 		, BufferBuilder.Buffer waterBuffer
 		, List<VisibleItemSlot> itemSlotArray
+		, SparseByteCube fireFaces
 	) {}
 
 	private static record _HeightWrapper(int refCount

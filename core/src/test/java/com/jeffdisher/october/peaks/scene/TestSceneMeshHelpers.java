@@ -15,11 +15,13 @@ import org.junit.Test;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.data.CuboidHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.HeightMapHelpers;
+import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
@@ -34,6 +36,7 @@ import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.CuboidGenerator;
+import com.jeffdisher.october.utils.Encoding;
 
 
 public class TestSceneMeshHelpers
@@ -374,7 +377,9 @@ public class TestSceneMeshHelpers
 		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 0, 1), (byte)10);
 		cuboid.setData7(AspectRegistry.LIGHT, sourceBlock.getRelativeInt(0, 1, 1), (byte)15);
 		
-		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid, ColumnHeightMap.build().freeze());
+		FireFaceBuilder fireFaces = new FireFaceBuilder();
+		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid, ColumnHeightMap.build().freeze(), fireFaces);
+		Assert.assertNull(fireFaces.extractNonEmptyCollection());
 		int quadsWritten = _countQuadsInBuffer(liquidBuffer);
 		// We should see 6 quads, single-sided.
 		Assert.assertEquals(6, quadsWritten);
@@ -427,7 +432,9 @@ public class TestSceneMeshHelpers
 		CuboidHeightMap cuboidHeight = HeightMapHelpers.buildHeightMap(temp);
 		
 		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(cuboidHeight, cuboid.getCuboidAddress()).freeze();
-		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid, heightMap);
+		FireFaceBuilder fireFaces = new FireFaceBuilder();
+		BufferBuilder.Buffer liquidBuffer = _buildOpaqueBlockBuffer(STONE, cuboid, heightMap, fireFaces);
+		Assert.assertNull(fireFaces.extractNonEmptyCollection());
 		int quadsWritten = _countQuadsInBuffer(liquidBuffer);
 		// We should see 6 quads, single-sided.
 		Assert.assertEquals(6, quadsWritten);
@@ -537,6 +544,41 @@ public class TestSceneMeshHelpers
 		}, vertexData, 0.01f);
 	}
 
+	@Test
+	public void fireFaces() throws Throwable
+	{
+		// Show that we see the exposed faces of a burning block.
+		// Note that we still use STONE just because the test makes assumptions about block types.
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
+		BlockAddress solidBlock = BlockAddress.fromInt(1, 3, 4);
+		BlockAddress burningBlock = BlockAddress.fromInt(2, 3, 4);
+		cuboid.setData15(AspectRegistry.BLOCK, solidBlock, STONE.number());
+		cuboid.setData15(AspectRegistry.BLOCK, burningBlock, STONE.number());
+		cuboid.setData7(AspectRegistry.FLAGS, burningBlock, FlagsAspect.FLAG_BURNING);
+		
+		CuboidHeightMap cuboidHeight = HeightMapHelpers.buildHeightMap(cuboid);
+		
+		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(cuboidHeight, cuboid.getCuboidAddress()).freeze();
+		FireFaceBuilder fireFaces = new FireFaceBuilder();
+		_buildOpaqueBlockBuffer(STONE, cuboid, heightMap, fireFaces);
+		
+		SparseByteCube fires = fireFaces.extractNonEmptyCollection();
+		int[] count = new int[1];
+		fires.walkAllValues((int x, int y, int z, byte value) -> {
+			count[0] += 1;
+		}, 0, 0, 0, Encoding.CUBOID_EDGE_SIZE);
+		Assert.assertEquals(1, count[0]);
+		
+		byte flags = fires.get(burningBlock.x(), burningBlock.y(), burningBlock.z());
+		Assert.assertEquals(FireFaceBuilder.FACE_NORTH
+			| FireFaceBuilder.FACE_SOUTH
+			| FireFaceBuilder.FACE_EAST
+			| FireFaceBuilder.FACE_UP
+			| FireFaceBuilder.FACE_DOWN
+			, flags
+		);
+	}
+
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
@@ -624,7 +666,7 @@ public class TestSceneMeshHelpers
 		return builder.finishOne();
 	}
 
-	private static BufferBuilder.Buffer _buildOpaqueBlockBuffer(Item block, CuboidData cuboid, ColumnHeightMap heightMap)
+	private static BufferBuilder.Buffer _buildOpaqueBlockBuffer(Item block, CuboidData cuboid, ColumnHeightMap heightMap, FireFaceBuilder fireFaces)
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		
@@ -683,7 +725,7 @@ public class TestSceneMeshHelpers
 				}
 		);
 		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
-		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builderWrapper, blockAtlas, variantMap, auxAtlas, inputData, true);
+		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builderWrapper, blockAtlas, variantMap, auxAtlas, fireFaces, inputData, true);
 		return builder.finishOne();
 	}
 

@@ -48,6 +48,7 @@ public class SceneMeshHelpers
 			, BasicBlockAtlas blockAtlas
 			, AuxVariantMap variantMap
 			, AuxilliaryTextureAtlas auxAtlas
+			, FireFaceBuilder fireTracker
 			, MeshInputData inputData
 			, boolean opaqueVertices
 	)
@@ -81,13 +82,14 @@ public class SceneMeshHelpers
 		);
 		faces.populateMasks(inputData.cuboid, shouldInclude);
 		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(env
-				, builder
-				, variantMap
-				, blockAtlas
-				, auxAtlas
-				, shouldInclude
-				, inputData
-				, 1.0f
+			, builder
+			, variantMap
+			, blockAtlas
+			, auxAtlas
+			, fireTracker
+			, shouldInclude
+			, inputData
+			, 1.0f
 		));
 	}
 
@@ -592,18 +594,20 @@ public class SceneMeshHelpers
 		private final AuxVariantMap _variantMap;
 		private final BasicBlockAtlas _blockAtlas;
 		private final AuxilliaryTextureAtlas _auxAtlas;
+		private final FireFaceBuilder _fireFaces;
 		private final Predicate<Short> _shouldInclude;
 		private final _PrismVertices _v;
 		private final MeshInputData _inputData;
 		
 		public _CommonVertexWriter(Environment env
-				, MeshHelperBufferBuilder builder
-				, AuxVariantMap variantMap
-				, BasicBlockAtlas blockAtlas
-				, AuxilliaryTextureAtlas auxAtlas
-				, Predicate<Short> shouldInclude
-				, MeshInputData inputData
-				, float blockHeight
+			, MeshHelperBufferBuilder builder
+			, AuxVariantMap variantMap
+			, BasicBlockAtlas blockAtlas
+			, AuxilliaryTextureAtlas auxAtlas
+			, FireFaceBuilder fireFaces
+			, Predicate<Short> shouldInclude
+			, MeshInputData inputData
+			, float blockHeight
 		)
 		{
 			_env = env;
@@ -611,9 +615,10 @@ public class SceneMeshHelpers
 			_variantMap = variantMap;;
 			_blockAtlas = blockAtlas;
 			_auxAtlas = auxAtlas;
+			_fireFaces = fireFaces;
 			_shouldInclude = shouldInclude;
-			_inputData = inputData;
 			_v = _PrismVertices.from(Prism.getBoundsAtOrigin(1.0f, 1.0f, blockHeight));
+			_inputData = inputData;
 		}
 		@Override
 		public boolean shouldInclude(short value)
@@ -629,7 +634,8 @@ public class SceneMeshHelpers
 			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value);
 			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture(_variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
+			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(new BlockAddress(baseX, baseY, baseZ));
+			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			if (isPositiveNormal)
 			{
 				byte z = (byte)(baseZ + 1);
@@ -704,6 +710,16 @@ public class SceneMeshHelpers
 					, false
 				);
 			}
+			
+			// Track any burning faces.
+			if (AuxilliaryTextureAtlas.Variant.BURNING == variant)
+			{
+				byte bit = isPositiveNormal
+					? FireFaceBuilder.FACE_UP
+					: FireFaceBuilder.FACE_DOWN
+				;
+				_fireFaces.setBit(baseX, baseY, baseZ, bit);
+			}
 		}
 		@Override
 		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
@@ -712,7 +728,8 @@ public class SceneMeshHelpers
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture(_variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
+			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(new BlockAddress(baseX, baseY, baseZ));
+			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			if (isPositiveNormal)
 			{
 				byte y = (byte)(baseY + 1);
@@ -767,6 +784,16 @@ public class SceneMeshHelpers
 					, false
 				);
 			}
+			
+			// Track any burning faces.
+			if (AuxilliaryTextureAtlas.Variant.BURNING == variant)
+			{
+				byte bit = isPositiveNormal
+					? FireFaceBuilder.FACE_NORTH
+					: FireFaceBuilder.FACE_SOUTH
+				;
+				_fireFaces.setBit(baseX, baseY, baseZ, bit);
+			}
 		}
 		@Override
 		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
@@ -775,7 +802,8 @@ public class SceneMeshHelpers
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			float[] auxUv = _auxAtlas.baseOfTexture(_variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
+			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(new BlockAddress(baseX, baseY, baseZ));
+			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			if (isPositiveNormal)
 			{
 				byte x = (byte)(baseX + 1);
@@ -829,6 +857,16 @@ public class SceneMeshHelpers
 					, new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier}
 					, false
 				);
+			}
+			
+			// Track any burning faces.
+			if (AuxilliaryTextureAtlas.Variant.BURNING == variant)
+			{
+				byte bit = isPositiveNormal
+					? FireFaceBuilder.FACE_EAST
+					: FireFaceBuilder.FACE_WEST
+				;
+				_fireFaces.setBit(baseX, baseY, baseZ, bit);
 			}
 		}
 		private boolean _isActive(byte baseX, byte baseY, byte baseZ, short value)
