@@ -138,7 +138,7 @@ public class CuboidMeshManager
 		{
 			internal = new _InternalData(true
 					, cuboid
-					, new CuboidMeshes(address, null, null, null, null, null, null)
+					, new CuboidMeshes(address, null, null, null, null, null, null, null)
 			);
 		}
 		_foregroundCuboids.put(address, internal);
@@ -287,6 +287,7 @@ public class CuboidMeshManager
 				VertexArray modelData = (null != response.modelBuffer) ? _gpu.uploadBuffer(response.modelBuffer) : null;
 				VertexArray transparentData = (null != response.transparentBuffer) ? _gpu.uploadBuffer(response.transparentBuffer) : null;
 				VertexArray waterData = (null != response.waterBuffer) ? _gpu.uploadBuffer(response.waterBuffer) : null;
+				VertexArray burningData = (null != response.burningFaceBuffer) ? _gpu.uploadBuffer(response.burningFaceBuffer) : null;
 				CuboidMeshes newData = new CuboidMeshes(response.cuboid.getCuboidAddress()
 					, opaqueData
 					, modelData
@@ -294,6 +295,7 @@ public class CuboidMeshManager
 					, waterData
 					, response.itemSlotArray
 					, response.fireFaces
+					, burningData
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
 				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
@@ -474,6 +476,10 @@ public class CuboidMeshManager
 		);
 		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
 		
+		// By this point, the fire face tracker is complete.
+		SparseByteCube fireFaces = fireTracker.extractNonEmptyCollection();
+		fireTracker = null;
+		
 		// Create the water cuboid vertices.
 		short waterSourceNumber = _env.items.getItemById("op.water_source").number();
 		short waterStrongNumber = _env.items.getItemById("op.water_strong").number();
@@ -489,6 +495,19 @@ public class CuboidMeshManager
 				, true
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
+		
+		// Create any of the burning block faces.
+		BufferBuilder.Buffer burningFaceBuffer = null;
+		if (null != fireFaces)
+		{
+			SceneMeshHelpers.populateBurningFacesForCuboid(_env
+				, builderWrapper
+				, _blockTextures
+				, _auxBlockTextures
+				, fireFaces
+			);
+			burningFaceBuffer = builder.finishOne();
+		}
 		
 		// Find the list of visible item slots in this cuboid.
 		List<VisibleItemSlot> buildingItemSlotArray = new ArrayList<>();
@@ -526,7 +545,8 @@ public class CuboidMeshManager
 			, transparentBuffer
 			, waterBuffer
 			, itemSlotArray
-			, fireTracker.extractNonEmptyCollection()
+			, fireFaces
+			, burningFaceBuffer
 		);
 	}
 
@@ -687,6 +707,7 @@ public class CuboidMeshManager
 		, VertexArray waterArray
 		, List<VisibleItemSlot> itemSlotArray
 		, SparseByteCube fireFaces
+		, VertexArray burningFaceArray
 	) {}
 
 	public static record VisibleItemSlot(Item item
@@ -714,6 +735,7 @@ public class CuboidMeshManager
 		, BufferBuilder.Buffer waterBuffer
 		, List<VisibleItemSlot> itemSlotArray
 		, SparseByteCube fireFaces
+		, BufferBuilder.Buffer burningFaceBuffer
 	) {}
 
 	private static record _HeightWrapper(int refCount

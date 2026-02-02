@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.logic.HeightMapHelpers;
@@ -103,9 +104,17 @@ public class TestCuboidMeshManager
 		Assert.assertNull(data.opaqueArray());
 		Assert.assertNull(data.transparentArray());
 		Assert.assertNull(data.itemSlotArray());
+		Assert.assertNull(data.fireFaces());
+		Assert.assertNull(data.burningFaceArray());
 		
+		// Wait for the result and verify what appears.
 		_waitForOpaqueArray(manager, address);
-		Assert.assertEquals(36, manager.viewCuboids().iterator().next().opaqueArray().totalVertices);
+		data = manager.viewCuboids().iterator().next();
+		Assert.assertEquals(36, data.opaqueArray().totalVertices);
+		Assert.assertNull(data.transparentArray());
+		Assert.assertNull(data.itemSlotArray());
+		Assert.assertNull(data.fireFaces());
+		Assert.assertNull(data.burningFaceArray());
 		
 		manager.shutdown();
 	}
@@ -450,6 +459,45 @@ public class TestCuboidMeshManager
 		Assert.assertArrayEquals(new float[] { 0.1f }, blockLight, 0.01f);
 		// Since this is a model-based block at the top of the column, it is given partial sky light.
 		Assert.assertArrayEquals(new float[] { 0.5f }, skyLight, 0.01f);
+	}
+
+	@Test
+	public void basicFireOutput() throws Throwable
+	{
+		_Gpu testingGpu = new _Gpu();
+		int textureCount = STONE_VALUE + 1;
+		AuxilliaryTextureAtlas auxBlockTextures = _buildAuxAtlas();
+		BlockModelsAndAtlas models = _buildBlockModelsAndAtlas(textureCount, Map.of(), new ModelBuffer[0]);
+		BasicBlockAtlas blockAtlas = _buildBlockAtlas(textureCount, ALL_BLOCKS, new boolean[ALL_BLOCKS.length]);
+		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, models, blockAtlas, auxBlockTextures);
+		
+		CuboidAddress address = new CuboidAddress((short)0, (short)0, (short)0);
+		CuboidData cuboid = CuboidGenerator.createFilledCuboid(address, ENV.special.AIR);
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)6, (byte)7), STONE_VALUE);
+		cuboid.setData7(AspectRegistry.FLAGS, new BlockAddress((byte)5, (byte)6, (byte)7), FlagsAspect.FLAG_BURNING);
+		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(cuboid), cuboid.getCuboidAddress()).freeze();
+		
+		manager.setCuboid(cuboid, heightMap, null);
+		Assert.assertEquals(1, manager.viewCuboids().size());
+		
+		// Wait for the result and see the fire vertices.
+		_waitForOpaqueArray(manager, address);
+		CuboidMeshManager.CuboidMeshes data = manager.viewCuboids().iterator().next();
+		Assert.assertEquals(36, data.opaqueArray().totalVertices);
+		Assert.assertNull(data.transparentArray());
+		Assert.assertNull(data.itemSlotArray());
+		byte faceValue = data.fireFaces().get(5, 6, 7);
+		Assert.assertEquals(FireFaceBuilder.FACE_WEST
+			| FireFaceBuilder.FACE_EAST
+			| FireFaceBuilder.FACE_SOUTH
+			| FireFaceBuilder.FACE_NORTH
+			| FireFaceBuilder.FACE_DOWN
+			| FireFaceBuilder.FACE_UP
+			, faceValue
+		);
+		Assert.assertEquals(36, data.burningFaceArray().totalVertices);
+		
+		manager.shutdown();
 	}
 
 
