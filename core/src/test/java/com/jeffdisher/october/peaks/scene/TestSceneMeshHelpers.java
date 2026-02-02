@@ -579,6 +579,36 @@ public class TestSceneMeshHelpers
 		);
 	}
 
+	@Test
+	public void burningFaceVertices() throws Throwable
+	{
+		// Show what the output for a vertex array of a burning face looks like.
+		FireFaceBuilder fireFaces = new FireFaceBuilder();
+		fireFaces.setBit((byte)1, (byte)2, (byte)3, FireFaceBuilder.FACE_EAST);
+		SparseByteCube fires = fireFaces.extractNonEmptyCollection();
+		FloatBuffer buffer = FloatBuffer.allocate(4096);
+		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BasicBlockAtlas blockAtlas = _buildBlockAtlas(1, new Block[] {ENV.special.AIR}, new boolean[] {true});
+		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
+		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, auxAtlas, fires);
+		
+		BufferBuilder.Buffer outVertices = builder.finishOne();
+		int floatsWritten = buffer.position();
+		float[] vertexData = new float[floatsWritten];
+		outVertices.testGetFloats(vertexData);
+		
+		// We expect 6 vertices (a single quad) with 12 floats each.
+		Assert.assertEquals(6 * 12, floatsWritten);
+		Assert.assertArrayEquals(new float[] {2.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.25f, 1.0f, 0.0f
+			, 2.0f, 3.0f, 3.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 1.0f, 0.0f
+			, 2.0f, 3.0f, 4.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.25f, 0.5f, 1.0f, 0.0f
+			, 2.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.25f, 1.0f, 0.0f
+			, 2.0f, 3.0f, 4.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.25f, 0.5f, 1.0f, 0.0f
+			, 2.0f, 2.0f, 4.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.0f
+		}, vertexData, 0.01f);
+	}
+
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{

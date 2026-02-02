@@ -17,6 +17,12 @@ public class FireFaceBuilder
 	public static final byte FACE_UP = 0x10;
 	public static final byte FACE_DOWN = 0x20;
 
+	public static boolean isBitSet(byte value, byte flag)
+	{
+		return (flag == (value & flag));
+	}
+
+
 	private final SparseByteCube _fireFaces = new SparseByteCube(Encoding.CUBOID_EDGE_SIZE);
 	private boolean _hasContents;
 

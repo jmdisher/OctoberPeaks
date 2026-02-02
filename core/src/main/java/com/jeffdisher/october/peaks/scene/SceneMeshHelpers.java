@@ -14,6 +14,7 @@ import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
+import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
@@ -391,6 +392,99 @@ public class SceneMeshHelpers
 		// Don't add any additional saturation to the cube.
 		float blockLightMultiplier = 0.0f;
 		_buildCube(builder, uvBase, textureSize, auxUv, auxTextureSize, outline, blockLightMultiplier);
+	}
+
+	public static void populateBurningFacesForCuboid(Environment env
+		, MeshHelperBufferBuilder builder
+		, BasicBlockAtlas blockAtlas
+		, AuxilliaryTextureAtlas auxAtlas
+		, SparseByteCube fireFaces
+	)
+	{
+		// We assume that the "air" block we are using as the block texture is the same on all sides.
+		float airCoords[] = blockAtlas.baseOfSideTexture(false, env.special.AIR.item().number());
+		float coordinateSize = blockAtlas.getCoordinateSize();
+		
+		// All of these use the fire AUX texture.
+		float fireCoords[] = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.BURNING);
+		float auxSize = auxAtlas.coordinateSize;
+		
+		// Other constants used in all cases.
+		_PrismVertices prism = _PrismVertices.from(Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f));
+		float[] blockLightMultipliers = new float[] { 1.0f, 1.0f, 1.0f, 1.0f };
+		float[] skyLightMultipliers = new float[] { 0.0f, 0.0f, 0.0f, 0.0f };
+		boolean flipTexture = false;
+		
+		_IFaceWriter commonWriter = (float[] localBase, float[][] vertices, float[] normal) -> {
+			_populateQuad(builder
+				, localBase
+				, vertices
+				, normal
+				, airCoords, coordinateSize
+				, fireCoords, auxSize
+				, blockLightMultipliers
+				, skyLightMultipliers
+				, flipTexture
+			);
+		};
+		SparseByteCube.Walker walker = (int x, int y, int z, byte value) -> {
+			float[] localBase = new float[] { (float)x, (float)y, (float)z };
+			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_UP))
+			{
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						prism.v001, prism.v101, prism.v111, prism.v011
+					}
+					, new float[] {0.0f, 0.0f, 1.0f}
+				);
+			}
+			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_DOWN))
+			{
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						prism.v100, prism.v000, prism.v010, prism.v110
+					}
+					, new float[] {0.0f, 0.0f, -1.0f}
+				);
+			}
+			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_NORTH))
+			{
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						prism.v110, prism.v010, prism.v011, prism.v111
+					}
+					, new float[] {0.0f, 1.0f, 0.0f}
+				);
+			}
+			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_SOUTH))
+			{
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						prism.v000, prism.v100, prism.v101, prism.v001
+					}
+					, new float[] {0.0f, -1.0f,0.0f}
+				);
+			}
+			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_EAST))
+			{
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						prism.v100, prism.v110, prism.v111, prism.v101
+					}
+					, new float[] {1.0f, 0.0f, 0.0f}
+				);
+			}
+			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_WEST))
+			{
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						prism.v010, prism.v000, prism.v001, prism.v011
+					}
+					, new float[] {-1.0f, 0.0f, 0.0f}
+				);
+			}
+		};
+		fireFaces.walkAllValues(walker, 0, 0, 0, Encoding.CUBOID_EDGE_SIZE);
 	}
 
 
@@ -1299,6 +1393,10 @@ public class SceneMeshHelpers
 		);
 	}
 
+	private static interface _IFaceWriter
+	{
+		public void buildQuad(float[] localBase, float[][] vertices, float[] normal);
+	}
 
 	/**
 	 * Packaged-up data passed into the mesh generation helpers.

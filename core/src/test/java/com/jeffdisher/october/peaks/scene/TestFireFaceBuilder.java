@@ -45,4 +45,14 @@ public class TestFireFaceBuilder
 		, cube.get(1, 2, 3));
 		Assert.assertEquals(FireFaceBuilder.FACE_EAST, cube.get(2, 3, 4));
 	}
+
+	@Test
+	public void checkBits() throws Throwable
+	{
+		byte value = FireFaceBuilder.FACE_NORTH | FireFaceBuilder.FACE_EAST;
+		Assert.assertTrue(FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_NORTH));
+		Assert.assertTrue(FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_EAST));
+		Assert.assertFalse(FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_WEST));
+		Assert.assertFalse(FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_UP));
+	}
 }
