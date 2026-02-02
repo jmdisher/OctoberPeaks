@@ -24,41 +24,39 @@ public class AuxVariantMap
 		_cuboid = cuboid;
 	}
 
+	public boolean isBurning(BlockAddress blockAddress)
+	{
+		byte flags = _cuboid.getData7(AspectRegistry.FLAGS, blockAddress);
+		return FlagsAspect.isSet(flags, FlagsAspect.FLAG_BURNING);
+	}
+
 	public AuxilliaryTextureAtlas.Variant get(BlockAddress blockAddress)
 	{
 		AuxilliaryTextureAtlas.Variant variant;
-		byte flags = _cuboid.getData7(AspectRegistry.FLAGS, blockAddress);
-		if (FlagsAspect.isSet(flags, FlagsAspect.FLAG_BURNING))
+		Integer obj = _cuboid.getDataSpecial(AspectRegistry.DAMAGE, blockAddress);
+		if (null != obj)
 		{
-			variant = AuxilliaryTextureAtlas.Variant.BURNING;
-		}
-		else
-		{
-			Integer obj = _cuboid.getDataSpecial(AspectRegistry.DAMAGE, blockAddress);
-			if (null != obj)
+			// We will favour showing cracks at a low damage, so the feedback is obvious
+			int damage = obj.intValue();
+			Block block = new BlockProxy(blockAddress, _cuboid).getBlock();
+			float damaged = (float) damage / (float)_env.damage.getToughness(block);
+			
+			if (damaged > 0.6f)
 			{
-				// We will favour showing cracks at a low damage, so the feedback is obvious
-				int damage = obj.intValue();
-				Block block = new BlockProxy(blockAddress, _cuboid).getBlock();
-				float damaged = (float) damage / (float)_env.damage.getToughness(block);
-				
-				if (damaged > 0.6f)
-				{
-					variant = AuxilliaryTextureAtlas.Variant.BREAK_HIGH;
-				}
-				else if (damaged > 0.3f)
-				{
-					variant = AuxilliaryTextureAtlas.Variant.BREAK_MEDIUM;
-				}
-				else
-				{
-					variant = AuxilliaryTextureAtlas.Variant.BREAK_LOW;
-				}
+				variant = AuxilliaryTextureAtlas.Variant.BREAK_HIGH;
+			}
+			else if (damaged > 0.3f)
+			{
+				variant = AuxilliaryTextureAtlas.Variant.BREAK_MEDIUM;
 			}
 			else
 			{
-				variant = AuxilliaryTextureAtlas.Variant.NONE;
+				variant = AuxilliaryTextureAtlas.Variant.BREAK_LOW;
 			}
+		}
+		else
+		{
+			variant = AuxilliaryTextureAtlas.Variant.NONE;
 		}
 		return variant;
 	}

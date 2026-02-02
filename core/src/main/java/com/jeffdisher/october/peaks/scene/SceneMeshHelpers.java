@@ -721,12 +721,13 @@ public class SceneMeshHelpers
 		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
+			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
 			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value);
 			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(new BlockAddress(baseX, baseY, baseZ));
+			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			
 			byte z = (byte)(baseZ + (isPositiveNormal ? 1 : -1));
@@ -796,7 +797,7 @@ public class SceneMeshHelpers
 			}
 			
 			// Track any burning faces.
-			if (AuxilliaryTextureAtlas.Variant.BURNING == variant)
+			if (_variantMap.isBurning(blockAddress))
 			{
 				byte bit = isPositiveNormal
 					? FireFaceBuilder.FACE_UP
@@ -808,11 +809,12 @@ public class SceneMeshHelpers
 		@Override
 		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
+			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(new BlockAddress(baseX, baseY, baseZ));
+			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			
 			byte y = (byte)(baseY + (isPositiveNormal ? 1 : -1));
@@ -866,7 +868,7 @@ public class SceneMeshHelpers
 			}
 			
 			// Track any burning faces.
-			if (AuxilliaryTextureAtlas.Variant.BURNING == variant)
+			if (_variantMap.isBurning(blockAddress))
 			{
 				byte bit = isPositiveNormal
 					? FireFaceBuilder.FACE_NORTH
@@ -878,11 +880,12 @@ public class SceneMeshHelpers
 		@Override
 		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
+			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
-			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(new BlockAddress(baseX, baseY, baseZ));
+			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			
 			byte x = (byte)(baseX + (isPositiveNormal ? 1 : -1));
@@ -936,7 +939,7 @@ public class SceneMeshHelpers
 			}
 			
 			// Track any burning faces.
-			if (AuxilliaryTextureAtlas.Variant.BURNING == variant)
+			if (_variantMap.isBurning(blockAddress))
 			{
 				byte bit = isPositiveNormal
 					? FireFaceBuilder.FACE_EAST
