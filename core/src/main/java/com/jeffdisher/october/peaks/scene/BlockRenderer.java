@@ -428,7 +428,7 @@ public class BlockRenderer
 		highlighter.drawAllTriangles(_gl);
 	}
 
-	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces()
+	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
 	{
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
 		

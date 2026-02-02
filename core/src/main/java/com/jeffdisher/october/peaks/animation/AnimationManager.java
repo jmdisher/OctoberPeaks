@@ -10,8 +10,10 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.CraftingBlockSupport;
 import com.jeffdisher.october.logic.SparseByteCube;
+import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.FireFaceBuilder;
+import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -272,9 +274,9 @@ public class AnimationManager
 		}
 	}
 
-	public void handleFireAnimation(BlockRenderer blockRenderer, long currentTimeMillis)
+	public void handleFireAnimation(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, BlockRenderer blockRenderer, long currentTimeMillis)
 	{
-		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces();
+		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces(viewMatrix, projectionMatrix, eye);
 		
 		if ((currentTimeMillis - _lastFireParticleMillis) >= FIRE_PARTICLE_PERIOD_MILLIS)
 		{
