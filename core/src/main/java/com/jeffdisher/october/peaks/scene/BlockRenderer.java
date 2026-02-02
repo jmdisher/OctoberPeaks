@@ -430,9 +430,42 @@ public class BlockRenderer
 
 	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
 	{
-		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
+		// We want to use the perspective projection and depth buffer for the main scene.
+		// NOTE:  We use GL_LEQUAL for the fire since it renders inside an existing block face.
+		_gl.glEnable(GL20.GL_DEPTH_TEST);
+		_gl.glDepthFunc(GL20.GL_LEQUAL);
+		_resources._program.useProgram();
+		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
+		_gl.glUniform1f(_resources._uSkyLight, 0.0f);
+		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
+		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
-		// TODO:  Track and render the faces of burning blocks.
+		// This shader uses 2 textures.
+		_gl.glUniform1i(_resources._uTexture0, 0);
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glUniform1i(_resources._uTexture1, 1);
+		_gl.glActiveTexture(GL20.GL_TEXTURE1);
+		
+		// TODO:  In the future, we will use a different set of textures for the fire, so we can animate them.
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
+		
+		// We just bind the block textures to select a blank one for "air".
+		_gl.glActiveTexture(GL20.GL_TEXTURE0);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
+		
+		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
+		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		{
+			if (null != value.burningFaceArray())
+			{
+				CuboidAddress key = value.address();
+				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
+				model.uploadAsUniform(_gl, _resources._uModelMatrix);
+				value.burningFaceArray().drawAllTriangles(_gl);
+			}
+		}
 		
 		// We now return the valid fire faces.
 		return cuboids.stream()
