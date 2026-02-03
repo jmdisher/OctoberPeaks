@@ -590,8 +590,7 @@ public class TestSceneMeshHelpers
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
 		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(1, new Block[] {ENV.special.AIR}, new boolean[] {true});
-		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
-		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, auxAtlas, fires);
+		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, fires);
 		
 		BufferBuilder.Buffer outVertices = builder.finishOne();
 		int floatsWritten = buffer.position();
@@ -600,12 +599,12 @@ public class TestSceneMeshHelpers
 		
 		// We expect 6 vertices (a single quad) with 12 floats each.
 		Assert.assertEquals(6 * 12, floatsWritten);
-		Assert.assertArrayEquals(new float[] {2.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.25f, 1.0f, 0.0f
-			, 2.0f, 3.0f, 3.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f, 1.0f, 0.0f
-			, 2.0f, 3.0f, 4.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.25f, 0.5f, 1.0f, 0.0f
-			, 2.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.25f, 1.0f, 0.0f
-			, 2.0f, 3.0f, 4.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.25f, 0.5f, 1.0f, 0.0f
-			, 2.0f, 2.0f, 4.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.0f
+		Assert.assertArrayEquals(new float[] {2.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f
+			, 2.0f, 3.0f, 3.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f
+			, 2.0f, 3.0f, 4.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f
+			, 2.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f
+			, 2.0f, 3.0f, 4.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f
+			, 2.0f, 2.0f, 4.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f
 		}, vertexData, 0.01f);
 	}
 

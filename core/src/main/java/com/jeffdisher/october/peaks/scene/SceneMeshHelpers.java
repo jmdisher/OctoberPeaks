@@ -397,7 +397,6 @@ public class SceneMeshHelpers
 	public static void populateBurningFacesForCuboid(Environment env
 		, MeshHelperBufferBuilder builder
 		, BasicBlockAtlas blockAtlas
-		, AuxilliaryTextureAtlas auxAtlas
 		, SparseByteCube fireFaces
 	)
 	{
@@ -405,9 +404,9 @@ public class SceneMeshHelpers
 		float airCoords[] = blockAtlas.baseOfSideTexture(false, env.special.AIR.item().number());
 		float coordinateSize = blockAtlas.getCoordinateSize();
 		
-		// All of these use the fire AUX texture.
-		float fireCoords[] = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.BURNING);
-		float auxSize = auxAtlas.coordinateSize;
+		// We rely on the fire texture being swapped between frames but is currently bound to the entire texture (might change for more animations, in the future).
+		float fireCoords[] = new float[] {0.0f, 0.0f};
+		float auxSize = 1.0f;
 		
 		// Other constants used in all cases.
 		_PrismVertices prism = _PrismVertices.from(Prism.getBoundsAtOrigin(1.0f, 1.0f, 1.0f));

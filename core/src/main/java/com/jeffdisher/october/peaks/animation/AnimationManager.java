@@ -34,6 +34,8 @@ public class AnimationManager
 {
 	public static final long DAMAGE_DURATION_MILLIS = 1000L;
 	public static final long FIRE_PARTICLE_PERIOD_MILLIS = 100L;
+	public static final long FIRE_FRAME_COUNT = 4L;
+	public static final long FIRE_FRAME_PERIOD_MILLIS = 100L;
 
 	private final Environment _environment;
 	private final ParticleEngine _particleEngine;
@@ -276,7 +278,12 @@ public class AnimationManager
 
 	public void handleFireAnimation(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, BlockRenderer blockRenderer, long currentTimeMillis)
 	{
-		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces(viewMatrix, projectionMatrix, eye);
+		// Determine the fire frame based on time.
+		long cycleMillis = FIRE_FRAME_COUNT * FIRE_FRAME_PERIOD_MILLIS;
+		long timeIntoCycle = currentTimeMillis % cycleMillis;
+		int frameNumber = (int)(timeIntoCycle / FIRE_FRAME_PERIOD_MILLIS);
+		
+		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces(viewMatrix, projectionMatrix, eye, frameNumber);
 		
 		if ((currentTimeMillis - _lastFireParticleMillis) >= FIRE_PARTICLE_PERIOD_MILLIS)
 		{

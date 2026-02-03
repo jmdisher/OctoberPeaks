@@ -70,6 +70,7 @@ public class BlockRenderer
 		private final int _highlightTexture;
 		private final VertexArray _defaultHighlightCube;
 		private final Map<Block, VertexArray> _blockModelHighlightCubes;
+		private final int[] _fireTextures;
 		
 		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
 		{
@@ -128,6 +129,12 @@ public class BlockRenderer
 				blockModelHighlightCubes.put(key, specialCube);
 			}
 			_blockModelHighlightCubes = Collections.unmodifiableMap(blockModelHighlightCubes);
+			
+			_fireTextures = new int[4];
+			for (int i = 0; i < _fireTextures.length; ++i)
+			{
+				_fireTextures[i] = TextureHelpers.loadInternalRGBA(gl, "fire_" + i + ".png");
+			}
 		}
 		
 		public void shutdown(GL20 gl)
@@ -428,7 +435,7 @@ public class BlockRenderer
 		highlighter.drawAllTriangles(_gl);
 	}
 
-	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, int fireAnimationFrame)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		// NOTE:  We use GL_LEQUAL for the fire since it renders inside an existing block face.
@@ -447,9 +454,7 @@ public class BlockRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glUniform1i(_resources._uTexture1, 1);
 		_gl.glActiveTexture(GL20.GL_TEXTURE1);
-		
-		// TODO:  In the future, we will use a different set of textures for the fire, so we can animate them.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._fireTextures[fireAnimationFrame]);
 		
 		// We just bind the block textures to select a blank one for "air".
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);

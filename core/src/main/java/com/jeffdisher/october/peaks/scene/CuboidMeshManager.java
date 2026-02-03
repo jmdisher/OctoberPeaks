@@ -503,7 +503,6 @@ public class CuboidMeshManager
 			SceneMeshHelpers.populateBurningFacesForCuboid(_env
 				, builderWrapper
 				, _blockTextures
-				, _auxBlockTextures
 				, fireFaces
 			);
 			burningFaceBuffer = builder.finishOne();
