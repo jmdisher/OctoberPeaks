@@ -42,6 +42,5 @@ public class AuxilliaryTextureAtlas
 		BREAK_LOW,
 		BREAK_MEDIUM,
 		BREAK_HIGH,
-		BURNING,
 	}
 }
