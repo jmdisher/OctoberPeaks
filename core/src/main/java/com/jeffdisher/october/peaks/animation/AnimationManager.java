@@ -36,6 +36,8 @@ public class AnimationManager
 	public static final long FIRE_PARTICLE_PERIOD_MILLIS = 100L;
 	public static final long FIRE_FRAME_COUNT = 4L;
 	public static final long FIRE_FRAME_PERIOD_MILLIS = 100L;
+	public static final int DRAW_IN_PARTICLE_COUNT = 4;
+	public static final int OUTBURST_IN_PARTICLE_COUNT = 30;
 
 	private final Environment _environment;
 	private final ParticleEngine _particleEngine;
@@ -67,6 +69,7 @@ public class AnimationManager
 	{
 		// We will just generate particles for this, but first check to see what type it is.
 		AbsoluteLocation base = cuboid.getCuboidAddress().getBase();
+		long currentTimeMillis = System.currentTimeMillis();
 		for (BlockAddress b : changedBlocks)
 		{
 			// This may be null if it ended.
@@ -76,7 +79,10 @@ public class AnimationManager
 				Block craftingBlock = _environment.blocks.fromItem(_environment.items.ITEMS_BY_TYPE[blockNumber]);
 				boolean isFurnace = _environment.stations.getCraftingClasses(craftingBlock).contains(CraftingBlockSupport.FUELLED_CLASSIFICATION);
 				EntityLocation centre = _getTopCentreOfBlock(base.relativeForBlock(b));
-				_flatBurst(centre, isFurnace);
+				float red = isFurnace ? 1.0f : 0.0f;
+				float green = isFurnace ? 0.0f : 1.0f;
+				float blue = 0.0f;
+				_drawIn(centre, red, green, blue, currentTimeMillis);
 			}
 		}
 	}
@@ -85,13 +91,19 @@ public class AnimationManager
 	{
 		// We will just generate particles for this.
 		AbsoluteLocation base = cuboid.getCuboidAddress().getBase();
+		long currentTimeMillis = System.currentTimeMillis();
 		for (BlockAddress b : changedBlocks)
 		{
 			// This may be null if it ended.
 			if (null != cuboid.getDataSpecial(AspectRegistry.ENCHANTING, b))
 			{
 				EntityLocation centre = _getTopCentreOfBlock(base.relativeForBlock(b));
-				_upwardBurst(centre);
+				
+				// We want to show the animation drawing in from the pedestals.
+				_particleEngine.linear(new EntityLocation(centre.x() + 2.0f, centre.y(), centre.z()), 0.2f, centre, 0.0f, 0.0f, 0.0f, 1.0f, currentTimeMillis);
+				_particleEngine.linear(new EntityLocation(centre.x() - 2.0f, centre.y(), centre.z()), 0.2f, centre, 0.0f, 0.0f, 0.0f, 1.0f, currentTimeMillis);
+				_particleEngine.linear(new EntityLocation(centre.x(), centre.y() + 2.0f, centre.z()), 0.2f, centre, 0.0f, 0.0f, 0.0f, 1.0f, currentTimeMillis);
+				_particleEngine.linear(new EntityLocation(centre.x(), centre.y() - 2.0f, centre.z()), 0.2f, centre, 0.0f, 0.0f, 0.0f, 1.0f, currentTimeMillis);
 			}
 		}
 	}
@@ -99,21 +111,22 @@ public class AnimationManager
 	public void craftInInventoryComplete(int entityId)
 	{
 		EntityLocation centre = _worldCache.getCentreOfPlayerOrCreature(entityId);
-		_flatBurst(centre, false);
+		long currentTimeMillis = System.currentTimeMillis();
+		_outburst(centre, currentTimeMillis, false);
 	}
 
 	public void craftInBlockComplete(AbsoluteLocation location)
 	{
-		Block craftingBlock = _worldCache.blockLookup.apply(location).getBlock();
-		boolean isFurnace = _environment.stations.getCraftingClasses(craftingBlock).contains(CraftingBlockSupport.FUELLED_CLASSIFICATION);
 		EntityLocation centre = _getTopCentreOfBlock(location);
-		_flatBurst(centre, isFurnace);
+		long currentTimeMillis = System.currentTimeMillis();
+		_outburst(centre, currentTimeMillis, false);
 	}
 
 	public void enchantComplete(AbsoluteLocation location)
 	{
 		EntityLocation centre = _getTopCentreOfBlock(location);
-		_upwardBurst(centre);
+		long currentTimeMillis = System.currentTimeMillis();
+		_outburst(centre, currentTimeMillis, true);
 	}
 
 	public void removeEntity(int id)
@@ -300,28 +313,29 @@ public class AnimationManager
 					float fullZ = (float)(base.z() + z);
 					float midX = fullX + 0.5f;
 					float midY = fullY + 0.5f;
-					_createFireParticle(midX, fullY + 1.0f, fullZ
-						, 0.0f, 0.2f
+					float midZ = fullZ + 0.5f;
+					_createFireParticle(midX, fullY + 1.0f, midZ
+						, 0.0f, 0.2f, 0.5f
 						, value, FireFaceBuilder.FACE_NORTH, currentTimeMillis
 					);
-					_createFireParticle(midX, fullY, fullZ
-						, 0.0f, -0.2f
+					_createFireParticle(midX, fullY, midZ
+						, 0.0f, -0.2f, 0.5f
 						, value, FireFaceBuilder.FACE_SOUTH, currentTimeMillis
 					);
-					_createFireParticle(fullX + 1.0f, midY, fullZ
-						, 0.2f, 0.0f
+					_createFireParticle(fullX + 1.0f, midY, midZ
+						, 0.2f, 0.0f, 0.5f
 						, value, FireFaceBuilder.FACE_EAST, currentTimeMillis
 					);
-					_createFireParticle(fullX, midY, fullZ
-						, -0.2f, 0.0f
+					_createFireParticle(fullX, midY, midZ
+						, -0.2f, 0.0f, 0.5f
 						, value, FireFaceBuilder.FACE_WEST, currentTimeMillis
 					);
 					_createFireParticle(midX, midY, fullZ + 1.0f
-						, 0.0f, 0.0f
+						, 0.0f, 0.0f, 0.5f
 						, value, FireFaceBuilder.FACE_UP, currentTimeMillis
 					);
-					_createFireParticle(midX, midY, fullZ - 0.5f
-						, 0.0f, 0.0f
+					_createFireParticle(midX, midY, fullZ
+						, 0.0f, 0.0f, -0.2f
 						, value, FireFaceBuilder.FACE_DOWN, currentTimeMillis
 					);
 				};
@@ -337,31 +351,6 @@ public class AnimationManager
 		EntityLocation base = location.toEntityLocation();
 		EntityLocation centre = new EntityLocation(base.x() + 0.5f, base.y() + 0.5f, base.z() + 1.0f);
 		return centre;
-	}
-
-	private void _flatBurst(EntityLocation location, boolean useRed)
-	{
-		float r = 1.0f;
-		float g = useRed ? 0.0f : 1.0f;
-		float b = useRed ? 0.0f : 1.0f;
-		long currentTimeMillis = System.currentTimeMillis();
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x() - 1.0f, location.y(), location.z()), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x() + 1.0f, location.y(), location.z()), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y() - 1.0f, location.z()), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y() + 1.0f, location.z()), r, g, b, currentTimeMillis);
-	}
-
-	private void _upwardBurst(EntityLocation location)
-	{
-		float r = 0.0f;
-		float g = 0.0f;
-		float b = 1.0f;
-		long currentTimeMillis = System.currentTimeMillis();
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x() - 1.0f, location.y(), location.z() + 0.5f), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x() + 1.0f, location.y(), location.z() + 0.5f), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y() - 1.0f, location.z() + 0.5f), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y() + 1.0f, location.z() + 0.5f), r, g, b, currentTimeMillis);
-		_particleEngine.addNewParticle(location, new EntityLocation(location.x(), location.y(), location.z() + 1.0f), r, g, b, currentTimeMillis);
 	}
 
 	private float _getSecondsSinceTick(long currentTimeMillis)
@@ -391,13 +380,36 @@ public class AnimationManager
 		);
 	}
 
-	private void _createFireParticle(float startX, float startY, float startZ, float endOffX, float endOffY, byte bits, byte bit, long currentTimeMillis)
+	private void _createFireParticle(float startX, float startY, float startZ, float endOffX, float endOffY, float endOffZ, byte bits, byte bit, long currentTimeMillis)
 	{
 		if (bit == (bits & bit))
 		{
-			EntityLocation location = new EntityLocation(startX, startY, startZ);
-			float endOffZ = 0.5f;
-			_particleEngine.addNewParticle(location, new EntityLocation(startX + endOffX, startY + endOffY, startZ + endOffZ), 1.0f, 0.0f, 0.0f, currentTimeMillis);
+			EntityLocation start = new EntityLocation(startX, startY, startZ);
+			EntityLocation end = new EntityLocation(startX + endOffX
+				, startY + endOffY
+				, startZ + endOffZ
+			);
+			_particleEngine.linear(start, 0.2f, end, 0.2f, 1.0f, 0.0f, 0.0f, currentTimeMillis);
+		}
+	}
+
+	private void _drawIn(EntityLocation centre, float r, float g, float b, long currentTimeMillis)
+	{
+		for (int i = 0; i < DRAW_IN_PARTICLE_COUNT; ++i)
+		{
+			_particleEngine.inFromSphere(centre, 1.5f, r, g, b, currentTimeMillis);
+		}
+	}
+
+	private void _outburst(EntityLocation centre, long currentTimeMillis, boolean loud)
+	{
+		int count = loud
+			? 2 * OUTBURST_IN_PARTICLE_COUNT
+			: OUTBURST_IN_PARTICLE_COUNT
+		;
+		for (int i = 0; i < count; ++i)
+		{
+			_particleEngine.outToSphere(centre, 1.5f, 1.0f, 1.0f, 1.0f, currentTimeMillis);
 		}
 	}
 }

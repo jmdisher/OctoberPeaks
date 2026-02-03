@@ -16,12 +16,12 @@ varying vec3 vColour;
 void main()
 {
 	vec3 delta = aEndPosition - aStartPosition;
-	float animationFraction = mod(uAnimationFraction + 1.0 - aAnimationOffset, 1.0);
+	float animationFraction = mod(uAnimationFraction + 0.99 - aAnimationOffset, 1.0);
 	vec3 position = aStartPosition + animationFraction * delta;
 	vec4 viewPosition = uViewMatrix * vec4(position, 1.0);
 	
 	vAnimation = animationFraction;
 	vColour = aColour;
-	gl_PointSize = 20.0 / length(viewPosition.xyz);
+	gl_PointSize = 50.0 / length(viewPosition.xyz);
 	gl_Position = uProjectionMatrix * uViewMatrix * vec4(position, 1.0);
 }

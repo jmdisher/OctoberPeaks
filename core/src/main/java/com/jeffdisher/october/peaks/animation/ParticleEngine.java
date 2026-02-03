@@ -3,6 +3,7 @@ package com.jeffdisher.october.peaks.animation;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
@@ -12,6 +13,7 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
+import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.peaks.utils.RingBufferLogic;
@@ -31,7 +33,6 @@ public class ParticleEngine
 	public static final int BYTES_PER_PARTICLE = FOUR_BYTE_SLOT_PER_VERTEX * Float.BYTES;
 	public static final int BUFFER_SIZE_IN_BYTES = MAX_PARTICLE_COUNT * BYTES_PER_PARTICLE;
 	public static final int MILLIS_TO_LIVE = 2_000;
-	public static final float PARTICLE_HALF_EDGE_SIZE = 0.05f;
 
 	public static class Resources
 	{
@@ -97,6 +98,7 @@ public class ParticleEngine
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
 	private final long _startMillis;
+	private final Random _random;
 
 	// Our use of the buffer is circular since every element is added in-order and has the same lifetime.
 	private RingBufferLogic _ringLogic;
@@ -108,31 +110,42 @@ public class ParticleEngine
 		_screenBrightness = screenBrightness;
 		_resources = resources.particleResources();
 		_startMillis = currentTimeMillis;
+		_random = new Random(currentTimeMillis);
 		
 		_ringLogic = new RingBufferLogic(MAX_PARTICLE_COUNT);
 		_millisExpiries = new int[MAX_PARTICLE_COUNT];
 	}
 
-	public boolean addNewParticle(EntityLocation start, EntityLocation end, float r, float g, float b, long currentTimeMillis)
+	public boolean inFromSphere(EntityLocation centre, float radius, float r, float g, float b, long currentTimeMillis)
 	{
-		int allocatedIndex = _ringLogic.incrementFreeAndReturnPrevious();
+		EntityLocation source = _getRandomPointOnSphere(centre, radius);
+		return _addNewParticle(source, centre, r, g, b, currentTimeMillis);
+	}
+
+	public boolean outToSphere(EntityLocation centre, float radius, float r, float g, float b, long currentTimeMillis)
+	{
+		EntityLocation end = _getRandomPointOnSphere(centre, radius);
+		return _addNewParticle(centre, end, r, g, b, currentTimeMillis);
+	}
+
+	public boolean linear(EntityLocation start, float startDrift, EntityLocation end, float endDrift, float r, float g, float b, long currentTimeMillis)
+	{
+		float driftStartX = 2.0f * startDrift * (_random.nextFloat() - 0.5f);
+		float driftStartY = 2.0f * startDrift * (_random.nextFloat() - 0.5f);
+		float driftStartZ = 2.0f * startDrift * (_random.nextFloat() - 0.5f);
+		float driftEndX = 2.0f * endDrift * (_random.nextFloat() - 0.5f);
+		float driftEndY = 2.0f * endDrift * (_random.nextFloat() - 0.5f);
+		float driftEndZ = 2.0f * endDrift * (_random.nextFloat() - 0.5f);
 		
-		if (-1 != allocatedIndex)
-		{
-			// This gives us millions of seconds, which should be sufficient.
-			int millisOffset = (int) (currentTimeMillis - _startMillis);
-			int byteOffset = allocatedIndex * BYTES_PER_PARTICLE;
-			ByteBuffer buffer = _resources._singleTransferBuffer.clear();
-			int millisExpiry = millisOffset + MILLIS_TO_LIVE;
-			_millisExpiries[allocatedIndex] = millisExpiry;
-			_writeParticle(buffer, start, end, r, g, b, millisOffset);
-			
-			// Do we benefit from batching these into 1-2 calls per frame?
-			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _resources._gpuDataBuffer);
-			ByteBuffer uploadBuffer = _resources._singleTransferBuffer.flip();
-			_gl.glBufferSubData(GL20.GL_ARRAY_BUFFER, byteOffset, BYTES_PER_PARTICLE, uploadBuffer);
-		}
-		return (-1 != allocatedIndex);
+		EntityLocation source = new EntityLocation(start.x() + driftStartX
+			, start.y() + driftStartY
+			, start.z() + driftStartZ
+		);
+		EntityLocation dest = new EntityLocation(end.x() + driftEndX
+			, end.y() + driftEndY
+			, end.z() + driftEndZ
+		);
+		return _addNewParticle(source, dest, r, g, b, currentTimeMillis);
 	}
 
 	public void freeDeadParticles(long currentTimeMillis)
@@ -259,5 +272,40 @@ public class ParticleEngine
 			_gl.glVertexAttribPointer(i, attribute.floats(), GL20.GL_FLOAT, false, FOUR_BYTE_SLOT_PER_VERTEX * Float.BYTES, floatOffset * Float.BYTES);
 			floatOffset += attribute.floats();
 		}
+	}
+
+	private boolean _addNewParticle(EntityLocation start, EntityLocation end, float r, float g, float b, long currentTimeMillis)
+	{
+		int allocatedIndex = _ringLogic.incrementFreeAndReturnPrevious();
+		
+		if (-1 != allocatedIndex)
+		{
+			// This gives us millions of seconds, which should be sufficient.
+			int millisOffset = (int) (currentTimeMillis - _startMillis);
+			int byteOffset = allocatedIndex * BYTES_PER_PARTICLE;
+			ByteBuffer buffer = _resources._singleTransferBuffer.clear();
+			int millisExpiry = millisOffset + MILLIS_TO_LIVE;
+			_millisExpiries[allocatedIndex] = millisExpiry;
+			_writeParticle(buffer, start, end, r, g, b, millisOffset);
+			
+			// Do we benefit from batching these into 1-2 calls per frame?
+			_gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _resources._gpuDataBuffer);
+			ByteBuffer uploadBuffer = _resources._singleTransferBuffer.flip();
+			_gl.glBufferSubData(GL20.GL_ARRAY_BUFFER, byteOffset, BYTES_PER_PARTICLE, uploadBuffer);
+		}
+		return (-1 != allocatedIndex);
+	}
+
+	private EntityLocation _getRandomPointOnSphere(EntityLocation centre, float radius)
+	{
+		float x = _random.nextFloat() - 0.5f;
+		float y = _random.nextFloat() - 0.5f;
+		float z = _random.nextFloat() - 0.5f;
+		Vector vector = new Vector(x, y, z).normalize().scale(radius);
+		EntityLocation source = new EntityLocation(centre.x() + vector.x()
+			, centre.y() + vector.y()
+			, centre.z() + vector.z()
+		);
+		return source;
 	}
 }
