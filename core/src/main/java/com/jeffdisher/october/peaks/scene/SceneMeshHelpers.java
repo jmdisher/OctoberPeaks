@@ -430,21 +430,44 @@ public class SceneMeshHelpers
 			float[] localBase = new float[] { (float)x, (float)y, (float)z };
 			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_UP))
 			{
+				// On the up face, we will draw the fire burning on top of the block.
+				float blockIntersection = 0.2f;
+				_PrismVertices upPrism = _PrismVertices.from(new Prism(0.2f
+					, 0.2f
+					, 1.0f - blockIntersection
+					, 0.8f
+					, 0.8f
+					, 2.0f - blockIntersection
+				));
+				
 				commonWriter.buildQuad(localBase
 					, new float[][] {
-						prism.v001, prism.v101, prism.v111, prism.v011
+						upPrism.v100, upPrism.v010, upPrism.v011, upPrism.v101
 					}
-					, new float[] {0.0f, 0.0f, 1.0f}
+					, new float[] {0.7f, 0.7f, 0.0f}
+				);
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						upPrism.v010, upPrism.v100, upPrism.v101, upPrism.v011
+					}
+					, new float[] {-0.7f, -0.7f, 0.0f}
+				);
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						upPrism.v000, upPrism.v110, upPrism.v111, upPrism.v001
+					}
+					, new float[] {0.7f, -0.7f, 0.0f}
+				);
+				commonWriter.buildQuad(localBase
+					, new float[][] {
+						upPrism.v110, upPrism.v000, upPrism.v001, upPrism.v111
+					}
+					, new float[] {-0.7f, 0.7f, 0.0f}
 				);
 			}
 			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_DOWN))
 			{
-				commonWriter.buildQuad(localBase
-					, new float[][] {
-						prism.v100, prism.v000, prism.v010, prism.v110
-					}
-					, new float[] {0.0f, 0.0f, -1.0f}
-				);
+				// We don't draw any fire on the down face.
 			}
 			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_NORTH))
 			{

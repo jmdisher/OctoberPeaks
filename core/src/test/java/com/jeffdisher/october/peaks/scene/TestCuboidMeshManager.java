@@ -495,7 +495,8 @@ public class TestCuboidMeshManager
 			| FireFaceBuilder.FACE_UP
 			, faceValue
 		);
-		Assert.assertEquals(36, data.burningFaceArray().totalVertices);
+		// We draw a quad for NSEW and 4 quads for the top (X on top).
+		Assert.assertEquals(6 * 8, data.burningFaceArray().totalVertices);
 		
 		manager.shutdown();
 	}
