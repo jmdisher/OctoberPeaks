@@ -25,7 +25,7 @@ public class AudioManager
 	public static final float AUDIO_RANGE_FLOAT = 10.0f;
 	public static final float AUDIO_RANGE_SQUARED_FLOAT = AUDIO_RANGE_FLOAT * AUDIO_RANGE_FLOAT;
 	public static final int AUDIO_RANGE_SQUARED = (int)AUDIO_RANGE_SQUARED_FLOAT;
-	// We randomly make a noise every 1000 ticks - so every 10 seconds.
+	// We randomly make a noise every 1000 ticks - at 20 ticks/second, this is 50 seconds.
 	public static int IDLE_SOUND_PER_TICK_DIVISOR = 1000;
 
 	public static class Resources
@@ -41,6 +41,9 @@ public class AudioManager
 		private final Sound _orcIdle;
 		private final Sound _orcInjury;
 		private final Sound _orcDeath;
+		private final Sound _skeletonIdle;
+		private final Sound _skeletonInjury;
+		private final Sound _skeletonDeath;
 		
 		public Resources()
 		{
@@ -55,6 +58,9 @@ public class AudioManager
 			_orcIdle = Gdx.audio.newSound(Gdx.files.internal("orc_idle.ogg"));
 			_orcInjury = Gdx.audio.newSound(Gdx.files.internal("orc_injury.ogg"));
 			_orcDeath = Gdx.audio.newSound(Gdx.files.internal("orc_death.ogg"));
+			_skeletonIdle = Gdx.audio.newSound(Gdx.files.internal("skeleton_idle.ogg"));
+			_skeletonInjury = Gdx.audio.newSound(Gdx.files.internal("skeleton_injury.ogg"));
+			_skeletonDeath = Gdx.audio.newSound(Gdx.files.internal("skeleton_death.ogg"));
 		}
 		
 		public void shutdown()
@@ -78,6 +84,7 @@ public class AudioManager
 	private final EntityType _player;
 	private final EntityType _cow;
 	private final EntityType _orc;
+	private final EntityType _skeleton;
 	private final Resources _resources;
 	private final long _walkingId;
 	private final long _runningId;
@@ -97,6 +104,7 @@ public class AudioManager
 		_player = environment.creatures.PLAYER;
 		_cow = environment.creatures.getTypeById("op.cow");
 		_orc = environment.creatures.getTypeById("op.orc");
+		_skeleton = environment.creatures.getTypeById("op.skeleton");
 		
 		// We will start the walking sound as looping and pause it.
 		_walkingId = _resources._walk.loop();
@@ -122,6 +130,10 @@ public class AudioManager
 			else if (_orc == type)
 			{
 				soundToPlay = _resources._orcIdle;
+			}
+			else if (_skeleton == type)
+			{
+				soundToPlay = _resources._skeletonIdle;
 			}
 			if (null != soundToPlay)
 			{
@@ -202,7 +214,7 @@ public class AudioManager
 
 	public void otherEntityHurt(AbsoluteLocation location, int entityTargetId)
 	{
-		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._orcInjury, _resources._cowInjury, _resources._takeDamage);
+		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._takeDamage, _resources._cowInjury, _resources._orcInjury, _resources._skeletonInjury);
 		if (null != soundToPlay)
 		{
 			_playSoundIfInRange(location, soundToPlay);
@@ -211,7 +223,7 @@ public class AudioManager
 
 	public void otherEntityKilled(AbsoluteLocation location, int entityTargetId)
 	{
-		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._orcDeath, _resources._cowDeath, _resources._takeDamage);
+		Sound soundToPlay = _selectSoundForEntity(entityTargetId, _resources._takeDamage, _resources._cowDeath, _resources._orcDeath, _resources._skeletonDeath);
 		if (null != soundToPlay)
 		{
 			_playSoundIfInRange(location, soundToPlay);
@@ -271,11 +283,15 @@ public class AudioManager
 		soundToPlay.play(volume, 1.0f, pan);
 	}
 
-	private Sound _selectSoundForEntity(int entityTargetId, Sound orc, Sound cow, Sound player)
+	private Sound _selectSoundForEntity(int entityTargetId, Sound player, Sound cow, Sound orc, Sound skeleton)
 	{
 		Sound soundToPlay;
 		EntityType type = _worldCache.getCreatureOrEntityType(entityTargetId);
-		if (_cow == type)
+		if (_player == type)
+		{
+			soundToPlay = player;
+		}
+		else if (_cow == type)
 		{
 			soundToPlay = cow;
 		}
@@ -283,9 +299,9 @@ public class AudioManager
 		{
 			soundToPlay = orc;
 		}
-		else if (_player == type)
+		else if (_skeleton == type)
 		{
-			soundToPlay = player;
+			soundToPlay = skeleton;
 		}
 		else
 		{
