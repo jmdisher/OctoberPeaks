@@ -31,6 +31,7 @@ public class AudioManager
 	public static class Resources
 	{
 		private final Sound _walk;
+		private final Sound _run;
 		private final Sound _takeDamage;
 		private final Sound _breakBlock;
 		private final Sound _placeBlock;
@@ -44,6 +45,7 @@ public class AudioManager
 		public Resources()
 		{
 			_walk = Gdx.audio.newSound(Gdx.files.internal("walking.ogg"));
+			_run = Gdx.audio.newSound(Gdx.files.internal("running.ogg"));
 			_takeDamage = Gdx.audio.newSound(Gdx.files.internal("take_damage.ogg"));
 			_breakBlock = Gdx.audio.newSound(Gdx.files.internal("break_block.ogg"));
 			_placeBlock = Gdx.audio.newSound(Gdx.files.internal("place_block.ogg"));
@@ -58,6 +60,7 @@ public class AudioManager
 		public void shutdown()
 		{
 			_walk.dispose();
+			_run.dispose();
 			_takeDamage.dispose();
 			_breakBlock.dispose();
 			_placeBlock.dispose();
@@ -77,9 +80,11 @@ public class AudioManager
 	private final EntityType _orc;
 	private final Resources _resources;
 	private final long _walkingId;
+	private final long _runningId;
 
 	private final WorldCache _worldCache;
 	private boolean _isWalking;
+	private boolean _isRunning;
 
 	public AudioManager(Environment environment
 		, LoadedResources resources
@@ -96,6 +101,8 @@ public class AudioManager
 		// We will start the walking sound as looping and pause it.
 		_walkingId = _resources._walk.loop();
 		_resources._walk.pause(_walkingId);
+		_runningId = _resources._run.loop();
+		_resources._run.pause(_runningId);
 	}
 
 	public void tickCompleted()
@@ -137,8 +144,27 @@ public class AudioManager
 	{
 		if (!_isWalking)
 		{
+			if (_isRunning)
+			{
+				_resources._run.pause(_runningId);
+				_isRunning = false;
+			}
 			_resources._walk.resume(_walkingId);
 			_isWalking = true;
+		}
+	}
+
+	public void setRunning()
+	{
+		if (!_isRunning)
+		{
+			if (_isWalking)
+			{
+				_resources._walk.pause(_walkingId);
+				_isWalking = false;
+			}
+			_resources._run.resume(_runningId);
+			_isRunning = true;
 		}
 	}
 
@@ -148,6 +174,11 @@ public class AudioManager
 		{
 			_resources._walk.pause(_walkingId);
 			_isWalking = false;
+		}
+		if (_isRunning)
+		{
+			_resources._run.pause(_runningId);
+			_isRunning = false;
 		}
 	}
 

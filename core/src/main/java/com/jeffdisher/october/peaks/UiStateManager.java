@@ -108,7 +108,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private boolean _rotationDidUpdate;
 	private boolean _didAccountForTimeInFrame;
-	private boolean _didWalkInFrame;
+	private _AudibleMotion _audibleMotionInFrame;
 	private boolean _mouseHeld0;
 	private boolean _mouseHeld1;
 	private boolean _mouseClicked0;
@@ -959,7 +959,7 @@ public class UiStateManager implements GameSession.ICallouts
 		boolean runningSpeed = false;
 		_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
 		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		_audibleMotionInFrame = _AudibleMotion.WALK;
 	}
 
 	public void run(MovementAccumulator.Relative relative)
@@ -967,14 +967,16 @@ public class UiStateManager implements GameSession.ICallouts
 		boolean runningSpeed = true;
 		_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
 		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		_audibleMotionInFrame = _AudibleMotion.RUN;
 	}
 
 	public void sneak(MovementAccumulator.Relative relative)
 	{
 		_currentGameSession.client.sneak(relative);
 		_didAccountForTimeInFrame = true;
-		_didWalkInFrame = true;
+		
+		// We will say that sneaking is silent.
+		_audibleMotionInFrame = null;
 	}
 
 	public void ascendOrJumpOrSwim()
@@ -2001,9 +2003,17 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		ViscosityReader reader = new ViscosityReader(_env, _currentGameSession.blockLookup);
-		if (_didWalkInFrame && SpatialHelpers.isStandingOnGround(reader, _entityBinding.get().location(), _playerVolume))
+		if ((null != _audibleMotionInFrame) && SpatialHelpers.isStandingOnGround(reader, _entityBinding.get().location(), _playerVolume))
 		{
-			_currentGameSession.audioManager.setWalking();
+			switch (_audibleMotionInFrame)
+			{
+			case WALK:
+				_currentGameSession.audioManager.setWalking();
+				break;
+			case RUN:
+				_currentGameSession.audioManager.setRunning();
+				break;
+			}
 		}
 		else
 		{
@@ -2025,7 +2035,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		_didAccountForTimeInFrame = false;
-		_didWalkInFrame = false;
+		_audibleMotionInFrame = null;
 	}
 
 	private void _clearEvents()
@@ -2279,6 +2289,12 @@ public class UiStateManager implements GameSession.ICallouts
 		 * A state used to display a fatal error message before exiting.
 		 */
 		ERROR,
+	}
+
+	private static enum _AudibleMotion
+	{
+		WALK,
+		RUN,
 	}
 
 
