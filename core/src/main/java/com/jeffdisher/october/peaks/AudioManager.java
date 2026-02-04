@@ -230,6 +230,14 @@ public class AudioManager
 		}
 	}
 
+	public void passiveWasPickedUp(int pickingUpEntityId)
+	{
+		PartialEntity pickUp = _worldCache.getCreatureOrEntityPartial(pickingUpEntityId);
+		AbsoluteLocation location = pickUp.location().getBlockLocation();
+		// We use the "break block" sound for this since it is a basic "pop".
+		_playSoundIfInRange(location, _resources._breakBlock);
+	}
+
 	public void shutdown()
 	{
 		_resources._walk.stop(_walkingId);
