@@ -89,21 +89,21 @@ public class TestAnimationManager
 		worldCache.updateOtherEntity(movedEntity);
 		animationManager.setEndOfTickTime(currentMillis);
 		
-		// We expect to see the frames go from 0 to 64, back to 0, then to -64, then to 0 (but we stop one tick before the third 0).
-		int[] counts = new int[129];
+		// We expect to see the frames go from 0 to 32, back to 0, then to -32, then to 0 (but we stop one tick before the third 0).
+		int[] counts = new int[65];
 		for (int i = 0; i < 256; ++i)
 		{
 			byte frame = animationManager.getWalkingAnimationFrame(movedEntity);
-			counts[frame + 64] += 1;
-			currentMillis += 17L;
+			counts[frame + 32] += 1;
+			currentMillis += 5L;
 			animationManager.startNewFrame(currentMillis);
 		}
 		
-		Assert.assertEquals(1, counts[0]);
-		for (int i = 0; i < 127; ++i)
+		Assert.assertEquals(2, counts[0]);
+		for (int i = 0; i < 63; ++i)
 		{
-			Assert.assertEquals(2, counts[i + 1]);
+			Assert.assertEquals(4, counts[i + 1]);
 		}
-		Assert.assertEquals(1, counts[128]);
+		Assert.assertEquals(2, counts[64]);
 	}
 }

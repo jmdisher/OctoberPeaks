@@ -38,6 +38,7 @@ public class AnimationManager
 	public static final long FIRE_FRAME_PERIOD_MILLIS = 100L;
 	public static final int DRAW_IN_PARTICLE_COUNT = 4;
 	public static final int OUTBURST_IN_PARTICLE_COUNT = 30;
+	public static final long WALK_ANIMATION_FRAME_MILLIS = 5L;
 
 	private final Environment _environment;
 	private final ParticleEngine _particleEngine;
@@ -216,20 +217,21 @@ public class AnimationManager
 	{
 		// Make sure that it is time to update the frame animation.
 		long millisSinceLast = (currentTimeMillis - _lastAnimationUpdateMillis);
-		if (millisSinceLast > 10L)
+		if (millisSinceLast > WALK_ANIMATION_FRAME_MILLIS)
 		{
-			_frameAnimationStep += 1;
-			_lastAnimationUpdateMillis = currentTimeMillis;
+			long iterationsToApply = (millisSinceLast / WALK_ANIMATION_FRAME_MILLIS);
+			_frameAnimationStep += iterationsToApply;
+			_lastAnimationUpdateMillis += (iterationsToApply * WALK_ANIMATION_FRAME_MILLIS);
 		}
 	}
 
 	/**
 	 * Looks up the walking animation frame for the given entity.  Note that it is acceptable and expected to ask this
 	 * about entities it may not be tracking or which may have already died and it will return (byte)0 in those cases.
-	 * Animation walking frames start at 0, then climb to 66, then fall to -64, then climb back to 0 and repeat.
+	 * Animation walking frames start at 0, then climb to 32, then fall to -32, then climb back to 0 and repeat.
 	 * 
 	 * @param entity The entity to look up.
-	 * @return The animation frame (in the range [-64..64]) or 0, if not known.
+	 * @return The animation frame (in the range [-32..32]) or 0, if not known.
 	 */
 	public byte getWalkingAnimationFrame(PartialEntity entity)
 	{
@@ -237,7 +239,7 @@ public class AnimationManager
 		Byte offset = _activeEntityAnimationOffset.get(entity.id());
 		if (null != offset)
 		{
-			animationFrame = (byte) (Math.abs((byte)(offset.byteValue() + _frameAnimationStep + 64)) - 64);
+			animationFrame = (byte) ((Math.abs((byte)(offset.byteValue() + _frameAnimationStep + 64)) - 64) / 2);
 		}
 		else
 		{
