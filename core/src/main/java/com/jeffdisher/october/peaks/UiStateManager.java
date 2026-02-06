@@ -1357,13 +1357,14 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui.enterUiRenderMode();
 		
 		String menuTitle = "October Peaks";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
+		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
+		_ui.drawWholeTextureRect(_ui.logoTexture, -0.2f, 0.3f, 0.2f, 0.7f);
 		IAction action = null;
-		action = _renderViewChainAction(_singlePlayerButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
-		action = _renderViewChainAction(_multiPlayerButton, new Rect(-0.3f, 0.1f, 0.3f, 0.2f), action);
-		action = _renderViewChainAction(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f), action);
-		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.3f, -0.1f, 0.3f, 0.0f), action);
-		action = _renderViewChainAction(_quitButton, new Rect(-0.2f, -0.6f, 0.2f, -0.5f), action);
+		action = _renderViewChainAction(_singlePlayerButton, new Rect(-0.4f, 0.1f, 0.4f, 0.2f), action);
+		action = _renderViewChainAction(_multiPlayerButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
+		action = _renderViewChainAction(_optionsButton, new Rect(-0.4f, -0.1f, 0.4f, 0.0f), action);
+		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.4f, -0.2f, 0.4f, -0.1f), action);
+		action = _renderViewChainAction(_quitButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
 		
 		return action;
 	}

@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks.ui;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -14,6 +15,7 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextManager;
+import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.utils.Assert;
@@ -46,8 +48,9 @@ public class GlUi
 		public final int pixelGreenAlpha;
 		public final int pixelBlueAlpha;
 		public final int pixelOrangeLava;
+		public final int logoTexture;
 		
-		public Resources(GL20 gl, ItemTextureAtlas itemAtlas)
+		public Resources(GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
 		{
 			_itemAtlas = itemAtlas;
 			
@@ -111,6 +114,9 @@ public class GlUi
 			// We use a mostly-opaque orange for "under lava" overlay layer.
 			this.pixelOrangeLava = _makePixelRgba(gl, textureBufferData, (byte)255, (byte)69, (byte)0, (byte)220);
 			
+			// We load the texture for the logo, for the splash screen (and potentially others, in the future).
+			this.logoTexture = TextureHelpers.loadInternalRGBA(gl, "op_logo128.png");
+			
 			Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
 		}
 		
@@ -143,6 +149,7 @@ public class GlUi
 	public final int pixelGreenAlpha;
 	public final int pixelBlueAlpha;
 	public final int pixelOrangeLava;
+	public final int logoTexture;
 
 	public GlUi(GL20 gl, LoadedResources resources)
 	{
@@ -170,6 +177,8 @@ public class GlUi
 		
 		// We use a mostly-opaque orange for "under lava" overlay layer.
 		this.pixelOrangeLava = _resources.pixelOrangeLava;
+		
+		this.logoTexture = _resources.logoTexture;
 	}
 
 	public void enterUiRenderMode()
