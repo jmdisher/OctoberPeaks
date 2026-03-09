@@ -5,14 +5,12 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SpatialHelpers;
@@ -31,13 +29,15 @@ import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
-import com.jeffdisher.october.types.MutableEntity;
+import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.types.WorldConfig;
 
 
 public class GameSession
 {
+	private final EntityType _playerType;
 	private final WorldCache _worldCache;
 	private final ICallouts _callouts;
 	public final SceneRenderer scene;
@@ -48,7 +48,7 @@ public class GameSession
 	public final AudioManager audioManager;
 	public final AnimationManager animationManager;
 	public final GhostManager ghostManager;
-	public final Function<AbsoluteLocation, BlockProxy> blockLookup;
+	public final TickProcessingContext.IBlockFetcher blockLookup;
 
 	public GameSession(Environment environment
 			, GL20 gl
@@ -65,7 +65,8 @@ public class GameSession
 			, ICallouts callouts
 	) throws ConnectException
 	{
-		_worldCache = new WorldCache(environment.creatures.PLAYER);
+		_playerType = environment.creatures.PLAYER;
+		_worldCache = new WorldCache(_playerType);
 		_callouts = callouts;
 		// We just expose this lookup here for the UiStateManager to use.
 		this.blockLookup = _worldCache.blockLookup;
@@ -199,7 +200,7 @@ public class GameSession
 		@Override
 		public void thisEntityUpdated(Entity projectedEntity)
 		{
-			EntityLocation eyeLocation = SpatialHelpers.getEyeLocation(MutableEntity.existing(projectedEntity));
+			EntityLocation eyeLocation = SpatialHelpers.getEyeLocation(projectedEntity.location(), _playerType.volume());
 			GameSession.this.movement.setEye(Vector.fromEntityLocation(eyeLocation));
 			Vector eye = GameSession.this.movement.computeEye();
 			Vector target = GameSession.this.movement.computeTarget();

@@ -195,9 +195,10 @@ public class TestCuboidMeshManager
 		CuboidAddress highAddress = new CuboidAddress((short)0, (short)0, (short)1);
 		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, STONE_BLOCK);
 		ColumnHeightMap highMap = ColumnHeightMap.build()
-				.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
-				.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
-				.freeze();
+			.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
+			.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
+			.freeze()
+		;
 		
 		// Request the bottom one first and verify it.
 		manager.setCuboid(lowCuboid, lowMap, null);
@@ -281,9 +282,10 @@ public class TestCuboidMeshManager
 		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, STONE_BLOCK);
 		highCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 0), ENV.special.AIR.item().number());
 		ColumnHeightMap highMap = ColumnHeightMap.build()
-				.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
-				.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
-				.freeze();
+			.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
+			.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
+			.freeze()
+		;
 		
 		// Request the bottom one first and verify it.
 		manager.setCuboid(lowCuboid, lowMap, null);
@@ -367,9 +369,10 @@ public class TestCuboidMeshManager
 		CuboidData highCuboid = CuboidGenerator.createFilledCuboid(highAddress, STONE_BLOCK);
 		highCuboid.setData15(AspectRegistry.BLOCK, BlockAddress.fromInt(30, 30, 0), ENV.special.AIR.item().number());
 		ColumnHeightMap highMap = ColumnHeightMap.build()
-				.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
-				.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
-				.freeze();
+			.consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress)
+			.consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress)
+			.freeze()
+		;
 		
 		// Upload both of these.
 		manager.setCuboid(lowCuboid, lowMap, null);

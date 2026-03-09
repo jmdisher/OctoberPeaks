@@ -113,7 +113,7 @@ public class SelectionManager
 		}
 		final Vector finalEnd = end;
 		GeometryHelpers.RayResult selectedBlock = GeometryHelpers.findFirstCollision(_eye, end, (AbsoluteLocation location) -> {
-			BlockProxy proxy = _worldCache.blockLookup.apply(location);
+			BlockProxy proxy = _worldCache.blockLookup.readBlock(location);
 			boolean shouldStop = true;
 			if (null != proxy)
 			{
