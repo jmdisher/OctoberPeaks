@@ -5,14 +5,12 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SpatialHelpers;
@@ -33,6 +31,7 @@ import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.MutableEntity;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.types.WorldConfig;
 
 
@@ -48,7 +47,7 @@ public class GameSession
 	public final AudioManager audioManager;
 	public final AnimationManager animationManager;
 	public final GhostManager ghostManager;
-	public final Function<AbsoluteLocation, BlockProxy> blockLookup;
+	public final TickProcessingContext.IBlockFetcher blockLookup;
 
 	public GameSession(Environment environment
 			, GL20 gl

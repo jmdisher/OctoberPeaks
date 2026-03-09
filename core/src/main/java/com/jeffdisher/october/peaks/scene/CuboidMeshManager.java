@@ -516,7 +516,7 @@ public class CuboidMeshManager
 			public void visit(BlockAddress base, byte size, ItemSlot specialSlot)
 			{
 				Assert.assertTrue((byte)1 == size);
-				BlockProxy proxy = new BlockProxy(base, cuboid);
+				BlockProxy proxy = BlockProxy.load(base, cuboid);
 				Block blockType = proxy.getBlock();
 				if (_itemSlotBlocksHeights.containsKey(blockType))
 				{

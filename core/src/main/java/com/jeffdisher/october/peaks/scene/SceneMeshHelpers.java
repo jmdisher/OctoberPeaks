@@ -1195,7 +1195,7 @@ public class SceneMeshHelpers
 		{
 			if (null != data.west)
 			{
-				blockType = new BlockProxy(new BlockAddress((byte)(address.x() + Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.west).getBlock();
+				blockType = BlockProxy.load(new BlockAddress((byte)(address.x() + Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.west).getBlock();
 			}
 			else
 			{
@@ -1206,7 +1206,7 @@ public class SceneMeshHelpers
 		{
 			if (null != data.east)
 			{
-				blockType = new BlockProxy(new BlockAddress((byte)(address.x() - Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.east).getBlock();
+				blockType = BlockProxy.load(new BlockAddress((byte)(address.x() - Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.east).getBlock();
 			}
 			else
 			{
@@ -1217,7 +1217,7 @@ public class SceneMeshHelpers
 		{
 			if (null != data.south)
 			{
-				blockType = new BlockProxy(new BlockAddress(address.x(), (byte)(address.y() + Encoding.CUBOID_EDGE_SIZE), address.z()), data.south).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), (byte)(address.y() + Encoding.CUBOID_EDGE_SIZE), address.z()), data.south).getBlock();
 			}
 			else
 			{
@@ -1228,7 +1228,7 @@ public class SceneMeshHelpers
 		{
 			if (null != data.north)
 			{
-				blockType = new BlockProxy(new BlockAddress(address.x(), (byte)(address.y() - Encoding.CUBOID_EDGE_SIZE), address.z()), data.north).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), (byte)(address.y() - Encoding.CUBOID_EDGE_SIZE), address.z()), data.north).getBlock();
 			}
 			else
 			{
@@ -1239,7 +1239,7 @@ public class SceneMeshHelpers
 		{
 			if (null != data.down)
 			{
-				blockType = new BlockProxy(new BlockAddress(address.x(), address.y(), (byte)(address.z() + Encoding.CUBOID_EDGE_SIZE)), data.down).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), address.y(), (byte)(address.z() + Encoding.CUBOID_EDGE_SIZE)), data.down).getBlock();
 			}
 			else
 			{
@@ -1250,7 +1250,7 @@ public class SceneMeshHelpers
 		{
 			if (null != data.up)
 			{
-				blockType = new BlockProxy(new BlockAddress(address.x(), address.y(), (byte)(address.z() - Encoding.CUBOID_EDGE_SIZE)), data.up).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), address.y(), (byte)(address.z() - Encoding.CUBOID_EDGE_SIZE)), data.up).getBlock();
 			}
 			else
 			{
@@ -1259,7 +1259,7 @@ public class SceneMeshHelpers
 		}
 		else
 		{
-			blockType = new BlockProxy(address, data.cuboid).getBlock();
+			blockType = BlockProxy.load(address, data.cuboid).getBlock();
 		}
 		return (null != blockType)
 				? (LightAspect.OPAQUE ==  env.lighting.getOpacity(blockType))

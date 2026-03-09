@@ -6,7 +6,6 @@ import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Set;
-import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
@@ -20,13 +19,13 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
 import com.jeffdisher.october.logic.SpatialHelpers;
+import com.jeffdisher.october.logic.ViscosityReader;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.persistence.ResourceLoader;
 import com.jeffdisher.october.process.ClientProcess;
 import com.jeffdisher.october.process.ServerProcess;
 import com.jeffdisher.october.server.MonitoringAgent;
 import com.jeffdisher.october.server.ServerRunner;
-import com.jeffdisher.october.server.TickRunner;
 import com.jeffdisher.october.subactions.EntityChangeAttackEntity;
 import com.jeffdisher.october.subactions.EntityChangeChangeHotbarSlot;
 import com.jeffdisher.october.subactions.EntityChangeCraft;
@@ -54,6 +53,7 @@ import com.jeffdisher.october.subactions.MutationEntityPushItems;
 import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
 import com.jeffdisher.october.subactions.MutationEntitySelectItem;
 import com.jeffdisher.october.subactions.MutationPlaceSelectedBlock;
+import com.jeffdisher.october.ticks.TickSnapshot;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
@@ -79,6 +79,7 @@ import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.PassiveType;
+import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.worldgen.IWorldGenerator;
@@ -375,17 +376,18 @@ public class ClientWrapper
 		if (!_didJump)
 		{
 			Entity thisEntity = _worldCache.getThisEntity();
-			Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _worldCache.blockLookup;
+			TickProcessingContext.IBlockFetcher previousBlockLookUp = _worldCache.blockLookup;
 			EntityLocation location = thisEntity.location();
 			EntityLocation vector = thisEntity.velocity();
 			EntityVolume playerVolume = _worldCache.playerType.volume();
+			ViscosityReader reader = new ViscosityReader(_environment, previousBlockLookUp);
 			
 			IEntitySubAction<IMutablePlayerEntity> subAction = null;
 			if (EntitySubActionLadderAscend.canAscend(previousBlockLookUp, location, playerVolume))
 			{
 				subAction = new EntitySubActionLadderAscend<>();
 			}
-			else if (EntityChangeJump.canJump(previousBlockLookUp
+			else if (EntityChangeJump.canJumpWithReader(reader
 				, location
 				, playerVolume
 				, vector
@@ -419,7 +421,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		
 		long currentTimeMillis = System.currentTimeMillis();
-		Function<AbsoluteLocation, BlockProxy> previousBlockLookUp = _worldCache.blockLookup;
+		TickProcessingContext.IBlockFetcher previousBlockLookUp = _worldCache.blockLookup;
 		EntityLocation location = _worldCache.getThisEntity().location();
 		
 		boolean didMove = false;
@@ -803,7 +805,7 @@ public class ClientWrapper
 	 */
 	public boolean pullItemsFromBlockInventory(AbsoluteLocation location, int blockInventoryKey, TransferQuantity quantity, boolean useFuel)
 	{
-		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _worldCache.getCuboid(location.getCuboidAddress()));
+		BlockProxy proxy = BlockProxy.load(location.getBlockAddress(), _worldCache.getCuboid(location.getCuboidAddress()));
 		Inventory blockInventory;
 		byte inventoryAspect;
 		if (useFuel)
@@ -860,7 +862,7 @@ public class ClientWrapper
 	 */
 	public boolean pushItemsToBlockInventory(AbsoluteLocation location, int entityInventoryKey, TransferQuantity quantity, boolean useFuel)
 	{
-		BlockProxy proxy = new BlockProxy(location.getBlockAddress(), _worldCache.getCuboid(location.getCuboidAddress()));
+		BlockProxy proxy = BlockProxy.load(location.getBlockAddress(), _worldCache.getCuboid(location.getCuboidAddress()));
 		Inventory entityInventory = _getEntityInventory();
 		Items stack = entityInventory.getStackForKey(entityInventoryKey);
 		NonStackableItem nonStack = entityInventory.getNonStackableForKey(entityInventoryKey);
@@ -1002,7 +1004,7 @@ public class ClientWrapper
 		{
 			_server.stop();
 			// Look at how many ticks were run.
-			TickRunner.Snapshot lastSnapshot = _monitoringAgent.getLastSnapshot();
+			TickSnapshot lastSnapshot = _monitoringAgent.getLastSnapshot();
 			long ticksRun = (null != lastSnapshot)
 					? lastSnapshot.tickNumber()
 					: 0L
@@ -1057,7 +1059,7 @@ public class ClientWrapper
 	private Block _getBlockType(AbsoluteLocation block)
 	{
 		// This can be null when the action is taken due to loading issues, respawn, etc.
-		BlockProxy proxy = _worldCache.blockLookup.apply(block);
+		BlockProxy proxy = _worldCache.blockLookup.readBlock(block);
 		Block blockType = (null != proxy)
 			? proxy.getBlock()
 			: null
@@ -1117,7 +1119,7 @@ public class ClientWrapper
 			// This can be null when the action is taken due to loading issues, respawn, etc.
 			if (null != cuboid)
 			{
-				proxy = new BlockProxy(blockLocation.getBlockAddress(), cuboid);
+				proxy = BlockProxy.load(blockLocation.getBlockAddress(), cuboid);
 			}
 		}
 		return proxy;

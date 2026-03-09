@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
@@ -17,6 +16,7 @@ import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.PassiveType;
+import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -27,7 +27,7 @@ import com.jeffdisher.october.utils.Assert;
 public class WorldCache
 {
 	public final EntityType playerType;
-	public final Function<AbsoluteLocation, BlockProxy> blockLookup;
+	public final TickProcessingContext.IBlockFetcher blockLookup;
 
 	private Entity _thisEntity;
 
@@ -51,14 +51,36 @@ public class WorldCache
 		_arrowPassives = new HashMap<>();
 		_cuboids = new HashMap<>();
 		
-		this.blockLookup = (AbsoluteLocation location) -> {
-			BlockProxy proxy = null;
-			IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
-			if (null != cuboid)
+		this.blockLookup = new TickProcessingContext.IBlockFetcher() {
+			@Override
+			public BlockProxy readBlock(AbsoluteLocation location)
 			{
-				proxy = new BlockProxy(location.getBlockAddress(), cuboid);
+				return _readBlock(location);
 			}
-			return proxy;
+			@Override
+			public Map<AbsoluteLocation, BlockProxy> readBlockBatch(Collection<AbsoluteLocation> locations)
+			{
+				Map<AbsoluteLocation, BlockProxy> results = new HashMap<>();
+				for (AbsoluteLocation location : locations)
+				{
+					BlockProxy result = _readBlock(location);
+					if (null != result)
+					{
+						results.put(location, result);
+					}
+				}
+				return results;
+			}
+			private BlockProxy _readBlock(AbsoluteLocation location)
+			{
+				BlockProxy proxy = null;
+				IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
+				if (null != cuboid)
+				{
+					proxy = BlockProxy.load(location.getBlockAddress(), cuboid);
+				}
+				return proxy;
+			}
 		};
 	}
 

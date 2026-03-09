@@ -697,7 +697,7 @@ public class UiStateManager implements GameSession.ICallouts
 		};
 		_armourWindow = new Window(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
 		// The ViewSelection should only use block lookup during play state so the _currentGameSession should never be null.
-		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.apply(location);
+		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.readBlock(location);
 		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
 		// Pause state controls.
@@ -1059,7 +1059,7 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			else
 			{
-				BlockProxy stationBlock = _currentGameSession.blockLookup.apply(_openStationLocation);
+				BlockProxy stationBlock = _currentGameSession.blockLookup.readBlock(_openStationLocation);
 				_viewingFuelInventory = (null != stationBlock.getFuel());
 			}
 		}
@@ -1126,8 +1126,8 @@ public class UiStateManager implements GameSession.ICallouts
 				entity = selection.entity();
 				stopBlock = selection.stopBlock();
 				BlockProxy proxy = (null != stopBlock)
-						? _currentGameSession.blockLookup.apply(stopBlock)
-						: null
+					? _currentGameSession.blockLookup.readBlock(stopBlock)
+					: null
 				;
 				if (null != proxy)
 				{
@@ -1335,7 +1335,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// See if there is an inventory we can open at the given block location.
 		// NOTE:  We don't use this mechanism to talk about air blocks (or other empty blocks with ad-hoc inventories), only actual blocks.
-		BlockProxy proxy = _currentGameSession.blockLookup.apply(blockLocation);
+		BlockProxy proxy = _currentGameSession.blockLookup.readBlock(blockLocation);
 		boolean didOpen = false;
 		Block block = proxy.getBlock();
 		if (_env.stations.getNormalInventorySize(block) > 0)
@@ -1482,7 +1482,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (null != _openStationLocation)
 		{
 			// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
-			BlockProxy stationBlock = _currentGameSession.blockLookup.apply(_openStationLocation);
+			BlockProxy stationBlock = _currentGameSession.blockLookup.readBlock(_openStationLocation);
 			Block stationType = stationBlock.getBlock();
 			
 			if (_env.stations.getNormalInventorySize(stationType) > 0)
@@ -1820,7 +1820,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
 		if (null != _eyeBlockLocation)
 		{
-			BlockProxy eyeProxy = _currentGameSession.blockLookup.apply(_eyeBlockLocation);
+			BlockProxy eyeProxy = _currentGameSession.blockLookup.readBlock(_eyeBlockLocation);
 			if (null != eyeProxy)
 			{
 				Block blockType = eyeProxy.getBlock();

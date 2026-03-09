@@ -38,7 +38,7 @@ public class AuxVariantMap
 		{
 			// We will favour showing cracks at a low damage, so the feedback is obvious
 			int damage = obj.intValue();
-			Block block = new BlockProxy(blockAddress, _cuboid).getBlock();
+			Block block = BlockProxy.load(blockAddress, _cuboid).getBlock();
 			float damaged = (float) damage / (float)_env.damage.getToughness(block);
 			
 			if (damaged > 0.6f)
