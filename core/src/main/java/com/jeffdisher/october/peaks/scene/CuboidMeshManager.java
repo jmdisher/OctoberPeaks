@@ -311,7 +311,6 @@ public class CuboidMeshManager
 		// Now that we have freed up any scratch buffers, see if we can request something else.
 		// Adjacent cuboid views assume the order of requests so check that queue for the order.
 		Iterator<CuboidAddress> iterator = _foregroundRequestOrder.iterator();
-		List<_InternalData> toReplace = new ArrayList<>();
 		while (!_foregroundGraphicsBuffers.isEmpty() && iterator.hasNext())
 		{
 			CuboidAddress address = iterator.next();
@@ -325,14 +324,10 @@ public class CuboidMeshManager
 						, _packageRequestInput(address)
 				);
 				_enqueueRequest(request);
-				toReplace.add(new _InternalData(false, next.cuboid, next.vertices));
+				_foregroundCuboids.put(address, new _InternalData(false, next.cuboid, next.vertices));
 			}
 			// Whether we processed this or not, we have handled the request.
 			iterator.remove();
-		}
-		for (_InternalData replace : toReplace)
-		{
-			_foregroundCuboids.put(replace.cuboid.getCuboidAddress(), replace);
 		}
 	}
 
