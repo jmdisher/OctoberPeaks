@@ -180,7 +180,17 @@ public class GameSession
 			, Set<Aspect<?, ?>> changedAspects
 		)
 		{
-			GameSession.this.scene.setCuboid(cuboid, heightMap, changedBlocks);
+			// We only update the scene is this is part of a cuboid we actually render.
+			// Note that MULTI_BLOCK_ROOT and ORIENTATION also matter, but they don't change on their own.
+			if (changedAspects.contains(AspectRegistry.BLOCK)
+				|| changedAspects.contains(AspectRegistry.DAMAGE)
+				|| changedAspects.contains(AspectRegistry.LIGHT)
+				|| changedAspects.contains(AspectRegistry.FLAGS)
+				|| changedAspects.contains(AspectRegistry.SPECIAL_ITEM_SLOT)
+			)
+			{
+				GameSession.this.scene.setCuboid(cuboid, heightMap, changedBlocks);
+			}
 			
 			// Since we need to pass events on to the AnimationManager, synthesize events for any crafting/enchanting changes.
 			if (changedAspects.contains(AspectRegistry.CRAFTING))
