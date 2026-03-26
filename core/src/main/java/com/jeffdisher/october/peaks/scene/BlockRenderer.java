@@ -271,17 +271,16 @@ public class BlockRenderer
 		
 		// We use the same cuboid set for all of these passes.
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
+		Matrix model = Matrix.identity();
+		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
-			CuboidAddress key = value.address();
 			if (null != value.opaqueArray())
 			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
 				value.opaqueArray().drawAllTriangles(_gl);
 			}
 		}
@@ -291,11 +290,8 @@ public class BlockRenderer
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockModels.getModelAtlasTexture());
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
-			CuboidAddress key = value.address();
 			if (null != value.modelArray())
 			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
 				value.modelArray().drawAllTriangles(_gl);
 			}
 		}
@@ -325,6 +321,8 @@ public class BlockRenderer
 		
 		// We use the same cuboid set for all of these passes.
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
+		Matrix model = Matrix.identity();
+		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		
 		// Render the transparent cuboid vertices.
 		// Note that we may want to consider rendering this with _gl.glDepthMask(false) but there doesn't seem to be an
@@ -339,11 +337,8 @@ public class BlockRenderer
 		// We will render the water first, since we are usually looking down at it.
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
-			CuboidAddress key = value.address();
 			if (null != value.waterArray())
 			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
 				value.waterArray().drawAllTriangles(_gl);
 			}
 		}
@@ -351,11 +346,8 @@ public class BlockRenderer
 		// Finally, we can render the normal transparent blocks (although this does means some transparent blocks won't render through water).
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
-			CuboidAddress key = value.address();
 			if (null != value.transparentArray())
 			{
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
 				value.transparentArray().drawAllTriangles(_gl);
 			}
 		}
@@ -460,14 +452,13 @@ public class BlockRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
 		
+		Matrix model = Matrix.identity();
+		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{
 			if (null != value.burningFaceArray())
 			{
-				CuboidAddress key = value.address();
-				Matrix model = Matrix.translate(32.0f * key.x(), 32.0f * key.y(), 32.0f * key.z());
-				model.uploadAsUniform(_gl, _resources._uModelMatrix);
 				value.burningFaceArray().drawAllTriangles(_gl);
 			}
 		}

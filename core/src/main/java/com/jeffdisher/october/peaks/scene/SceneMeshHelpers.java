@@ -21,6 +21,7 @@ import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.types.Prism;
 import com.jeffdisher.october.peaks.wavefront.ModelBuffer;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.FacingDirection;
@@ -211,8 +212,9 @@ public class SceneMeshHelpers
 		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
+		AbsoluteLocation cuboidBase = inputData.cuboid.getCuboidAddress().getBase();
 		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {
-			float[] _base = new float[] {0.0f, 0.0f, 0.0f};
+			float[] _base = new float[] { (float)cuboidBase.x(), (float)cuboidBase.y(), (float)cuboidBase.z() };
 			@Override
 			public void writeQuad(BlockAddress address, BlockAddress externalBlock, float[][] counterClockWiseVertices, float[] normal)
 			{
@@ -398,6 +400,7 @@ public class SceneMeshHelpers
 		, MeshHelperBufferBuilder builder
 		, BasicBlockAtlas blockAtlas
 		, SparseByteCube fireFaces
+		, AbsoluteLocation cuboidBase
 	)
 	{
 		// We assume that the "air" block we are using as the block texture is the same on all sides.
@@ -427,7 +430,7 @@ public class SceneMeshHelpers
 			);
 		};
 		SparseByteCube.Walker walker = (int x, int y, int z, byte value) -> {
-			float[] localBase = new float[] { (float)x, (float)y, (float)z };
+			float[] localBase = new float[] { (float)(cuboidBase.x() + x), (float)(cuboidBase.y() + y), (float)(cuboidBase.z() + z) };
 			if (FireFaceBuilder.isBitSet(value, FireFaceBuilder.FACE_UP))
 			{
 				// On the up face, we will draw the fire burning on top of the block.
@@ -745,7 +748,8 @@ public class SceneMeshHelpers
 			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
-			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value);
 			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
@@ -832,7 +836,8 @@ public class SceneMeshHelpers
 		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
-			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
@@ -903,7 +908,8 @@ public class SceneMeshHelpers
 		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
-			float[] localBase = new float[] { (float)baseX, (float)baseY, (float)baseZ };
+			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
@@ -1282,14 +1288,16 @@ public class SceneMeshHelpers
 			, int blockHeight
 	)
 	{
-		float[] auxUv = auxAtlas.baseOfTexture(variantMap.get(new BlockAddress(baseX, baseY, baseZ)));
+		BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
+		float[] auxUv = auxAtlas.baseOfTexture(variantMap.get(blockAddress));
 		// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
 		float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
 		// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
 		float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), SKY_LIGHT_PARTIAL) };
-		float offsetX = baseX;
-		float offsetY = baseY;
-		float offsetZ = baseZ;
+		AbsoluteLocation absoluteBase = inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+		float offsetX = (float)absoluteBase.x();
+		float offsetY = (float)absoluteBase.y();
+		float offsetZ = (float)absoluteBase.z();
 		// The models are based in the 0-1 unit cube but we want to rotate around the centre so translate by X/Y.
 		float centreX = 0.5f;
 		float centreY = 0.5f;

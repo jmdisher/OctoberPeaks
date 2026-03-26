@@ -27,6 +27,7 @@ import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
+import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
@@ -495,10 +496,12 @@ public class CuboidMeshManager
 		BufferBuilder.Buffer burningFaceBuffer = null;
 		if (null != fireFaces)
 		{
+			AbsoluteLocation cuboidBase = cuboid.getCuboidAddress().getBase();
 			SceneMeshHelpers.populateBurningFacesForCuboid(_env
 				, builderWrapper
 				, _blockTextures
 				, fireFaces
+				, cuboidBase
 			);
 			burningFaceBuffer = builder.finishOne();
 		}

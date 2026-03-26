@@ -590,7 +590,7 @@ public class TestSceneMeshHelpers
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
 		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(1, new Block[] {ENV.special.AIR}, new boolean[] {true});
-		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, fires);
+		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, fires, new AbsoluteLocation(0, 0, 0));
 		
 		BufferBuilder.Buffer outVertices = builder.finishOne();
 		int floatsWritten = buffer.position();
