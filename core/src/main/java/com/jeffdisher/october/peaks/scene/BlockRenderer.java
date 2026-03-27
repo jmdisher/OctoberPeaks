@@ -58,7 +58,6 @@ public class BlockRenderer
 		private final BasicBlockAtlas _blockTextures;
 		private final AuxilliaryTextureAtlas _auxBlockTextures;
 		private final Program _program;
-		private final int _uModelMatrix;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
 		private final int _uWorldLightLocation;
@@ -66,10 +65,6 @@ public class BlockRenderer
 		private final int _uTexture1;
 		private final int _uSkyLight;
 		private final int _uBrightness;
-		private final Map<Block, Prism> _blockModelBounds;
-		private final int _highlightTexture;
-		private final VertexArray _defaultHighlightCube;
-		private final Map<Block, VertexArray> _blockModelHighlightCubes;
 		private final int[] _fireTextures;
 		
 		public Resources(Environment environment, GL20 gl, ItemTextureAtlas itemAtlas) throws IOException
@@ -105,6 +100,78 @@ public class BlockRenderer
 					, MiscPeaksHelpers.readUtf8Asset("scene.frag")
 					, MeshHelperBufferBuilder.ATTRIBUTE_NAME_SUPERSET
 			);
+			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
+			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
+			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
+			_uTexture0 = _program.getUniformLocation("uTexture0");
+			_uTexture1 = _program.getUniformLocation("uTexture1");
+			_uSkyLight = _program.getUniformLocation("uSkyLight");
+			_uBrightness = _program.getUniformLocation("uBrightness");
+			
+			_fireTextures = new int[4];
+			for (int i = 0; i < _fireTextures.length; ++i)
+			{
+				_fireTextures[i] = TextureHelpers.loadInternalRGBA(gl, "fire_" + i + ".png");
+			}
+		}
+		
+		public void shutdown(GL20 gl)
+		{
+			// We don't own _itemAtlas.
+			_blockTextures.shutdown(gl);
+			_auxBlockTextures.shutdown(gl);
+			_program.delete();
+		}
+	}
+
+	/**
+	 * A variant of resources specifically for the selection.
+	 */
+	public static class SelectionResources
+	{
+		private final BlockModelsAndAtlas _blockModels;
+		private final AuxilliaryTextureAtlas _auxBlockTextures;
+		private final Program _program;
+		private final int _uModelMatrix;
+		private final int _uViewMatrix;
+		private final int _uProjectionMatrix;
+		private final int _uWorldLightLocation;
+		private final int _uTexture0;
+		private final int _uTexture1;
+		private final int _uSkyLight;
+		private final int _uBrightness;
+		private final Map<Block, Prism> _blockModelBounds;
+		private final int _highlightTexture;
+		private final VertexArray _defaultHighlightCube;
+		private final Map<Block, VertexArray> _blockModelHighlightCubes;
+		
+		public SelectionResources(Environment environment, GL20 gl) throws IOException
+		{
+			// Some blocks have models and some are just blocks (potentially with sides) so we will load the models first and extract those from the list before defaulting to basic blocks.
+			Block[] blocks = Arrays.stream(environment.items.ITEMS_BY_TYPE)
+				.map((Item item) -> environment.blocks.fromItem(item))
+				.filter((Block block) -> null != block)
+				.toArray((int size) -> new Block[size])
+			;
+			_blockModels = BlockModelsAndAtlas.loadForItems(gl, blocks);
+			Set<Block> models = _blockModels.getBlockSet();
+			blocks = Arrays.stream(blocks)
+				.filter((Block block) -> !models.contains(block))
+				.toArray((int size) -> new Block[size])
+			;
+			
+			// Note:  We only use this here since the vertex array is built with the normal block helper but the highlight logic never references these textures.
+			_auxBlockTextures = TextureHelpers.loadAuxTextureAtlas(gl
+				, "aux_"
+				, "missing_texture.png"
+			);
+			
+			// Create the shader program.
+			_program = Program.fullyLinkedProgram(gl
+				, MiscPeaksHelpers.readUtf8Asset("scene_selection.vert")
+				, MiscPeaksHelpers.readUtf8Asset("scene_selection.frag")
+				, MeshHelperBufferBuilder.ATTRIBUTE_NAME_SUPERSET
+			);
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
@@ -129,18 +196,10 @@ public class BlockRenderer
 				blockModelHighlightCubes.put(key, specialCube);
 			}
 			_blockModelHighlightCubes = Collections.unmodifiableMap(blockModelHighlightCubes);
-			
-			_fireTextures = new int[4];
-			for (int i = 0; i < _fireTextures.length; ++i)
-			{
-				_fireTextures[i] = TextureHelpers.loadInternalRGBA(gl, "fire_" + i + ".png");
-			}
 		}
 		
 		public void shutdown(GL20 gl)
 		{
-			// We don't own _itemAtlas.
-			_blockTextures.shutdown(gl);
 			_auxBlockTextures.shutdown(gl);
 			_program.delete();
 			gl.glDeleteTexture(_highlightTexture);
@@ -217,6 +276,7 @@ public class BlockRenderer
 	private final GL20 _gl;
 	private final Binding<Float> _screenBrightness;
 	private final Resources _resources;
+	private final SelectionResources _selectionResources;
 	private final ItemSlotResources _itemSlotResources;
 	private final CuboidMeshManager _cuboidMeshes;
 
@@ -226,6 +286,7 @@ public class BlockRenderer
 		_gl = gl;
 		_screenBrightness = screenBrightness;
 		_resources = resources.blockRenderer();
+		_selectionResources = resources.blockSelectionRenderer();
 		_itemSlotResources = resources.blockItemSlotRenderer();
 		
 		_cuboidMeshes = new CuboidMeshManager(_environment, new CuboidMeshManager.IGpu() {
@@ -244,7 +305,7 @@ public class BlockRenderer
 
 	public Map<Block, Prism> getModelBoundingBoxes()
 	{
-		return _resources._blockModelBounds;
+		return _selectionResources._blockModelBounds;
 	}
 
 	public void renderOpaqueBlocks(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
@@ -271,8 +332,6 @@ public class BlockRenderer
 		
 		// We use the same cuboid set for all of these passes.
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		Matrix model = Matrix.identity();
-		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
@@ -321,8 +380,6 @@ public class BlockRenderer
 		
 		// We use the same cuboid set for all of these passes.
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		Matrix model = Matrix.identity();
-		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		
 		// Render the transparent cuboid vertices.
 		// Note that we may want to consider rendering this with _gl.glDepthMask(false) but there doesn't seem to be an
@@ -400,30 +457,30 @@ public class BlockRenderer
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
-		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
-		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
-		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
-		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
-		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
+		_selectionResources._program.useProgram();
+		_gl.glUniform3f(_selectionResources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
+		viewMatrix.uploadAsUniform(_gl, _selectionResources._uViewMatrix);
+		projectionMatrix.uploadAsUniform(_gl, _selectionResources._uProjectionMatrix);
+		_gl.glUniform1f(_selectionResources._uSkyLight, skyLightMultiplier);
+		_gl.glUniform1f(_selectionResources._uBrightness, _screenBrightness.get());
 		Assert.assertTrue(GL20.GL_NO_ERROR == _gl.glGetError());
 		
 		// This shader uses 2 textures.
-		_gl.glUniform1i(_resources._uTexture0, 0);
+		_gl.glUniform1i(_selectionResources._uTexture0, 0);
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glUniform1i(_resources._uTexture1, 1);
+		_gl.glUniform1i(_selectionResources._uTexture1, 1);
 		_gl.glActiveTexture(GL20.GL_TEXTURE1);
 		
 		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _selectionResources._auxBlockTextures.texture);
 		
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._highlightTexture);
+		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _selectionResources._highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
 		Matrix model = Matrix.translate(selectedBlock.x(), selectedBlock.y(), selectedBlock.z());
-		model.uploadAsUniform(_gl, _resources._uModelMatrix);
-		VertexArray highlighter = _resources._blockModelHighlightCubes.getOrDefault(selectedType, _resources._defaultHighlightCube);
+		model.uploadAsUniform(_gl, _selectionResources._uModelMatrix);
+		VertexArray highlighter = _selectionResources._blockModelHighlightCubes.getOrDefault(selectedType, _selectionResources._defaultHighlightCube);
 		highlighter.drawAllTriangles(_gl);
 	}
 
@@ -452,8 +509,6 @@ public class BlockRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
 		
-		Matrix model = Matrix.identity();
-		model.uploadAsUniform(_gl, _resources._uModelMatrix);
 		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
 		for (CuboidMeshManager.CuboidMeshes value : cuboids)
 		{

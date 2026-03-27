@@ -101,6 +101,7 @@ public class OctoberPeaks extends ApplicationAdapter
 					, "missing_texture.png"
 			);
 			BlockRenderer.Resources blockRenderer = new BlockRenderer.Resources(_environment, _gl, itemAtlas);
+			BlockRenderer.SelectionResources blockSelectionRenderer = new BlockRenderer.SelectionResources(_environment, _gl);
 			BlockRenderer.ItemSlotResources blockItemSlotRenderer = new BlockRenderer.ItemSlotResources(_gl, itemAtlas);
 			EntityRenderer.Resources entityRenderer = new EntityRenderer.Resources(_environment, _gl);
 			SkyBox.Resources skyBox = new SkyBox.Resources(_gl);
@@ -111,6 +112,7 @@ public class OctoberPeaks extends ApplicationAdapter
 			ParticleEngine.Resources particles = new ParticleEngine.Resources(_gl);
 			_resources = new LoadedResources(itemAtlas
 				, blockRenderer
+				, blockSelectionRenderer
 				, blockItemSlotRenderer
 				, entityRenderer
 				, skyBox

@@ -15,6 +15,7 @@ import com.jeffdisher.october.peaks.ui.GlUi;
  */
 public record LoadedResources(ItemTextureAtlas itemAtlas
 		, BlockRenderer.Resources blockRenderer
+		, BlockRenderer.SelectionResources blockSelectionRenderer
 		, BlockRenderer.ItemSlotResources blockItemSlotRenderer
 		, EntityRenderer.Resources entityRenderer
 		, SkyBox.Resources skyBox
@@ -29,6 +30,7 @@ public record LoadedResources(ItemTextureAtlas itemAtlas
 	{
 		itemAtlas.shutdown(gl);
 		blockRenderer.shutdown(gl);
+		blockSelectionRenderer.shutdown(gl);
 		blockItemSlotRenderer.shutdown(gl);
 		entityRenderer.shutdown(gl);
 		skyBox.shutdown(gl);
