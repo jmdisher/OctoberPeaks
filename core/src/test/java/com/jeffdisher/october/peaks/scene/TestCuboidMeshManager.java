@@ -2,6 +2,8 @@ package com.jeffdisher.october.peaks.scene;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +20,12 @@ import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.CuboidData;
 import com.jeffdisher.october.logic.HeightMapHelpers;
+import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
+import com.jeffdisher.october.peaks.scene.CuboidMeshManager.VisibleItemSlot;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.RawTextureAtlas;
@@ -77,7 +82,6 @@ public class TestCuboidMeshManager
 	public void empty() throws Throwable
 	{
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, null, null, null, null, null);
-		Assert.assertEquals(0, manager.viewCuboids().size());
 		manager.shutdown();
 	}
 
@@ -96,20 +100,13 @@ public class TestCuboidMeshManager
 		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)6, (byte)7), STONE_VALUE);
 		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(cuboid), cuboid.getCuboidAddress()).freeze();
 		
-		manager.setCuboid(cuboid, heightMap, null);
-		Assert.assertEquals(1, manager.viewCuboids().size());
-		
 		// We shouldn't see the finished result, yet.
-		CuboidMeshManager.CuboidMeshes data = manager.viewCuboids().iterator().next();
-		Assert.assertNull(data.opaqueArray());
-		Assert.assertNull(data.transparentArray());
-		Assert.assertNull(data.itemSlotArray());
-		Assert.assertNull(data.fireFaces());
-		Assert.assertNull(data.burningFaceArray());
+		manager.setCuboid(cuboid, heightMap, null);
+		Assert.assertEquals(0, testingGpu.viewCuboids().size());
 		
 		// Wait for the result and verify what appears.
-		_waitForOpaqueArray(manager, address);
-		data = manager.viewCuboids().iterator().next();
+		_waitForOpaqueArray(manager, testingGpu, address);
+		_CuboidMeshes data = testingGpu.viewCuboids().iterator().next();
 		Assert.assertEquals(36, data.opaqueArray().totalVertices);
 		Assert.assertNull(data.transparentArray());
 		Assert.assertNull(data.itemSlotArray());
@@ -142,19 +139,19 @@ public class TestCuboidMeshManager
 		ColumnHeightMap highMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(highCuboid), highAddress).freeze();
 		
 		manager.setCuboid(lowCuboid, lowMap, null);
-		Assert.assertNull(_readCuboidWater(manager, lowAddress));
-		VertexArray lowWaterArray = _waitForWaterChange(manager, lowAddress, null);
+		Assert.assertNull(_readCuboidWater(testingGpu, lowAddress));
+		VertexArray lowWaterArray = _waitForWaterChange(manager, testingGpu, lowAddress, null);
 		// Note that we draw both sides of the water surface.
 		Assert.assertEquals(72, lowWaterArray.totalVertices);
 		
 		manager.setCuboid(highCuboid, highMap, null);
-		Assert.assertNull(_readCuboidWater(manager, highAddress));
-		VertexArray highWaterArray = _waitForWaterChange(manager, highAddress, null);
+		Assert.assertNull(_readCuboidWater(testingGpu, highAddress));
+		VertexArray highWaterArray = _waitForWaterChange(manager, testingGpu, highAddress, null);
 		// Note that we draw both sides of the water surface.
 		Assert.assertEquals(60, highWaterArray.totalVertices);
 		
 		// Wait for the re-bake of the low cuboid.
-		lowWaterArray = _waitForWaterChange(manager, lowAddress, lowWaterArray);
+		lowWaterArray = _waitForWaterChange(manager, testingGpu, lowAddress, lowWaterArray);
 		// Note that we draw both sides of the water surface.
 		Assert.assertEquals(60, lowWaterArray.totalVertices);
 		
@@ -165,10 +162,10 @@ public class TestCuboidMeshManager
 		manager.setCuboid(lowCuboid, lowMap, Set.of(lowBlock));
 		
 		// Note that the water array should disappear now and be replaced with opaque.
-		Assert.assertNull(_waitForWaterChange(manager, lowAddress, lowWaterArray));
-		VertexArray lowOpaqueArray = _waitForOpaqueChange(manager, lowAddress, null);
+		Assert.assertNull(_waitForWaterChange(manager, testingGpu, lowAddress, lowWaterArray));
+		VertexArray lowOpaqueArray = _waitForOpaqueChange(manager, testingGpu, lowAddress, null);
 		Assert.assertEquals(36, lowOpaqueArray.totalVertices);
-		highWaterArray = _waitForWaterChange(manager, highAddress, highWaterArray);
+		highWaterArray = _waitForWaterChange(manager, testingGpu, highAddress, highWaterArray);
 		// The water face toward the opaque block is skipped.
 		// Note that we draw both sides of the water surface.
 		Assert.assertEquals(60, highWaterArray.totalVertices);
@@ -202,8 +199,8 @@ public class TestCuboidMeshManager
 		
 		// Request the bottom one first and verify it.
 		manager.setCuboid(lowCuboid, lowMap, null);
-		Assert.assertEquals(1, manager.viewCuboids().size());
-		VertexArray opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(0, testingGpu.viewCuboids().size());
+		VertexArray opaque = _waitForOpaqueArray(manager, testingGpu, lowAddress);
 		Assert.assertEquals(36, opaque.totalVertices);
 		Assert.assertEquals(1, testingGpu.uploadedBuffers.size());
 		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(0).vertexCount);
@@ -213,10 +210,10 @@ public class TestCuboidMeshManager
 		
 		// Now, request the top one and verify that both are changed and that the low one has different sky multiplier values.
 		manager.setCuboid(highCuboid, highMap, null);
-		Assert.assertEquals(2, manager.viewCuboids().size());
+		Assert.assertEquals(1, testingGpu.viewCuboids().size());
 		testingGpu.processUntilBufferCount(manager, 2);
-		VertexArray other = _waitForOpaqueArray(manager, highAddress);
-		opaque = _waitForOpaqueArray(manager, lowAddress);
+		VertexArray other = _waitForOpaqueArray(manager, testingGpu, highAddress);
+		opaque = _waitForOpaqueArray(manager, testingGpu, lowAddress);
 		Assert.assertEquals(36, opaque.totalVertices);
 		Assert.assertEquals(2, testingGpu.uploadedBuffers.size());
 		Assert.assertEquals(other.totalVertices, testingGpu.uploadedBuffers.get(0).vertexCount);
@@ -289,8 +286,8 @@ public class TestCuboidMeshManager
 		
 		// Request the bottom one first and verify it.
 		manager.setCuboid(lowCuboid, lowMap, null);
-		Assert.assertEquals(1, manager.viewCuboids().size());
-		VertexArray opaque = _waitForOpaqueArray(manager, lowAddress);
+		Assert.assertEquals(0, testingGpu.viewCuboids().size());
+		VertexArray opaque = _waitForOpaqueArray(manager, testingGpu, lowAddress);
 		Assert.assertEquals(36, opaque.totalVertices);
 		Assert.assertEquals(1, testingGpu.uploadedBuffers.size());
 		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(0).vertexCount);
@@ -300,10 +297,10 @@ public class TestCuboidMeshManager
 		
 		// Now, request the top one and verify that both are changed and that the low one has different sky multiplier values.
 		manager.setCuboid(highCuboid, highMap, null);
-		Assert.assertEquals(2, manager.viewCuboids().size());
+		Assert.assertEquals(1, testingGpu.viewCuboids().size());
 		testingGpu.processUntilBufferCount(manager, 2);
-		VertexArray other = _waitForOpaqueArray(manager, highAddress);
-		opaque = _waitForOpaqueArray(manager, lowAddress);
+		VertexArray other = _waitForOpaqueArray(manager, testingGpu, highAddress);
+		opaque = _waitForOpaqueArray(manager, testingGpu, lowAddress);
 		Assert.assertEquals(36, opaque.totalVertices);
 		Assert.assertEquals(2, testingGpu.uploadedBuffers.size());
 		Assert.assertEquals(other.totalVertices, testingGpu.uploadedBuffers.get(0).vertexCount);
@@ -377,11 +374,11 @@ public class TestCuboidMeshManager
 		// Upload both of these.
 		manager.setCuboid(lowCuboid, lowMap, null);
 		manager.setCuboid(highCuboid, highMap, null);
-		Assert.assertEquals(2, manager.viewCuboids().size());
+		Assert.assertEquals(0, testingGpu.viewCuboids().size());
 		testingGpu.processUntilBufferCount(manager, 2);
 		
 		// Get the lower data.
-		VertexArray opaque = _waitForOpaqueArray(manager, lowAddress);
+		VertexArray opaque = _waitForOpaqueArray(manager, testingGpu, lowAddress);
 		Assert.assertEquals(36, opaque.totalVertices);
 		Assert.assertEquals(36, testingGpu.uploadedBuffers.get(0).vertexCount);
 		float[] raw = new float[FLOATS_PER_VERTEX * testingGpu.uploadedBuffers.get(0).vertexCount];
@@ -436,8 +433,8 @@ public class TestCuboidMeshManager
 		ColumnHeightMap lowMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(lowCuboid), lowAddress).freeze();
 		
 		manager.setCuboid(lowCuboid, lowMap, null);
-		Assert.assertEquals(1, manager.viewCuboids().size());
-		VertexArray modelArray = _waitForModelArray(manager, lowAddress);
+		Assert.assertEquals(0, testingGpu.viewCuboids().size());
+		VertexArray modelArray = _waitForModelArray(manager, testingGpu, lowAddress);
 		Assert.assertEquals(3, modelArray.totalVertices);
 		Assert.assertEquals(1, testingGpu.uploadedBuffers.size());
 		Assert.assertEquals(3, testingGpu.uploadedBuffers.get(0).vertexCount);
@@ -481,11 +478,11 @@ public class TestCuboidMeshManager
 		ColumnHeightMap heightMap = ColumnHeightMap.build().consume(HeightMapHelpers.buildHeightMap(cuboid), cuboid.getCuboidAddress()).freeze();
 		
 		manager.setCuboid(cuboid, heightMap, null);
-		Assert.assertEquals(1, manager.viewCuboids().size());
+		Assert.assertEquals(0, testingGpu.viewCuboids().size());
 		
 		// Wait for the result and see the fire vertices.
-		_waitForOpaqueArray(manager, address);
-		CuboidMeshManager.CuboidMeshes data = manager.viewCuboids().iterator().next();
+		_waitForOpaqueArray(manager, testingGpu, address);
+		_CuboidMeshes data = testingGpu.viewCuboids().iterator().next();
 		Assert.assertEquals(36, data.opaqueArray().totalVertices);
 		Assert.assertNull(data.transparentArray());
 		Assert.assertNull(data.itemSlotArray());
@@ -505,28 +502,28 @@ public class TestCuboidMeshManager
 	}
 
 
-	private VertexArray _waitForWaterChange(CuboidMeshManager manager, CuboidAddress lowAddress, VertexArray previous)
+	private VertexArray _waitForWaterChange(CuboidMeshManager manager, _Gpu testingGpu, CuboidAddress lowAddress, VertexArray previous)
 	{
-		while (previous == _readCuboidWater(manager, lowAddress))
+		while (previous == _readCuboidWater(testingGpu, lowAddress))
 		{
 			manager.processBackground();
 		}
-		return _readCuboidWater(manager, lowAddress);
+		return _readCuboidWater(testingGpu, lowAddress);
 	}
 
-	private VertexArray _waitForOpaqueChange(CuboidMeshManager manager, CuboidAddress lowAddress, VertexArray previous)
+	private VertexArray _waitForOpaqueChange(CuboidMeshManager manager, _Gpu testingGpu, CuboidAddress lowAddress, VertexArray previous)
 	{
-		while (previous == _readCuboidOpaque(manager, lowAddress))
+		while (previous == _readCuboidOpaque(testingGpu, lowAddress))
 		{
 			manager.processBackground();
 		}
-		return _readCuboidOpaque(manager, lowAddress);
+		return _readCuboidOpaque(testingGpu, lowAddress);
 	}
 
-	private VertexArray _readCuboidWater(CuboidMeshManager manager, CuboidAddress address)
+	private VertexArray _readCuboidWater(_Gpu testingGpu, CuboidAddress address)
 	{
 		VertexArray waterArray = null;
-		for (CuboidMeshManager.CuboidMeshes data : manager.viewCuboids())
+		for (_CuboidMeshes data : testingGpu.viewCuboids())
 		{
 			if (address.equals(data.address()))
 			{
@@ -537,10 +534,10 @@ public class TestCuboidMeshManager
 		return waterArray;
 	}
 
-	private static VertexArray _readCuboidOpaque(CuboidMeshManager manager, CuboidAddress address)
+	private static VertexArray _readCuboidOpaque(_Gpu testingGpu, CuboidAddress address)
 	{
 		VertexArray waterArray = null;
-		for (CuboidMeshManager.CuboidMeshes data : manager.viewCuboids())
+		for (_CuboidMeshes data : testingGpu.viewCuboids())
 		{
 			if (address.equals(data.address()))
 			{
@@ -577,17 +574,17 @@ public class TestCuboidMeshManager
 		return vector;
 	}
 
-	private static VertexArray _waitForOpaqueArray(CuboidMeshManager manager, CuboidAddress address)
+	private static VertexArray _waitForOpaqueArray(CuboidMeshManager manager, _Gpu testingGpu, CuboidAddress address)
 	{
 		VertexArray foundMesh = null;
 		while (null == foundMesh)
 		{
 			manager.processBackground();
-			Iterator<CuboidMeshManager.CuboidMeshes> iterator = manager.viewCuboids().iterator();
+			Iterator<_CuboidMeshes> iterator = testingGpu.viewCuboids().iterator();
 			
 			while (iterator.hasNext())
 			{
-				CuboidMeshManager.CuboidMeshes mesh = iterator.next();
+				_CuboidMeshes mesh = iterator.next();
 				if (address.equals(mesh.address()))
 				{
 					if (null != mesh.opaqueArray())
@@ -600,17 +597,17 @@ public class TestCuboidMeshManager
 		return foundMesh;
 	}
 
-	private static VertexArray _waitForModelArray(CuboidMeshManager manager, CuboidAddress address)
+	private static VertexArray _waitForModelArray(CuboidMeshManager manager, _Gpu testingGpu, CuboidAddress address)
 	{
 		VertexArray foundMesh = null;
 		while (null == foundMesh)
 		{
 			manager.processBackground();
-			Iterator<CuboidMeshManager.CuboidMeshes> iterator = manager.viewCuboids().iterator();
+			Iterator<_CuboidMeshes> iterator = testingGpu.viewCuboids().iterator();
 			
 			while (iterator.hasNext())
 			{
-				CuboidMeshManager.CuboidMeshes mesh = iterator.next();
+				_CuboidMeshes mesh = iterator.next();
 				if (address.equals(mesh.address()))
 				{
 					if (null != mesh.modelArray())
@@ -676,6 +673,7 @@ public class TestCuboidMeshManager
 	private static class _Gpu implements CuboidMeshManager.IGpu
 	{
 		public final List<BufferBuilder.Buffer> uploadedBuffers = new ArrayList<>();
+		private final Map<CuboidAddress, _CuboidMeshes> _data = new HashMap<>();
 		public void processUntilBufferCount(CuboidMeshManager manager, int count)
 		{
 			while (this.uploadedBuffers.size() < count)
@@ -684,14 +682,59 @@ public class TestCuboidMeshManager
 			}
 		}
 		@Override
-		public VertexArray uploadBuffer(BufferBuilder.Buffer buffer)
+		public Object createToken(CuboidAddress address
+			, Buffer opaqueArray
+			, Buffer modelArray
+			, Buffer transparentArray
+			, Buffer waterArray
+			, List<VisibleItemSlot> itemSlotArray
+			, SparseByteCube fireFaces
+			, Buffer burningFaceArray
+		)
 		{
-			this.uploadedBuffers.add(buffer);
-			return new VertexArray(1, buffer.vertexCount, ATTRIBUTES);
+			_CuboidMeshes mesh = new _CuboidMeshes(address
+				, _uploadBuffer(opaqueArray)
+				, _uploadBuffer(modelArray)
+				, _uploadBuffer(transparentArray)
+				, _uploadBuffer(waterArray)
+				, itemSlotArray
+				, fireFaces
+				, _uploadBuffer(burningFaceArray)
+			);
+			Object old = _data.put(address, mesh);
+			Assert.assertNull(old);
+			return mesh;
 		}
 		@Override
-		public void deleteBuffer(VertexArray array)
+		public void deleteToken(Object token)
 		{
+			_CuboidMeshes mesh = (_CuboidMeshes) token;
+			Object old = _data.remove(mesh.address);
+			Assert.assertNotNull(old);
+		}
+		public Collection<_CuboidMeshes> viewCuboids()
+		{
+			return _data.values();
+		}
+		private VertexArray _uploadBuffer(BufferBuilder.Buffer buffer)
+		{
+			VertexArray ret = null;
+			if (null != buffer)
+			{
+				this.uploadedBuffers.add(buffer);
+				ret = new VertexArray(1, buffer.vertexCount, ATTRIBUTES);
+			}
+			return ret;
 		}
 	}
+
+	private static record _CuboidMeshes(CuboidAddress address
+		, VertexArray opaqueArray
+		, VertexArray modelArray
+		, VertexArray transparentArray
+		, VertexArray waterArray
+		, List<VisibleItemSlot> itemSlotArray
+		, SparseByteCube fireFaces
+		, VertexArray burningFaceArray
+	) {}
 }

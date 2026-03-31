@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -13,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
@@ -24,7 +22,6 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
-import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -114,14 +111,6 @@ public class CuboidMeshManager
 		_background.start();
 	}
 
-	public Collection<CuboidMeshes> viewCuboids()
-	{
-		return _foregroundCuboids.values().stream()
-				.map((_InternalData internal) -> internal.vertices)
-				.collect(Collectors.toList())
-		;
-	}
-
 	public void setCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)
 	{
 		// Remove the old record and replace it, marking it needing processing.
@@ -131,15 +120,15 @@ public class CuboidMeshManager
 		if (null != existing)
 		{
 			internal = new _InternalData(true
-					, cuboid
-					, existing.vertices
+				, cuboid
+				, existing.token
 			);
 		}
 		else
 		{
 			internal = new _InternalData(true
-					, cuboid
-					, new CuboidMeshes(address, null, null, null, null, null, null, null)
+				, cuboid
+				, null
 			);
 		}
 		_foregroundCuboids.put(address, internal);
@@ -265,7 +254,10 @@ public class CuboidMeshManager
 		}
 		
 		// Delete any buffers backing it.
-		_deleteBuffers(previous.vertices);
+		if (null != previous.token)
+		{
+			_gpu.deleteToken(previous.token);
+		}
 	}
 
 	public void processBackground()
@@ -281,25 +273,22 @@ public class CuboidMeshManager
 			if (null != internal)
 			{
 				// Delete the old GPU resources.
-				_deleteBuffers(internal.vertices);
+				if (null != internal.token)
+				{
+					_gpu.deleteToken(internal.token);
+				}
 				
-				// We will still store an empty CuboidData if all of these are null, just for simplicity.
-				VertexArray opaqueData = (null != response.opaqueBuffer) ? _gpu.uploadBuffer(response.opaqueBuffer) : null;
-				VertexArray modelData = (null != response.modelBuffer) ? _gpu.uploadBuffer(response.modelBuffer) : null;
-				VertexArray transparentData = (null != response.transparentBuffer) ? _gpu.uploadBuffer(response.transparentBuffer) : null;
-				VertexArray waterData = (null != response.waterBuffer) ? _gpu.uploadBuffer(response.waterBuffer) : null;
-				VertexArray burningData = (null != response.burningFaceBuffer) ? _gpu.uploadBuffer(response.burningFaceBuffer) : null;
-				CuboidMeshes newData = new CuboidMeshes(response.cuboid.getCuboidAddress()
-					, opaqueData
-					, modelData
-					, transparentData
-					, waterData
+				Object token = _gpu.createToken(response.cuboid.getCuboidAddress()
+					, response.opaqueBuffer
+					, response.modelBuffer
+					, response.transparentBuffer
+					, response.waterBuffer
 					, response.itemSlotArray
 					, response.fireFaces
-					, burningData
+					, response.burningFaceBuffer
 				);
 				// We only clear internal.requiresProcessing when sending the request, not handling the response.
-				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, newData);
+				_InternalData newInstance = new _InternalData(internal.requiresProcessing, internal.cuboid, token);
 				_foregroundCuboids.put(address, newInstance);
 			}
 			
@@ -325,7 +314,7 @@ public class CuboidMeshManager
 						, _packageRequestInput(address)
 				);
 				_enqueueRequest(request);
-				_foregroundCuboids.put(address, new _InternalData(false, next.cuboid, next.vertices));
+				_foregroundCuboids.put(address, new _InternalData(false, next.cuboid, next.token));
 			}
 			// Whether we processed this or not, we have handled the request.
 			iterator.remove();
@@ -352,7 +341,10 @@ public class CuboidMeshManager
 		// Now we can clean up the buffers which made it to GPU memory.
 		for (_InternalData data : _foregroundCuboids.values())
 		{
-			_deleteBuffers(data.vertices);
+			if (null != data.token)
+			{
+				_gpu.deleteToken(data.token);
+			}
 		}
 		_foregroundCuboids.clear();
 	}
@@ -547,33 +539,13 @@ public class CuboidMeshManager
 		);
 	}
 
-	private void _deleteBuffers(CuboidMeshes previous)
-	{
-		if (null != previous.opaqueArray)
-		{
-			_gpu.deleteBuffer(previous.opaqueArray);
-		}
-		if (null != previous.modelArray)
-		{
-			_gpu.deleteBuffer(previous.modelArray);
-		}
-		if (null != previous.transparentArray)
-		{
-			_gpu.deleteBuffer(previous.transparentArray);
-		}
-		if (null != previous.waterArray)
-		{
-			_gpu.deleteBuffer(previous.waterArray);
-		}
-	}
-
 	private void _markDirty(CuboidAddress address)
 	{
 		// We just replace the data for this cuboid, if it exists.
 		_InternalData existing = _foregroundCuboids.get(address);
 		if ((null != existing) && !existing.requiresProcessing)
 		{
-			_foregroundCuboids.put(address, new _InternalData(true, existing.cuboid, existing.vertices));
+			_foregroundCuboids.put(address, new _InternalData(true, existing.cuboid, existing.token));
 			// We need to enqueue a request to re-bake this (will be skipped if this is a redundant change).
 			_foregroundRequestOrder.add(address);
 		}
@@ -692,20 +664,17 @@ public class CuboidMeshManager
 	 */
 	public static interface IGpu
 	{
-		VertexArray uploadBuffer(BufferBuilder.Buffer buffer);
-		void deleteBuffer(VertexArray array);
+		Object createToken(CuboidAddress address
+			, BufferBuilder.Buffer opaqueArray
+			, BufferBuilder.Buffer modelArray
+			, BufferBuilder.Buffer transparentArray
+			, BufferBuilder.Buffer waterArray
+			, List<VisibleItemSlot> itemSlotArray
+			, SparseByteCube fireFaces
+			, BufferBuilder.Buffer burningFaceArray
+		);
+		void deleteToken(Object token);
 	}
-
-	// Note that most of these fields prefer null instead of empty (all but address).
-	public static record CuboidMeshes(CuboidAddress address
-		, VertexArray opaqueArray
-		, VertexArray modelArray
-		, VertexArray transparentArray
-		, VertexArray waterArray
-		, List<VisibleItemSlot> itemSlotArray
-		, SparseByteCube fireFaces
-		, VertexArray burningFaceArray
-	) {}
 
 	public static record VisibleItemSlot(Item item
 		, float centreX
@@ -715,8 +684,8 @@ public class CuboidMeshManager
 
 
 	private static record _InternalData(boolean requiresProcessing
-			, IReadOnlyCuboidData cuboid
-			, CuboidMeshes vertices
+		, IReadOnlyCuboidData cuboid
+		, Object token
 	) {}
 
 	private static record _Request(FloatBuffer meshBuffer

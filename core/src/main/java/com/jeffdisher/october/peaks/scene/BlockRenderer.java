@@ -4,13 +4,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
@@ -23,7 +24,6 @@ import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
-import com.jeffdisher.october.peaks.graphics.BufferBuilder.Buffer;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
 import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
@@ -278,6 +278,15 @@ public class BlockRenderer
 	private final Resources _resources;
 	private final SelectionResources _selectionResources;
 	private final ItemSlotResources _itemSlotResources;
+
+	private final List<_CuboidData> _opaqueCuboids;
+	private final List<_CuboidData> _modelCuboids;
+	private final List<_CuboidData> _transparentCuboids;
+	private final List<_CuboidData> _waterCuboids;
+	private final List<_CuboidData> _itemSlotCuboids;
+	private final Map<CuboidAddress, SparseByteCube> _fireFacesCuboids;
+	private final List<_CuboidData> _burningFaceCuboids;
+
 	private final CuboidMeshManager _cuboidMeshes;
 
 	public BlockRenderer(Environment environment, GL20 gl, Binding<Float> screenBrightness, LoadedResources resources)
@@ -289,16 +298,95 @@ public class BlockRenderer
 		_selectionResources = resources.blockSelectionRenderer();
 		_itemSlotResources = resources.blockItemSlotRenderer();
 		
+		_opaqueCuboids = new ArrayList<>();
+		_modelCuboids = new ArrayList<>();
+		_transparentCuboids = new ArrayList<>();
+		_waterCuboids = new ArrayList<>();
+		_itemSlotCuboids = new ArrayList<>();
+		_fireFacesCuboids = new HashMap<>();
+		_burningFaceCuboids = new ArrayList<>();
+		
 		_cuboidMeshes = new CuboidMeshManager(_environment, new CuboidMeshManager.IGpu() {
 			@Override
-			public VertexArray uploadBuffer(Buffer buffer)
+			public Object createToken(CuboidAddress address
+				, BufferBuilder.Buffer opaqueArray
+				, BufferBuilder.Buffer modelArray
+				, BufferBuilder.Buffer transparentArray
+				, BufferBuilder.Buffer waterArray
+				, List<CuboidMeshManager.VisibleItemSlot> itemSlotArray
+				, SparseByteCube fireFaces
+				, BufferBuilder.Buffer burningFaceArray
+			)
 			{
-				return buffer.flush(_gl);
+				_CuboidData cuboidData = new _CuboidData(address);
+				if (null != opaqueArray)
+				{
+					cuboidData.opaqueArray = opaqueArray.flush(_gl);
+					_opaqueCuboids.add(cuboidData);
+				}
+				if (null != modelArray)
+				{
+					cuboidData.modelArray = modelArray.flush(_gl);
+					_modelCuboids.add(cuboidData);
+				}
+				if (null != transparentArray)
+				{
+					cuboidData.transparentArray = transparentArray.flush(_gl);
+					_transparentCuboids.add(cuboidData);
+				}
+				if (null != waterArray)
+				{
+					cuboidData.waterArray = waterArray.flush(_gl);
+					_waterCuboids.add(cuboidData);
+				}
+				if (null != itemSlotArray)
+				{
+					cuboidData.itemSlotArray = itemSlotArray;
+					_itemSlotCuboids.add(cuboidData);
+				}
+				if (null != fireFaces)
+				{
+					_fireFacesCuboids.put(address, fireFaces);
+				}
+				if (null != burningFaceArray)
+				{
+					cuboidData.burningFaceArray = burningFaceArray.flush(_gl);
+					_burningFaceCuboids.add(cuboidData);
+				}
+				return cuboidData;
 			}
 			@Override
-			public void deleteBuffer(VertexArray array)
+			public void deleteToken(Object token)
 			{
-				array.delete(_gl);
+				_CuboidData cuboidData = (_CuboidData)token;
+				
+				if (null != cuboidData.opaqueArray)
+				{
+					cuboidData.opaqueArray.delete(_gl);
+					cuboidData.opaqueArray = null;
+				}
+				if (null != cuboidData.modelArray)
+				{
+					cuboidData.modelArray.delete(_gl);
+					cuboidData.modelArray = null;
+				}
+				if (null != cuboidData.transparentArray)
+				{
+					cuboidData.transparentArray.delete(_gl);
+					cuboidData.transparentArray = null;
+				}
+				if (null != cuboidData.waterArray)
+				{
+					cuboidData.waterArray.delete(_gl);
+					cuboidData.waterArray = null;
+				}
+				cuboidData.itemSlotArray = null;
+				_fireFacesCuboids.remove(cuboidData.address);
+				if (null != cuboidData.burningFaceArray)
+				{
+					cuboidData.burningFaceArray.delete(_gl);
+					cuboidData.burningFaceArray = null;
+				}
 			}
 		}, _resources._program.attributes, _resources._blockModels, _resources._blockTextures, _resources._auxBlockTextures);
 	}
@@ -330,28 +418,37 @@ public class BlockRenderer
 		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
 		
-		// We use the same cuboid set for all of these passes.
-		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		
 		// Render the opaque cuboid vertices.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		Iterator<_CuboidData> iter = _opaqueCuboids.iterator();
+		while (iter.hasNext())
 		{
-			if (null != value.opaqueArray())
+			_CuboidData value = iter.next();
+			if (null != value.opaqueArray)
 			{
-				value.opaqueArray().drawAllTriangles(_gl);
+				value.opaqueArray.drawAllTriangles(_gl);
+			}
+			else
+			{
+				iter.remove();
 			}
 		}
 		
 		// Render the complex models
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockModels.getModelAtlasTexture());
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		iter = _modelCuboids.iterator();
+		while (iter.hasNext())
 		{
-			if (null != value.modelArray())
+			_CuboidData value = iter.next();
+			if (null != value.modelArray)
 			{
-				value.modelArray().drawAllTriangles(_gl);
+				value.modelArray.drawAllTriangles(_gl);
+			}
+			else
+			{
+				iter.remove();
 			}
 		}
 	}
@@ -378,9 +475,6 @@ public class BlockRenderer
 		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
 		
-		// We use the same cuboid set for all of these passes.
-		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		
 		// Render the transparent cuboid vertices.
 		// Note that we may want to consider rendering this with _gl.glDepthMask(false) but there doesn't seem to be an
 		// ideal blending function to make this look right.  Leaving it read-write seems to produce better results, for
@@ -392,20 +486,32 @@ public class BlockRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
 		// We will render the water first, since we are usually looking down at it.
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		Iterator<_CuboidData> iter = _waterCuboids.iterator();
+		while (iter.hasNext())
 		{
-			if (null != value.waterArray())
+			_CuboidData value = iter.next();
+			if (null != value.waterArray)
 			{
-				value.waterArray().drawAllTriangles(_gl);
+				value.waterArray.drawAllTriangles(_gl);
+			}
+			else
+			{
+				iter.remove();
 			}
 		}
 		
 		// Finally, we can render the normal transparent blocks (although this does means some transparent blocks won't render through water).
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		iter = _transparentCuboids.iterator();
+		while (iter.hasNext())
 		{
-			if (null != value.transparentArray())
+			_CuboidData value = iter.next();
+			if (null != value.transparentArray)
 			{
-				value.transparentArray().drawAllTriangles(_gl);
+				value.transparentArray.drawAllTriangles(_gl);
+			}
+			else
+			{
+				iter.remove();
 			}
 		}
 	}
@@ -429,14 +535,15 @@ public class BlockRenderer
 		_gl.glUniform1f(_itemSlotResources._uAnimation, animationTime * TWO_PI_RADIANS);
 		
 		// Render any item slot locations in this cuboid.
-		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		Iterator<_CuboidData> iter = _itemSlotCuboids.iterator();
+		while (iter.hasNext())
 		{
-			if (null != value.itemSlotArray())
+			_CuboidData value = iter.next();
+			if (null != value.itemSlotArray)
 			{
-				CuboidAddress key = value.address();
+				CuboidAddress key = value.address;
 				EntityLocation base = key.getBase().toEntityLocation();
-				for (CuboidMeshManager.VisibleItemSlot slot : value.itemSlotArray())
+				for (CuboidMeshManager.VisibleItemSlot slot : value.itemSlotArray)
 				{
 					// We precomputed the centre of this when creating it, since it is based on what block it is part of.
 					_gl.glUniform3f(_itemSlotResources._uCentre, base.x() + slot.centreX(), base.y() + slot.centreY(), base.z() + slot.baseZ());
@@ -448,6 +555,10 @@ public class BlockRenderer
 					// Just draw the square.
 					_itemSlotResources._itemSlotVertices.drawAllTriangles(_gl);
 				}
+			}
+			else
+			{
+				iter.remove();
 			}
 		}
 	}
@@ -509,20 +620,22 @@ public class BlockRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
 		
-		Collection<CuboidMeshManager.CuboidMeshes> cuboids = _cuboidMeshes.viewCuboids();
-		for (CuboidMeshManager.CuboidMeshes value : cuboids)
+		Iterator<_CuboidData> iter = _burningFaceCuboids.iterator();
+		while (iter.hasNext())
 		{
-			if (null != value.burningFaceArray())
+			_CuboidData value = iter.next();
+			if (null != value.burningFaceArray)
 			{
-				value.burningFaceArray().drawAllTriangles(_gl);
+				value.burningFaceArray.drawAllTriangles(_gl);
+			}
+			else
+			{
+				iter.remove();
 			}
 		}
 		
 		// We now return the valid fire faces.
-		return cuboids.stream()
-			.filter((CuboidMeshManager.CuboidMeshes mesh) -> (null != mesh.fireFaces()))
-			.collect(Collectors.toMap((CuboidMeshManager.CuboidMeshes mesh) -> mesh.address(), (CuboidMeshManager.CuboidMeshes mesh) -> mesh.fireFaces()))
-		;
+		return Map.copyOf(_fireFacesCuboids);
 	}
 
 	public void handleEndOfFrame()
@@ -559,5 +672,21 @@ public class BlockRenderer
 		MeshHelperBufferBuilder meshBuilder = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
 		SceneMeshHelpers.populateOutlinePrism(gl, meshBuilder, prism, auxAtlas);
 		return builder.finishOne().flush(gl);
+	}
+
+	private static class _CuboidData
+	{
+		public final CuboidAddress address;
+		public VertexArray opaqueArray;
+		public VertexArray modelArray;
+		public VertexArray transparentArray;
+		public VertexArray waterArray;
+		public List<CuboidMeshManager.VisibleItemSlot> itemSlotArray;
+		public VertexArray burningFaceArray;
+		
+		public _CuboidData(CuboidAddress address)
+		{
+			this.address = address;
+		}
 	}
 }
