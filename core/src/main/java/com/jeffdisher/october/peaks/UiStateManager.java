@@ -105,6 +105,9 @@ public class UiStateManager implements GameSession.ICallouts
 	private final MutablePreferences _mutablePreferences;
 	private final MutableServerList _serverList;
 	private final ICallouts _captureState;
+	private final GL20 _gl;
+	private final File _localStorageDirectory;
+	private final LoadedResources _resources;
 	private final Map<Integer, String> _otherPlayersById;
 
 	private boolean _rotationDidUpdate;
@@ -229,6 +232,13 @@ public class UiStateManager implements GameSession.ICallouts
 	// The session is "pending" only when in the CONNECTING state.
 	private GameSession _pendingGameSession;
 
+	// Misc bindings used to carry data between actions and view elements.
+	private final Binding<String> _selectedWorldNameForDelete;
+	private final Binding<WorldConfig.WorldGeneratorName> _worldGeneratorNameBinding;
+	private final Binding<WorldConfig.DefaultPlayerMode> _defaultPlayerModeBinding;
+	private final Binding<Difficulty> _difficultyBinding;
+	private final Binding<String> _newSeedBinding;
+
 	public UiStateManager(Environment environment
 			, GL20 gl
 			, File localStorageDirectory
@@ -245,6 +255,9 @@ public class UiStateManager implements GameSession.ICallouts
 		_mutablePreferences = mutablePreferences;
 		_serverList = new MutableServerList(localStorageDirectory);
 		_captureState = captureState;
+		_gl = gl;
+		_localStorageDirectory = localStorageDirectory;
+		_resources = resources;
 		_otherPlayersById = new HashMap<>();
 		
 		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
@@ -255,71 +268,34 @@ public class UiStateManager implements GameSession.ICallouts
 		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// Enter the single-player list.
-					Assert.assertTrue(_UiState.START == _uiState);
-					_uiState = _UiState.LIST_SINGLE_PLAYER;
-					
-					// Update the world name list since we are entering that state.
-					_rebuildSinglePlayerListBinding(_worldListBinding, localStorageDirectory);
-				}
-		});
+				action_clickSinglePlayerButton();
+			}
+		);
 		_multiPlayerButton = new ViewTextButton<>(_ui, new Binding<>("Multi-Player")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// Enter the single-player list.
-					Assert.assertTrue(_UiState.START == _uiState);
-					_uiState = _UiState.LIST_MULTI_PLAYER;
-					
-					// Request that this list be validated.
-					_serverList.pollServers();
-				}
-		});
+				action_clickMultiPlayerButton();
+			}
+		);
 		_quitButton = new ViewTextButton<>(_ui, new Binding<>("Quit")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// From here, we quit directly, as this is top-level.
-					if (null == _errorPayload)
-					{
-						Gdx.app.exit();
-					}
-					else
-					{
-						// (if there is an error payload, we won't wait for the app to quit).
-						System.exit(1);
-					}
-				}
-		});
+				action_clickQuitButton();
+			}
+		);
 		
 		// Single-player UI.
 		StatelessViewTextButton<String> enterWorldButton = new StatelessViewTextButton<>(_ui
 			, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length())
 			, (String directoryName) -> {
-				if (_leftClick)
-				{
-					// We just pass nulls for our new game options.
-					_enterSingleWorld(gl, localStorageDirectory, resources, directoryName, null, null, null, 0);
-				}
+				action_clickEnterSingleWorldButton(directoryName);
 			}
 		);
-		Binding<String> selectedWorldNameForDelete = new Binding<>(null);
+		_selectedWorldNameForDelete = new Binding<>(null);
 		StatelessViewTextButton<String> deleteWorldButton = new StatelessViewTextButton<>(_ui
 			, (String text) -> "X"
 			, (String directoryName) -> {
-				if (_leftClick)
-				{
-					// We want to enter the confirmation state.
-					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
-					_uiState = _UiState.CONFIRM_DELETE_SINGLE_PLAYER;
-					
-					// We also need to put this chosen directory in the binding.
-					selectedWorldNameForDelete.set(directoryName);
-				}
+				action_clickDeleteSingleWorldButton(directoryName);
 			}
 		);
 		_worldListView = new PaginatedListView<>(_ui
@@ -329,162 +305,78 @@ public class UiStateManager implements GameSession.ICallouts
 			, SINGLE_PLAYER_WORLD_ROW_HEIGHT
 		);
 		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
-				, (String text) -> text
-				, (ViewTextButton<String> button, String text) -> {
-					if (_leftClick)
-					{
-						// This is the same as hitting escape.
-						_doBackStateTransition();
-					}
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				action_clickBackButton();
 			}
 		);
 		_newWorldNameBinding = new Binding<>("");
 		_enterCreateSingleState = new ViewTextButton<>(_ui, new Binding<>("Create New World")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// Enter the single-player creation window.
-					Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
-					_uiState = _UiState.NEW_SINGLE_PLAYER;
-					
-					// Select the default text field.
-					_typingCapture = _newWorldNameBinding;
-				}
+				action_clickCreateSingleWorldButton();
 			}
 		);
 		
 		// World delete confirmation UI.
-		_confirmDeleteButton = new ViewTextButton<>(_ui, selectedWorldNameForDelete
-				, (String text) -> "Confirm delete world \"" + text.substring(WORLD_DIRECTORY_PREFIX.length()) + "\" (cannot be undone)"
-				, (ViewTextButton<String> button, String text) -> {
-					if (_leftClick)
-					{
-						// Verify state transition.
-						Assert.assertTrue(_UiState.CONFIRM_DELETE_SINGLE_PLAYER == _uiState);
-						_uiState = _UiState.LIST_SINGLE_PLAYER;
-						
-						// Delete the directory, then return to the listing.
-						File localWorldDirectory = new File(localStorageDirectory, selectedWorldNameForDelete.get());
-						System.out.println("Deleting local world: " + localWorldDirectory);
-						_deleteWorldRecursively(localWorldDirectory);
-						
-						selectedWorldNameForDelete.set(null);
-						
-						// We also need to rebuild the list.
-						_rebuildSinglePlayerListBinding(_worldListBinding, localStorageDirectory);
-					}
+		_confirmDeleteButton = new ViewTextButton<>(_ui, _selectedWorldNameForDelete
+			, (String text) -> "Confirm delete world \"" + text.substring(WORLD_DIRECTORY_PREFIX.length()) + "\" (cannot be undone)"
+			, (ViewTextButton<String> button, String text) -> {
+				action_clickConfirmDeleteButton();
 			}
 		);
 		
 		// New single player UI.
-		Binding<WorldConfig.WorldGeneratorName> worldGeneratorNameBinding = new Binding<>(WorldConfig.WorldGeneratorName.BASIC);
+		_worldGeneratorNameBinding = new Binding<>(WorldConfig.WorldGeneratorName.BASIC);
 		_newWorldGeneratorNameButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
 				, (WorldConfig.WorldGeneratorName type) -> type.name()
 				, (WorldConfig.WorldGeneratorName selected) -> {
-					if (_leftClick)
-					{
-						worldGeneratorNameBinding.set(selected);
-					}
+					action_clickWorldGeneratorRadioButton(selected);
 				}
 				, WorldConfig.WorldGeneratorName.class
 			)
-			, worldGeneratorNameBinding
+			, _worldGeneratorNameBinding
 		);
-		Binding<WorldConfig.DefaultPlayerMode> defaultPlayerModeBinding = new Binding<>(WorldConfig.DefaultPlayerMode.SURVIVAL);
+		_defaultPlayerModeBinding = new Binding<>(WorldConfig.DefaultPlayerMode.SURVIVAL);
 		_newDefaultPlayerModeButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
 				, (WorldConfig.DefaultPlayerMode type) -> type.name()
 				, (WorldConfig.DefaultPlayerMode selected) -> {
-					if (_leftClick)
-					{
-						defaultPlayerModeBinding.set(selected);
-					}
+					action_clickPlayerModeRadioButton(selected);
 				}
 				, WorldConfig.DefaultPlayerMode.class
 			)
-			, defaultPlayerModeBinding
+			, _defaultPlayerModeBinding
 		);
-		Binding<Difficulty> difficultyBinding = new Binding<>(Difficulty.HOSTILE);
+		_difficultyBinding = new Binding<>(Difficulty.HOSTILE);
 		_newDifficultyButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
 				, (Difficulty type) -> type.name()
 				, (Difficulty selected) -> {
-					if (_leftClick)
-					{
-						difficultyBinding.set(selected);
-					}
+					action_clickDifficultyRadioButton(selected);
 				}
 				, Difficulty.class
 			)
-			, difficultyBinding
+			, _difficultyBinding
 		);
-		Binding<String> newSeedBinding = new Binding<>("");
+		_newSeedBinding = new Binding<>("");
 		_newWorldSeedTextField = new ViewTextField<>(_ui
-				, newSeedBinding
-				, (String text) -> text
-				, () -> (_typingCapture == newSeedBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
-				, () -> {
-					// We want to enable text capture for this binding.
-					if (_leftClick)
-					{
-						_typingCapture = newSeedBinding;
-					}
-				}
+			, _newSeedBinding
+			, (String text) -> text
+			, () -> (_typingCapture == _newSeedBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
+			, () -> {
+				action_clickSeedTextField();
+			}
 		);
 		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Create New")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// We want to start a single-player game.
-					Assert.assertTrue(_UiState.NEW_SINGLE_PLAYER == _uiState);
-					
-					// Make sure that the name is non-empty and not already used.
-					String worldName = _newWorldNameBinding.get();
-					String directoryName = "world_" + worldName;
-					boolean alreadyExists = _worldListBinding.get().contains(directoryName);
-					if (!alreadyExists && (worldName.length() > 0))
-					{
-						WorldConfig.WorldGeneratorName worldGeneratorName = worldGeneratorNameBinding.get();
-						WorldConfig.DefaultPlayerMode defaultPlayerMode = defaultPlayerModeBinding.get();
-						Difficulty difficulty = difficultyBinding.get();
-						// The seed is a little tricky: if empty, use the default, if a number, use the number, if text, use the hash.
-						Integer basicWorldGeneratorSeed = null;
-						String rawSeed = newSeedBinding.get();
-						if (!rawSeed.isEmpty())
-						{
-							try
-							{
-								basicWorldGeneratorSeed = Integer.parseInt(rawSeed);
-							}
-							catch (NumberFormatException e)
-							{
-								basicWorldGeneratorSeed = rawSeed.hashCode();
-							}
-						}
-						_enterSingleWorld(gl
-							, localStorageDirectory
-							, resources
-							, directoryName
-							, worldGeneratorName
-							, defaultPlayerMode
-							, difficulty
-							, basicWorldGeneratorSeed
-						);
-						_newWorldNameBinding.set("");
-						_typingCapture = null;
-					}
-				}
+				action_clickConfirmCreateSingleWorldButton();
 			}
 		);
 		_newWorldNameTextField = new ViewTextField<>(_ui, _newWorldNameBinding
 			, (String value) -> (_typingCapture == _newWorldNameBinding) ? (value + "_") : value
 			, () -> (_typingCapture == _newWorldNameBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
 			, () -> {
-				if (_leftClick)
-				{
-					// We want to enable text capture for this binding.
-					_typingCapture = _newWorldNameBinding;
-				}
+				action_clickNewWorldNameTextField();
 			}
 		);
 		
@@ -492,29 +384,13 @@ public class UiStateManager implements GameSession.ICallouts
 		StatelessMultiLineButton<MutableServerList.ServerRecord> connectToServerLine = new StatelessMultiLineButton<>(_ui
 			, new ServerRecordTransformer(_ui)
 			, (MutableServerList.ServerRecord server) -> {
-				if (_leftClick)
-				{
-					try
-					{
-						String clientName = _mutablePreferences.clientName.get();
-						int startingViewDistance = _mutablePreferences.preferredViewDistance.get();
-						_connectToServer(gl, localStorageDirectory, resources, clientName, startingViewDistance, server.address);
-					}
-					catch (ConnectException e)
-					{
-						// TODO:  Display this somewhere.
-						e.printStackTrace();
-					}
-				}
+				action_clickJoinMultiWorldButton(server);
 			}
 		);
 		StatelessViewTextButton<MutableServerList.ServerRecord> deleteServerButton = new StatelessViewTextButton<>(_ui
 			, (MutableServerList.ServerRecord ignored) -> "X"
-			, (MutableServerList.ServerRecord record) -> {
-				if (_leftClick)
-				{
-					_serverList.removeServerFromList(record);
-				}
+			, (MutableServerList.ServerRecord server) -> {
+				action_clickDeleteMultiWorldButton(server);
 			}
 		);
 		_serverListView = new PaginatedListView<>(_ui
@@ -528,93 +404,40 @@ public class UiStateManager implements GameSession.ICallouts
 		_enterAddNewServerButton = new ViewTextButton<>(_ui, new Binding<>("Add New Server")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// Enter the single-player creation window.
-					Assert.assertTrue(_UiState.LIST_MULTI_PLAYER == _uiState);
-					_uiState = _UiState.NEW_MULTI_PLAYER;
-					
-					// Select the default text field.
-					_typingCapture = _newServerAddressBinding;
-					
-					// Clear any stale state from last time.
-					_currentlyTestingServerBinding.set(null);
-				}
+				action_clickAddNewServerButton();
 			}
 		);
 		
 		// New server UI.
 		StatelessMultiLineButton<MutableServerList.ServerRecord> renderOnlyServerLine = new StatelessMultiLineButton<>(_ui
-				, new ServerRecordTransformer(_ui)
-				, null
-			);
+			, new ServerRecordTransformer(_ui)
+			, null
+		);
 		_currentlyTestingServerView = new ViewOfStateless<>(renderOnlyServerLine, _currentlyTestingServerBinding);
 		_newServerAddressTextField = new ViewTextField<>(_ui, _newServerAddressBinding
 			, (String value) -> (_typingCapture == _newServerAddressBinding) ? (value + "_") : value
 			, () -> (_typingCapture == _newServerAddressBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
 			, () -> {
-				if (_leftClick)
-				{
-					// We want to enable text capture for this binding.
-					_typingCapture = _newServerAddressBinding;
-				}
+				action_clickServerAddressTextField();
 			}
 		);
 		_testServerButton = new ViewTextButton<>(_ui, new Binding<>("Test Connection")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// We want to do the test for version, etc, and add this to our list on success.
-					Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
-					
-					// We will need to parse this address from the binding.
-					String rawAddress = _newServerAddressBinding.get();
-					int colonIndex = rawAddress.indexOf(":");
-					if (-1 != colonIndex)
-					{
-						String ipHostName = rawAddress.substring(0, colonIndex);
-						int port = Integer.parseInt(rawAddress.substring(colonIndex + 1));
-						InetSocketAddress address = new InetSocketAddress(ipHostName, port);
-						
-						// Create the socket and start the background test, storing the new token in the binding.
-						MutableServerList.ServerRecord record = _serverList.beginSpecialPollRequest(address);
-						_currentlyTestingServerBinding.set(record);
-						_newServerAddressBinding.set("");
-						_typingCapture = null;
-					}
-				}
+				action_clickTestServerButton();
 			}
 		);
 		_saveServerButton = new ViewTextButton<>(_ui, new Binding<>("Save Tested Connection")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
-					
-					// If there is a binding, and it is good, add it to the server list and back out of this.
-					MutableServerList.ServerRecord record = _currentlyTestingServerBinding.get();
-					if ((null != record) && record.isGood)
-					{
-						_serverList.addServerToList(record);
-						_currentlyTestingServerBinding.set(null);
-						
-						// We can escape this state.
-						_doBackStateTransition();
-					}
-				}
+				action_clickSaveServerButton();
 			}
 		);
 		
 		_cancelConnectButton = new ViewTextButton<>(_ui, new Binding<>("Cancel Connection")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					// We just want to back out.
-					_doBackStateTransition();
-				}
+				action_clickCancelConnectButton();
 			}
 		);
 		
@@ -705,114 +528,52 @@ public class UiStateManager implements GameSession.ICallouts
 		_exitButton = new ViewTextButton<>(_ui, _exitButtonBinding
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					_currentGameSession.shutdown();
-					_currentGameSession = null;
-					_uiState = _UiState.START;
-				}
-		});
+				action_clickExitGameButton();
+			}
+		);
 		_optionsButton = new ViewTextButton<>(_ui, new Binding<>("Game Options")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					_uiState = _UiState.OPTIONS;
-				}
-		});
+				action_clickOptionsButton();
+			}
+		);
 		_keyBindingsButton = new ViewTextButton<>(_ui, new Binding<>("Key Bindings")
-				, (String text) -> text
-				, (ViewTextButton<String> button, String text) -> {
-					if (_leftClick)
-					{
-						_uiState = _UiState.KEY_BINDINGS;
-						_currentlyChangingControl.set(null);
-					}
-			});
+			, (String text) -> text
+			, (ViewTextButton<String> button, String text) -> {
+				action_clickKeyBindingsButton();
+			}
+		);
 		_returnToGameButton = new ViewTextButton<>(_ui, new Binding<>("Return to Game")
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
-				if (_leftClick)
-				{
-					_uiState = _UiState.PLAY;
-					_captureState.shouldCaptureMouse(true);
-					_currentGameSession.client.resumeGame();
-				}
-		});
+				action_clickReturnToGameButton();
+			}
+		);
 		
 		// Options state controls.
 		_fullScreenButton = new ViewTextButton<>(_ui, _mutablePreferences.isFullScreen
 			, (Boolean isFullScreen) -> isFullScreen ? "Change to Windowed" : "Change to Full Screen"
 			, (ViewTextButton<Boolean> button, Boolean isFullScreen) -> {
-				if (_leftClick)
-				{
-					// We will toggle the full screen and update the binding data.
-					boolean newFullScreen = !isFullScreen;
-					if (newFullScreen)
-					{
-						// We will just use the full screen of the current display mode.
-						Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
-					}
-					else
-					{
-						// For now, we will always use this same default window size.
-						Gdx.graphics.setWindowedMode(1280, 960);
-					}
-					_mutablePreferences.isFullScreen.set(newFullScreen);
-				}
-		});
+				action_clickFullScreenToggle(isFullScreen);
+			}
+		);
 		_viewDistanceControl = new ViewControlPlusMinus<>(_ui, _mutablePreferences.preferredViewDistance
 			, (Integer distance) -> distance + " cuboids"
 			, (boolean plus) -> {
-				if (_leftClick)
-				{
-					// TODO:  When we persist preferences, put this there whether or not in game.
-					if (null != _currentGameSession)
-					{
-						// We try changing this in the client and it will return the updated value.
-						int oldDistance = _mutablePreferences.preferredViewDistance.get();
-						int newDistance = oldDistance +
-								(plus ? 1 : -1)
-						;
-						int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
-						if (finalValue != oldDistance)
-						{
-							// If this change did anything, update the UI and save changes.
-							_mutablePreferences.preferredViewDistance.set(finalValue);
-							_mutablePreferences.saveToDisk();
-						}
-					}
-				}
-		});
+				action_clickViewDistanceSlider(plus);
+			}
+		);
 		_brightnessControl = new ViewControlPlusMinus<>(_ui, _mutablePreferences.screenBrightness
-				, (Float brightness) -> String.format("%.1fx", brightness)
-				, (boolean plus) -> {
-					if (_leftClick)
-					{
-						// We just want to increment this by 0.1 increments between 1.0 and 2.0.
-						int current = (int)(10.0f * _mutablePreferences.screenBrightness.get());
-						int next;
-						if (plus)
-						{
-							next = Math.min(20, current + 1);
-						}
-						else
-						{
-							next = Math.max(10, current - 1);
-						}
-						float updated = ((float) next) / 10.0f;
-						_mutablePreferences.screenBrightness.set(updated);
-					}
-			});
+			, (Float brightness) -> String.format("%.1fx", brightness)
+			, (boolean plus) -> {
+				action_clickBrightnessSlider(plus);
+			}
+		);
 		_clientNameTextField = new ViewTextField<>(_ui, _mutablePreferences.clientName
 			, (String value) -> (_typingCapture == _mutablePreferences.clientName) ? (value + "_") : value
 			, () -> (_typingCapture == _mutablePreferences.clientName) ? _ui.pixelGreen : _ui.pixelLightGrey
 			, () -> {
-				if (_leftClick)
-				{
-					// We want to enable text capture for this binding.
-					_typingCapture = _mutablePreferences.clientName;
-				}
+				action_clickClientNameTextField();
 			}
 		);
 		
@@ -820,28 +581,16 @@ public class UiStateManager implements GameSession.ICallouts
 		_keyBindingSelectorControl = new ViewKeyControlSelector(_ui, _mutableControls
 			, _currentlyChangingControl
 			, (MutableControls.Control selectedControl) -> {
-				if (_leftClick)
-				{
-					_currentlyChangingControl.set(selectedControl);
-				}
+				action_clickKeyBindingSelector(selectedControl);
 			}
 		);
 		
 		_copyToClipboardButton = new ViewTextButton<>(_ui, new Binding<>("Copy to Clipboard")
 			, (String value) -> value
 			, (ViewTextButton<String> button, String ignored) -> {
-				if (_leftClick)
-				{
-					// Just copy the payload to the clipbaord.
-					StringBuilder builder = new StringBuilder();
-					for (String elt : _errorPayload)
-					{
-						builder.append(elt);
-						builder.append('\n');
-					}
-					Gdx.app.getClipboard().setContents(builder.toString());
-				}
-		});
+				action_clickCopyToClipboardButton();
+			}
+		);
 		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
@@ -1283,6 +1032,436 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.ERROR;
 		_errorPayload = payload;
 		_captureState.shouldCaptureMouse(false);
+	}
+
+	public void action_clickSinglePlayerButton()
+	{
+		if (_leftClick)
+		{
+			// Enter the single-player list.
+			Assert.assertTrue(_UiState.START == _uiState);
+			_uiState = _UiState.LIST_SINGLE_PLAYER;
+			
+			// Update the world name list since we are entering that state.
+			_rebuildSinglePlayerListBinding(_worldListBinding, _localStorageDirectory);
+		}
+	}
+
+	public void action_clickMultiPlayerButton()
+	{
+		if (_leftClick)
+		{
+			// Enter the single-player list.
+			Assert.assertTrue(_UiState.START == _uiState);
+			_uiState = _UiState.LIST_MULTI_PLAYER;
+			
+			// Request that this list be validated.
+			_serverList.pollServers();
+		}
+	}
+
+	public void action_clickQuitButton()
+	{
+		if (_leftClick)
+		{
+			// From here, we quit directly, as this is top-level.
+			if (null == _errorPayload)
+			{
+				Gdx.app.exit();
+			}
+			else
+			{
+				// (if there is an error payload, we won't wait for the app to quit).
+				System.exit(1);
+			}
+		}
+	}
+
+	public void action_clickEnterSingleWorldButton(String directoryName)
+	{
+		if (_leftClick)
+		{
+			// We just pass nulls for our new game options.
+			_enterSingleWorld(_gl, _localStorageDirectory, _resources, directoryName, null, null, null, 0);
+		}
+	}
+
+	public void action_clickDeleteSingleWorldButton(String directoryName)
+	{
+		if (_leftClick)
+		{
+			// We want to enter the confirmation state.
+			Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
+			_uiState = _UiState.CONFIRM_DELETE_SINGLE_PLAYER;
+			
+			// We also need to put this chosen directory in the binding.
+			_selectedWorldNameForDelete.set(directoryName);
+		}
+	}
+
+	public void action_clickBackButton()
+	{
+		if (_leftClick)
+		{
+			// This is the same as hitting escape.
+			_doBackStateTransition();
+		}
+	}
+
+	public void action_clickCreateSingleWorldButton()
+	{
+		if (_leftClick)
+		{
+			// Enter the single-player creation window.
+			Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
+			_uiState = _UiState.NEW_SINGLE_PLAYER;
+			
+			// Select the default text field.
+			_typingCapture = _newWorldNameBinding;
+		}
+	}
+
+	public void action_clickConfirmDeleteButton()
+	{
+		if (_leftClick)
+		{
+			// Verify state transition.
+			Assert.assertTrue(_UiState.CONFIRM_DELETE_SINGLE_PLAYER == _uiState);
+			_uiState = _UiState.LIST_SINGLE_PLAYER;
+			
+			// Delete the directory, then return to the listing.
+			File localWorldDirectory = new File(_localStorageDirectory, _selectedWorldNameForDelete.get());
+			System.out.println("Deleting local world: " + localWorldDirectory);
+			_deleteWorldRecursively(localWorldDirectory);
+			
+			_selectedWorldNameForDelete.set(null);
+			
+			// We also need to rebuild the list.
+			_rebuildSinglePlayerListBinding(_worldListBinding, _localStorageDirectory);
+		}
+	}
+
+	public void action_clickWorldGeneratorRadioButton(WorldConfig.WorldGeneratorName selected)
+	{
+		if (_leftClick)
+		{
+			_worldGeneratorNameBinding.set(selected);
+		}
+	}
+
+	public void action_clickPlayerModeRadioButton(WorldConfig.DefaultPlayerMode selected)
+	{
+		if (_leftClick)
+		{
+			_defaultPlayerModeBinding.set(selected);
+		}
+	}
+
+	public void action_clickDifficultyRadioButton(Difficulty selected)
+	{
+		if (_leftClick)
+		{
+			_difficultyBinding.set(selected);
+		}
+	}
+
+	public void action_clickSeedTextField()
+	{
+		// We want to enable text capture for this binding.
+		if (_leftClick)
+		{
+			_typingCapture = _newSeedBinding;
+		}
+	}
+
+	public void action_clickConfirmCreateSingleWorldButton()
+	{
+		if (_leftClick)
+		{
+			// We want to start a single-player game.
+			Assert.assertTrue(_UiState.NEW_SINGLE_PLAYER == _uiState);
+			
+			// Make sure that the name is non-empty and not already used.
+			String worldName = _newWorldNameBinding.get();
+			String directoryName = "world_" + worldName;
+			boolean alreadyExists = _worldListBinding.get().contains(directoryName);
+			if (!alreadyExists && (worldName.length() > 0))
+			{
+				WorldConfig.WorldGeneratorName worldGeneratorName = _worldGeneratorNameBinding.get();
+				WorldConfig.DefaultPlayerMode defaultPlayerMode = _defaultPlayerModeBinding.get();
+				Difficulty difficulty = _difficultyBinding.get();
+				// The seed is a little tricky: if empty, use the default, if a number, use the number, if text, use the hash.
+				Integer basicWorldGeneratorSeed = null;
+				String rawSeed = _newSeedBinding.get();
+				if (!rawSeed.isEmpty())
+				{
+					try
+					{
+						basicWorldGeneratorSeed = Integer.parseInt(rawSeed);
+					}
+					catch (NumberFormatException e)
+					{
+						basicWorldGeneratorSeed = rawSeed.hashCode();
+					}
+				}
+				_enterSingleWorld(_gl
+					, _localStorageDirectory
+					, _resources
+					, directoryName
+					, worldGeneratorName
+					, defaultPlayerMode
+					, difficulty
+					, basicWorldGeneratorSeed
+				);
+				_newWorldNameBinding.set("");
+				_typingCapture = null;
+			}
+		}
+	}
+
+	public void action_clickNewWorldNameTextField()
+	{
+		// We want to enable text capture for this binding.
+		if (_leftClick)
+		{
+			_typingCapture = _newWorldNameBinding;
+		}
+	}
+
+	public void action_clickJoinMultiWorldButton(MutableServerList.ServerRecord server)
+	{
+		if (_leftClick)
+		{
+			try
+			{
+				String clientName = _mutablePreferences.clientName.get();
+				int startingViewDistance = _mutablePreferences.preferredViewDistance.get();
+				_connectToServer(_gl, _localStorageDirectory, _resources, clientName, startingViewDistance, server.address);
+			}
+			catch (ConnectException e)
+			{
+				// TODO:  Display this somewhere.
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void action_clickDeleteMultiWorldButton(MutableServerList.ServerRecord server)
+	{
+		if (_leftClick)
+		{
+			_serverList.removeServerFromList(server);
+		}
+	}
+
+	public void action_clickAddNewServerButton()
+	{
+		if (_leftClick)
+		{
+			// Enter the single-player creation window.
+			Assert.assertTrue(_UiState.LIST_MULTI_PLAYER == _uiState);
+			_uiState = _UiState.NEW_MULTI_PLAYER;
+			
+			// Select the default text field.
+			_typingCapture = _newServerAddressBinding;
+			
+			// Clear any stale state from last time.
+			_currentlyTestingServerBinding.set(null);
+		}
+	}
+
+	public void action_clickServerAddressTextField()
+	{
+		// We want to enable text capture for this binding.
+		if (_leftClick)
+		{
+			_typingCapture = _newServerAddressBinding;
+		}
+	}
+
+	public void action_clickTestServerButton()
+	{
+		if (_leftClick)
+		{
+			// We want to do the test for version, etc, and add this to our list on success.
+			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
+			
+			// We will need to parse this address from the binding.
+			String rawAddress = _newServerAddressBinding.get();
+			int colonIndex = rawAddress.indexOf(":");
+			if (-1 != colonIndex)
+			{
+				String ipHostName = rawAddress.substring(0, colonIndex);
+				int port = Integer.parseInt(rawAddress.substring(colonIndex + 1));
+				InetSocketAddress address = new InetSocketAddress(ipHostName, port);
+				
+				// Create the socket and start the background test, storing the new token in the binding.
+				MutableServerList.ServerRecord record = _serverList.beginSpecialPollRequest(address);
+				_currentlyTestingServerBinding.set(record);
+				_newServerAddressBinding.set("");
+				_typingCapture = null;
+			}
+		}
+	}
+
+	public void action_clickSaveServerButton()
+	{
+		if (_leftClick)
+		{
+			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
+			
+			// If there is a binding, and it is good, add it to the server list and back out of this.
+			MutableServerList.ServerRecord record = _currentlyTestingServerBinding.get();
+			if ((null != record) && record.isGood)
+			{
+				_serverList.addServerToList(record);
+				_currentlyTestingServerBinding.set(null);
+				
+				// We can escape this state.
+				_doBackStateTransition();
+			}
+		}
+	}
+
+	public void action_clickCancelConnectButton()
+	{
+		if (_leftClick)
+		{
+			// We just want to back out.
+			_doBackStateTransition();
+		}
+	}
+
+	public void action_clickExitGameButton()
+	{
+		if (_leftClick)
+		{
+			_currentGameSession.shutdown();
+			_currentGameSession = null;
+			_uiState = _UiState.START;
+		}
+	}
+
+	public void action_clickOptionsButton()
+	{
+		if (_leftClick)
+		{
+			_uiState = _UiState.OPTIONS;
+		}
+	}
+
+	public void action_clickKeyBindingsButton()
+	{
+		if (_leftClick)
+		{
+			_uiState = _UiState.KEY_BINDINGS;
+			_currentlyChangingControl.set(null);
+		}
+	}
+
+	public void action_clickReturnToGameButton()
+	{
+		if (_leftClick)
+		{
+			_uiState = _UiState.PLAY;
+			_captureState.shouldCaptureMouse(true);
+			_currentGameSession.client.resumeGame();
+		}
+	}
+
+	public void action_clickFullScreenToggle(boolean isFullScreen)
+	{
+		if (_leftClick)
+		{
+			// We will toggle the full screen and update the binding data.
+			boolean newFullScreen = !isFullScreen;
+			if (newFullScreen)
+			{
+				// We will just use the full screen of the current display mode.
+				Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+			}
+			else
+			{
+				// For now, we will always use this same default window size.
+				Gdx.graphics.setWindowedMode(1280, 960);
+			}
+			_mutablePreferences.isFullScreen.set(newFullScreen);
+		}
+	}
+
+	public void action_clickViewDistanceSlider(boolean shouldIncrease)
+	{
+		if (_leftClick)
+		{
+			// TODO:  When we persist preferences, put this there whether or not in game.
+			if (null != _currentGameSession)
+			{
+				// We try changing this in the client and it will return the updated value.
+				int oldDistance = _mutablePreferences.preferredViewDistance.get();
+				int newDistance = oldDistance +
+					(shouldIncrease ? 1 : -1)
+				;
+				int finalValue = _currentGameSession.client.trySetViewDistance(newDistance);
+				if (finalValue != oldDistance)
+				{
+					// If this change did anything, update the UI and save changes.
+					_mutablePreferences.preferredViewDistance.set(finalValue);
+					_mutablePreferences.saveToDisk();
+				}
+			}
+		}
+	}
+
+	public void action_clickBrightnessSlider(boolean shouldIncrease)
+	{
+		if (_leftClick)
+		{
+			// We just want to increment this by 0.1 increments between 1.0 and 2.0.
+			int current = (int)(10.0f * _mutablePreferences.screenBrightness.get());
+			int next;
+			if (shouldIncrease)
+			{
+				next = Math.min(20, current + 1);
+			}
+			else
+			{
+				next = Math.max(10, current - 1);
+			}
+			float updated = ((float) next) / 10.0f;
+			_mutablePreferences.screenBrightness.set(updated);
+		}
+	}
+
+	public void action_clickClientNameTextField()
+	{
+		if (_leftClick)
+		{
+			// We want to enable text capture for this binding.
+			_typingCapture = _mutablePreferences.clientName;
+		}
+	}
+
+	public void action_clickKeyBindingSelector(MutableControls.Control selectedControl)
+	{
+		if (_leftClick)
+		{
+			_currentlyChangingControl.set(selectedControl);
+		}
+	}
+
+	public void action_clickCopyToClipboardButton()
+	{
+		if (_leftClick)
+		{
+			// Just copy the payload to the clipboard.
+			StringBuilder builder = new StringBuilder();
+			for (String elt : _errorPayload)
+			{
+				builder.append(elt);
+				builder.append('\n');
+			}
+			Gdx.app.getClipboard().setContents(builder.toString());
+		}
 	}
 
 	public void shutdown()
