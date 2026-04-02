@@ -35,11 +35,6 @@ import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
-import com.jeffdisher.october.peaks.ui.ServerRecordTransformer;
-import com.jeffdisher.october.peaks.ui.StatelessHBox;
-import com.jeffdisher.october.peaks.ui.StatelessMultiLineButton;
-import com.jeffdisher.october.peaks.ui.StatelessViewRadioButton;
-import com.jeffdisher.october.peaks.ui.StatelessViewTextButton;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
@@ -89,10 +84,6 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final int MAX_WORLD_NAME = 16;
 	public static final String WORLD_DIRECTORY_PREFIX = "world_";
-	public static final float SINGLE_PLAYER_WORLD_ROW_WIDTH = 0.8f;
-	public static final float SINGLE_PLAYER_WORLD_ROW_HEIGHT = 0.1f;
-	public static final float MULTI_PLAYER_SERVER_ROW_WIDTH = 0.8f;
-	public static final float MULTI_PLAYER_SERVER_ROW_HEIGHT = 0.2f;
 	public static final float CHARGE_BAR_WIDTH_MAX = 0.4f;
 	public static final float CHARGE_BAR_LEFT = -0.2f;
 	public static final float CHARGE_BAR_BOTTOM = -0.25f;
@@ -265,181 +256,45 @@ public class UiStateManager implements GameSession.ICallouts
 		_exitButtonBinding = new Binding<>(null);
 		_worldListBinding = new Binding<>(null);
 		
-		_singlePlayerButton = new ViewTextButton<>(_ui, new Binding<>("Single Player")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickSinglePlayerButton();
-			}
-		);
-		_multiPlayerButton = new ViewTextButton<>(_ui, new Binding<>("Multi-Player")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickMultiPlayerButton();
-			}
-		);
-		_quitButton = new ViewTextButton<>(_ui, new Binding<>("Quit")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickQuitButton();
-			}
-		);
+		_singlePlayerButton = UiResources.buildSinglePlayerButton(_ui, this);
+		_multiPlayerButton = UiResources.buildMultiPlayerButton(_ui, this);
+		_quitButton = UiResources.buildQuitButton(_ui, this);
 		
 		// Single-player UI.
-		StatelessViewTextButton<String> enterWorldButton = new StatelessViewTextButton<>(_ui
-			, (String text) -> text.substring(WORLD_DIRECTORY_PREFIX.length())
-			, (String directoryName) -> {
-				action_clickEnterSingleWorldButton(directoryName);
-			}
-		);
-		_selectedWorldNameForDelete = new Binding<>(null);
-		StatelessViewTextButton<String> deleteWorldButton = new StatelessViewTextButton<>(_ui
-			, (String text) -> "X"
-			, (String directoryName) -> {
-				action_clickDeleteSingleWorldButton(directoryName);
-			}
-		);
-		_worldListView = new PaginatedListView<>(_ui
-			, _worldListBinding
-			, () -> _leftClick
-			, new StatelessHBox<>(enterWorldButton, SINGLE_PLAYER_WORLD_ROW_WIDTH - SINGLE_PLAYER_WORLD_ROW_HEIGHT, deleteWorldButton)
-			, SINGLE_PLAYER_WORLD_ROW_HEIGHT
-		);
-		_backButton = new ViewTextButton<>(_ui, new Binding<>("Back")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickBackButton();
-			}
-		);
+		_worldListView = UiResources.buildSinglePlayerWorldListView(_ui, this, _worldListBinding, () -> _leftClick, WORLD_DIRECTORY_PREFIX);
+		_backButton = UiResources.buildBackButton(_ui, this);
 		_newWorldNameBinding = new Binding<>("");
-		_enterCreateSingleState = new ViewTextButton<>(_ui, new Binding<>("Create New World")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickCreateSingleWorldButton();
-			}
-		);
+		_enterCreateSingleState = UiResources.buildCreateNewWorldButton(_ui, this);
 		
 		// World delete confirmation UI.
-		_confirmDeleteButton = new ViewTextButton<>(_ui, _selectedWorldNameForDelete
-			, (String text) -> "Confirm delete world \"" + text.substring(WORLD_DIRECTORY_PREFIX.length()) + "\" (cannot be undone)"
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickConfirmDeleteButton();
-			}
-		);
+		_selectedWorldNameForDelete = new Binding<>(null);
+		_confirmDeleteButton = UiResources.buildConfirmDeleteButton(_ui, this, _selectedWorldNameForDelete, WORLD_DIRECTORY_PREFIX);
 		
 		// New single player UI.
 		_worldGeneratorNameBinding = new Binding<>(WorldConfig.WorldGeneratorName.BASIC);
-		_newWorldGeneratorNameButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
-				, (WorldConfig.WorldGeneratorName type) -> type.name()
-				, (WorldConfig.WorldGeneratorName selected) -> {
-					action_clickWorldGeneratorRadioButton(selected);
-				}
-				, WorldConfig.WorldGeneratorName.class
-			)
-			, _worldGeneratorNameBinding
-		);
+		_newWorldGeneratorNameButton = UiResources.buildWorldGeneratorRadio(_ui, this, _worldGeneratorNameBinding);
 		_defaultPlayerModeBinding = new Binding<>(WorldConfig.DefaultPlayerMode.SURVIVAL);
-		_newDefaultPlayerModeButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
-				, (WorldConfig.DefaultPlayerMode type) -> type.name()
-				, (WorldConfig.DefaultPlayerMode selected) -> {
-					action_clickPlayerModeRadioButton(selected);
-				}
-				, WorldConfig.DefaultPlayerMode.class
-			)
-			, _defaultPlayerModeBinding
-		);
+		_newDefaultPlayerModeButton = UiResources.buildDefaultModeRadio(_ui, this, _defaultPlayerModeBinding);
 		_difficultyBinding = new Binding<>(Difficulty.HOSTILE);
-		_newDifficultyButton = new ViewRadioButton<>(new StatelessViewRadioButton<>(_ui
-				, (Difficulty type) -> type.name()
-				, (Difficulty selected) -> {
-					action_clickDifficultyRadioButton(selected);
-				}
-				, Difficulty.class
-			)
-			, _difficultyBinding
-		);
+		_newDifficultyButton = UiResources.buildDifficultyRadio(_ui, this, _difficultyBinding);
 		_newSeedBinding = new Binding<>("");
-		_newWorldSeedTextField = new ViewTextField<>(_ui
-			, _newSeedBinding
-			, (String text) -> text
-			, () -> (_typingCapture == _newSeedBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
-			, () -> {
-				action_clickSeedTextField();
-			}
-		);
-		_createWorldButton = new ViewTextButton<>(_ui, new Binding<>("Create New")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickConfirmCreateSingleWorldButton();
-			}
-		);
-		_newWorldNameTextField = new ViewTextField<>(_ui, _newWorldNameBinding
-			, (String value) -> (_typingCapture == _newWorldNameBinding) ? (value + "_") : value
-			, () -> (_typingCapture == _newWorldNameBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
-			, () -> {
-				action_clickNewWorldNameTextField();
-			}
-		);
+		_newWorldSeedTextField = UiResources.buildSeedTextField(_ui, this, _newSeedBinding, () -> (_typingCapture == _newSeedBinding));
+		_createWorldButton = UiResources.buildCreateNewButton(_ui, this);
+		_newWorldNameTextField = UiResources.buildNewWorldNameTextField(_ui, this, _newWorldNameBinding, () -> (_typingCapture == _newWorldNameBinding));
 		
 		// Server list UI.
-		StatelessMultiLineButton<MutableServerList.ServerRecord> connectToServerLine = new StatelessMultiLineButton<>(_ui
-			, new ServerRecordTransformer(_ui)
-			, (MutableServerList.ServerRecord server) -> {
-				action_clickJoinMultiWorldButton(server);
-			}
-		);
-		StatelessViewTextButton<MutableServerList.ServerRecord> deleteServerButton = new StatelessViewTextButton<>(_ui
-			, (MutableServerList.ServerRecord ignored) -> "X"
-			, (MutableServerList.ServerRecord server) -> {
-				action_clickDeleteMultiWorldButton(server);
-			}
-		);
-		_serverListView = new PaginatedListView<>(_ui
-			, _serverList.servers
-			, () -> _leftClick
-			, new StatelessHBox<>(connectToServerLine, MULTI_PLAYER_SERVER_ROW_WIDTH - MULTI_PLAYER_SERVER_ROW_HEIGHT, deleteServerButton)
-			, MULTI_PLAYER_SERVER_ROW_HEIGHT
-		);
+		_serverListView = UiResources.buildServerListView(_ui, this, _serverList, () -> _leftClick);
 		_currentlyTestingServerBinding = new Binding<>(null);
 		_newServerAddressBinding = new Binding<>("");
-		_enterAddNewServerButton = new ViewTextButton<>(_ui, new Binding<>("Add New Server")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickAddNewServerButton();
-			}
-		);
+		_enterAddNewServerButton = UiResources.buildAddNewServerButton(_ui, this);
 		
 		// New server UI.
-		StatelessMultiLineButton<MutableServerList.ServerRecord> renderOnlyServerLine = new StatelessMultiLineButton<>(_ui
-			, new ServerRecordTransformer(_ui)
-			, null
-		);
-		_currentlyTestingServerView = new ViewOfStateless<>(renderOnlyServerLine, _currentlyTestingServerBinding);
-		_newServerAddressTextField = new ViewTextField<>(_ui, _newServerAddressBinding
-			, (String value) -> (_typingCapture == _newServerAddressBinding) ? (value + "_") : value
-			, () -> (_typingCapture == _newServerAddressBinding) ? _ui.pixelGreen : _ui.pixelLightGrey
-			, () -> {
-				action_clickServerAddressTextField();
-			}
-		);
-		_testServerButton = new ViewTextButton<>(_ui, new Binding<>("Test Connection")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickTestServerButton();
-			}
-		);
-		_saveServerButton = new ViewTextButton<>(_ui, new Binding<>("Save Tested Connection")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickSaveServerButton();
-			}
-		);
+		_currentlyTestingServerView = UiResources.buildServerTestingView(_ui, this, _currentlyTestingServerBinding);
+		_newServerAddressTextField = UiResources.buildNewServerAddressTextField(_ui, this, _newServerAddressBinding, () -> (_typingCapture == _newServerAddressBinding));
+		_testServerButton = UiResources.buildTestConnectionButton(_ui, this);
+		_saveServerButton = UiResources.buildSaveConnectionButton(_ui, this);
 		
-		_cancelConnectButton = new ViewTextButton<>(_ui, new Binding<>("Cancel Connection")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickCancelConnectButton();
-			}
-		);
+		_cancelConnectButton = UiResources.buildCancelConnectionButton(_ui, this);
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>(null);
@@ -525,72 +380,21 @@ public class UiStateManager implements GameSession.ICallouts
 		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
 		// Pause state controls.
-		_exitButton = new ViewTextButton<>(_ui, _exitButtonBinding
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickExitGameButton();
-			}
-		);
-		_optionsButton = new ViewTextButton<>(_ui, new Binding<>("Game Options")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickOptionsButton();
-			}
-		);
-		_keyBindingsButton = new ViewTextButton<>(_ui, new Binding<>("Key Bindings")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickKeyBindingsButton();
-			}
-		);
-		_returnToGameButton = new ViewTextButton<>(_ui, new Binding<>("Return to Game")
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
-				action_clickReturnToGameButton();
-			}
-		);
+		_exitButton = UiResources.buildExitGameButton(_ui, this, _exitButtonBinding);
+		_optionsButton = UiResources.buildGameOptionsButton(_ui, this);
+		_keyBindingsButton = UiResources.buildKeyBindingsButton(_ui, this);
+		_returnToGameButton = UiResources.buildReturnToGameButton(_ui, this);
 		
 		// Options state controls.
-		_fullScreenButton = new ViewTextButton<>(_ui, _mutablePreferences.isFullScreen
-			, (Boolean isFullScreen) -> isFullScreen ? "Change to Windowed" : "Change to Full Screen"
-			, (ViewTextButton<Boolean> button, Boolean isFullScreen) -> {
-				action_clickFullScreenToggle(isFullScreen);
-			}
-		);
-		_viewDistanceControl = new ViewControlPlusMinus<>(_ui, _mutablePreferences.preferredViewDistance
-			, (Integer distance) -> distance + " cuboids"
-			, (boolean plus) -> {
-				action_clickViewDistanceSlider(plus);
-			}
-		);
-		_brightnessControl = new ViewControlPlusMinus<>(_ui, _mutablePreferences.screenBrightness
-			, (Float brightness) -> String.format("%.1fx", brightness)
-			, (boolean plus) -> {
-				action_clickBrightnessSlider(plus);
-			}
-		);
-		_clientNameTextField = new ViewTextField<>(_ui, _mutablePreferences.clientName
-			, (String value) -> (_typingCapture == _mutablePreferences.clientName) ? (value + "_") : value
-			, () -> (_typingCapture == _mutablePreferences.clientName) ? _ui.pixelGreen : _ui.pixelLightGrey
-			, () -> {
-				action_clickClientNameTextField();
-			}
-		);
+		_fullScreenButton = UiResources.buildToggleFullScreenButton(_ui, this, _mutablePreferences.isFullScreen);
+		_viewDistanceControl = UiResources.buildViewDistanceSlider(_ui, this, _mutablePreferences.preferredViewDistance);
+		_brightnessControl = UiResources.buildBrightnessSlider(_ui, this, _mutablePreferences.screenBrightness);
+		_clientNameTextField = UiResources.buildClientNameTextField(_ui, this, _mutablePreferences.clientName, () -> (_typingCapture == _mutablePreferences.clientName));
 		
 		// Key-binding prefs.
-		_keyBindingSelectorControl = new ViewKeyControlSelector(_ui, _mutableControls
-			, _currentlyChangingControl
-			, (MutableControls.Control selectedControl) -> {
-				action_clickKeyBindingSelector(selectedControl);
-			}
-		);
+		_keyBindingSelectorControl = UiResources.buildKeyControlSelector(_ui, this, _currentlyChangingControl, _mutableControls);
 		
-		_copyToClipboardButton = new ViewTextButton<>(_ui, new Binding<>("Copy to Clipboard")
-			, (String value) -> value
-			, (ViewTextButton<String> button, String ignored) -> {
-				action_clickCopyToClipboardButton();
-			}
-		);
+		_copyToClipboardButton = UiResources.buildCopyToCliboardButton(_ui, this);
 		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
@@ -1557,7 +1361,7 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Single Player Worlds";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
-		float halfListWidth = SINGLE_PLAYER_WORLD_ROW_WIDTH / 2.0f;
+		float halfListWidth = UiResources.SINGLE_PLAYER_WORLD_ROW_WIDTH / 2.0f;
 		action = _renderViewChainAction(_worldListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
 		action = _renderViewChainAction(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
@@ -1618,7 +1422,7 @@ public class UiStateManager implements GameSession.ICallouts
 		String menuTitle = "Multi-Player servers";
 		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
-		float halfListWidth = MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
+		float halfListWidth = UiResources.MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
 		action = _renderViewChainAction(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
 		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
