@@ -42,6 +42,7 @@ import com.jeffdisher.october.peaks.ui.ViewControlPlusMinus;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
+import com.jeffdisher.october.peaks.ui.ViewGenericLabel;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
@@ -185,7 +186,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window _selectionWindow;
 
 	// UI for rendering the controls in the pause state.
-	private final ViewTextButton<String> _exitButton;
+	private final ViewTextButton<Boolean> _exitButton;
 	private final ViewTextButton<String> _optionsButton;
 	private final ViewTextButton<String> _keyBindingsButton;
 	private final ViewTextButton<String> _returnToGameButton;
@@ -1610,9 +1611,9 @@ public class UiStateManager implements GameSession.ICallouts
 		_drawCommonPauseBackground();
 		
 		// Draw the menu title and other UI.
-		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
+		Function<Boolean, String> valueTransformer = (Boolean isRunningOnServer) -> isRunningOnServer ? "Connected to server" : "Paused";
 		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>(menuTitle));
+		ViewGenericLabel<Boolean> title = new ViewGenericLabel<>(_ui, _uiData.isRunningOnServerBinding, valueTransformer);
 		action = _renderViewChainAction(title, new Rect(-0.5f, 0.4f, 0.5f, 0.5f), action);
 		action = _renderViewChainAction(_returnToGameButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
 		action = _renderViewChainAction(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f), action);
@@ -2133,8 +2134,7 @@ public class UiStateManager implements GameSession.ICallouts
 			throw Assert.unexpected(e);
 		}
 		_isRunningOnServer = false;
-		// We can exit from here since we have a return-to state.
-		_uiData.exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+		_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
 	}
 
 	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress) throws ConnectException
@@ -2143,8 +2143,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiState = _UiState.CONNECTING;
 		_pendingGameSession = new GameSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
 		_isRunningOnServer = true;
-		// We can exit from here since we have a return-to state.
-		_uiData.exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+		_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
 	}
 
 	private static void _rebuildSinglePlayerListBinding(Binding<List<String>> worldListBinding, File localStorageDirectory)

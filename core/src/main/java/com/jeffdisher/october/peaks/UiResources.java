@@ -280,11 +280,11 @@ public class UiResources
 		);
 	}
 
-	public static ViewTextButton<String> buildExitGameButton(GlUi ui, UiStateManager actions, UiData uiData)
+	public static ViewTextButton<Boolean> buildExitGameButton(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewTextButton<>(ui, uiData.exitButtonBinding
-			, (String text) -> text
-			, (ViewTextButton<String> button, String text) -> {
+		return new ViewTextButton<>(ui, uiData.isRunningOnServerBinding
+			, (Boolean isOnServer) -> isOnServer ? "Disconnect" : "Exit"
+			, (ViewTextButton<Boolean> button, Boolean isOnServer) -> {
 				actions.action_clickExitGameButton();
 			}
 		);

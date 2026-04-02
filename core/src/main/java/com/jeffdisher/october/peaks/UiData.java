@@ -28,7 +28,7 @@ public class UiData
 	public final Binding<String> newServerAddressBinding;
 	public final Binding<MutableServerList.ServerRecord> currentlyTestingServerBinding;
 	public final Binding<MutableControls.Control> currentlyChangingControl;
-	public final Binding<String> exitButtonBinding;
+	public final Binding<Boolean> isRunningOnServerBinding;
 	public final Binding<String> selectedWorldNameForDelete;
 	public final Binding<WorldConfig.WorldGeneratorName> worldGeneratorNameBinding;
 	public final Binding<WorldConfig.DefaultPlayerMode> defaultPlayerModeBinding;
@@ -44,7 +44,7 @@ public class UiData
 		this.mutablePreferences = mutablePreferences;
 		this.serverList = new MutableServerList(localStorageDirectory);
 		
-		this.exitButtonBinding = new Binding<>(null);
+		this.isRunningOnServerBinding = new Binding<>(false);
 		this.worldListBinding = new Binding<>(null);
 		this.newWorldNameBinding = new Binding<>("");
 		this.selectedWorldNameForDelete = new Binding<>(null);
@@ -55,6 +55,5 @@ public class UiData
 		this.currentlyTestingServerBinding = new Binding<>(null);
 		this.newServerAddressBinding = new Binding<>("");
 		this.currentlyChangingControl = new Binding<>(null);
-		
 	}
 }
