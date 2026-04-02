@@ -91,10 +91,8 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private final Environment _env;
 	private final GlUi _ui;
+	private final UiData _uiData;
 	private final EntityVolume _playerVolume;
-	private final MutableControls _mutableControls;
-	private final MutablePreferences _mutablePreferences;
-	private final MutableServerList _serverList;
 	private final ICallouts _captureState;
 	private final GL20 _gl;
 	private final File _localStorageDirectory;
@@ -117,7 +115,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _rightClick;
 	private boolean _ctrlQPressed;
 	private boolean _qPressed;
-	private Binding<String> _typingCapture;
 
 	// Data specifically related to high-level UI state.
 	private _UiState _uiState;
@@ -139,9 +136,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _quitButton;
 
 	// UI for the single-player list.
-	private final Binding<List<String>> _worldListBinding;
 	private final PaginatedListView<String> _worldListView;
-	private final Binding<String> _newWorldNameBinding;
 	private final ViewTextButton<String> _enterCreateSingleState;
 	private final ViewTextButton<String> _backButton;
 
@@ -161,8 +156,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ViewTextButton<String> _enterAddNewServerButton;
 
 	// UI for new multi-player.
-	private final Binding<String> _newServerAddressBinding;
-	private final Binding<MutableServerList.ServerRecord> _currentlyTestingServerBinding;
 	private final ViewOfStateless<MutableServerList.ServerRecord> _currentlyTestingServerView;
 	private final ViewTextField<String> _newServerAddressTextField;
 	private final ViewTextButton<String> _testServerButton;
@@ -171,7 +164,7 @@ public class UiStateManager implements GameSession.ICallouts
 	// UI for the "CONNECTING" state.
 	private final ViewTextButton<String> _cancelConnectButton;
 
-	// Bindings defined/owned here and referenced by various UI components.
+	// Bindings related to the game UI during a PLAY state (the in-game UI - not just menus, etc).
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
 	private final Binding<Inventory> _thisEntityInventoryBinding;
@@ -180,7 +173,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<ViewFuelSlot.FuelTuple> _bottomWindowFuelBinding;
 	private final Binding<String> _craftingPanelTitleBinding;
 	private final Binding<List<CraftDescription>> _craftingPanelBinding;
-	private final Binding<MutableControls.Control> _currentlyChangingControl;
 	
 	// Views for rendering parts of the UI in specific modes.
 	private final Window _thisEntityInventoryWindow;
@@ -192,7 +184,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window _selectionWindow;
 
 	// UI for rendering the controls in the pause state.
-	private final Binding<String> _exitButtonBinding;
 	private final ViewTextButton<String> _exitButton;
 	private final ViewTextButton<String> _optionsButton;
 	private final ViewTextButton<String> _keyBindingsButton;
@@ -223,13 +214,6 @@ public class UiStateManager implements GameSession.ICallouts
 	// The session is "pending" only when in the CONNECTING state.
 	private GameSession _pendingGameSession;
 
-	// Misc bindings used to carry data between actions and view elements.
-	private final Binding<String> _selectedWorldNameForDelete;
-	private final Binding<WorldConfig.WorldGeneratorName> _worldGeneratorNameBinding;
-	private final Binding<WorldConfig.DefaultPlayerMode> _defaultPlayerModeBinding;
-	private final Binding<Difficulty> _difficultyBinding;
-	private final Binding<String> _newSeedBinding;
-
 	public UiStateManager(Environment environment
 			, GL20 gl
 			, File localStorageDirectory
@@ -241,10 +225,8 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_env = environment;
 		_ui = new GlUi(gl, resources);
+		_uiData = new UiData(localStorageDirectory, mutableControls, mutablePreferences);
 		_playerVolume = environment.creatures.PLAYER.volume();
-		_mutableControls = mutableControls;
-		_mutablePreferences = mutablePreferences;
-		_serverList = new MutableServerList(localStorageDirectory);
 		_captureState = captureState;
 		_gl = gl;
 		_localStorageDirectory = localStorageDirectory;
@@ -253,44 +235,34 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
 		_uiState = _UiState.START;
-		_exitButtonBinding = new Binding<>(null);
-		_worldListBinding = new Binding<>(null);
 		
 		_singlePlayerButton = UiResources.buildSinglePlayerButton(_ui, this);
 		_multiPlayerButton = UiResources.buildMultiPlayerButton(_ui, this);
 		_quitButton = UiResources.buildQuitButton(_ui, this);
 		
 		// Single-player UI.
-		_worldListView = UiResources.buildSinglePlayerWorldListView(_ui, this, _worldListBinding, () -> _leftClick, WORLD_DIRECTORY_PREFIX);
+		_worldListView = UiResources.buildSinglePlayerWorldListView(_ui, this, _uiData, () -> _leftClick, WORLD_DIRECTORY_PREFIX);
 		_backButton = UiResources.buildBackButton(_ui, this);
-		_newWorldNameBinding = new Binding<>("");
 		_enterCreateSingleState = UiResources.buildCreateNewWorldButton(_ui, this);
 		
 		// World delete confirmation UI.
-		_selectedWorldNameForDelete = new Binding<>(null);
-		_confirmDeleteButton = UiResources.buildConfirmDeleteButton(_ui, this, _selectedWorldNameForDelete, WORLD_DIRECTORY_PREFIX);
+		_confirmDeleteButton = UiResources.buildConfirmDeleteButton(_ui, this, _uiData, WORLD_DIRECTORY_PREFIX);
 		
 		// New single player UI.
-		_worldGeneratorNameBinding = new Binding<>(WorldConfig.WorldGeneratorName.BASIC);
-		_newWorldGeneratorNameButton = UiResources.buildWorldGeneratorRadio(_ui, this, _worldGeneratorNameBinding);
-		_defaultPlayerModeBinding = new Binding<>(WorldConfig.DefaultPlayerMode.SURVIVAL);
-		_newDefaultPlayerModeButton = UiResources.buildDefaultModeRadio(_ui, this, _defaultPlayerModeBinding);
-		_difficultyBinding = new Binding<>(Difficulty.HOSTILE);
-		_newDifficultyButton = UiResources.buildDifficultyRadio(_ui, this, _difficultyBinding);
-		_newSeedBinding = new Binding<>("");
-		_newWorldSeedTextField = UiResources.buildSeedTextField(_ui, this, _newSeedBinding, () -> (_typingCapture == _newSeedBinding));
+		_newWorldGeneratorNameButton = UiResources.buildWorldGeneratorRadio(_ui, this, _uiData);
+		_newDefaultPlayerModeButton = UiResources.buildDefaultModeRadio(_ui, this, _uiData);
+		_newDifficultyButton = UiResources.buildDifficultyRadio(_ui, this, _uiData);
+		_newWorldSeedTextField = UiResources.buildSeedTextField(_ui, this, _uiData);
 		_createWorldButton = UiResources.buildCreateNewButton(_ui, this);
-		_newWorldNameTextField = UiResources.buildNewWorldNameTextField(_ui, this, _newWorldNameBinding, () -> (_typingCapture == _newWorldNameBinding));
+		_newWorldNameTextField = UiResources.buildNewWorldNameTextField(_ui, this, _uiData);
 		
 		// Server list UI.
-		_serverListView = UiResources.buildServerListView(_ui, this, _serverList, () -> _leftClick);
-		_currentlyTestingServerBinding = new Binding<>(null);
-		_newServerAddressBinding = new Binding<>("");
+		_serverListView = UiResources.buildServerListView(_ui, this, _uiData, () -> _leftClick);
 		_enterAddNewServerButton = UiResources.buildAddNewServerButton(_ui, this);
 		
 		// New server UI.
-		_currentlyTestingServerView = UiResources.buildServerTestingView(_ui, this, _currentlyTestingServerBinding);
-		_newServerAddressTextField = UiResources.buildNewServerAddressTextField(_ui, this, _newServerAddressBinding, () -> (_typingCapture == _newServerAddressBinding));
+		_currentlyTestingServerView = UiResources.buildServerTestingView(_ui, this, _uiData);
+		_newServerAddressTextField = UiResources.buildNewServerAddressTextField(_ui, this, _uiData);
 		_testServerButton = UiResources.buildTestConnectionButton(_ui, this);
 		_saveServerButton = UiResources.buildSaveConnectionButton(_ui, this);
 		
@@ -306,8 +278,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_bottomWindowFuelBinding = new Binding<>(null);
 		_craftingPanelTitleBinding = new Binding<>(null);
 		_craftingPanelBinding = new Binding<>(null);
-		_currentlyChangingControl = new Binding<>(null);
-		
+	
 		// Create our views.
 		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
 			AbsoluteLocation relevantBlock;
@@ -380,19 +351,19 @@ public class UiStateManager implements GameSession.ICallouts
 		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
 		// Pause state controls.
-		_exitButton = UiResources.buildExitGameButton(_ui, this, _exitButtonBinding);
+		_exitButton = UiResources.buildExitGameButton(_ui, this, _uiData);
 		_optionsButton = UiResources.buildGameOptionsButton(_ui, this);
 		_keyBindingsButton = UiResources.buildKeyBindingsButton(_ui, this);
 		_returnToGameButton = UiResources.buildReturnToGameButton(_ui, this);
 		
 		// Options state controls.
-		_fullScreenButton = UiResources.buildToggleFullScreenButton(_ui, this, _mutablePreferences.isFullScreen);
-		_viewDistanceControl = UiResources.buildViewDistanceSlider(_ui, this, _mutablePreferences.preferredViewDistance);
-		_brightnessControl = UiResources.buildBrightnessSlider(_ui, this, _mutablePreferences.screenBrightness);
-		_clientNameTextField = UiResources.buildClientNameTextField(_ui, this, _mutablePreferences.clientName, () -> (_typingCapture == _mutablePreferences.clientName));
+		_fullScreenButton = UiResources.buildToggleFullScreenButton(_ui, this, _uiData);
+		_viewDistanceControl = UiResources.buildViewDistanceSlider(_ui, this, _uiData);
+		_brightnessControl = UiResources.buildBrightnessSlider(_ui, this, _uiData);
+		_clientNameTextField = UiResources.buildClientNameTextField(_ui, this, _uiData);
 		
 		// Key-binding prefs.
-		_keyBindingSelectorControl = UiResources.buildKeyControlSelector(_ui, this, _currentlyChangingControl, _mutableControls);
+		_keyBindingSelectorControl = UiResources.buildKeyControlSelector(_ui, this, _uiData);
 		
 		_copyToClipboardButton = UiResources.buildCopyToCliboardButton(_ui, this);
 		
@@ -411,7 +382,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public void didConnect(int currentViewDistance)
 	{
 		// We just use this to initialize our preferences.
-		_mutablePreferences.preferredViewDistance.set(currentViewDistance);
+		_uiData.mutablePreferences.preferredViewDistance.set(currentViewDistance);
 	}
 
 	@Override
@@ -636,12 +607,12 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void keyCodeUp(int lastKeyUp)
 	{
-		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _currentlyChangingControl.get()))
+		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _uiData.currentlyChangingControl.get()))
 		{
-			boolean didSet = _mutableControls.setKeyForControl(_currentlyChangingControl.get(), lastKeyUp);
+			boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), lastKeyUp);
 			if (didSet)
 			{
-				_currentlyChangingControl.set(null);
+				_uiData.currentlyChangingControl.set(null);
 			}
 		}
 	}
@@ -793,14 +764,14 @@ public class UiStateManager implements GameSession.ICallouts
 	public void keyTyped(char typedCharacter)
 	{
 		// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
-		if (null != _typingCapture)
+		if (null != _uiData.typingCapture)
 		{
-			String string = _typingCapture.get();
+			String string = _uiData.typingCapture.get();
 			int nameLength = string.length();
 			if (('\b' == typedCharacter) && (nameLength > 0))
 			{
 				// Backspace is a special case.
-				_typingCapture.set(string.substring(0, string.length() - 1));
+				_uiData.typingCapture.set(string.substring(0, string.length() - 1));
 			}
 			else if (nameLength < MAX_WORLD_NAME)
 			{
@@ -810,7 +781,7 @@ public class UiStateManager implements GameSession.ICallouts
 				case Character.LOWERCASE_LETTER:
 				case Character.UPPERCASE_LETTER:
 				case Character.DECIMAL_DIGIT_NUMBER:
-					_typingCapture.set(string + typedCharacter);
+					_uiData.typingCapture.set(string + typedCharacter);
 					break;
 					default:
 						// Special-case whitelist.
@@ -821,7 +792,7 @@ public class UiStateManager implements GameSession.ICallouts
 						case '-':
 						case '_':
 						case ' ':
-							_typingCapture.set(string + typedCharacter);
+							_uiData.typingCapture.set(string + typedCharacter);
 							break;
 						default:
 							// Ignored.
@@ -847,7 +818,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.LIST_SINGLE_PLAYER;
 			
 			// Update the world name list since we are entering that state.
-			_rebuildSinglePlayerListBinding(_worldListBinding, _localStorageDirectory);
+			_rebuildSinglePlayerListBinding(_uiData.worldListBinding, _localStorageDirectory);
 		}
 	}
 
@@ -860,7 +831,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.LIST_MULTI_PLAYER;
 			
 			// Request that this list be validated.
-			_serverList.pollServers();
+			_uiData.serverList.pollServers();
 		}
 	}
 
@@ -899,7 +870,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.CONFIRM_DELETE_SINGLE_PLAYER;
 			
 			// We also need to put this chosen directory in the binding.
-			_selectedWorldNameForDelete.set(directoryName);
+			_uiData.selectedWorldNameForDelete.set(directoryName);
 		}
 	}
 
@@ -921,7 +892,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.NEW_SINGLE_PLAYER;
 			
 			// Select the default text field.
-			_typingCapture = _newWorldNameBinding;
+			_uiData.typingCapture = _uiData.newWorldNameBinding;
 		}
 	}
 
@@ -934,14 +905,14 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.LIST_SINGLE_PLAYER;
 			
 			// Delete the directory, then return to the listing.
-			File localWorldDirectory = new File(_localStorageDirectory, _selectedWorldNameForDelete.get());
+			File localWorldDirectory = new File(_localStorageDirectory, _uiData.selectedWorldNameForDelete.get());
 			System.out.println("Deleting local world: " + localWorldDirectory);
 			_deleteWorldRecursively(localWorldDirectory);
 			
-			_selectedWorldNameForDelete.set(null);
+			_uiData.selectedWorldNameForDelete.set(null);
 			
 			// We also need to rebuild the list.
-			_rebuildSinglePlayerListBinding(_worldListBinding, _localStorageDirectory);
+			_rebuildSinglePlayerListBinding(_uiData.worldListBinding, _localStorageDirectory);
 		}
 	}
 
@@ -949,7 +920,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_leftClick)
 		{
-			_worldGeneratorNameBinding.set(selected);
+			_uiData.worldGeneratorNameBinding.set(selected);
 		}
 	}
 
@@ -957,7 +928,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_leftClick)
 		{
-			_defaultPlayerModeBinding.set(selected);
+			_uiData.defaultPlayerModeBinding.set(selected);
 		}
 	}
 
@@ -965,7 +936,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_leftClick)
 		{
-			_difficultyBinding.set(selected);
+			_uiData.difficultyBinding.set(selected);
 		}
 	}
 
@@ -974,7 +945,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// We want to enable text capture for this binding.
 		if (_leftClick)
 		{
-			_typingCapture = _newSeedBinding;
+			_uiData.typingCapture = _uiData.newSeedBinding;
 		}
 	}
 
@@ -986,17 +957,17 @@ public class UiStateManager implements GameSession.ICallouts
 			Assert.assertTrue(_UiState.NEW_SINGLE_PLAYER == _uiState);
 			
 			// Make sure that the name is non-empty and not already used.
-			String worldName = _newWorldNameBinding.get();
+			String worldName = _uiData.newWorldNameBinding.get();
 			String directoryName = "world_" + worldName;
-			boolean alreadyExists = _worldListBinding.get().contains(directoryName);
+			boolean alreadyExists = _uiData.worldListBinding.get().contains(directoryName);
 			if (!alreadyExists && (worldName.length() > 0))
 			{
-				WorldConfig.WorldGeneratorName worldGeneratorName = _worldGeneratorNameBinding.get();
-				WorldConfig.DefaultPlayerMode defaultPlayerMode = _defaultPlayerModeBinding.get();
-				Difficulty difficulty = _difficultyBinding.get();
+				WorldConfig.WorldGeneratorName worldGeneratorName = _uiData.worldGeneratorNameBinding.get();
+				WorldConfig.DefaultPlayerMode defaultPlayerMode = _uiData.defaultPlayerModeBinding.get();
+				Difficulty difficulty = _uiData.difficultyBinding.get();
 				// The seed is a little tricky: if empty, use the default, if a number, use the number, if text, use the hash.
 				Integer basicWorldGeneratorSeed = null;
-				String rawSeed = _newSeedBinding.get();
+				String rawSeed = _uiData.newSeedBinding.get();
 				if (!rawSeed.isEmpty())
 				{
 					try
@@ -1017,8 +988,8 @@ public class UiStateManager implements GameSession.ICallouts
 					, difficulty
 					, basicWorldGeneratorSeed
 				);
-				_newWorldNameBinding.set("");
-				_typingCapture = null;
+				_uiData.newWorldNameBinding.set("");
+				_uiData.typingCapture = null;
 			}
 		}
 	}
@@ -1028,7 +999,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// We want to enable text capture for this binding.
 		if (_leftClick)
 		{
-			_typingCapture = _newWorldNameBinding;
+			_uiData.typingCapture = _uiData.newWorldNameBinding;
 		}
 	}
 
@@ -1038,8 +1009,8 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			try
 			{
-				String clientName = _mutablePreferences.clientName.get();
-				int startingViewDistance = _mutablePreferences.preferredViewDistance.get();
+				String clientName = _uiData.mutablePreferences.clientName.get();
+				int startingViewDistance = _uiData.mutablePreferences.preferredViewDistance.get();
 				_connectToServer(_gl, _localStorageDirectory, _resources, clientName, startingViewDistance, server.address);
 			}
 			catch (ConnectException e)
@@ -1054,7 +1025,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_leftClick)
 		{
-			_serverList.removeServerFromList(server);
+			_uiData.serverList.removeServerFromList(server);
 		}
 	}
 
@@ -1067,10 +1038,10 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.NEW_MULTI_PLAYER;
 			
 			// Select the default text field.
-			_typingCapture = _newServerAddressBinding;
+			_uiData.typingCapture = _uiData.newServerAddressBinding;
 			
 			// Clear any stale state from last time.
-			_currentlyTestingServerBinding.set(null);
+			_uiData.currentlyTestingServerBinding.set(null);
 		}
 	}
 
@@ -1079,7 +1050,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// We want to enable text capture for this binding.
 		if (_leftClick)
 		{
-			_typingCapture = _newServerAddressBinding;
+			_uiData.typingCapture = _uiData.newServerAddressBinding;
 		}
 	}
 
@@ -1091,7 +1062,7 @@ public class UiStateManager implements GameSession.ICallouts
 			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
 			
 			// We will need to parse this address from the binding.
-			String rawAddress = _newServerAddressBinding.get();
+			String rawAddress = _uiData.newServerAddressBinding.get();
 			int colonIndex = rawAddress.indexOf(":");
 			if (-1 != colonIndex)
 			{
@@ -1100,10 +1071,10 @@ public class UiStateManager implements GameSession.ICallouts
 				InetSocketAddress address = new InetSocketAddress(ipHostName, port);
 				
 				// Create the socket and start the background test, storing the new token in the binding.
-				MutableServerList.ServerRecord record = _serverList.beginSpecialPollRequest(address);
-				_currentlyTestingServerBinding.set(record);
-				_newServerAddressBinding.set("");
-				_typingCapture = null;
+				MutableServerList.ServerRecord record = _uiData.serverList.beginSpecialPollRequest(address);
+				_uiData.currentlyTestingServerBinding.set(record);
+				_uiData.newServerAddressBinding.set("");
+				_uiData.typingCapture = null;
 			}
 		}
 	}
@@ -1115,11 +1086,11 @@ public class UiStateManager implements GameSession.ICallouts
 			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
 			
 			// If there is a binding, and it is good, add it to the server list and back out of this.
-			MutableServerList.ServerRecord record = _currentlyTestingServerBinding.get();
+			MutableServerList.ServerRecord record = _uiData.currentlyTestingServerBinding.get();
 			if ((null != record) && record.isGood)
 			{
-				_serverList.addServerToList(record);
-				_currentlyTestingServerBinding.set(null);
+				_uiData.serverList.addServerToList(record);
+				_uiData.currentlyTestingServerBinding.set(null);
 				
 				// We can escape this state.
 				_doBackStateTransition();
@@ -1159,7 +1130,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_leftClick)
 		{
 			_uiState = _UiState.KEY_BINDINGS;
-			_currentlyChangingControl.set(null);
+			_uiData.currentlyChangingControl.set(null);
 		}
 	}
 
@@ -1189,7 +1160,7 @@ public class UiStateManager implements GameSession.ICallouts
 				// For now, we will always use this same default window size.
 				Gdx.graphics.setWindowedMode(1280, 960);
 			}
-			_mutablePreferences.isFullScreen.set(newFullScreen);
+			_uiData.mutablePreferences.isFullScreen.set(newFullScreen);
 		}
 	}
 
@@ -1201,7 +1172,7 @@ public class UiStateManager implements GameSession.ICallouts
 			if (null != _currentGameSession)
 			{
 				// We try changing this in the client and it will return the updated value.
-				int oldDistance = _mutablePreferences.preferredViewDistance.get();
+				int oldDistance = _uiData.mutablePreferences.preferredViewDistance.get();
 				int newDistance = oldDistance +
 					(shouldIncrease ? 1 : -1)
 				;
@@ -1209,8 +1180,8 @@ public class UiStateManager implements GameSession.ICallouts
 				if (finalValue != oldDistance)
 				{
 					// If this change did anything, update the UI and save changes.
-					_mutablePreferences.preferredViewDistance.set(finalValue);
-					_mutablePreferences.saveToDisk();
+					_uiData.mutablePreferences.preferredViewDistance.set(finalValue);
+					_uiData.mutablePreferences.saveToDisk();
 				}
 			}
 		}
@@ -1221,7 +1192,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_leftClick)
 		{
 			// We just want to increment this by 0.1 increments between 1.0 and 2.0.
-			int current = (int)(10.0f * _mutablePreferences.screenBrightness.get());
+			int current = (int)(10.0f * _uiData.mutablePreferences.screenBrightness.get());
 			int next;
 			if (shouldIncrease)
 			{
@@ -1232,7 +1203,7 @@ public class UiStateManager implements GameSession.ICallouts
 				next = Math.max(10, current - 1);
 			}
 			float updated = ((float) next) / 10.0f;
-			_mutablePreferences.screenBrightness.set(updated);
+			_uiData.mutablePreferences.screenBrightness.set(updated);
 		}
 	}
 
@@ -1241,7 +1212,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_leftClick)
 		{
 			// We want to enable text capture for this binding.
-			_typingCapture = _mutablePreferences.clientName;
+			_uiData.typingCapture = _uiData.mutablePreferences.clientName;
 		}
 	}
 
@@ -1249,7 +1220,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_leftClick)
 		{
-			_currentlyChangingControl.set(selectedControl);
+			_uiData.currentlyChangingControl.set(selectedControl);
 		}
 	}
 
@@ -1274,7 +1245,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_currentGameSession.shutdown();
 		}
-		_serverList.shutdown();
+		_uiData.serverList.shutdown();
 	}
 
 
@@ -2087,7 +2058,7 @@ public class UiStateManager implements GameSession.ICallouts
 			break;
 		case OPTIONS:
 			// Write-back preferences.
-			_mutablePreferences.saveToDisk();
+			_uiData.mutablePreferences.saveToDisk();
 			// Options depends on whether is a game playing.
 			if (null != _currentGameSession)
 			{
@@ -2099,9 +2070,9 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			break;
 		case KEY_BINDINGS:
-			if (null != _currentlyChangingControl.get())
+			if (null != _uiData.currentlyChangingControl.get())
 			{
-				_currentlyChangingControl.set(null);
+				_uiData.currentlyChangingControl.set(null);
 			}
 			else
 			{
@@ -2121,7 +2092,7 @@ public class UiStateManager implements GameSession.ICallouts
 			break;
 		}
 		// Any meaning of "back" should stop text input.
-		_typingCapture = null;
+		_uiData.typingCapture = null;
 	}
 
 	private void _enterSingleWorld(GL20 gl, File localStorageDirectory
@@ -2140,10 +2111,10 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_pendingGameSession = new GameSession(_env
 				, gl
-				, _mutablePreferences.screenBrightness
+				, _uiData.mutablePreferences.screenBrightness
 				, resources
 				, "Local"
-				, _mutablePreferences.preferredViewDistance.get()
+				, _uiData.mutablePreferences.preferredViewDistance.get()
 				, null
 				, localWorldDirectory
 				, worldGeneratorName
@@ -2160,17 +2131,17 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		_isRunningOnServer = false;
 		// We can exit from here since we have a return-to state.
-		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+		_uiData.exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
 	}
 
 	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress) throws ConnectException
 	{
 		Assert.assertTrue(null == _pendingGameSession);
 		_uiState = _UiState.CONNECTING;
-		_pendingGameSession = new GameSession(_env, gl, _mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
+		_pendingGameSession = new GameSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
 		_isRunningOnServer = true;
 		// We can exit from here since we have a return-to state.
-		_exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
+		_uiData.exitButtonBinding.set(_isRunningOnServer ? "Disconnect" : "Exit");
 	}
 
 	private static void _rebuildSinglePlayerListBinding(Binding<List<String>> worldListBinding, File localStorageDirectory)

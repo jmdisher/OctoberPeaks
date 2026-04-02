@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks;
 
-import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import com.jeffdisher.october.peaks.persistence.MutableControls;
@@ -67,7 +66,7 @@ public class UiResources
 
 	public static PaginatedListView<String> buildSinglePlayerWorldListView(GlUi ui
 		, UiStateManager actions
-		, Binding<List<String>> worldListBinding
+		, UiData uiData
 		, BooleanSupplier shouldChangePage
 		, String worldDirectoryPrefix
 	)
@@ -85,7 +84,7 @@ public class UiResources
 			}
 		);
 		return new PaginatedListView<>(ui
-			, worldListBinding
+			, uiData.worldListBinding
 			, shouldChangePage
 			, new StatelessHBox<>(enterWorldButton, SINGLE_PLAYER_WORLD_ROW_WIDTH - SINGLE_PLAYER_WORLD_ROW_HEIGHT, deleteWorldButton)
 			, SINGLE_PLAYER_WORLD_ROW_HEIGHT
@@ -112,9 +111,9 @@ public class UiResources
 		);
 	}
 
-	public static ViewTextButton<String> buildConfirmDeleteButton(GlUi ui, UiStateManager actions, Binding<String> selectedWorldNameForDelete, String worldDirectoryPrefix)
+	public static ViewTextButton<String> buildConfirmDeleteButton(GlUi ui, UiStateManager actions, UiData uiData, String worldDirectoryPrefix)
 	{
-		return new ViewTextButton<>(ui, selectedWorldNameForDelete
+		return new ViewTextButton<>(ui, uiData.selectedWorldNameForDelete
 			, (String text) -> "Confirm delete world \"" + text.substring(worldDirectoryPrefix.length()) + "\" (cannot be undone)"
 			, (ViewTextButton<String> button, String text) -> {
 				actions.action_clickConfirmDeleteButton();
@@ -122,7 +121,7 @@ public class UiResources
 		);
 	}
 
-	public static ViewRadioButton<WorldConfig.WorldGeneratorName> buildWorldGeneratorRadio(GlUi ui, UiStateManager actions, Binding<WorldConfig.WorldGeneratorName> worldGeneratorNameBinding)
+	public static ViewRadioButton<WorldConfig.WorldGeneratorName> buildWorldGeneratorRadio(GlUi ui, UiStateManager actions, UiData uiData)
 	{
 		return new ViewRadioButton<>(new StatelessViewRadioButton<>(ui
 				, (WorldConfig.WorldGeneratorName type) -> type.name()
@@ -131,11 +130,11 @@ public class UiResources
 				}
 				, WorldConfig.WorldGeneratorName.class
 			)
-			, worldGeneratorNameBinding
+			, uiData.worldGeneratorNameBinding
 		);
 	}
 
-	public static ViewRadioButton<WorldConfig.DefaultPlayerMode> buildDefaultModeRadio(GlUi ui, UiStateManager actions, Binding<WorldConfig.DefaultPlayerMode> defaultPlayerModeBinding)
+	public static ViewRadioButton<WorldConfig.DefaultPlayerMode> buildDefaultModeRadio(GlUi ui, UiStateManager actions, UiData uiData)
 	{
 		return new ViewRadioButton<>(new StatelessViewRadioButton<>(ui
 				, (WorldConfig.DefaultPlayerMode type) -> type.name()
@@ -144,11 +143,11 @@ public class UiResources
 				}
 				, WorldConfig.DefaultPlayerMode.class
 			)
-			, defaultPlayerModeBinding
+			, uiData.defaultPlayerModeBinding
 		);
 	}
 
-	public static ViewRadioButton<Difficulty> buildDifficultyRadio(GlUi ui, UiStateManager actions, Binding<Difficulty> difficultyBinding)
+	public static ViewRadioButton<Difficulty> buildDifficultyRadio(GlUi ui, UiStateManager actions, UiData uiData)
 	{
 		return new ViewRadioButton<>(new StatelessViewRadioButton<>(ui
 				, (Difficulty type) -> type.name()
@@ -157,16 +156,16 @@ public class UiResources
 				}
 				, Difficulty.class
 			)
-			, difficultyBinding
+			, uiData.difficultyBinding
 		);
 	}
 
-	public static ViewTextField<String> buildSeedTextField(GlUi ui, UiStateManager actions, Binding<String> newSeedBinding, BooleanSupplier isSelected)
+	public static ViewTextField<String> buildSeedTextField(GlUi ui, UiStateManager actions, UiData uiData)
 	{
 		return new ViewTextField<>(ui
-			, newSeedBinding
+			, uiData.newSeedBinding
 			, (String text) -> text
-			, () -> isSelected.getAsBoolean() ? ui.pixelGreen : ui.pixelLightGrey
+			, () -> (uiData.typingCapture == uiData.newSeedBinding) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				actions.action_clickSeedTextField();
 			}
@@ -183,11 +182,12 @@ public class UiResources
 		);
 	}
 
-	public static ViewTextField<String> buildNewWorldNameTextField(GlUi ui, UiStateManager actions, Binding<String> newWorldNameBinding, BooleanSupplier isSelected)
+	public static ViewTextField<String> buildNewWorldNameTextField(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewTextField<>(ui, newWorldNameBinding
-			, (String value) -> isSelected.getAsBoolean() ? (value + "_") : value
-			, () -> isSelected.getAsBoolean() ? ui.pixelGreen : ui.pixelLightGrey
+		return new ViewTextField<>(ui
+			, uiData.newWorldNameBinding
+			, (String value) -> (uiData.typingCapture == uiData.newWorldNameBinding) ? (value + "_") : value
+			, () -> (uiData.typingCapture == uiData.newWorldNameBinding) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				actions.action_clickNewWorldNameTextField();
 			}
@@ -196,7 +196,7 @@ public class UiResources
 
 	public static PaginatedListView<MutableServerList.ServerRecord> buildServerListView(GlUi ui
 		, UiStateManager actions
-		, MutableServerList serverList
+		, UiData uiData
 		, BooleanSupplier shouldChangePage
 	)
 	{
@@ -213,7 +213,7 @@ public class UiResources
 			}
 		);
 		return new PaginatedListView<>(ui
-			, serverList.servers
+			, uiData.serverList.servers
 			, shouldChangePage
 			, new StatelessHBox<>(connectToServerLine, MULTI_PLAYER_SERVER_ROW_WIDTH - MULTI_PLAYER_SERVER_ROW_HEIGHT, deleteServerButton)
 			, MULTI_PLAYER_SERVER_ROW_HEIGHT
@@ -230,20 +230,20 @@ public class UiResources
 		);
 	}
 
-	public static ViewOfStateless<MutableServerList.ServerRecord> buildServerTestingView(GlUi ui, UiStateManager actions, Binding<MutableServerList.ServerRecord> currentlyTestingServerBinding)
+	public static ViewOfStateless<MutableServerList.ServerRecord> buildServerTestingView(GlUi ui, UiStateManager actions, UiData uiData)
 	{
 		StatelessMultiLineButton<MutableServerList.ServerRecord> renderOnlyServerLine = new StatelessMultiLineButton<>(ui
 			, new ServerRecordTransformer(ui)
 			, null
 		);
-		return new ViewOfStateless<>(renderOnlyServerLine, currentlyTestingServerBinding);
+		return new ViewOfStateless<>(renderOnlyServerLine, uiData.currentlyTestingServerBinding);
 	}
 
-	public static ViewTextField<String> buildNewServerAddressTextField(GlUi ui, UiStateManager actions, Binding<String> newServerAddressBinding, BooleanSupplier isSelected)
+	public static ViewTextField<String> buildNewServerAddressTextField(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewTextField<>(ui, newServerAddressBinding
-			, (String value) -> isSelected.getAsBoolean() ? (value + "_") : value
-			, () -> isSelected.getAsBoolean() ? ui.pixelGreen : ui.pixelLightGrey
+		return new ViewTextField<>(ui, uiData.newServerAddressBinding
+			, (String value) -> (uiData.typingCapture == uiData.newServerAddressBinding) ? (value + "_") : value
+			, () -> (uiData.typingCapture == uiData.newServerAddressBinding) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				actions.action_clickServerAddressTextField();
 			}
@@ -280,9 +280,9 @@ public class UiResources
 		);
 	}
 
-	public static ViewTextButton<String> buildExitGameButton(GlUi ui, UiStateManager actions, Binding<String> exitButtonBinding)
+	public static ViewTextButton<String> buildExitGameButton(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewTextButton<>(ui, exitButtonBinding
+		return new ViewTextButton<>(ui, uiData.exitButtonBinding
 			, (String text) -> text
 			, (ViewTextButton<String> button, String text) -> {
 				actions.action_clickExitGameButton();
@@ -320,9 +320,9 @@ public class UiResources
 		);
 	}
 
-	public static ViewTextButton<Boolean> buildToggleFullScreenButton(GlUi ui, UiStateManager actions, Binding<Boolean> fullScreenBinding)
+	public static ViewTextButton<Boolean> buildToggleFullScreenButton(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewTextButton<>(ui, fullScreenBinding
+		return new ViewTextButton<>(ui, uiData.mutablePreferences.isFullScreen
 			, (Boolean isFullScreen) -> isFullScreen ? "Change to Windowed" : "Change to Full Screen"
 			, (ViewTextButton<Boolean> button, Boolean isFullScreen) -> {
 				actions.action_clickFullScreenToggle(isFullScreen);
@@ -330,9 +330,9 @@ public class UiResources
 		);
 	}
 
-	public static ViewControlPlusMinus<Integer> buildViewDistanceSlider(GlUi ui, UiStateManager actions, Binding<Integer> viewDistanceBinding)
+	public static ViewControlPlusMinus<Integer> buildViewDistanceSlider(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewControlPlusMinus<>(ui, viewDistanceBinding
+		return new ViewControlPlusMinus<>(ui, uiData.mutablePreferences.preferredViewDistance
 			, (Integer distance) -> distance + " cuboids"
 			, (boolean plus) -> {
 				actions.action_clickViewDistanceSlider(plus);
@@ -340,9 +340,9 @@ public class UiResources
 		);
 	}
 
-	public static ViewControlPlusMinus<Float> buildBrightnessSlider(GlUi ui, UiStateManager actions, Binding<Float> brightnessBinding)
+	public static ViewControlPlusMinus<Float> buildBrightnessSlider(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewControlPlusMinus<>(ui, brightnessBinding
+		return new ViewControlPlusMinus<>(ui, uiData.mutablePreferences.screenBrightness
 			, (Float brightness) -> String.format("%.1fx", brightness)
 			, (boolean plus) -> {
 				actions.action_clickBrightnessSlider(plus);
@@ -350,11 +350,11 @@ public class UiResources
 		);
 	}
 
-	public static ViewTextField<String> buildClientNameTextField(GlUi ui, UiStateManager actions, Binding<String> clientNameBinding, BooleanSupplier isSelected)
+	public static ViewTextField<String> buildClientNameTextField(GlUi ui, UiStateManager actions, UiData uiData)
 	{
-		return new ViewTextField<>(ui, clientNameBinding
-			, (String value) -> isSelected.getAsBoolean() ? (value + "_") : value
-			, () -> isSelected.getAsBoolean() ? ui.pixelGreen : ui.pixelLightGrey
+		return new ViewTextField<>(ui, uiData.mutablePreferences.clientName
+			, (String value) -> (uiData.typingCapture == uiData.mutablePreferences.clientName) ? (value + "_") : value
+			, () -> (uiData.typingCapture == uiData.mutablePreferences.clientName) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				actions.action_clickClientNameTextField();
 			}
@@ -363,12 +363,11 @@ public class UiResources
 
 	public static ViewKeyControlSelector buildKeyControlSelector(GlUi ui
 		, UiStateManager actions
-		, Binding<MutableControls.Control> currentlyChangingControl
-		, MutableControls mutableControls
+		, UiData uiData
 	)
 	{
-		return new ViewKeyControlSelector(ui, mutableControls
-			, currentlyChangingControl
+		return new ViewKeyControlSelector(ui, uiData.mutableControls
+			, uiData.currentlyChangingControl
 			, (MutableControls.Control selectedControl) -> {
 				actions.action_clickKeyBindingSelector(selectedControl);
 			}
