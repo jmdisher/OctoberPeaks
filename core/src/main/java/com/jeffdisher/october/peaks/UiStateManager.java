@@ -29,9 +29,9 @@ import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
+import com.jeffdisher.october.peaks.ui.FixedWindow;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.peaks.ui.IView;
 import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
@@ -1314,46 +1314,45 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw whatever is common to states where we draw interactive buttons on top.
 		_ui.enterUiRenderMode();
 		
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("October Peaks"));
-		ViewStaticImage logo = new ViewStaticImage(_ui, _ui.logoTexture);
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
-		action = _renderViewChainAction(logo, new Rect(-0.2f, 0.3f, 0.2f, 0.7f), action);
-		action = _renderViewChainAction(_singlePlayerButton, new Rect(-0.4f, 0.1f, 0.4f, 0.2f), action);
-		action = _renderViewChainAction(_multiPlayerButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
-		action = _renderViewChainAction(_optionsButton, new Rect(-0.4f, -0.1f, 0.4f, 0.0f), action);
-		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.4f, -0.2f, 0.4f, -0.1f), action);
-		action = _renderViewChainAction(_quitButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("October Peaks")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			.add(new ViewStaticImage(_ui, _ui.logoTexture), new Rect(-0.2f, 0.3f, 0.2f, 0.7f))
+			.add(_singlePlayerButton, new Rect(-0.4f, 0.1f, 0.4f, 0.2f))
+			.add(_multiPlayerButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f))
+			.add(_optionsButton, new Rect(-0.4f, -0.1f, 0.4f, 0.0f))
+			.add(_keyBindingsButton, new Rect(-0.4f, -0.2f, 0.4f, -0.1f))
+			.add(_quitButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawListSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Single Player Worlds"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		float halfListWidth = UiResources.SINGLE_PLAYER_WORLD_ROW_WIDTH / 2.0f;
-		action = _renderViewChainAction(_worldListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
-		action = _renderViewChainAction(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Single Player Worlds")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			.add(_worldListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f))
+			.add(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
+			.add(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawConfirmDeleteSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Confirm Delete"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
-		action = _renderViewChainAction(_confirmDeleteButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Confirm Delete")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			.add(_confirmDeleteButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f))
+			.add(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawNewSinglePlayerStateWindows()
@@ -1362,46 +1361,44 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		float margin = 0.6f;
 		float divider = -0.2f;
-		float nextTop = 0.8f;
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Create Single Player World"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("World Generator")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
-		action = _renderViewChainAction(_newWorldGeneratorNameButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Player Mode")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
-		action = _renderViewChainAction(_newDefaultPlayerModeButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Difficulty")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
-		action = _renderViewChainAction(_newDifficultyButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Seed Override")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
-		action = _renderViewChainAction(_newWorldSeedTextField, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("World Name")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
-		action = _renderViewChainAction(_newWorldNameTextField, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(_createWorldButton, new Rect(-0.4f, nextTop - 0.1f, 0.4f, nextTop), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(_backButton, new Rect(-0.3f, nextTop - 0.1f, 0.3f, nextTop), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Create Single Player World")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("World Generator")), new Rect(-margin, 0.5f, divider, 0.6f))
+			.add(_newWorldGeneratorNameButton, new Rect(divider, 0.5f, margin, 0.6f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Player Mode")), new Rect(-margin, 0.4f, divider, 0.5f))
+			.add(_newDefaultPlayerModeButton, new Rect(divider, 0.4f, margin, 0.5f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Difficulty")), new Rect(-margin, 0.3f, divider, 0.4f))
+			.add(_newDifficultyButton, new Rect(divider, 0.3f, margin, 0.4f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Seed Override")), new Rect(-margin, 0.2f, divider, 0.3f))
+			.add(_newWorldSeedTextField, new Rect(divider, 0.2f, margin, 0.3f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("World Name")), new Rect(-margin, 0.1f, divider, 0.2f))
+			.add(_newWorldNameTextField, new Rect(divider, 0.1f, margin, 0.2f))
+			
+			.add(_createWorldButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f))
+			.add(_backButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawListMultiPlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Multi-Player servers"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		float halfListWidth = UiResources.MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
-		action = _renderViewChainAction(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
-		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Multi-Player servers")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			.add(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f))
+			.add(_enterAddNewServerButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
+			.add(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawNewMultiPlayerStateWindows()
@@ -1410,22 +1407,20 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		float margin = 0.6f;
 		float divider = -0.2f;
-		float nextTop = 0.8f;
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("New Server Connection"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(_currentlyTestingServerView, new Rect(-margin, nextTop - 0.2f, margin, nextTop), action);
-		nextTop -= 0.3f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Server IP:port")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
-		action = _renderViewChainAction(_newServerAddressTextField, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(_testServerButton, new Rect(-margin, nextTop - 0.1f, 0.0f, nextTop), action);
-		action = _renderViewChainAction(_saveServerButton, new Rect(0.0f, nextTop - 0.1f, margin, nextTop), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(_backButton, new Rect(-0.3f, nextTop - 0.1f, 0.3f, nextTop), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("New Server Connection")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			.add(_currentlyTestingServerView, new Rect(-margin, 0.4f - 0.2f, margin, 0.6f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Server IP:port")), new Rect(-margin, 0.2f, divider, 0.3f))
+			.add(_newServerAddressTextField, new Rect(divider, 0.2f, margin, 0.3f))
+			
+			.add(_testServerButton, new Rect(-margin, 0.0f, 0.0f, 0.1f))
+			.add(_saveServerButton, new Rect(0.0f, 0.0f, margin, 0.1f))
+			
+			.add(_backButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawInventoryStateWindows()
@@ -1610,17 +1605,16 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_drawCommonPauseBackground();
 		
-		// Draw the menu title and other UI.
 		Function<Boolean, String> valueTransformer = (Boolean isRunningOnServer) -> isRunningOnServer ? "Connected to server" : "Paused";
-		IAction action = null;
-		ViewGenericLabel<Boolean> title = new ViewGenericLabel<>(_ui, _uiData.isRunningOnServerBinding, valueTransformer);
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.4f, 0.5f, 0.5f), action);
-		action = _renderViewChainAction(_returnToGameButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
-		action = _renderViewChainAction(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f), action);
-		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f), action);
-		action = _renderViewChainAction(_exitButton, new Rect(-0.2f, -0.5f, 0.2f, -0.4f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewGenericLabel<>(_ui, _uiData.isRunningOnServerBinding, valueTransformer), new Rect(-0.5f, 0.4f, 0.5f, 0.5f))
+			.add(_returnToGameButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f))
+			.add(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f))
+			.add(_keyBindingsButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f))
+			.add(_exitButton, new Rect(-0.2f, -0.5f, 0.2f, -0.4f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawErrorStateWindows()
@@ -1637,13 +1631,14 @@ public class UiStateManager implements GameSession.ICallouts
 				break;
 			}
 		}
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Fatal Error"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.6f, 0.5f, 0.7f), action);
-		action = _renderViewChainAction(_copyToClipboardButton, new Rect(-0.6f, -0.8f, -0.1f, -0.7f), action);
-		action = _renderViewChainAction(_quitButton, new Rect(0.1f, -0.8f, 0.6f, -0.7f), action);
 		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Fatal Error")), new Rect(-0.5f, 0.6f, 0.5f, 0.7f))
+			.add(_copyToClipboardButton, new Rect(-0.6f, -0.8f, -0.1f, -0.7f))
+			.add(_quitButton, new Rect(0.1f, -0.8f, 0.6f, -0.7f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawPlayStateWindows()
@@ -1697,27 +1692,25 @@ public class UiStateManager implements GameSession.ICallouts
 			_drawCommonPauseBackground();
 		}
 		
-		// Draw the menu title and other UI.
-		float nextTop = 0.8f;
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Game Options"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Toggle Display")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
-		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("View Distance")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
-		action = _renderViewChainAction(_viewDistanceControl, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Scene Brightness")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
-		action = _renderViewChainAction(_brightnessControl, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
-		nextTop -= 0.1f;
-		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Multiplayer Name")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
-		action = _renderViewChainAction(_clientNameTextField, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
-		nextTop -= 0.2f;
-		action = _renderViewChainAction(_backButton, new Rect(-0.3f, nextTop - 0.1f, 0.3f, nextTop), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Game Options")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Toggle Display")), new Rect(-0.6f, 0.5f, -0.2f, 0.6f))
+			.add(_fullScreenButton, new Rect(-0.2f, 0.5f, 0.6f, 0.6f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("View Distance")), new Rect(-0.6f, 0.4f, -0.2f, 0.5f))
+			.add(_viewDistanceControl, new Rect(-0.2f, 0.4f, 0.6f, 0.5f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Scene Brightness")), new Rect(-0.6f, 0.3f, -0.2f, 0.4f))
+			.add(_brightnessControl, new Rect(-0.2f, 0.3f, 0.6f, 0.4f))
+			
+			.add(new ViewTextLabel(_ui, new Binding<>("Multiplayer Name")), new Rect(-0.6f, 0.2f, -0.2f, 0.3f))
+			.add(_clientNameTextField, new Rect(-0.2f, 0.2f, 0.6f, 0.3f))
+			
+			.add(_backButton, new Rect(-0.3f, -0.1f, 0.3f, 0.0f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawKeyBindingStateWindows()
@@ -1727,26 +1720,25 @@ public class UiStateManager implements GameSession.ICallouts
 			_drawCommonPauseBackground();
 		}
 		
-		// Draw the menu title and other UI.
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Key Bindings"));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
-		action = _renderViewChainAction(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f), action);
-		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Key Bindings")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+			.add(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f))
+			.add(_backButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private IAction _drawConnectingStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		IAction action = null;
-		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Connecting..."));
-		action = _renderViewChainAction(title, new Rect(-0.5f, 0.2f, 0.5f, 0.3f), action);
-		action = _renderViewChainAction(_cancelConnectButton, new Rect(-0.3f, -0.4f, 0.3f, -0.3f), action);
-		
-		return action;
+		FixedWindow window = new FixedWindow.Builder()
+			.add(new ViewTextLabel(_ui, new Binding<>("Connecting...")), new Rect(-0.5f, 0.2f, 0.5f, 0.3f))
+			.add(_cancelConnectButton, new Rect(-0.3f, -0.4f, 0.3f, -0.3f))
+			.finish()
+		;
+		return window.render(_cursor);
 	}
 
 	private void _drawCommonPauseBackground()
@@ -1794,15 +1786,6 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		}
-	}
-
-	private IAction _renderViewChainAction(IView view, Rect location, IAction existingAction)
-	{
-		IAction tempAction = view.render(location, _cursor);
-		return (null != tempAction)
-				? tempAction
-				: existingAction
-		;
 	}
 
 	private void _drawRelevantWindows()
