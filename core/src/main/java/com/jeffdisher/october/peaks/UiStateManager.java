@@ -48,6 +48,7 @@ import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewOfStateless;
 import com.jeffdisher.october.peaks.ui.ViewRadioButton;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
+import com.jeffdisher.october.peaks.ui.ViewStaticImage;
 import com.jeffdisher.october.peaks.ui.ViewTextButton;
 import com.jeffdisher.october.peaks.ui.ViewTextField;
 import com.jeffdisher.october.peaks.ui.ViewTextLabel;
@@ -1312,10 +1313,11 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw whatever is common to states where we draw interactive buttons on top.
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "October Peaks";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
-		_ui.drawWholeTextureRect(_ui.logoTexture, -0.2f, 0.3f, 0.2f, 0.7f);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("October Peaks"));
+		ViewStaticImage logo = new ViewStaticImage(_ui, _ui.logoTexture);
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
+		action = _renderViewChainAction(logo, new Rect(-0.2f, 0.3f, 0.2f, 0.7f), action);
 		action = _renderViewChainAction(_singlePlayerButton, new Rect(-0.4f, 0.1f, 0.4f, 0.2f), action);
 		action = _renderViewChainAction(_multiPlayerButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f), action);
 		action = _renderViewChainAction(_optionsButton, new Rect(-0.4f, -0.1f, 0.4f, 0.0f), action);
@@ -1329,9 +1331,9 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "Single Player Worlds";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Single Player Worlds"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		float halfListWidth = UiResources.SINGLE_PLAYER_WORLD_ROW_WIDTH / 2.0f;
 		action = _renderViewChainAction(_worldListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
 		action = _renderViewChainAction(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
@@ -1344,9 +1346,9 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "Confirm Delete?";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Confirm Delete"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		action = _renderViewChainAction(_confirmDeleteButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f), action);
 		
@@ -1357,12 +1359,12 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "Create Single Player World";
 		float margin = 0.6f;
 		float divider = -0.2f;
 		float nextTop = 0.8f;
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Create Single Player World"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		nextTop -= 0.2f;
 		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("World Generator")), new Rect(-margin, nextTop - 0.1f, divider, nextTop), action);
 		action = _renderViewChainAction(_newWorldGeneratorNameButton, new Rect(divider, nextTop - 0.1f, margin, nextTop), action);
@@ -1390,9 +1392,9 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "Multi-Player servers";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Multi-Player servers"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		float halfListWidth = UiResources.MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
 		action = _renderViewChainAction(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f), action);
 		action = _renderViewChainAction(_enterAddNewServerButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f), action);
@@ -1405,12 +1407,12 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "New Server Connection";
 		float margin = 0.6f;
 		float divider = -0.2f;
 		float nextTop = 0.8f;
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("New Server Connection"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		nextTop -= 0.2f;
 		action = _renderViewChainAction(_currentlyTestingServerView, new Rect(-margin, nextTop - 0.2f, margin, nextTop), action);
 		nextTop -= 0.3f;
@@ -1609,8 +1611,9 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Draw the menu title and other UI.
 		String menuTitle = _isRunningOnServer ? "Connected to server" : "Paused";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.5f, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>(menuTitle));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.4f, 0.5f, 0.5f), action);
 		action = _renderViewChainAction(_returnToGameButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f), action);
 		action = _renderViewChainAction(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f), action);
 		action = _renderViewChainAction(_keyBindingsButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f), action);
@@ -1622,8 +1625,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private IAction _drawErrorStateWindows()
 	{
 		// We just draw the message on a black screen.
-		String title = "Fatal Error";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.7f, title);
 		float topY = 0.6f;
 		for (String elt : _errorPayload)
 		{
@@ -1636,6 +1637,8 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Fatal Error"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.6f, 0.5f, 0.7f), action);
 		action = _renderViewChainAction(_copyToClipboardButton, new Rect(-0.6f, -0.8f, -0.1f, -0.7f), action);
 		action = _renderViewChainAction(_quitButton, new Rect(0.1f, -0.8f, 0.6f, -0.7f), action);
 		
@@ -1694,10 +1697,10 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		// Draw the menu title and other UI.
-		String menuTitle = "Game Options";
 		float nextTop = 0.8f;
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, nextTop, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Game Options"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		nextTop -= 0.2f;
 		action = _renderViewChainAction(new ViewTextLabel(_ui, new Binding<>("Toggle Display")), new Rect(-0.6f, nextTop - 0.1f, -0.2f, nextTop), action);
 		action = _renderViewChainAction(_fullScreenButton, new Rect(-0.2f, nextTop - 0.1f, 0.6f, nextTop), action);
@@ -1724,9 +1727,9 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		// Draw the menu title and other UI.
-		String menuTitle = "Key Bindings";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.8f, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Key Bindings"));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.7f, 0.5f, 0.8f), action);
 		action = _renderViewChainAction(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f), action);
 		action = _renderViewChainAction(_backButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f), action);
 		
@@ -1737,9 +1740,9 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		String menuTitle = "Connecting...";
-		UiIdioms.drawRawTextCentredAtTop(_ui, 0.0f, 0.3f, menuTitle);
 		IAction action = null;
+		ViewTextLabel title = new ViewTextLabel(_ui, new Binding<>("Connecting..."));
+		action = _renderViewChainAction(title, new Rect(-0.5f, 0.2f, 0.5f, 0.3f), action);
 		action = _renderViewChainAction(_cancelConnectButton, new Rect(-0.3f, -0.4f, 0.3f, -0.3f), action);
 		
 		return action;
