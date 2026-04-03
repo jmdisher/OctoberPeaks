@@ -32,27 +32,17 @@ import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.peaks.ui.PaginatedListView;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
-import com.jeffdisher.october.peaks.ui.ViewControlPlusMinus;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
-import com.jeffdisher.october.peaks.ui.ViewGenericLabel;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
-import com.jeffdisher.october.peaks.ui.ViewKeyControlSelector;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
-import com.jeffdisher.october.peaks.ui.ViewOfStateless;
-import com.jeffdisher.october.peaks.ui.ViewRadioButton;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
-import com.jeffdisher.october.peaks.ui.ViewStaticImage;
-import com.jeffdisher.october.peaks.ui.ViewTextButton;
-import com.jeffdisher.october.peaks.ui.ViewTextField;
-import com.jeffdisher.october.peaks.ui.ViewTextLabel;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -132,40 +122,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private float _yawRadians;
 	private float _pitchRadians;
 
-	// UI for the start state when first launched with no args.
-	private final ViewTextButton<String> _singlePlayerButton;
-	private final ViewTextButton<String> _multiPlayerButton;
-	private final ViewTextButton<String> _quitButton;
-
-	// UI for the single-player list.
-	private final PaginatedListView<String> _worldListView;
-	private final ViewTextButton<String> _enterCreateSingleState;
-	private final ViewTextButton<String> _backButton;
-
-	// UI for delete confirmation.
-	private final ViewTextButton<String> _confirmDeleteButton;
-
-	// Ui for new single-player.
-	private final ViewTextField<String> _newWorldNameTextField;
-	private final ViewRadioButton<WorldConfig.WorldGeneratorName> _newWorldGeneratorNameButton;
-	private final ViewRadioButton<WorldConfig.DefaultPlayerMode> _newDefaultPlayerModeButton;
-	private final ViewRadioButton<Difficulty> _newDifficultyButton;
-	private final ViewTextField<String> _newWorldSeedTextField;
-	private final ViewTextButton<String> _createWorldButton;
-
-	// UI for the multi-player list.
-	private final PaginatedListView<MutableServerList.ServerRecord> _serverListView;
-	private final ViewTextButton<String> _enterAddNewServerButton;
-
-	// UI for new multi-player.
-	private final ViewOfStateless<MutableServerList.ServerRecord> _currentlyTestingServerView;
-	private final ViewTextField<String> _newServerAddressTextField;
-	private final ViewTextButton<String> _testServerButton;
-	private final ViewTextButton<String> _saveServerButton;
-
-	// UI for the "CONNECTING" state.
-	private final ViewTextButton<String> _cancelConnectButton;
-
 	// Bindings related to the game UI during a PLAY state (the in-game UI - not just menus, etc).
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
@@ -185,26 +141,8 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window _armourWindow;
 	private final Window _selectionWindow;
 
-	// UI for rendering the controls in the pause state.
-	private final ViewTextButton<Boolean> _exitButton;
-	private final ViewTextButton<String> _optionsButton;
-	private final ViewTextButton<String> _keyBindingsButton;
-	private final ViewTextButton<String> _returnToGameButton;
-
-	// UI for rendering the options state.
-	private final ViewTextButton<Boolean> _fullScreenButton;
-	private final ViewControlPlusMinus<Integer> _viewDistanceControl;
-	private final ViewControlPlusMinus<Float> _brightnessControl;
-	private final ViewTextField<String> _clientNameTextField;
-
-	// UI and state related to key bindings prefs.
-	private final ViewKeyControlSelector _keyBindingSelectorControl;
-	// We also use _returnToPauseButton here.
-
-	// UI and state related to the fatal ERROR state.
-	private final ViewTextButton<String> _copyToClipboardButton;
+	// We don't currently use a binding for the error payload so store it here, directly.
 	private String[] _errorPayload;
-	// Note that we also use the _quitButton in this state.
 
 	// Data related to the liquid overlay.
 	private final Set<Block> _waterBlockTypes;
@@ -215,6 +153,19 @@ public class UiStateManager implements GameSession.ICallouts
 	private GameSession _currentGameSession;
 	// The session is "pending" only when in the CONNECTING state.
 	private GameSession _pendingGameSession;
+
+	// The non-game UI fixed windows.
+	private final FixedWindow _startWindow;
+	private final FixedWindow _listSinglePlayerStateWindow;
+	private final FixedWindow _confirmDeleteSinglePlayerStateWindow;
+	private final FixedWindow _newSinglePlayerStateWindow;
+	private final FixedWindow _listMultiPlayerStateWindow;
+	private final FixedWindow _newMultiPlayerStateWindow;
+	private final FixedWindow _pauseStateWindow;
+	private final FixedWindow _errorStateWindow;
+	private final FixedWindow _optionsStateWindow;
+	private final FixedWindow _keyBindingsStateWindow;
+	private final FixedWindow _connectingStateWindow;
 
 	public UiStateManager(Environment environment
 			, GL20 gl
@@ -237,38 +188,6 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
 		_uiState = _UiState.START;
-		
-		_singlePlayerButton = UiResources.buildSinglePlayerButton(_ui, this);
-		_multiPlayerButton = UiResources.buildMultiPlayerButton(_ui, this);
-		_quitButton = UiResources.buildQuitButton(_ui, this);
-		
-		// Single-player UI.
-		_worldListView = UiResources.buildSinglePlayerWorldListView(_ui, this, _uiData, () -> _leftClick, WORLD_DIRECTORY_PREFIX);
-		_backButton = UiResources.buildBackButton(_ui, this);
-		_enterCreateSingleState = UiResources.buildCreateNewWorldButton(_ui, this);
-		
-		// World delete confirmation UI.
-		_confirmDeleteButton = UiResources.buildConfirmDeleteButton(_ui, this, _uiData, WORLD_DIRECTORY_PREFIX);
-		
-		// New single player UI.
-		_newWorldGeneratorNameButton = UiResources.buildWorldGeneratorRadio(_ui, this, _uiData);
-		_newDefaultPlayerModeButton = UiResources.buildDefaultModeRadio(_ui, this, _uiData);
-		_newDifficultyButton = UiResources.buildDifficultyRadio(_ui, this, _uiData);
-		_newWorldSeedTextField = UiResources.buildSeedTextField(_ui, this, _uiData);
-		_createWorldButton = UiResources.buildCreateNewButton(_ui, this);
-		_newWorldNameTextField = UiResources.buildNewWorldNameTextField(_ui, this, _uiData);
-		
-		// Server list UI.
-		_serverListView = UiResources.buildServerListView(_ui, this, _uiData, () -> _leftClick);
-		_enterAddNewServerButton = UiResources.buildAddNewServerButton(_ui, this);
-		
-		// New server UI.
-		_currentlyTestingServerView = UiResources.buildServerTestingView(_ui, this, _uiData);
-		_newServerAddressTextField = UiResources.buildNewServerAddressTextField(_ui, this, _uiData);
-		_testServerButton = UiResources.buildTestConnectionButton(_ui, this);
-		_saveServerButton = UiResources.buildSaveConnectionButton(_ui, this);
-		
-		_cancelConnectButton = UiResources.buildCancelConnectionButton(_ui, this);
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>(null);
@@ -326,17 +245,15 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		};
 		
-		BooleanSupplier commonPageChangeCheck = () -> {
-			return _leftClick;
-		};
+		BooleanSupplier isLeftClick = () -> _leftClick;
 		
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
-		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, commonPageChangeCheck);
+		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
 		_thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
 		ViewFuelSlot fuelProgress = new ViewFuelSlot(_ui, _bottomWindowFuelBinding);
-		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, commonPageChangeCheck);
+		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, isLeftClick);
 		_bottomInventoryWindow = new Window(WINDOW_BOTTOM, bottomInventoryView);
-		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, commonPageChangeCheck);
+		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
 		_craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
 		_metaDataWindow = new Window(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
 		_hotbarWindow = new Window(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
@@ -352,23 +269,6 @@ public class UiStateManager implements GameSession.ICallouts
 		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.readBlock(location);
 		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		
-		// Pause state controls.
-		_exitButton = UiResources.buildExitGameButton(_ui, this, _uiData);
-		_optionsButton = UiResources.buildGameOptionsButton(_ui, this);
-		_keyBindingsButton = UiResources.buildKeyBindingsButton(_ui, this);
-		_returnToGameButton = UiResources.buildReturnToGameButton(_ui, this);
-		
-		// Options state controls.
-		_fullScreenButton = UiResources.buildToggleFullScreenButton(_ui, this, _uiData);
-		_viewDistanceControl = UiResources.buildViewDistanceSlider(_ui, this, _uiData);
-		_brightnessControl = UiResources.buildBrightnessSlider(_ui, this, _uiData);
-		_clientNameTextField = UiResources.buildClientNameTextField(_ui, this, _uiData);
-		
-		// Key-binding prefs.
-		_keyBindingSelectorControl = UiResources.buildKeyControlSelector(_ui, this, _uiData);
-		
-		_copyToClipboardButton = UiResources.buildCopyToCliboardButton(_ui, this);
-		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
 				, _env.blocks.fromItem(_env.items.getItemById("op.water_strong"))
@@ -378,6 +278,28 @@ public class UiStateManager implements GameSession.ICallouts
 				, _env.blocks.fromItem(_env.items.getItemById("op.lava_strong"))
 				, _env.blocks.fromItem(_env.items.getItemById("op.lava_weak"))
 		);
+		
+		// Build the fixed UI windows.
+		_startWindow = UiResources.buildStartWindow(_ui, this, _uiData);
+		_listSinglePlayerStateWindow = UiResources.buildListSinglePlayerStateWindow(_ui
+			, this
+			, _uiData
+			, isLeftClick
+			, WORLD_DIRECTORY_PREFIX
+		);
+		_confirmDeleteSinglePlayerStateWindow = UiResources.buildConfirmDeleteSinglePlayerStateWindow(_ui
+			, this
+			, _uiData
+			, WORLD_DIRECTORY_PREFIX
+		);
+		_newSinglePlayerStateWindow = UiResources.buildNewSinglePlayerStateWindow(_ui, this, _uiData);
+		_listMultiPlayerStateWindow = UiResources.buildListMultiPlayerStateWindow(_ui, this, _uiData, isLeftClick);
+		_newMultiPlayerStateWindow = UiResources.buildNewMultiPlayerStateWindow(_ui, this, _uiData);
+		_pauseStateWindow = UiResources.buildPauseStateWindow(_ui, this, _uiData);
+		_errorStateWindow = UiResources.buildErrorStateWindow(_ui, this, _uiData);
+		_optionsStateWindow = UiResources.buildOptionsStateWindow(_ui, this, _uiData);
+		_keyBindingsStateWindow = UiResources.buildKeyBindingsStateWindow(_ui, this, _uiData);
+		_connectingStateWindow = UiResources.buildConnectingStateWindow(_ui, this, _uiData);
 	}
 
 	@Override
@@ -1311,116 +1233,44 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private IAction _drawStartStateWindows()
 	{
-		// Draw whatever is common to states where we draw interactive buttons on top.
 		_ui.enterUiRenderMode();
 		
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("October Peaks")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			.add(new ViewStaticImage(_ui, _ui.logoTexture), new Rect(-0.2f, 0.3f, 0.2f, 0.7f))
-			.add(_singlePlayerButton, new Rect(-0.4f, 0.1f, 0.4f, 0.2f))
-			.add(_multiPlayerButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f))
-			.add(_optionsButton, new Rect(-0.4f, -0.1f, 0.4f, 0.0f))
-			.add(_keyBindingsButton, new Rect(-0.4f, -0.2f, 0.4f, -0.1f))
-			.add(_quitButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _startWindow.render(_cursor);
 	}
 
 	private IAction _drawListSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		float halfListWidth = UiResources.SINGLE_PLAYER_WORLD_ROW_WIDTH / 2.0f;
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Single Player Worlds")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			.add(_worldListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f))
-			.add(_enterCreateSingleState, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
-			.add(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _listSinglePlayerStateWindow.render(_cursor);
 	}
 
 	private IAction _drawConfirmDeleteSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Confirm Delete")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			.add(_confirmDeleteButton, new Rect(-0.6f, -0.1f, 0.6f, 0.0f))
-			.add(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _confirmDeleteSinglePlayerStateWindow.render(_cursor);
 	}
 
 	private IAction _drawNewSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		float margin = 0.6f;
-		float divider = -0.2f;
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Create Single Player World")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("World Generator")), new Rect(-margin, 0.5f, divider, 0.6f))
-			.add(_newWorldGeneratorNameButton, new Rect(divider, 0.5f, margin, 0.6f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Player Mode")), new Rect(-margin, 0.4f, divider, 0.5f))
-			.add(_newDefaultPlayerModeButton, new Rect(divider, 0.4f, margin, 0.5f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Difficulty")), new Rect(-margin, 0.3f, divider, 0.4f))
-			.add(_newDifficultyButton, new Rect(divider, 0.3f, margin, 0.4f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Seed Override")), new Rect(-margin, 0.2f, divider, 0.3f))
-			.add(_newWorldSeedTextField, new Rect(divider, 0.2f, margin, 0.3f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("World Name")), new Rect(-margin, 0.1f, divider, 0.2f))
-			.add(_newWorldNameTextField, new Rect(divider, 0.1f, margin, 0.2f))
-			
-			.add(_createWorldButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f))
-			.add(_backButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _newSinglePlayerStateWindow.render(_cursor);
 	}
 
 	private IAction _drawListMultiPlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		float halfListWidth = UiResources.MULTI_PLAYER_SERVER_ROW_WIDTH / 2.0f;
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Multi-Player servers")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			.add(_serverListView, new Rect(-halfListWidth, -0.6f, halfListWidth, 0.6f))
-			.add(_enterAddNewServerButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
-			.add(_backButton, new Rect(-0.2f, -0.9f, 0.2f, -0.8f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _listMultiPlayerStateWindow.render(_cursor);
 	}
 
 	private IAction _drawNewMultiPlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		float margin = 0.6f;
-		float divider = -0.2f;
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("New Server Connection")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			.add(_currentlyTestingServerView, new Rect(-margin, 0.4f - 0.2f, margin, 0.6f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Server IP:port")), new Rect(-margin, 0.2f, divider, 0.3f))
-			.add(_newServerAddressTextField, new Rect(divider, 0.2f, margin, 0.3f))
-			
-			.add(_testServerButton, new Rect(-margin, 0.0f, 0.0f, 0.1f))
-			.add(_saveServerButton, new Rect(0.0f, 0.0f, margin, 0.1f))
-			
-			.add(_backButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _newMultiPlayerStateWindow.render(_cursor);
 	}
 
 	private IAction _drawInventoryStateWindows()
@@ -1605,21 +1455,12 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_drawCommonPauseBackground();
 		
-		Function<Boolean, String> valueTransformer = (Boolean isRunningOnServer) -> isRunningOnServer ? "Connected to server" : "Paused";
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewGenericLabel<>(_ui, _uiData.isRunningOnServerBinding, valueTransformer), new Rect(-0.5f, 0.4f, 0.5f, 0.5f))
-			.add(_returnToGameButton, new Rect(-0.3f, 0.2f, 0.3f, 0.3f))
-			.add(_optionsButton, new Rect(-0.3f, 0.0f, 0.3f, 0.1f))
-			.add(_keyBindingsButton, new Rect(-0.3f, -0.2f, 0.3f, -0.1f))
-			.add(_exitButton, new Rect(-0.2f, -0.5f, 0.2f, -0.4f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _pauseStateWindow.render(_cursor);
 	}
 
 	private IAction _drawErrorStateWindows()
 	{
-		// We just draw the message on a black screen.
+		// We will treat dumping the payload as a special case and just write it to the screen instead of making a binding to stitch it into the rest of the error window.
 		float topY = 0.6f;
 		for (String elt : _errorPayload)
 		{
@@ -1632,13 +1473,8 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Fatal Error")), new Rect(-0.5f, 0.6f, 0.5f, 0.7f))
-			.add(_copyToClipboardButton, new Rect(-0.6f, -0.8f, -0.1f, -0.7f))
-			.add(_quitButton, new Rect(0.1f, -0.8f, 0.6f, -0.7f))
-			.finish()
-		;
-		return window.render(_cursor);
+		// Now, just draw the rest of the fixed window to get the buttons we want.
+		return _errorStateWindow.render(_cursor);
 	}
 
 	private IAction _drawPlayStateWindows()
@@ -1692,25 +1528,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_drawCommonPauseBackground();
 		}
 		
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Game Options")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Toggle Display")), new Rect(-0.6f, 0.5f, -0.2f, 0.6f))
-			.add(_fullScreenButton, new Rect(-0.2f, 0.5f, 0.6f, 0.6f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("View Distance")), new Rect(-0.6f, 0.4f, -0.2f, 0.5f))
-			.add(_viewDistanceControl, new Rect(-0.2f, 0.4f, 0.6f, 0.5f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Scene Brightness")), new Rect(-0.6f, 0.3f, -0.2f, 0.4f))
-			.add(_brightnessControl, new Rect(-0.2f, 0.3f, 0.6f, 0.4f))
-			
-			.add(new ViewTextLabel(_ui, new Binding<>("Multiplayer Name")), new Rect(-0.6f, 0.2f, -0.2f, 0.3f))
-			.add(_clientNameTextField, new Rect(-0.2f, 0.2f, 0.6f, 0.3f))
-			
-			.add(_backButton, new Rect(-0.3f, -0.1f, 0.3f, 0.0f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _optionsStateWindow.render(_cursor);
 	}
 
 	private IAction _drawKeyBindingStateWindows()
@@ -1720,25 +1538,14 @@ public class UiStateManager implements GameSession.ICallouts
 			_drawCommonPauseBackground();
 		}
 		
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Key Bindings")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
-			.add(_keyBindingSelectorControl, new Rect(-0.4f, -0.9f, 0.4f, 0.6f))
-			.add(_backButton, new Rect(-0.2f, -0.8f, 0.2f, -0.7f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _keyBindingsStateWindow.render(_cursor);
 	}
 
 	private IAction _drawConnectingStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		FixedWindow window = new FixedWindow.Builder()
-			.add(new ViewTextLabel(_ui, new Binding<>("Connecting...")), new Rect(-0.5f, 0.2f, 0.5f, 0.3f))
-			.add(_cancelConnectButton, new Rect(-0.3f, -0.4f, 0.3f, -0.3f))
-			.finish()
-		;
-		return window.render(_cursor);
+		return _connectingStateWindow.render(_cursor);
 	}
 
 	private void _drawCommonPauseBackground()
