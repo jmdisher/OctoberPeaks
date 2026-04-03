@@ -3,6 +3,8 @@ package com.jeffdisher.october.peaks.profiling;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.ColumnHeightMap;
+import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.peaks.EyeEffect;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.animation.AnimationManager;
@@ -67,5 +69,10 @@ public class ProfilingSession
 	public void addOtherEntity(PartialEntity entity)
 	{
 		_worldCache.addOtherEntity(entity);
+	}
+
+	public void addCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
+	{
+		this.scene.setCuboid(cuboid, heightMap, null);
 	}
 }
