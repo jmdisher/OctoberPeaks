@@ -50,8 +50,14 @@ public class FixedWindow
 		
 		public Builder add(IView view, Rect bounds)
 		{
-			_views.add(view);
-			_bounds.add(bounds);
+			// For easier chaining of calls, we allow null views, and just ignore the call, internally.
+			if (null != view)
+			{
+				// If there is a view, there MUST be bounds.
+				Assert.assertTrue(null != bounds);
+				_views.add(view);
+				_bounds.add(bounds);
+			}
 			return this;
 		}
 		public FixedWindow finish()

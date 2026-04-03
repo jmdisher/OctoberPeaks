@@ -25,6 +25,8 @@ import com.jeffdisher.october.logic.ViscosityReader;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.persistence.MutableServerList;
+import com.jeffdisher.october.peaks.profiling.ProfilingModes;
+import com.jeffdisher.october.peaks.profiling.ProfilingSession;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -154,6 +156,9 @@ public class UiStateManager implements GameSession.ICallouts
 	// The session is "pending" only when in the CONNECTING state.
 	private GameSession _pendingGameSession;
 
+	// We use this session when in PROFILING mode.
+	private ProfilingSession _profilingSession;
+
 	// The non-game UI fixed windows.
 	private final FixedWindow _startWindow;
 	private final FixedWindow _listSinglePlayerStateWindow;
@@ -166,6 +171,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final FixedWindow _optionsStateWindow;
 	private final FixedWindow _keyBindingsStateWindow;
 	private final FixedWindow _connectingStateWindow;
+	private final FixedWindow _listProfileRunsStateWindow;
 
 	public UiStateManager(Environment environment
 			, GL20 gl
@@ -300,6 +306,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_optionsStateWindow = UiResources.buildOptionsStateWindow(_ui, this, _uiData);
 		_keyBindingsStateWindow = UiResources.buildKeyBindingsStateWindow(_ui, this, _uiData);
 		_connectingStateWindow = UiResources.buildConnectingStateWindow(_ui, this, _uiData);
+		_listProfileRunsStateWindow = UiResources.buildListProfileRunsStateWindow(_ui, this, _uiData, ProfilingModes.ALL_MODES);
 	}
 
 	@Override
@@ -596,6 +603,11 @@ public class UiStateManager implements GameSession.ICallouts
 			// Draw any eye effect overlay.
 			_currentGameSession.eyeEffect.drawEyeEffect();
 		}
+		else if (null != _profilingSession)
+		{
+			_profilingSession.scene.render(entity, stopBlock, stopBlockType);
+			_profilingSession.eyeEffect.drawEyeEffect();
+		}
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_drawRelevantWindows();
@@ -617,6 +629,7 @@ public class UiStateManager implements GameSession.ICallouts
 		case NEW_SINGLE_PLAYER:
 		case LIST_MULTI_PLAYER:
 		case NEW_MULTI_PLAYER:
+		case LIST_FOR_PROFILE:
 			// No events.
 			Assert.assertTrue(null == _currentGameSession);
 			break;
@@ -668,6 +681,9 @@ public class UiStateManager implements GameSession.ICallouts
 			{
 				_currentGameSession.client.passTimeWhilePaused();
 			}
+			break;
+		case PROFILE:
+			// No event flushing in profiling.
 			break;
 		case ERROR:
 			// No special events in this case.
@@ -1163,6 +1179,26 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
+	public void action_clickProfileRunsButton()
+	{
+		if (_leftClick)
+		{
+			// This just changes state.
+			_uiState = _UiState.LIST_FOR_PROFILE;
+		}
+	}
+
+	public void action_clickProfileRunButton(ProfilingModes mode)
+	{
+		if (_leftClick)
+		{
+			// This just changes state.
+			_profilingSession = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
+			mode.populate.accept(_env, _profilingSession);
+			_uiState = _UiState.PROFILE;
+		}
+	}
+
 	public void shutdown()
 	{
 		if (null != _currentGameSession)
@@ -1548,6 +1584,13 @@ public class UiStateManager implements GameSession.ICallouts
 		return _connectingStateWindow.render(_cursor);
 	}
 
+	private IAction _drawListProfileRunsStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		return _listProfileRunsStateWindow.render(_cursor);
+	}
+
 	private void _drawCommonPauseBackground()
 	{
 		// Draw whatever is common to states where we draw interactive buttons on top.
@@ -1598,7 +1641,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private void _drawRelevantWindows()
 	{
 		// Perform state-specific drawing.
-		IAction action;
+		IAction action = null;
 		switch (_uiState)
 		{
 		case START:
@@ -1619,6 +1662,9 @@ public class UiStateManager implements GameSession.ICallouts
 		case NEW_MULTI_PLAYER:
 			action = _drawNewMultiPlayerStateWindows();
 			break;
+		case LIST_FOR_PROFILE:
+			action = _drawListProfileRunsStateWindows();
+			break;
 		case OPTIONS:
 			action = _drawOptionsStateWindows();
 			break;
@@ -1637,12 +1683,12 @@ public class UiStateManager implements GameSession.ICallouts
 		case PAUSE:
 			action = _drawPauseStateWindows();
 			break;
+		case PROFILE:
+			action = _drawPlayStateWindows();
+			break;
 		case ERROR:
 			action = _drawErrorStateWindows();
 			break;
-		default:
-			// We need this case since action is otherwise not initialized.
-			throw Assert.unreachable();
 		}
 		
 		// Run any actions based on clicking on the UI.
@@ -1828,6 +1874,10 @@ public class UiStateManager implements GameSession.ICallouts
 			// Go back to the list.
 			_uiState = _UiState.LIST_MULTI_PLAYER;
 			break;
+		case LIST_FOR_PROFILE:
+			// We just want to go back.
+			_uiState = _UiState.START;
+			break;
 		case INVENTORY:
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -1880,6 +1930,12 @@ public class UiStateManager implements GameSession.ICallouts
 					_uiState = _UiState.START;
 				}
 			}
+			break;
+		case PROFILE:
+			// We just want to exit, in this case.
+			System.out.println("Ending Profile Run");
+			_profilingSession.shutdown();
+			Gdx.app.exit();
 			break;
 		case ERROR:
 			// There is no transition from this state.
@@ -2002,6 +2058,12 @@ public class UiStateManager implements GameSession.ICallouts
 		 * The state where present an option to add a new one server to our list.
 		 */
 		NEW_MULTI_PLAYER,
+ 		/**
+		 * A special state which is like the other LIST_* modes but the listed options are just the hard-coded profile
+		 * options for use with a local profile during performance investigations.
+		 * NOTE:  This state is only reachable if the "OCTOBER_PEAKS_PROFILE" environment variable is set.
+		 */
+		LIST_FOR_PROFILE,
 		/**
 		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
 		 * If there is a _currentGameSession, it will be shown in the background.
@@ -2034,6 +2096,12 @@ public class UiStateManager implements GameSession.ICallouts
 		 * difference).
 		 */
 		PAUSE,
+ 		/**
+		 * This state is similar to PLAY, in that it draws the game to the screen, but it is different in that it can
+		 * accept no UI interaction and beyond using Esc to quit the program.
+		 * Only possible to reach this state from LIST_FOR_PROFILE state.
+		 */
+		PROFILE,
 		/**
 		 * A state used to display a fatal error message before exiting.
 		 */

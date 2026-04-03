@@ -5,6 +5,7 @@ import java.util.function.Function;
 
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutableServerList;
+import com.jeffdisher.october.peaks.profiling.ProfilingModes;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
 import com.jeffdisher.october.peaks.ui.GlUi;
@@ -39,6 +40,7 @@ public class UiResources
 	public static final float SINGLE_PLAYER_WORLD_ROW_HEIGHT = 0.1f;
 	public static final float MULTI_PLAYER_SERVER_ROW_WIDTH = 0.8f;
 	public static final float MULTI_PLAYER_SERVER_ROW_HEIGHT = 0.2f;
+	public static final String OCTOBER_PEAKS_PROFILE = "OCTOBER_PEAKS_PROFILE";
 
 	public static FixedWindow buildStartWindow(GlUi ui, UiStateManager actions, UiData uiData)
 	{
@@ -46,6 +48,20 @@ public class UiResources
 		ViewTextButton<String> multiPlayerButton = UiResources._buildMultiPlayerButton(ui, actions);
 		ViewTextButton<String> optionsButton = UiResources._buildGameOptionsButton(ui, actions);
 		ViewTextButton<String> keyBindingsButton = UiResources._buildKeyBindingsButton(ui, actions);
+		ViewTextButton<String> profileRunsButton;
+		if (null != System.getenv(OCTOBER_PEAKS_PROFILE))
+		{
+			profileRunsButton = new ViewTextButton<>(ui, new Binding<>("Profile Runs")
+				, (String text) -> text
+				, (ViewTextButton<String> button, String text) -> {
+					actions.action_clickProfileRunsButton();
+				}
+			);
+		}
+		else
+		{
+			profileRunsButton = null;
+		}
 		ViewTextButton<String> quitButton = UiResources._buildQuitButton(ui, actions);
 		
 		return new FixedWindow.Builder()
@@ -55,6 +71,7 @@ public class UiResources
 			.add(multiPlayerButton, new Rect(-0.4f, 0.0f, 0.4f, 0.1f))
 			.add(optionsButton, new Rect(-0.4f, -0.1f, 0.4f, 0.0f))
 			.add(keyBindingsButton, new Rect(-0.4f, -0.2f, 0.4f, -0.1f))
+			.add(profileRunsButton, new Rect(-0.4f, -0.3f, 0.4f, -0.2f))
 			.add(quitButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
 			.finish()
 		;
@@ -258,6 +275,31 @@ public class UiResources
 		return new FixedWindow.Builder()
 			.add(new ViewTextLabel(ui, new Binding<>("Connecting...")), new Rect(-0.5f, 0.2f, 0.5f, 0.3f))
 			.add(cancelConnectButton, new Rect(-0.3f, -0.4f, 0.3f, -0.3f))
+			.finish()
+		;
+	}
+
+	public static FixedWindow buildListProfileRunsStateWindow(GlUi ui, UiStateManager actions, UiData uiData, ProfilingModes[] profilingModes)
+	{
+		ViewTextButton<String> backButton = UiResources._buildBackButton(ui, actions);
+		
+		FixedWindow.Builder builder = new FixedWindow.Builder()
+			.add(new ViewTextLabel(ui, new Binding<>("Profile Runs")), new Rect(-0.5f, 0.7f, 0.5f, 0.8f))
+		;
+		float topY = 0.6f;
+		for (ProfilingModes profilingMode : profilingModes)
+		{
+			ViewTextButton<ProfilingModes> profileButton = new ViewTextButton<>(ui, new Binding<>(profilingMode)
+				, (ProfilingModes mode) -> mode.name
+				, (ViewTextButton<ProfilingModes> button, ProfilingModes mode) -> {
+					actions.action_clickProfileRunButton(mode);
+				}
+			);
+			builder.add(profileButton, new Rect(-0.4f, topY - 0.1f, 0.4f, topY));
+			topY -= 0.1f;
+		}
+		return builder
+			.add(backButton, new Rect(-0.2f, -0.7f, 0.2f, -0.6f))
 			.finish()
 		;
 	}
