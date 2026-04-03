@@ -947,17 +947,10 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_leftClick)
 		{
-			try
-			{
-				String clientName = _uiData.mutablePreferences.clientName.get();
-				int startingViewDistance = _uiData.mutablePreferences.preferredViewDistance.get();
-				_connectToServer(_gl, _localStorageDirectory, _resources, clientName, startingViewDistance, server.address);
-			}
-			catch (ConnectException e)
-			{
-				// TODO:  Display this somewhere.
-				e.printStackTrace();
-			}
+			// Note that "_connectToServer" will try to connect to server and change state, but only if successful.
+			String clientName = _uiData.mutablePreferences.clientName.get();
+			int startingViewDistance = _uiData.mutablePreferences.preferredViewDistance.get();
+			_connectToServer(_gl, _localStorageDirectory, _resources, clientName, startingViewDistance, server.address);
 		}
 	}
 
@@ -1983,13 +1976,23 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
 	}
 
-	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress) throws ConnectException
+	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress)
 	{
 		Assert.assertTrue(null == _pendingGameSession);
-		_uiState = _UiState.CONNECTING;
-		_pendingGameSession = new GameSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
-		_isRunningOnServer = true;
-		_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+		try
+		{
+			_pendingGameSession = new GameSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
+			
+			// This was a success, so change state.
+			_uiState = _UiState.CONNECTING;
+			_isRunningOnServer = true;
+			_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+		}
+		catch (ConnectException e)
+		{
+			// Something went wrong, so don't change state, but we can log this (might want somewhere in the UI to show this, later).
+			e.printStackTrace();
+		}
 	}
 
 	private static void _rebuildSinglePlayerListBinding(Binding<List<String>> worldListBinding, File localStorageDirectory)
