@@ -6,7 +6,13 @@ import java.util.function.BiConsumer;
 
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.ItemSlot;
+import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.PartialPassive;
+import com.jeffdisher.october.types.PassiveEntity;
+import com.jeffdisher.october.types.PassiveType;
 import com.jeffdisher.october.utils.CuboidGenerator;
 import com.jeffdisher.october.utils.Encoding;
 import com.jeffdisher.october.aspects.AspectRegistry;
@@ -173,6 +179,30 @@ public class ProfilingModes
 			float dayProgression = 0.0f;
 			float skyLightMultiplier = 1.0f;
 			session.scene.setDayTime(dayProgression, skyLightMultiplier);
+		}),
+		new ProfilingModes("Passives", (Environment env, ProfilingSession session) -> {
+			// This just renders a bunch of passive around us.
+			// The point of this is to see the cost of making these calls and to allow testing around different ways to draw them.
+			Item brick = env.items.getItemById("op.stone_brick");
+			ItemSlot slot = ItemSlot.fromStack(new Items(brick, 1));
+			PassiveType type = PassiveType.ITEM_SLOT;
+			int nextId = 1;
+			for (int y = -20; y <= 20; ++y)
+			{
+				for (int x = -20; x <= 20; ++x)
+				{
+					PassiveEntity passive = new PassiveEntity(nextId
+						, type
+						, new EntityLocation(x, y, 1.0f)
+						, new EntityLocation(0.0f, 0.0f, 0.0f)
+						, slot
+						, 1000L
+					);
+					PartialPassive partial = PartialPassive.fromPassive(passive);
+					session.addPassive(partial);
+					nextId += 1;
+				}
+			}
 		}),
 	};
 

@@ -15,6 +15,7 @@ import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.PartialEntity;
+import com.jeffdisher.october.types.PartialPassive;
 
 
 /**
@@ -74,5 +75,10 @@ public class ProfilingSession
 	public void addCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap)
 	{
 		this.scene.setCuboid(cuboid, heightMap, null);
+	}
+
+	public void addPassive(PartialPassive passive)
+	{
+		_worldCache.addPassive(passive);
 	}
 }
