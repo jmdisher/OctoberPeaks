@@ -138,9 +138,9 @@ public class SceneMeshHelpers
 									;
 									FacingDirection multiBlockDirection = FacingDirection.byteToDirection(inputData.cuboid.getData7(AspectRegistry.ORIENTATION, thisAddress));
 									boolean isDown = (FacingDirection.DOWN == multiBlockDirection);
-									if (isDown)
+									if (isDown && blockModels.hasDownModel(includedBlock))
 									{
-										// If this is facing down, we just use a north rotation.
+										// If we have a special down-facing model for this block, use that without rotation (north).
 										multiBlockDirection = FacingDirection.NORTH;
 									}
 									float[] uv = blockModels.baseOfModelTexture(includedBlock, isActive, isDown);
@@ -1301,6 +1301,7 @@ public class SceneMeshHelpers
 		// The models are based in the 0-1 unit cube but we want to rotate around the centre so translate by X/Y.
 		float centreX = 0.5f;
 		float centreY = 0.5f;
+		float centreZ = 0.5f;
 		for (int i = 0; i < bufferForType.vertexCount; ++i)
 		{
 			float x = bufferForType.positionValues[3 * i + 0];
@@ -1308,9 +1309,10 @@ public class SceneMeshHelpers
 			float z = bufferForType.positionValues[3 * i + 2];
 			if (FacingDirection.NORTH != multiBlockDirection)
 			{
-				float[] out = multiBlockDirection.rotateXYTupleAboutZ(new float[] { x - centreX, y - centreY });
+				float[] out = multiBlockDirection.rotateTripletAboutZ(new float[] { x - centreX, y - centreY, z - centreZ });
 				x = out[0] + centreY;
 				y = out[1] + centreY;
+				z = out[2] + centreZ;
 			}
 			
 			// Each element is:

@@ -18,7 +18,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
-import com.jeffdisher.october.client.MovementAccumulator;
+import com.jeffdisher.october.client.RelativeDirection;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.logic.ViscosityReader;
@@ -411,7 +411,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void walk(MovementAccumulator.Relative relative)
+	public void walk(RelativeDirection relative)
 	{
 		boolean runningSpeed = false;
 		_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
@@ -419,7 +419,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_audibleMotionInFrame = _AudibleMotion.WALK;
 	}
 
-	public void run(MovementAccumulator.Relative relative)
+	public void run(RelativeDirection relative)
 	{
 		boolean runningSpeed = true;
 		_currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
@@ -427,7 +427,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_audibleMotionInFrame = _AudibleMotion.RUN;
 	}
 
-	public void sneak(MovementAccumulator.Relative relative)
+	public void sneak(RelativeDirection relative)
 	{
 		_currentGameSession.client.sneak(relative);
 		_didAccountForTimeInFrame = true;

@@ -58,7 +58,7 @@ public class BlockModelsAndAtlas
 				}
 				
 				_ModelPair down = _loadPair("model_" + itemId + "_DOWN.obj", "model_" + itemId + "_DOWN.png");
-				short downIndex = inactiveIndex;
+				short downIndex = -1;
 				if (null != down)
 				{
 					downIndex = (short)modelList.size();
@@ -105,9 +105,10 @@ public class BlockModelsAndAtlas
 	public ModelBuffer getModelForBlock(Block block, boolean isActive, boolean isDown)
 	{
 		Indices indices = _blockToIndex.get(block);
+		boolean hasSpecialDown = (-1 != indices.down);
 		short index = isActive
-				? indices.active
-				: isDown ? indices.down : indices.inactive
+			? indices.active
+			: (isDown && hasSpecialDown) ? indices.down : indices.inactive
 		;
 		return _models[index];
 	}
@@ -117,12 +118,20 @@ public class BlockModelsAndAtlas
 		return _atlas.texture;
 	}
 
+	public boolean hasDownModel(Block block)
+	{
+		Indices indices = _blockToIndex.get(block);
+		boolean hasSpecialDown = (-1 != indices.down);
+		return hasSpecialDown;
+	}
+
 	public float[] baseOfModelTexture(Block block, boolean isActive, boolean isDown)
 	{
 		Indices indices = _blockToIndex.get(block);
+		boolean hasSpecialDown = (-1 != indices.down);
 		short index = isActive
-				? indices.active
-				: isDown ? indices.down : indices.inactive
+			? indices.active
+			: (isDown && hasSpecialDown) ? indices.down : indices.inactive
 		;
 		return _atlas.baseOfTexture(index);
 	}

@@ -2,7 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
-import com.jeffdisher.october.client.MovementAccumulator;
+import com.jeffdisher.october.client.RelativeDirection;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.badlogic.gdx.Input.Keys;
@@ -234,7 +234,7 @@ public class InputManager
 			}
 			
 			// Check out movement controls.
-			MovementAccumulator.Relative relativeMove = _getCurrentMove();
+			RelativeDirection relativeMove = _getCurrentMove();
 			if (null != relativeMove)
 			{
 				if (_activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
@@ -347,7 +347,7 @@ public class InputManager
 		return new Point(x, y);
 	}
 
-	private MovementAccumulator.Relative _getCurrentMove()
+	private RelativeDirection _getCurrentMove()
 	{
 		// Given that we can mix directions (forward + right, for example), this function handles that combination logic.
 		int forward = 0;
@@ -369,46 +369,46 @@ public class InputManager
 			right -= 1;
 		}
 		
-		MovementAccumulator.Relative relative;
+		RelativeDirection relative;
 		if (forward > 0)
 		{
 			if (right > 0)
 			{
-				relative = MovementAccumulator.Relative.FORWARD_RIGHT;
+				relative = RelativeDirection.FORWARD_RIGHT;
 			}
 			else if (right < 0)
 			{
-				relative = MovementAccumulator.Relative.FORWARD_LEFT;
+				relative = RelativeDirection.FORWARD_LEFT;
 			}
 			else
 			{
-				relative = MovementAccumulator.Relative.FORWARD;
+				relative = RelativeDirection.FORWARD;
 			}
 		}
 		else if (forward < 0)
 		{
 			if (right > 0)
 			{
-				relative = MovementAccumulator.Relative.BACKWARD_RIGHT;
+				relative = RelativeDirection.BACKWARD_RIGHT;
 			}
 			else if (right < 0)
 			{
-				relative = MovementAccumulator.Relative.BACKWARD_LEFT;
+				relative = RelativeDirection.BACKWARD_LEFT;
 			}
 			else
 			{
-				relative = MovementAccumulator.Relative.BACKWARD;
+				relative = RelativeDirection.BACKWARD;
 			}
 		}
 		else
 		{
 			if (right > 0)
 			{
-				relative = MovementAccumulator.Relative.RIGHT;
+				relative = RelativeDirection.RIGHT;
 			}
 			else if (right < 0)
 			{
-				relative = MovementAccumulator.Relative.LEFT;
+				relative = RelativeDirection.LEFT;
 			}
 			else
 			{

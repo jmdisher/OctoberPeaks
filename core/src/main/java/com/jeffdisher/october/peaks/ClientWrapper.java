@@ -11,7 +11,7 @@ import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
-import com.jeffdisher.october.client.MovementAccumulator;
+import com.jeffdisher.october.client.RelativeDirection;
 import com.jeffdisher.october.config.TabListReader;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -347,7 +347,7 @@ public class ClientWrapper
 		_client.setOrientation(yaw, pitch);
 	}
 
-	public void accelerateHorizontal(MovementAccumulator.Relative relativeDirection, boolean runningSpeed)
+	public void accelerateHorizontal(RelativeDirection relativeDirection, boolean runningSpeed)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isAgentPaused);
@@ -361,7 +361,7 @@ public class ClientWrapper
 		_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
 	}
 
-	public void sneak(MovementAccumulator.Relative relativeDirection)
+	public void sneak(RelativeDirection relativeDirection)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isAgentPaused);
@@ -404,8 +404,9 @@ public class ClientWrapper
 				subAction = new EntityChangeJump<>();
 			}
 			else if (EntityChangeSwim.canSwim(previousBlockLookUp
-					, location
-					, vector
+				, location
+				, playerVolume
+				, vector
 			))
 			{
 				subAction = new EntityChangeSwim<>();
