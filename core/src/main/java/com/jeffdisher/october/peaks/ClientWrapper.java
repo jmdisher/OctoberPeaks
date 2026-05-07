@@ -48,6 +48,7 @@ import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
 import com.jeffdisher.october.subactions.EntitySubActionPickUpPassive;
 import com.jeffdisher.october.subactions.EntitySubActionReleaseWeapon;
 import com.jeffdisher.october.subactions.EntitySubActionRequestSwapSpecialSlot;
+import com.jeffdisher.october.subactions.EntitySubActionStepUp;
 import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
 import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
@@ -353,7 +354,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		
 		// Enqueue a passive action, if that makes sense.
-		IEntitySubAction<IMutablePlayerEntity> subAction = _tryPassivePickup(currentTimeMillis);
+		IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
 		if (null != subAction)
 		{
 			_client.sendAction(subAction, currentTimeMillis);
@@ -367,7 +368,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		
 		// Enqueue a passive action, if that makes sense.
-		IEntitySubAction<IMutablePlayerEntity> subAction = _tryPassivePickup(currentTimeMillis);
+		IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
 		if (null != subAction)
 		{
 			_client.sendAction(subAction, currentTimeMillis);
@@ -1074,6 +1075,36 @@ public class ClientWrapper
 			: null
 		;
 		return blockType;
+	}
+
+	private IEntitySubAction<IMutablePlayerEntity> _tryImplicitSubActionsWhileMoving(long currentTimeMillis
+		, RelativeDirection relativeDirection
+	)
+	{
+		// "Implicit" sub-actions are things which we internally trigger based on the environment, not based on specific actions taken by the user.
+		// When moving, this includes "step up" and "pick up passive".
+		ViscosityReader reader = new ViscosityReader(_environment, _worldCache.blockLookup);
+		Entity thisEntity = _worldCache.getThisEntity();
+		byte yaw = thisEntity.yaw();
+		float orientationRadians = OrientationHelpers.getYawRadians(yaw);
+		float yawRadians = orientationRadians + relativeDirection.yawRadians;
+		
+		// Note that these trig components are in the range of [-1.0f..1.0f] but we only want to attempt to step-up if we are right against the step so use a multiplier.
+		float touchingMultiplier = 0.01f;
+		float xComponent = OrientationHelpers.getEastYawComponent(yawRadians) * touchingMultiplier;
+		float yComponent = OrientationHelpers.getNorthYawComponent(yawRadians) * touchingMultiplier;
+		IEntitySubAction<IMutablePlayerEntity> subAction = EntitySubActionStepUp.buildStepUpWithReader(reader
+			, thisEntity.location()
+			, _worldCache.playerType.volume()
+			, xComponent
+			, yComponent
+		);
+		if (null == subAction)
+		{
+			// If there was no step-up, see if there is a passive we can pick up.
+			subAction = _tryPassivePickup(currentTimeMillis);
+		}
+		return subAction;
 	}
 
 	private IEntitySubAction<IMutablePlayerEntity> _tryPassivePickup(long currentTimeMillis)
