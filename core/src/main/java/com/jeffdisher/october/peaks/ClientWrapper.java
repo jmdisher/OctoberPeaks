@@ -12,6 +12,7 @@ import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.client.RelativeDirection;
+import com.jeffdisher.october.client.VerticalDirection;
 import com.jeffdisher.october.config.TabListReader;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.ColumnHeightMap;
@@ -127,6 +128,7 @@ public class ClientWrapper
 	private AbsoluteLocation _lastBlockTarget;
 	private long _lastBlockActionMillis;
 	private int _currentViewDistance;
+	private boolean _isCreativeFlightActive;
 
 	public ClientWrapper(Environment environment
 			, IUpdateConsumer updateConsumer
@@ -337,7 +339,14 @@ public class ClientWrapper
 			_client.sendAction(subAction, currentTimeMillis);
 		}
 		// Now, just allow time to pass while standing.
-		_client.doNothing(currentTimeMillis);
+		if (_isCreativeFlightActive)
+		{
+			_client.hover(currentTimeMillis);
+		}
+		else
+		{
+			_client.doNothing(currentTimeMillis);
+		}
 	}
 
 	public void setOrientation(float yawRadians, float pitchRadians)
@@ -353,13 +362,20 @@ public class ClientWrapper
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isAgentPaused);
 		
-		// Enqueue a passive action, if that makes sense.
-		IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
-		if (null != subAction)
+		if (_isCreativeFlightActive)
 		{
-			_client.sendAction(subAction, currentTimeMillis);
+			_client.fly(currentTimeMillis, relativeDirection, VerticalDirection.LEVEL);
 		}
-		_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
+		else
+		{
+			// Enqueue a passive action, if that makes sense.
+			IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
+			if (null != subAction)
+			{
+				_client.sendAction(subAction, currentTimeMillis);
+			}
+			_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
+		}
 	}
 
 	public void sneak(RelativeDirection relativeDirection)
@@ -367,13 +383,20 @@ public class ClientWrapper
 		long currentTimeMillis = System.currentTimeMillis();
 		Assert.assertTrue(!_isAgentPaused);
 		
-		// Enqueue a passive action, if that makes sense.
-		IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
-		if (null != subAction)
+		if (_isCreativeFlightActive)
 		{
-			_client.sendAction(subAction, currentTimeMillis);
+			_client.fly(currentTimeMillis, relativeDirection, VerticalDirection.LEVEL);
 		}
-		_client.sneak(relativeDirection, currentTimeMillis);
+		else
+		{
+			// Enqueue a passive action, if that makes sense.
+			IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
+			if (null != subAction)
+			{
+				_client.sendAction(subAction, currentTimeMillis);
+			}
+			_client.sneak(relativeDirection, currentTimeMillis);
+		}
 	}
 
 	public boolean ascendOrJumpOrSwim()
@@ -381,8 +404,14 @@ public class ClientWrapper
 		// See if we can jump or swim.
 		boolean didMove = false;
 		Assert.assertTrue(!_isAgentPaused);
-		// Filter for redundant events.
-		if (!_didJump)
+		
+		if (_isCreativeFlightActive)
+		{
+			long currentTimeMillis = System.currentTimeMillis();
+			_client.fly(currentTimeMillis, null, VerticalDirection.UP);
+			didMove = true;
+		}
+		else if (!_didJump)
 		{
 			Entity thisEntity = _worldCache.getThisEntity();
 			TickProcessingContext.IBlockFetcher previousBlockLookUp = _worldCache.blockLookup;
@@ -429,17 +458,25 @@ public class ClientWrapper
 	{
 		// Try to descend, if we are on a ladder.
 		Assert.assertTrue(!_isAgentPaused);
-		
 		long currentTimeMillis = System.currentTimeMillis();
-		TickProcessingContext.IBlockFetcher previousBlockLookUp = _worldCache.blockLookup;
-		EntityLocation location = _worldCache.getThisEntity().location();
 		
 		boolean didMove = false;
-		if (EntitySubActionLadderDescend.canDescend(previousBlockLookUp, location, _worldCache.playerType.volume()))
+		if (_isCreativeFlightActive)
 		{
-			EntitySubActionLadderDescend<IMutablePlayerEntity> subAction = new EntitySubActionLadderDescend<>();
-			_client.sendAction(subAction, currentTimeMillis);
+			_client.fly(currentTimeMillis, null, VerticalDirection.DOWN);
 			didMove = true;
+		}
+		else
+		{
+			TickProcessingContext.IBlockFetcher previousBlockLookUp = _worldCache.blockLookup;
+			EntityLocation location = _worldCache.getThisEntity().location();
+			
+			if (EntitySubActionLadderDescend.canDescend(previousBlockLookUp, location, _worldCache.playerType.volume()))
+			{
+				EntitySubActionLadderDescend<IMutablePlayerEntity> subAction = new EntitySubActionLadderDescend<>();
+				_client.sendAction(subAction, currentTimeMillis);
+				didMove = true;
+			}
 		}
 		return didMove;
 	}
@@ -974,7 +1011,8 @@ public class ClientWrapper
 
 	public void toggleCreativeFlight()
 	{
-		// TODO:  Implement.
+		long currentTimeMillis = System.currentTimeMillis();
+		_isCreativeFlightActive = _client.enableCreativeFlight(!_isCreativeFlightActive, currentTimeMillis);
 	}
 
 	public boolean pauseGame()
