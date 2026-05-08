@@ -260,6 +260,11 @@ public class InputManager
 			{
 				uiManager.tryDescend();
 			}
+			if (_activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
+			{
+				uiManager.toggleCreativeFlight();
+				_activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
+			}
 		}
 		else
 		{

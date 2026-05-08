@@ -972,6 +972,11 @@ public class ClientWrapper
 		}
 	}
 
+	public void toggleCreativeFlight()
+	{
+		// TODO:  Implement.
+	}
+
 	public boolean pauseGame()
 	{
 		if (null != _monitoringAgent)

@@ -39,6 +39,7 @@ public class MutableControls
 		MOVE_SPRINT(Keys.CONTROL_LEFT, false, "Sprint"),
 		MOVE_SNEAK(Keys.SHIFT_LEFT, false, "Sneak"),
 		DROP_ITEM(Keys.Q, true, "Drop Item"),
+		TOGGLE_FLIGHT(Keys.GRAVE, true, "Toggle Flight (Creative)"),
 		;
 		
 		private int keyCode;

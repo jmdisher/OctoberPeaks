@@ -536,6 +536,11 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
+	public void toggleCreativeFlight()
+	{
+		_currentGameSession.client.toggleCreativeFlight();
+	}
+
 	public void keyCodeUp(int lastKeyUp)
 	{
 		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _uiData.currentlyChangingControl.get()))
