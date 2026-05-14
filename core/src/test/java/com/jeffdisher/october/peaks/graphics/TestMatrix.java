@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.types.FacingDirection;
 
 
 public class TestMatrix
@@ -118,6 +119,19 @@ public class TestMatrix
 		Matrix combine = Matrix.multiply(translate, scale);
 		float[] combined = combine.multiplyVectorComponents(-1.0f, 1.0f, 0.5f, 1.0f);
 		_vectorEquals(new float[] {8.0f, -17.0f, 2.1f, 1.0f}, combined);
+	}
+
+	@Test
+	public void rotateFacingDirection() throws Throwable
+	{
+		float[] vec4 = new float[] {0.0f, 1.0f, 0.0f, 1.0f};
+		Matrix north = Matrix.rotateToOrientation(FacingDirection.NORTH);
+		Matrix east = Matrix.rotateToOrientation(FacingDirection.EAST);
+		Matrix up = Matrix.rotateToOrientation(FacingDirection.UP);
+		
+		_vectorEquals(new float[] {0.0f, 1.0f, 0.0f, 1.0f}, north.multiplyVector(vec4));
+		_vectorEquals(new float[] {1.0f, 0.0f, 0.0f, 1.0f}, east.multiplyVector(vec4));
+		_vectorEquals(new float[] {0.0f, 0.0f, 1.0f, 1.0f}, up.multiplyVector(vec4));
 	}
 
 

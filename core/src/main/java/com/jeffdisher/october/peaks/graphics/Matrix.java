@@ -2,6 +2,8 @@ package com.jeffdisher.october.peaks.graphics;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.types.Vector;
+import com.jeffdisher.october.types.FacingDirection;
+import com.jeffdisher.october.utils.Assert;
 
 
 public class Matrix
@@ -114,6 +116,67 @@ public class Matrix
 		
 		Matrix rotate = _multiply(rotateYaw, rotatePitch);
 		return rotate;
+	}
+
+	public static Matrix rotateToOrientation(FacingDirection orientation)
+	{
+		// Instead of exposing the internal 3x3 rotation matrix of the FacingOrientation object, we just hard-code an
+		// equivalent 4x4 affine transform.  Note that the 3x3 might be exposed in the future to avoid this duplication.
+		float[] rowInner;
+		switch(orientation)
+		{
+		case NORTH:
+			rowInner = new float[] {
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case WEST:
+			rowInner = new float[] {
+				0.0f, -1.0f, 0.0f, 0.0f,
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case SOUTH:
+			rowInner = new float[] {
+				-1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, -1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case EAST:
+			rowInner = new float[] {
+				0.0f, 1.0f, 0.0f, 0.0f,
+				-1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case DOWN:
+			rowInner = new float[] {
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.0f, -1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case UP:
+			rowInner = new float[] {
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, -1.0f, 0.0f,
+				0.0f, 1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		default:
+			throw Assert.unreachable();
+		}
+		return new Matrix(rowInner);
 	}
 
 
