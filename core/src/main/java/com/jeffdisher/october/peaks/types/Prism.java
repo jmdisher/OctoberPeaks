@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks.types;
 
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.PartialEntity;
 
 
@@ -53,6 +54,27 @@ public record Prism(float west
 				, this.east + rx
 				, this.north + ry
 				, this.top + rz
+		);
+	}
+
+	public final Prism rotateAboutBlockCentre(FacingDirection orientation)
+	{
+		float halfBlock = 0.5f;
+		float w = this.west - halfBlock;
+		float s = this.south - halfBlock;
+		float b = this.bottom - halfBlock;
+		float e = this.east - halfBlock;
+		float n = this.north - halfBlock;
+		float t = this.top - halfBlock;
+		float[] wsb = orientation.rotateTripletAboutZ(new float[] { w, s, b });
+		float[] ent = orientation.rotateTripletAboutZ(new float[] { e, n, t });
+		
+		return new Prism(Math.min(wsb[0], ent[0]) + halfBlock
+			, Math.min(wsb[1], ent[1]) + halfBlock
+			, Math.min(wsb[2], ent[2]) + halfBlock
+			, Math.max(wsb[0], ent[0]) + halfBlock
+			, Math.max(wsb[1], ent[1]) + halfBlock
+			, Math.max(wsb[2], ent[2]) + halfBlock
 		);
 	}
 
