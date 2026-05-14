@@ -15,6 +15,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.NonStackableItem;
@@ -132,7 +133,9 @@ public class SelectionManager
 				else if (_specialBounds.containsKey(block))
 				{
 					// This is a model block so we need special intersection.
-					shouldStop = GeometryHelpers.doesIntersect(_eye, finalEnd, _specialBounds.get(block).getRelative(location.x(), location.y(), location.z()));
+					FacingDirection orientation = proxy.getOrientation();
+					Prism rotatedAndPositioned = _specialBounds.get(block).rotateAboutBlockCentre(orientation).getRelative(location.x(), location.y(), location.z());
+					shouldStop = GeometryHelpers.doesIntersect(_eye, finalEnd, rotatedAndPositioned);
 				}
 				else
 				{
