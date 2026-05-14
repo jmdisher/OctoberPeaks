@@ -4,20 +4,23 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SpatialHelpers;
-import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.Pair;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.PassiveType;
 import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.utils.Assert;
+import com.jeffdisher.october.utils.CommonBlockFetcher;
 
 
 /**
@@ -38,7 +41,7 @@ public class WorldCache
 	private final Map<Integer, PartialPassive> _fallingBlockPassives;
 	private final Map<Integer, PartialPassive> _arrowPassives;
 
-	private final Map<CuboidAddress, IReadOnlyCuboidData> _cuboids;
+	private final Map<CuboidAddress, _CuboidData> _cuboids;
 
 	public WorldCache(EntityType playerType)
 	{
@@ -51,42 +54,16 @@ public class WorldCache
 		_arrowPassives = new HashMap<>();
 		_cuboids = new HashMap<>();
 		
-		this.blockLookup = new TickProcessingContext.IBlockFetcher() {
-			@Override
-			public BlockProxy readBlock(AbsoluteLocation location)
-			{
-				return _readBlock(location);
-			}
-			@Override
-			public Map<AbsoluteLocation, BlockProxy> readBlockBatch(Collection<AbsoluteLocation> locations)
-			{
-				Map<AbsoluteLocation, BlockProxy> results = new HashMap<>();
-				for (AbsoluteLocation location : locations)
-				{
-					BlockProxy result = _readBlock(location);
-					if (null != result)
-					{
-						results.put(location, result);
-					}
-				}
-				return results;
-			}
-			private BlockProxy _readBlock(AbsoluteLocation location)
-			{
-				BlockProxy proxy = null;
-				IReadOnlyCuboidData cuboid = _cuboids.get(location.getCuboidAddress());
-				if (null != cuboid)
-				{
-					proxy = BlockProxy.load(location.getBlockAddress(), cuboid);
-				}
-				return proxy;
-			}
-		};
+		this.blockLookup = new CommonBlockFetcher(new _DataFetcher());
 	}
 
 	public IReadOnlyCuboidData getCuboid(CuboidAddress cuboidAddress)
 	{
-		return _cuboids.get(cuboidAddress);
+		_CuboidData data = _cuboids.get(cuboidAddress);
+		return (null != data)
+			? data.cuboid
+			: null
+		;
 	}
 
 	public Entity getThisEntity()
@@ -168,13 +145,13 @@ public class WorldCache
 	// ----- Methods to update the cache state -----
 	public void addCuboid(IReadOnlyCuboidData cuboid)
 	{
-		Object old = _cuboids.put(cuboid.getCuboidAddress(), cuboid);
+		Object old = _cuboids.put(cuboid.getCuboidAddress(), new _CuboidData(cuboid));
 		Assert.assertTrue(null == old);
 	}
 
 	public void updateCuboid(IReadOnlyCuboidData cuboid)
 	{
-		Object old = _cuboids.put(cuboid.getCuboidAddress(), cuboid);
+		Object old = _cuboids.put(cuboid.getCuboidAddress(), new _CuboidData(cuboid));
 		Assert.assertTrue(null != old);
 	}
 
@@ -285,5 +262,38 @@ public class WorldCache
 			throw Assert.unreachable();
 		}
 		Assert.assertTrue(null != old);
+	}
+
+
+	private static class _CuboidData
+	{
+		public final IReadOnlyCuboidData cuboid;
+		public Map<BlockAddress, BlockProxy> cache;
+		public _CuboidData(IReadOnlyCuboidData cuboid)
+		{
+			this.cuboid = cuboid;
+		}
+	}
+
+	private class _DataFetcher implements Function<CuboidAddress, Pair<IReadOnlyCuboidData, Map<BlockAddress, BlockProxy>>>
+	{
+		@Override
+		public Pair<IReadOnlyCuboidData, Map<BlockAddress, BlockProxy>> apply(CuboidAddress cuboidAddress)
+		{
+			Pair<IReadOnlyCuboidData, Map<BlockAddress, BlockProxy>> pair = null;
+			_CuboidData tuple = _cuboids.get(cuboidAddress);
+			
+			if (null != tuple)
+			{
+				Map<BlockAddress, BlockProxy> cache = tuple.cache;
+				if (null == cache)
+				{
+					cache = new HashMap<>();
+					tuple.cache = cache;
+				}
+				pair = new Pair<>(tuple.cuboid, cache);
+			}
+			return pair;
+		}
 	}
 }
