@@ -37,6 +37,7 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.PassiveType;
 import com.jeffdisher.october.utils.Assert;
@@ -563,7 +564,7 @@ public class BlockRenderer
 		}
 	}
 
-	public void renderSelectedBlock(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier, AbsoluteLocation selectedBlock, Block selectedType)
+	public void renderSelectedBlock(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier, AbsoluteLocation selectedBlock, Block selectedType, FacingDirection orientation)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
@@ -589,7 +590,10 @@ public class BlockRenderer
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _selectionResources._highlightTexture);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
-		Matrix model = Matrix.translate(selectedBlock.x(), selectedBlock.y(), selectedBlock.z());
+		Matrix directRotate = Matrix.rotateToOrientation(orientation);
+		Matrix rotate = Matrix.multiply(directRotate, Matrix.translate(-0.5f, -0.5f, -0.5f));
+		Matrix translate = Matrix.translate(selectedBlock.x() + 0.5f, selectedBlock.y() + 0.5f, selectedBlock.z() + 0.5f);
+		Matrix model = Matrix.multiply(translate, rotate);
 		model.uploadAsUniform(_gl, _selectionResources._uModelMatrix);
 		VertexArray highlighter = _selectionResources._blockModelHighlightCubes.getOrDefault(selectedType, _selectionResources._defaultHighlightCube);
 		highlighter.drawAllTriangles(_gl);

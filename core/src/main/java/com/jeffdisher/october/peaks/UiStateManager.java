@@ -57,6 +57,7 @@ import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityVolume;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
@@ -565,6 +566,7 @@ public class UiStateManager implements GameSession.ICallouts
 		WorldSelection selection = null;
 		PartialEntity entity = null;
 		AbsoluteLocation stopBlock = null;
+		FacingDirection stopBlockOrientation = null;
 		Block stopBlockType = null;
 		AbsoluteLocation preStopBlock = null;
 		if (_UiState.PLAY == _uiState)
@@ -594,6 +596,7 @@ public class UiStateManager implements GameSession.ICallouts
 				if (null != proxy)
 				{
 					stopBlockType = proxy.getBlock();
+					stopBlockOrientation = proxy.getOrientation();
 				}
 				else
 				{
@@ -608,14 +611,14 @@ public class UiStateManager implements GameSession.ICallouts
 		if (null != _currentGameSession)
 		{
 			// Draw the main scene first (since we only draw the other data on top of this).
-			_currentGameSession.scene.render(entity, stopBlock, stopBlockType);
+			_currentGameSession.scene.render(entity, stopBlock, stopBlockType, stopBlockOrientation);
 			
 			// Draw any eye effect overlay.
 			_currentGameSession.eyeEffect.drawEyeEffect();
 		}
 		else if (null != _profilingSession)
 		{
-			_profilingSession.scene.render(entity, stopBlock, stopBlockType);
+			_profilingSession.scene.render(entity, stopBlock, stopBlockType, stopBlockOrientation);
 			_profilingSession.eyeEffect.drawEyeEffect();
 		}
 		

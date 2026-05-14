@@ -21,6 +21,7 @@ import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
+import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.PartialEntity;
 
 
@@ -82,7 +83,7 @@ public class SceneRenderer
 		_skyBox.updateView(eye, target, upVector);
 	}
 
-	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType)
+	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType, FacingDirection orientation)
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		_animationManager.startNewFrame(currentTimeMillis);
@@ -111,7 +112,7 @@ public class SceneRenderer
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
 		if (null != selectedBlock)
 		{
-			_blockRenderer.renderSelectedBlock(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedBlock, selectedType);
+			_blockRenderer.renderSelectedBlock(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedBlock, selectedType, orientation);
 		}
 		else if (null != selectedEntity)
 		{
