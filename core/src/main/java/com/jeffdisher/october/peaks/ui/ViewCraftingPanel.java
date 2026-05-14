@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
 
 
 /**
@@ -63,8 +64,9 @@ public class ViewCraftingPanel implements IView
 		ToIntFunction<CraftDescription> numberLabelValueTransformer = (CraftDescription desc) -> desc.output().count();
 		StatelessViewItemTuple.ToFloatFunction<CraftDescription> progressBarValueTransformer = (CraftDescription desc) -> desc.progress();
 		IStatelessView<CraftDescription> hoverRender = (Rect elementBounds, Point cursor, CraftDescription craft) -> {
-			// This hover is pretty complicated since we draw the name an inputs.
-			String name = craft.craft().name;
+			// We won't use the "name" of the craft, since that is just an internal ID.  Instead, use the output as the name.
+			Items output = craft.output();
+			String name = String.format("%s (%d)", output.type().name(), output.count());
 			
 			// Calculate the dimensions (we have a title and then a list of input items below this).
 			float widthOfTitle = _ui.getLabelWidth(WINDOW_TITLE_HEIGHT, name);
