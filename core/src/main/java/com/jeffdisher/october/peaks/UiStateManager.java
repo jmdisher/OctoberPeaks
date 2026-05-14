@@ -595,6 +595,11 @@ public class UiStateManager implements GameSession.ICallouts
 				{
 					stopBlockType = proxy.getBlock();
 				}
+				else
+				{
+					// Note that the stopBlock can also point at the first not loaded block (since it is a "stop point"), but there is no point in drawing that.
+					stopBlock = null;
+				}
 				preStopBlock = selection.preStopBlock();
 			}
 		}
