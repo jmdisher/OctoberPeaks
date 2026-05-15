@@ -130,6 +130,7 @@ public class ClientWrapper
 	private long _lastBlockActionMillis;
 	private int _currentViewDistance;
 	private boolean _isCreativeFlightActive;
+	private IEntitySubAction<IMutablePlayerEntity> _pendingSubAction;
 
 	public ClientWrapper(Environment environment
 			, IUpdateConsumer updateConsumer
@@ -337,7 +338,7 @@ public class ClientWrapper
 		}
 		if (null != subAction)
 		{
-			_client.sendAction(subAction, currentTimeMillis);
+			_sendLowPrioritySubAction(subAction, currentTimeMillis);
 		}
 		// Now, just allow time to pass while standing.
 		if (_isCreativeFlightActive)
@@ -373,7 +374,7 @@ public class ClientWrapper
 			IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
 			if (null != subAction)
 			{
-				_client.sendAction(subAction, currentTimeMillis);
+				_sendLowPrioritySubAction(subAction, currentTimeMillis);
 			}
 			_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
 		}
@@ -394,7 +395,7 @@ public class ClientWrapper
 			IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
 			if (null != subAction)
 			{
-				_client.sendAction(subAction, currentTimeMillis);
+				_sendLowPrioritySubAction(subAction, currentTimeMillis);
 			}
 			_client.sneak(relativeDirection, currentTimeMillis);
 		}
@@ -447,7 +448,7 @@ public class ClientWrapper
 			if (null != subAction)
 			{
 				long currentTimeMillis = System.currentTimeMillis();
-				_client.sendAction(subAction, currentTimeMillis);
+				_sendHighPrioritySubAction(subAction, currentTimeMillis);
 				didMove = true;
 				_didJump = true;
 			}
@@ -475,7 +476,7 @@ public class ClientWrapper
 			if (EntitySubActionLadderDescend.canDescend(previousBlockLookUp, location, _worldCache.playerType.volume()))
 			{
 				EntitySubActionLadderDescend<IMutablePlayerEntity> subAction = new EntitySubActionLadderDescend<>();
-				_client.sendAction(subAction, currentTimeMillis);
+				_sendHighPrioritySubAction(subAction, currentTimeMillis);
 				didMove = true;
 			}
 		}
@@ -502,7 +503,7 @@ public class ClientWrapper
 			{
 				// This block is not the kind which can be replaced, meaning it can potentially be broken.
 				EntityChangeIncrementalBlockBreak change = new EntityChangeIncrementalBlockBreak(blockLocation);
-				_client.sendAction(change, currentTimeMillis);
+				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(blockLocation, currentTimeMillis);
 				didHit = true;
 			}
@@ -600,7 +601,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		if (null != change)
 		{
-			_client.sendAction(change, currentTimeMillis);
+			_sendHighPrioritySubAction(change, currentTimeMillis);
 		}
 		return (null != change);
 	}
@@ -645,7 +646,7 @@ public class ClientWrapper
 		if (null != change)
 		{
 			long currentTimeMillis = System.currentTimeMillis();
-			_client.sendAction(change, currentTimeMillis);
+			_sendHighPrioritySubAction(change, currentTimeMillis);
 			_resetBlockTarget(null, currentTimeMillis);
 		}
 		return (null != change);
@@ -690,7 +691,7 @@ public class ClientWrapper
 		if (null != change)
 		{
 			long currentTimeMillis = System.currentTimeMillis();
-			_client.sendAction(change, currentTimeMillis);
+			_sendHighPrioritySubAction(change, currentTimeMillis);
 			_resetBlockTarget(null, currentTimeMillis);
 		}
 		return (null != change);
@@ -707,7 +708,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		IEntitySubAction<IMutablePlayerEntity> change = new EntitySubActionReleaseWeapon();
 		long currentTimeMillis = System.currentTimeMillis();
-		boolean didApply = _client.sendAction(change, currentTimeMillis);
+		boolean didApply = _sendHighPrioritySubAction(change, currentTimeMillis);
 		_resetBlockTarget(null, currentTimeMillis);
 		return didApply;
 	}
@@ -767,7 +768,7 @@ public class ClientWrapper
 				{
 					change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
 				}
-				_client.sendAction(change, currentTimeMillis);
+				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(emptyBlock, currentTimeMillis);
 				didAttemptPlace = true;
 			}
@@ -787,7 +788,7 @@ public class ClientWrapper
 			if (damage > 0)
 			{
 				EntityChangeIncrementalBlockRepair change = new EntityChangeIncrementalBlockRepair(blockLocation);
-				_client.sendAction(change, currentTimeMillis);
+				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(blockLocation, currentTimeMillis);
 				didAttemptRepair = true;
 			}
@@ -813,7 +814,7 @@ public class ClientWrapper
 			{
 				EntityChangeUseSelectedItemOnEntity change = new EntityChangeUseSelectedItemOnEntity(selectedEntity.id());
 				long currentTimeMillis = System.currentTimeMillis();
-				_client.sendAction(change, currentTimeMillis);
+				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(null, currentTimeMillis);
 			}
 		}
@@ -824,7 +825,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		EntityChangeChangeHotbarSlot change = new EntityChangeChangeHotbarSlot(index);
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.sendAction(change, currentTimeMillis);
+		_sendHighPrioritySubAction(change, currentTimeMillis);
 	}
 
 	public void setSelectedItemKeyOrClear(int itemInventoryKey)
@@ -839,7 +840,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		MutationEntitySelectItem select = new MutationEntitySelectItem(keyToSelect);
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.sendAction(select, currentTimeMillis);
+		_sendHighPrioritySubAction(select, currentTimeMillis);
 	}
 
 	/**
@@ -891,7 +892,7 @@ public class ClientWrapper
 				{
 					MutationEntityRequestItemPickUp request = new MutationEntityRequestItemPickUp(location, blockInventoryKey, count, inventoryAspect);
 					long currentTimeMillis = System.currentTimeMillis();
-					_client.sendAction(request, currentTimeMillis);
+					_sendHighPrioritySubAction(request, currentTimeMillis);
 					didSubmit = true;
 				}
 			}
@@ -955,7 +956,7 @@ public class ClientWrapper
 				{
 					MutationEntityPushItems push = new MutationEntityPushItems(location, entityInventoryKey, count, inventoryAspect);
 					long currentTimeMillis = System.currentTimeMillis();
-					_client.sendAction(push, currentTimeMillis);
+					_sendHighPrioritySubAction(push, currentTimeMillis);
 					didSubmit = true;
 				}
 			}
@@ -968,7 +969,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		long currentTimeMillis = System.currentTimeMillis();
 		EntityChangeCraft change = new EntityChangeCraft(craft);
-		_client.sendAction(change, currentTimeMillis);
+		_sendHighPrioritySubAction(change, currentTimeMillis);
 	}
 
 	public void beginCraftInBlock(AbsoluteLocation block, Craft craft)
@@ -976,7 +977,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		long currentTimeMillis = System.currentTimeMillis();
 		EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(block, craft);
-		_client.sendAction(change, currentTimeMillis);
+		_sendHighPrioritySubAction(change, currentTimeMillis);
 	}
 
 	public void swapArmour(BodyPart part)
@@ -987,7 +988,7 @@ public class ClientWrapper
 		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.sendAction(swap, currentTimeMillis);
+		_sendHighPrioritySubAction(swap, currentTimeMillis);
 	}
 
 	public void hitEntity(PartialEntity selectedEntity)
@@ -995,7 +996,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		EntityChangeAttackEntity attack = new EntityChangeAttackEntity(selectedEntity.id());
 		long currentTimeMillis = System.currentTimeMillis();
-		_client.sendAction(attack, currentTimeMillis);
+		_sendHighPrioritySubAction(attack, currentTimeMillis);
 		_resetBlockTarget(null, currentTimeMillis);
 	}
 
@@ -1004,7 +1005,7 @@ public class ClientWrapper
 		Assert.assertTrue(!_isAgentPaused);
 		EntitySubActionDropItemsAsPassive drop = new EntitySubActionDropItemsAsPassive(localInventoryId, dropAll);
 		long currentTimeMillis = System.currentTimeMillis();
-		boolean didDrop = _client.sendAction(drop, currentTimeMillis);
+		boolean didDrop = _sendHighPrioritySubAction(drop, currentTimeMillis);
 		if (didDrop)
 		{
 			// We want to delay pick-up.
@@ -1256,6 +1257,30 @@ public class ClientWrapper
 		// Set this as our target.
 		_lastBlockTarget = blockLocation;
 		_lastBlockActionMillis = currentTimeMillis;
+	}
+
+	private boolean _sendHighPrioritySubAction(IEntitySubAction<IMutablePlayerEntity> subAction, long currentTimeMillis)
+	{
+		_pendingSubAction = subAction;
+		boolean didSend = _client.sendAction(_pendingSubAction, currentTimeMillis);
+		if (didSend)
+		{
+			_pendingSubAction = null;
+		}
+		return didSend;
+	}
+
+	private void _sendLowPrioritySubAction(IEntitySubAction<IMutablePlayerEntity> subAction, long currentTimeMillis)
+	{
+		if (null == _pendingSubAction)
+		{
+			_pendingSubAction = subAction;
+		}
+		boolean didSend = _client.sendAction(_pendingSubAction, currentTimeMillis);
+		if (didSend)
+		{
+			_pendingSubAction = null;
+		}
 	}
 
 
