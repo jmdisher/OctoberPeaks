@@ -289,58 +289,17 @@ public class ClientWrapper
 	{
 		Assert.assertTrue(!_isAgentPaused);
 		
-		IEntitySubAction<IMutablePlayerEntity> subAction = null;
-		
-		// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
-		Entity thisEntity = _worldCache.getThisEntity();
-		CraftOperation ongoing = thisEntity.ephemeralShared().localCraftOperation();
+		// Only try to determine the ideal sub-action if there isn't already something pending.
 		long currentTimeMillis = System.currentTimeMillis();
-		if (null != ongoing)
+		if (_isPendingSubActionClearAfterSend(currentTimeMillis))
 		{
-			subAction = new EntityChangeCraft(null);
-		}
-		else if (null != rescheduleInInventory)
-		{
-			subAction = new EntityChangeCraft(rescheduleInInventory);
-		}
-		else if (null != openStationLocation)
-		{
-			IReadOnlyCuboidData cuboid = _worldCache.getCuboid(openStationLocation.getCuboidAddress());
-			// We already have this open in another view.
-			Assert.assertTrue(null != cuboid);
-			CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
-			if (null != blockOperation)
+			IEntitySubAction<IMutablePlayerEntity> subAction = _determinePassiveSubAction(rescheduleInInventory, openStationLocation, rescheduleInBlock, currentTimeMillis);
+			if (null != subAction)
 			{
-				// Much like EntityChangeCraft, a null here just means "continue".
-				subAction = new EntityChangeCraftInBlock(openStationLocation, null);
-			}
-			else if (null != rescheduleInBlock)
-			{
-				subAction = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
-			}
-		}
-		else
-		{
-			// If we are standing in a portal, see if we are ready to pass through it.
-			if ((_lastSpecialActionMillis + EntitySubActionTravelViaBlock.TRAVEL_COOLDOWN_MILLIS) < currentTimeMillis)
-			{
-				AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _worldCache.blockLookup, thisEntity.location(), _worldCache.playerType.volume());
-				if (null != surfaceLocation)
-				{
-					subAction = new EntitySubActionTravelViaBlock(surfaceLocation);
-				}
+				_sendLowPrioritySubAction(subAction, currentTimeMillis);
 			}
 		}
 		
-		// If we aren't taking any other action, see if it is time for us to try to pick something up and if there is anything nearby.
-		if (null == subAction)
-		{
-			subAction = _tryPassivePickup(currentTimeMillis);
-		}
-		if (null != subAction)
-		{
-			_sendLowPrioritySubAction(subAction, currentTimeMillis);
-		}
 		// Now, just allow time to pass while standing.
 		if (_isCreativeFlightActive)
 		{
@@ -372,10 +331,13 @@ public class ClientWrapper
 		else
 		{
 			// Enqueue a passive action, if that makes sense.
-			IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
-			if (null != subAction)
+			if (_isPendingSubActionClearAfterSend(currentTimeMillis))
 			{
-				_sendLowPrioritySubAction(subAction, currentTimeMillis);
+				IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
+				if (null != subAction)
+				{
+					_sendLowPrioritySubAction(subAction, currentTimeMillis);
+				}
 			}
 			_client.walk(relativeDirection, runningSpeed, currentTimeMillis);
 		}
@@ -393,10 +355,13 @@ public class ClientWrapper
 		else
 		{
 			// Enqueue a passive action, if that makes sense.
-			IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
-			if (null != subAction)
+			if (_isPendingSubActionClearAfterSend(currentTimeMillis))
 			{
-				_sendLowPrioritySubAction(subAction, currentTimeMillis);
+				IEntitySubAction<IMutablePlayerEntity> subAction = _tryImplicitSubActionsWhileMoving(currentTimeMillis, relativeDirection);
+				if (null != subAction)
+				{
+					_sendLowPrioritySubAction(subAction, currentTimeMillis);
+				}
 			}
 			_client.sneak(relativeDirection, currentTimeMillis);
 		}
@@ -1282,6 +1247,71 @@ public class ClientWrapper
 		{
 			_pendingSubAction = null;
 		}
+	}
+
+	private IEntitySubAction<IMutablePlayerEntity> _determinePassiveSubAction(Craft rescheduleInInventory, AbsoluteLocation openStationLocation, Craft rescheduleInBlock, long currentTimeMillis)
+	{
+		IEntitySubAction<IMutablePlayerEntity> subAction = null;
+		
+		// We want to check the if there are any active crafting operations in the entity/block and if we should be auto-rescheduling any.
+		Entity thisEntity = _worldCache.getThisEntity();
+		CraftOperation ongoing = thisEntity.ephemeralShared().localCraftOperation();
+		if (null != ongoing)
+		{
+			subAction = new EntityChangeCraft(null);
+		}
+		else if (null != rescheduleInInventory)
+		{
+			subAction = new EntityChangeCraft(rescheduleInInventory);
+		}
+		else if (null != openStationLocation)
+		{
+			IReadOnlyCuboidData cuboid = _worldCache.getCuboid(openStationLocation.getCuboidAddress());
+			// We already have this open in another view.
+			Assert.assertTrue(null != cuboid);
+			CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
+			if (null != blockOperation)
+			{
+				// Much like EntityChangeCraft, a null here just means "continue".
+				subAction = new EntityChangeCraftInBlock(openStationLocation, null);
+			}
+			else if (null != rescheduleInBlock)
+			{
+				subAction = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
+			}
+		}
+		else
+		{
+			// If we are standing in a portal, see if we are ready to pass through it.
+			if ((_lastSpecialActionMillis + EntitySubActionTravelViaBlock.TRAVEL_COOLDOWN_MILLIS) < currentTimeMillis)
+			{
+				AbsoluteLocation surfaceLocation = EntitySubActionTravelViaBlock.getValidPortalSurface(_environment, _worldCache.blockLookup, thisEntity.location(), _worldCache.playerType.volume());
+				if (null != surfaceLocation)
+				{
+					subAction = new EntitySubActionTravelViaBlock(surfaceLocation);
+				}
+			}
+		}
+		
+		// If we aren't taking any other action, see if it is time for us to try to pick something up and if there is anything nearby.
+		if (null == subAction)
+		{
+			subAction = _tryPassivePickup(currentTimeMillis);
+		}
+		return subAction;
+	}
+
+	private boolean _isPendingSubActionClearAfterSend(long currentTimeMillis)
+	{
+		if (null != _pendingSubAction)
+		{
+			boolean didSend = _client.sendAction(_pendingSubAction, currentTimeMillis);
+			if (didSend)
+			{
+				_pendingSubAction = null;
+			}
+		}
+		return (null == _pendingSubAction);
 	}
 
 
