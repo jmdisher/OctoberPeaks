@@ -311,7 +311,8 @@ public class ClientWrapper
 			CraftOperation blockOperation = cuboid.getDataSpecial(AspectRegistry.CRAFTING, openStationLocation.getBlockAddress());
 			if (null != blockOperation)
 			{
-				subAction = new EntityChangeCraftInBlock(openStationLocation, blockOperation.selectedCraft());
+				// Much like EntityChangeCraft, a null here just means "continue".
+				subAction = new EntityChangeCraftInBlock(openStationLocation, null);
 			}
 			else if (null != rescheduleInBlock)
 			{
