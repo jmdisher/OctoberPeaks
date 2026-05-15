@@ -517,25 +517,27 @@ public class ClientWrapper
 	 * held down.
 	 * 
 	 * @param solidBlock The solid block the user clicked (cannot be null).
-	 * @param emptyBlock The block block before where the user clicked (cannot be null).
+	 * @param emptyBlock The block block before where the user clicked (can be null).
 	 * @return True if an action was taken, false if no action was available.
 	 */
 	public boolean runRightClickOnBlock(AbsoluteLocation solidBlock, AbsoluteLocation emptyBlock)
 	{
 		Assert.assertTrue(null != solidBlock);
-		Assert.assertTrue(null != emptyBlock);
 		
 		// We need to check our selected item and see what "action" is associated with it.
 		Entity thisEntity = _worldCache.getThisEntity();
 		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		
 		Block solidBlockType = _getBlockType(solidBlock);
-		Block emptyBlockType = _getBlockType(emptyBlock);
+		Block emptyBlockType = (null != emptyBlock)
+			? _getBlockType(emptyBlock)
+			: null
+		;
 		long currentTimeMillis = System.currentTimeMillis();
 		
 		// First, see if the target block has a general logic state we can change.
 		IEntitySubAction<IMutablePlayerEntity> change;
-		if ((null == solidBlockType) || (null == emptyBlockType))
+		if ((null == solidBlockType) || ((null != emptyBlock) && (null == emptyBlockType)))
 		{
 			// The target isn't loaded.
 			change = null;
@@ -576,8 +578,8 @@ public class ClientWrapper
 				change = new EntityChangeUseSelectedItemOnBlock(solidBlock);
 				_resetBlockTarget(solidBlock, currentTimeMillis);
 			}
-			// See if we can use it on the emppty block
-			else if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, emptyBlockType) && _readyToInteractOneOff(emptyBlock, currentTimeMillis))
+			// See if we can use it on the empty block
+			else if ((null != emptyBlockType) && EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, emptyBlockType) && _readyToInteractOneOff(emptyBlock, currentTimeMillis))
 			{
 				change = new EntityChangeUseSelectedItemOnBlock(emptyBlock);
 				_resetBlockTarget(emptyBlock, currentTimeMillis);

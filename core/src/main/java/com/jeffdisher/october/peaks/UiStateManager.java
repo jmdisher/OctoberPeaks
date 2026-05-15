@@ -1759,7 +1759,7 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			
 			// If we still didn't do anything, try clicks on the block or self.
-			if (!didAct && _mouseClicked1 && (null != stopBlock) && (null != preStopBlock))
+			if (!didAct && _mouseClicked1 && (null != stopBlock))
 			{
 				didAct = _currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
 			}
