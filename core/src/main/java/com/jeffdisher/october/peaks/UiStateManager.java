@@ -1834,6 +1834,25 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we took no action, just tell the client to pass time.
 		if (!_didAccountForTimeInFrame)
 		{
+			// Check to see if our continuous crafting operations are still valid.
+			if (null != _continuousInInventory)
+			{
+				boolean isValid = _currentGameSession.client.isCraftInInventoryValid(_continuousInInventory);
+				if (!isValid)
+				{
+					// We can't continue this so drop it.
+					_continuousInInventory = null;
+				}
+			}
+			if (null != _continuousInBlock)
+			{
+				boolean isValid = _currentGameSession.client.isCraftInBlockValid(_openStationLocation, _continuousInBlock);
+				if (!isValid)
+				{
+					// We can't continue this so drop it.
+					_continuousInBlock = null;
+				}
+			}
 			_currentGameSession.client.passTimeWhileRunning(_continuousInInventory, _openStationLocation, _continuousInBlock);
 		}
 		

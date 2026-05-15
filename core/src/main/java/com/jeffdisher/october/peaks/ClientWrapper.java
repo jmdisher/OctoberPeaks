@@ -9,6 +9,7 @@ import java.util.Set;
 
 import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
+import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.client.RelativeDirection;
@@ -1015,6 +1016,37 @@ public class ClientWrapper
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		_isCreativeFlightActive = _client.enableCreativeFlight(!_isCreativeFlightActive, currentTimeMillis);
+	}
+
+	public boolean isCraftInInventoryValid(Craft rescheduleInInventory)
+	{
+		Assert.assertTrue(!_isAgentPaused);
+		Assert.assertTrue(null != rescheduleInInventory);
+		
+		// In this case, just see if this can be applied to the Entity's current inventory.
+		Inventory inventory = _getEntityInventory();
+		return CraftAspect.canApply(rescheduleInInventory, inventory);
+	}
+
+	public boolean isCraftInBlockValid(AbsoluteLocation openStationLocation, Craft rescheduleInBlock)
+	{
+		Assert.assertTrue(!_isAgentPaused);
+		Assert.assertTrue(null != openStationLocation);
+		Assert.assertTrue(null != rescheduleInBlock);
+		
+		// In this case, we will assume that the block type makes sense so long as it exists and has an inventory, then check against that.
+		BlockProxy proxy = _worldCache.blockLookup.readBlock(openStationLocation);
+		
+		// If this weren't loaded, we should have cleared it before getting here.
+		Assert.assertTrue(null != proxy);
+		
+		// Get the inventory for this block (this may be faked-up as empty if the wrong type).
+		Inventory inventory = proxy.getInventory();
+		
+		// If this is the wrong type of block, we should have cleared it before getting here.
+		Assert.assertTrue(null != inventory);
+		
+		return CraftAspect.canApply(rescheduleInBlock, inventory);
 	}
 
 	public boolean pauseGame()
