@@ -256,7 +256,7 @@ public class TestGeometryHelpers
 
 	private static PartialEntity _getTestCow(int id, EntityLocation location)
 	{
-		Object extendedData = COW.extendedCodec().buildDefault(0L);
+		Object extendedData = COW.extension().buildDefaultExtendedData(0L);
 		return new PartialEntity(id
 				, COW
 				, location
