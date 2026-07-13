@@ -1477,16 +1477,9 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_handleEyeFilter();
 		
-		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _entityBinding.get())
-		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-		}
+		// This is a window mode so draw the usual.
+		IAction action = _drawCommonWindowModeElements();
 		
-		IAction action = null;
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
 		{
@@ -1502,13 +1495,6 @@ public class UiStateManager implements GameSession.ICallouts
 			action = hover;
 		}
 		hover = _bottomInventoryWindow.doRender(_cursor);
-		if (null != hover)
-		{
-			action = hover;
-		}
-		
-		// We are in windowed mode so also draw the armour slots.
-		hover = _armourWindow.doRender(_cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -1557,15 +1543,11 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_handleEyeFilter();
 		
-		// Once we have loaded the entity, we can draw the hotbar and meta-data.
+		_drawCommonPlayModeElements();
+		
 		Entity entity = _entityBinding.get();
 		if (null != entity)
 		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-			
 			int chargeMillis = entity.ephemeralShared().chargeMillis();
 			if (chargeMillis > 0)
 			{
@@ -1585,12 +1567,6 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		
-		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _selectionWindow.doRender(_cursor);
-		Assert.assertTrue(null == noAction);
-		
-		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
-		
 		return null;
 	}
 
@@ -1600,23 +1576,17 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_handleEyeFilter();
 		
-		// The trading window is the interesting part of this view.
-		IAction action = _leftTradingWindow.doRender(_cursor);
+		// This is a window mode so draw the usual.
+		IAction action = _drawCommonWindowModeElements();
 		
-		// Draw the other common elements (inventory, armour, hotbar, etc).
-		if (null != _entityBinding.get())
-		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
-			Assert.assertTrue(null == noAction);
-		}
-		IAction hover = _thisEntityInventoryWindow.doRender(_cursor);
+		// The trading window is the interesting part of this view.
+		IAction hover = _leftTradingWindow.doRender(_cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
-		hover = _armourWindow.doRender(_cursor);
+		
+		hover = _thisEntityInventoryWindow.doRender(_cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -1673,6 +1643,27 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_handleEyeFilter();
 		
+		_drawCommonPlayModeElements();
+		
+		// Draw the overlay to dim the window.
+		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+	}
+
+	private IAction _drawCommonWindowModeElements()
+	{
+		// Draw the other common elements (inventory, armour, hotbar, etc).
+		if (null != _entityBinding.get())
+		{
+			IAction noAction = _hotbarWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+		}
+		return _armourWindow.doRender(_cursor);
+	}
+
+	private void _drawCommonPlayModeElements()
+	{
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.get())
 		{
@@ -1687,9 +1678,6 @@ public class UiStateManager implements GameSession.ICallouts
 		Assert.assertTrue(null == noAction);
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
-		
-		// Draw the overlay to dim the window.
-		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 	}
 
 	private void _handleEyeFilter()
