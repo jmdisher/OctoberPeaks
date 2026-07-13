@@ -19,6 +19,7 @@ import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.client.RelativeDirection;
+import com.jeffdisher.october.creatures.ExtensionVillager;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.logic.ViscosityReader;
@@ -45,6 +46,7 @@ import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
+import com.jeffdisher.october.peaks.ui.ViewTradeOffers;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -56,12 +58,14 @@ import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
 import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.MinimalEntity;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
@@ -77,6 +81,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final Rect WINDOW_TOP_LEFT = new Rect(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
+	public static final Rect WINDOW_LEFT = new Rect(-0.95f, -0.80f, -0.05f, 0.95f);
 	public static final int MAX_WORLD_NAME = 16;
 	public static final String WORLD_DIRECTORY_PREFIX = "world_";
 	public static final float CHARGE_BAR_WIDTH_MAX = 0.4f;
@@ -88,6 +93,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final GlUi _ui;
 	private final UiData _uiData;
 	private final EntityVolume _playerVolume;
+	private final EntityType _villagerEntityType;
 	private final ICallouts _captureState;
 	private final GL20 _gl;
 	private final File _localStorageDirectory;
@@ -134,6 +140,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Binding<ViewFuelSlot.FuelTuple> _bottomWindowFuelBinding;
 	private final Binding<String> _craftingPanelTitleBinding;
 	private final Binding<List<CraftDescription>> _craftingPanelBinding;
+	private final Binding<Integer> _currentTradingPartnerIdBinding;
 	
 	// Views for rendering parts of the UI in specific modes.
 	private final Window _thisEntityInventoryWindow;
@@ -143,6 +150,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window _hotbarWindow;
 	private final Window _armourWindow;
 	private final Window _selectionWindow;
+	private final Window _leftTradingWindow;
 
 	// We don't currently use a binding for the error payload so store it here, directly.
 	private String[] _errorPayload;
@@ -187,6 +195,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui = new GlUi(gl, resources);
 		_uiData = new UiData(localStorageDirectory, mutableControls, mutablePreferences);
 		_playerVolume = environment.creatures.PLAYER.volume();
+		_villagerEntityType = environment.creatures.getTypeById("op.villager");
 		_captureState = captureState;
 		_gl = gl;
 		_localStorageDirectory = localStorageDirectory;
@@ -206,6 +215,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_bottomWindowFuelBinding = new Binding<>(null);
 		_craftingPanelTitleBinding = new Binding<>(null);
 		_craftingPanelBinding = new Binding<>(null);
+		_currentTradingPartnerIdBinding = new Binding<>(0);
 	
 		// Create our views.
 		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
@@ -275,6 +285,20 @@ public class UiStateManager implements GameSession.ICallouts
 		// The ViewSelection should only use block lookup during play state so the _currentGameSession should never be null.
 		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.readBlock(location);
 		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
+		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
+			if (_leftClick)
+			{
+				MinimalEntity villager = MinimalEntity.fromPartialEntity(_currentGameSession.getEntityForId(_currentTradingPartnerIdBinding.get()));
+				_currentGameSession.client.sendTrade(villager, tradeItem);
+			}
+		};
+		ViewTradeOffers bottomTradingView = new ViewTradeOffers(_ui
+			, _currentTradingPartnerIdBinding
+			, (int villagerId) -> {
+				PartialEntity partial = _currentGameSession.getEntityForId(villagerId);
+				return MinimalEntity.fromPartialEntity(partial);
+			}, tradeButtonConsumer);
+		_leftTradingWindow = new Window(WINDOW_LEFT, bottomTradingView);
 		
 		// Look up the liquid overlay types.
 		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
@@ -479,7 +503,10 @@ public class UiStateManager implements GameSession.ICallouts
 	public void handleHotbarIndex(int hotbarIndex)
 	{
 		// We need an active session and not paused but logically this means play or inventory.
-		if ((_UiState.PLAY == _uiState) || _UiState.INVENTORY == _uiState)
+		if ((_UiState.PLAY == _uiState)
+			|| (_UiState.INVENTORY == _uiState)
+			|| (_UiState.TRADING == _uiState)
+		)
 		{
 			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
 		}
@@ -697,6 +724,10 @@ public class UiStateManager implements GameSession.ICallouts
 			break;
 		case PROFILE:
 			// No event flushing in profiling.
+			break;
+		case TRADING:
+			// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
+			_passTimeWhileRunning();
 			break;
 		case ERROR:
 			// No special events in this case.
@@ -1563,6 +1594,44 @@ public class UiStateManager implements GameSession.ICallouts
 		return null;
 	}
 
+	private IAction _drawTradingStateWindows()
+	{
+		_ui.enterUiRenderMode();
+		
+		_handleEyeFilter();
+		
+		// The trading window is the interesting part of this view.
+		IAction action = _leftTradingWindow.doRender(_cursor);
+		
+		// Draw the other common elements (inventory, armour, hotbar, etc).
+		if (null != _entityBinding.get())
+		{
+			IAction noAction = _hotbarWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+			noAction = _metaDataWindow.doRender(_cursor);
+			Assert.assertTrue(null == noAction);
+		}
+		IAction hover = _thisEntityInventoryWindow.doRender(_cursor);
+		if (null != hover)
+		{
+			action = hover;
+		}
+		hover = _armourWindow.doRender(_cursor);
+		if (null != hover)
+		{
+			action = hover;
+		}
+		
+		// If we should be rendering a hover, do it here.
+		if (null != action)
+		{
+			action.renderHover(_cursor);
+		}
+		
+		// Return any action so that the caller can run the action now that rendering is finished.
+		return action;
+	}
+
 	private IAction _drawOptionsStateWindows()
 	{
 		if (null != _currentGameSession)
@@ -1692,6 +1761,9 @@ public class UiStateManager implements GameSession.ICallouts
 		case PROFILE:
 			action = _drawPlayStateWindows();
 			break;
+		case TRADING:
+			action = _drawTradingStateWindows();
+			break;
 		case ERROR:
 			action = _drawErrorStateWindows();
 			break;
@@ -1752,8 +1824,20 @@ public class UiStateManager implements GameSession.ICallouts
 			{
 				if (!didAct && _mouseClicked1)
 				{
-					// Try to apply the selected item to the entity (we consider this an action even if it did nothing).
-					_currentGameSession.client.applyToEntity(entity);
+					// Check if this is a villager and then switch into the trading UI mode.
+					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
+					{
+						// This is a villager with a profession so switch to our trading UI mode.
+						_uiState = _UiState.TRADING;
+						_captureState.shouldCaptureMouse(false);
+						_currentTradingPartnerIdBinding.set(entity.id());
+					}
+					else
+					{
+						// Otherwise, try to apply the current item to the entity.
+						_currentGameSession.client.applyToEntity(entity);
+					}
+					// As long as we attempted either of these, we consider the action complete.
 					didAct = true;
 				}
 			}
@@ -1962,6 +2046,12 @@ public class UiStateManager implements GameSession.ICallouts
 			_profilingSession.shutdown();
 			Gdx.app.exit();
 			break;
+		case TRADING:
+			// This is similar to the inventory mode so just return to play.
+			_currentTradingPartnerIdBinding.set(0);
+			_uiState = _UiState.PLAY;
+			_captureState.shouldCaptureMouse(true);
+			break;
 		case ERROR:
 			// There is no transition from this state.
 			break;
@@ -2137,6 +2227,11 @@ public class UiStateManager implements GameSession.ICallouts
 		 * Only possible to reach this state from LIST_FOR_PROFILE state.
 		 */
 		PROFILE,
+		/**
+		 * Similar to inventory state, but for when we are viewing the trading UI for a villager.  The current villager
+		 * ID is stored in _currentTradingPartnerIdBinding (stored by ID, not instance, since they might move while open).
+		 */
+		TRADING,
 		/**
 		 * A state used to display a fatal error message before exiting.
 		 */

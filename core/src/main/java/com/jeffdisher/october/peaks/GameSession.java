@@ -129,6 +129,12 @@ public class GameSession
 		return this.client.isConnectionReady();
 	}
 
+	public PartialEntity getEntityForId(int id)
+	{
+		// This is exposed just for the UiStateManager to access the world cache.
+		return _worldCache.getCreatureOrEntityPartial(id);
+	}
+
 	public void shutdown()
 	{
 		// Disconnect from the server.

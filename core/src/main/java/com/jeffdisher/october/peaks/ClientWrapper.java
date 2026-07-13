@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.Set;
 
 import com.jeffdisher.october.aspects.Aspect;
@@ -50,6 +51,7 @@ import com.jeffdisher.october.subactions.EntitySubActionLadderDescend;
 import com.jeffdisher.october.subactions.EntitySubActionPickUpPassive;
 import com.jeffdisher.october.subactions.EntitySubActionReleaseWeapon;
 import com.jeffdisher.october.subactions.EntitySubActionRequestSwapSpecialSlot;
+import com.jeffdisher.october.subactions.EntitySubActionSendTrade;
 import com.jeffdisher.october.subactions.EntitySubActionStepUp;
 import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
 import com.jeffdisher.october.subactions.MutationEntityPushItems;
@@ -77,6 +79,7 @@ import com.jeffdisher.october.types.IMutablePlayerEntity;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
+import com.jeffdisher.october.types.MinimalEntity;
 import com.jeffdisher.october.types.MutableInventory;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
@@ -1014,6 +1017,41 @@ public class ClientWrapper
 		Assert.assertTrue(null != inventory);
 		
 		return CraftAspect.canApply(rescheduleInBlock, inventory);
+	}
+
+	public void sendTrade(MinimalEntity villager, Item tradeItem)
+	{
+		Assert.assertTrue(!_isAgentPaused);
+		
+		Item coin = _environment.items.getItemById("op.coin");
+		Entity thisEntity = _worldCache.getThisEntity();
+		Inventory inventory = thisEntity.inventory();
+		Map<Item, Integer> offers = EntitySubActionSendTrade.villagerTradeOffers(_environment, villager);
+		int cost = offers.get(tradeItem);
+		
+		int localInventoryId;
+		int targetVillagerId = villager.id();
+		Item itemToRequest;
+		if (cost > 0)
+		{
+			// The villager wants to buy this so find it in our local inventory.
+			localInventoryId = EntitySubActionSendTrade.findKeyOfAcceptableLocalItemToTrade(_environment, thisEntity, tradeItem);
+			itemToRequest = coin;
+		}
+		else
+		{
+			// The villager wants to sell this so find our coins to send them.
+			localInventoryId = inventory.getIdOfStackableType(coin);
+			itemToRequest = tradeItem;
+		}
+		
+		// Make sure that this seems sane (localInventoryId will be 0 if any above lookup failed).
+		if (localInventoryId > 0)
+		{
+			EntitySubActionSendTrade subAction = new EntitySubActionSendTrade(localInventoryId, targetVillagerId, itemToRequest);
+			long currentTimeMillis = System.currentTimeMillis();
+			_sendHighPrioritySubAction(subAction, currentTimeMillis);
+		}
 	}
 
 	public boolean pauseGame()
