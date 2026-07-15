@@ -289,7 +289,12 @@ public class UiStateManager implements GameSession.ICallouts
 			if (_leftClick)
 			{
 				MinimalEntity villager = MinimalEntity.fromPartialEntity(_currentGameSession.getEntityForId(_currentTradingPartnerIdBinding.get()));
-				_currentGameSession.client.sendTrade(villager, tradeItem);
+				boolean didSend = _currentGameSession.client.sendTrade(villager, tradeItem);
+				if (!didSend)
+				{
+					// If we failed to send the trade, it means something went wrong (usually out of range) so exit trading mode.
+					_exitTradingMode();
+				}
 			}
 		};
 		ViewTradeOffers bottomTradingView = new ViewTradeOffers(_ui
@@ -2036,9 +2041,7 @@ public class UiStateManager implements GameSession.ICallouts
 			break;
 		case TRADING:
 			// This is similar to the inventory mode so just return to play.
-			_currentTradingPartnerIdBinding.set(0);
-			_uiState = _UiState.PLAY;
-			_captureState.shouldCaptureMouse(true);
+			_exitTradingMode();
 			break;
 		case ERROR:
 			// There is no transition from this state.
@@ -2138,6 +2141,14 @@ public class UiStateManager implements GameSession.ICallouts
 			: entity.inventory()
 		;
 		return inventory;
+	}
+
+	private void _exitTradingMode()
+	{
+		// Whenever we exit trading mode, we always go back into play mode.
+		_currentTradingPartnerIdBinding.set(0);
+		_uiState = _UiState.PLAY;
+		_captureState.shouldCaptureMouse(true);
 	}
 
 

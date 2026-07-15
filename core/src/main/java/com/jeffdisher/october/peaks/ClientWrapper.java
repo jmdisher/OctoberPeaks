@@ -1019,7 +1019,7 @@ public class ClientWrapper
 		return CraftAspect.canApply(rescheduleInBlock, inventory);
 	}
 
-	public void sendTrade(MinimalEntity villager, Item tradeItem)
+	public boolean sendTrade(MinimalEntity villager, Item tradeItem)
 	{
 		Assert.assertTrue(!_isAgentPaused);
 		
@@ -1046,12 +1046,14 @@ public class ClientWrapper
 		}
 		
 		// Make sure that this seems sane (localInventoryId will be 0 if any above lookup failed).
+		boolean didSend = false;
 		if (localInventoryId > 0)
 		{
 			EntitySubActionSendTrade subAction = new EntitySubActionSendTrade(localInventoryId, targetVillagerId, itemToRequest);
 			long currentTimeMillis = System.currentTimeMillis();
-			_sendHighPrioritySubAction(subAction, currentTimeMillis);
+			didSend = _sendHighPrioritySubAction(subAction, currentTimeMillis);
 		}
+		return didSend;
 	}
 
 	public boolean pauseGame()
