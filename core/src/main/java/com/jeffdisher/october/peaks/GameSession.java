@@ -307,5 +307,10 @@ public class GameSession
 			GameSession.this.ghostManager.passiveWasPickedUp(System.currentTimeMillis(), passiveId, pickingUpEntityId);
 			GameSession.this.audioManager.passiveWasPickedUp(pickingUpEntityId);
 		}
+		@Override
+		public void tradeReceived(int entityId)
+		{
+			GameSession.this.animationManager.tradeReceived(entityId);
+		}
 	}
 }

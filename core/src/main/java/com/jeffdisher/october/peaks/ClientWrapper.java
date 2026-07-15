@@ -1498,6 +1498,10 @@ public class ClientWrapper
 			case ENTITY_PICKED_UP_PASSIVE:
 				_updateConsumer.passiveWasPickedUp(event.entitySource(), event.entityTarget());
 				break;
+			case TRADE_RECEIVED:
+				// We only care about the target who received the trade.
+				_updateConsumer.tradeReceived(event.entityTarget());
+				break;
 			case LIQUID_PLACED:
 			case LIQUID_REMOVED:
 			case ENTITY_ATE_FOOD:
@@ -1557,6 +1561,7 @@ public class ClientWrapper
 		void craftInBlockComplete(AbsoluteLocation location);
 		void craftInInventoryComplete(int entityId);
 		void passiveWasPickedUp(int passiveId, int pickingUpEntityId);
+		void tradeReceived(int entityId);
 		
 		void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression);
 	}

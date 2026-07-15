@@ -130,6 +130,17 @@ public class AnimationManager
 		_outburst(centre, currentTimeMillis, true);
 	}
 
+	public void tradeReceived(int entityId)
+	{
+		// A trade is always received by a villager creature.
+		EntityLocation centre = _worldCache.getCentreOfPlayerOrCreature(entityId);
+		float red = 0.0f;
+		float green = 1.0f;
+		float blue = 0.0f;
+		long currentTimeMillis = System.currentTimeMillis();
+		_drawIn(centre, red, green, blue, currentTimeMillis);
+	}
+
 	public void removeEntity(int id)
 	{
 		_entityDamageMillis.remove(id);
