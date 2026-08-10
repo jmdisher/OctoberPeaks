@@ -61,7 +61,8 @@ public class FaceBuilder
 								_xyColumn.toggle(thisX, thisY, high);
 								if (null != edgeWriter)
 								{
-									edgeWriter.writeEdgeValue(thisX, thisY, highNeighbour, value);
+									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative(x, y, (byte)0));
+									edgeWriter.writeEdgeValue(thisX, thisY, highNeighbour, value, blockDefinedByte);
 								}
 							}
 						}
@@ -77,7 +78,8 @@ public class FaceBuilder
 								_xyColumn.toggle(thisX, thisY, low);
 								if (null != edgeWriter)
 								{
-									edgeWriter.writeEdgeValue(thisX, thisY, lowNeighbour, value);
+									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative(x, y, (byte)0));
+									edgeWriter.writeEdgeValue(thisX, thisY, lowNeighbour, value, blockDefinedByte);
 								}
 							}
 						}
@@ -95,7 +97,8 @@ public class FaceBuilder
 								_xzColumn.toggle(thisX, thisZ, high);
 								if (null != edgeWriter)
 								{
-									edgeWriter.writeEdgeValue(thisX, highNeighbour, thisZ, value);
+									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative(x, (byte)0, z));
+									edgeWriter.writeEdgeValue(thisX, highNeighbour, thisZ, value, blockDefinedByte);
 								}
 							}
 						}
@@ -111,7 +114,8 @@ public class FaceBuilder
 								_xzColumn.toggle(thisX, thisZ, low);
 								if (null != edgeWriter)
 								{
-									edgeWriter.writeEdgeValue(thisX, lowNeighbour, thisZ, value);
+									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative(x, (byte)0, z));
+									edgeWriter.writeEdgeValue(thisX, lowNeighbour, thisZ, value, blockDefinedByte);
 								}
 							}
 						}
@@ -129,7 +133,8 @@ public class FaceBuilder
 								_yzColumn.toggle(thisY, thisZ, high);
 								if (null != edgeWriter)
 								{
-									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value);
+									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative((byte)0, y, z));
+									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value, blockDefinedByte);
 								}
 							}
 						}
@@ -145,7 +150,8 @@ public class FaceBuilder
 								_yzColumn.toggle(thisY, thisZ, low);
 								if (null != edgeWriter)
 								{
-									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value);
+									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative((byte)0, y, z));
+									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value, blockDefinedByte);
 								}
 							}
 						}
@@ -231,14 +237,15 @@ public class FaceBuilder
 						for (byte y = 0; y < size; ++y)
 						{
 							byte thisY = (byte)(baseY + y);
+							byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative((byte)0, y, z));
 							if (_yzColumn.get(thisY, thisZ, baseX))
 							{
-								writer.writeYZPlane(baseX, thisY, thisZ, false, value);
+								writer.writeYZPlane(baseX, thisY, thisZ, false, value, blockDefinedByte);
 							}
 							if (_yzColumn.get(thisY, thisZ, edgeX))
 							{
 								// Note that the caller is trying to draw a unit cube at so the edge is already 1 over from the base.
-								writer.writeYZPlane((byte)(edgeX - 1), thisY, thisZ, true, value);
+								writer.writeYZPlane((byte)(edgeX - 1), thisY, thisZ, true, value, blockDefinedByte);
 							}
 						}
 					}
@@ -249,14 +256,15 @@ public class FaceBuilder
 						for (byte x = 0; x < size; ++x)
 						{
 							byte thisX = (byte)(baseX + x);
+							byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative(x, (byte)0, z));
 							if (_xzColumn.get(thisX, thisZ, baseY))
 							{
-								writer.writeXZPlane(thisX, baseY, thisZ, false, value);
+								writer.writeXZPlane(thisX, baseY, thisZ, false, value, blockDefinedByte);
 							}
 							if (_xzColumn.get(thisX, thisZ, edgeY))
 							{
 								// Note that the caller is trying to draw a unit cube at so the edge is already 1 over from the base.
-								writer.writeXZPlane(thisX, (byte)(edgeY - 1), thisZ, true, value);
+								writer.writeXZPlane(thisX, (byte)(edgeY - 1), thisZ, true, value, blockDefinedByte);
 							}
 						}
 					}
@@ -267,14 +275,15 @@ public class FaceBuilder
 						for (byte x = 0; x < size; ++x)
 						{
 							byte thisX = (byte)(baseX + x);
+							byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative(x, y, (byte)0));
 							if (_xyColumn.get(thisX, thisY, baseZ))
 							{
-								writer.writeXYPlane(thisX, thisY, baseZ, false, value);
+								writer.writeXYPlane(thisX, thisY, baseZ, false, value, blockDefinedByte);
 							}
 							if (_xyColumn.get(thisX, thisY, edgeZ))
 							{
 								// Note that the caller is trying to draw a unit cube at so the edge is already 1 over from the base.
-								writer.writeXYPlane(thisX, thisY, (byte)(edgeZ - 1), true, value);
+								writer.writeXYPlane(thisX, thisY, (byte)(edgeZ - 1), true, value, blockDefinedByte);
 							}
 						}
 					}
@@ -287,9 +296,9 @@ public class FaceBuilder
 	public interface IWriter
 	{
 		boolean shouldInclude(short value);
-		void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value);
-		void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value);
-		void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value);
+		void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte);
+		void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte);
+		void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte);
 	}
 
 	/**
@@ -299,7 +308,7 @@ public class FaceBuilder
 	 */
 	public interface IEdgeWriter
 	{
-		void writeEdgeValue(byte baseX, byte baseY, byte baseZ, short value);
+		void writeEdgeValue(byte baseX, byte baseY, byte baseZ, short value, byte blockDefinedByte);
 	}
 
 	private class _ColumnBits

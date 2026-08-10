@@ -12,6 +12,7 @@ import org.junit.Test;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.CuboidData;
+import com.jeffdisher.october.peaks.scene.WaterSurfaceBuilder;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Item;
@@ -48,19 +49,19 @@ public class TestFaceBuilder
 		builder.populateMasks(cuboid, (Short value) -> true);
 		builder.buildFaces(cuboid, new FaceBuilder.IWriter() {
 			@Override
-			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 			{
 				counts[0] += 1;
 				Assert.assertEquals(blockAddress, new BlockAddress(baseX, baseY, baseZ));
 			}
 			@Override
-			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 			{
 				counts[1] += 1;
 				Assert.assertEquals(blockAddress, new BlockAddress(baseX, baseY, baseZ));
 			}
 			@Override
-			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 			{
 				counts[2] += 1;
 				Assert.assertEquals(blockAddress, new BlockAddress(baseX, baseY, baseZ));
@@ -162,17 +163,18 @@ public class TestFaceBuilder
 	{
 		// Create some downward flowing water to see what callbacks we get for faces.
 		Item waterSource = ENV.items.getItemById("op.water_source");
-		Item waterStrong = ENV.items.getItemById("op.water_strong");
-		Item waterWeak = ENV.items.getItemById("op.water_weak");
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
 		BlockAddress sourceBlock = new BlockAddress((byte)5, (byte)5, (byte)5);
 		BlockAddress flowBlock = new BlockAddress((byte)5, (byte)5, (byte)4);
 		BlockAddress bottomBlock = new BlockAddress((byte)5, (byte)5, (byte)3);
 		BlockAddress spillBlock = new BlockAddress((byte)5, (byte)6, (byte)3);
 		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, waterSource.number());
-		cuboid.setData15(AspectRegistry.BLOCK, flowBlock, waterWeak.number());
-		cuboid.setData15(AspectRegistry.BLOCK, bottomBlock, waterStrong.number());
-		cuboid.setData15(AspectRegistry.BLOCK, spillBlock, waterWeak.number());
+		cuboid.setData15(AspectRegistry.BLOCK, flowBlock, waterSource.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, flowBlock, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		cuboid.setData15(AspectRegistry.BLOCK, bottomBlock, waterSource.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, bottomBlock, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		cuboid.setData15(AspectRegistry.BLOCK, spillBlock, waterSource.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, spillBlock, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
 		
 		Set<BlockAddress> positiveYZ = new HashSet<>();
 		Set<BlockAddress> negativeYZ = new HashSet<>();
@@ -184,9 +186,10 @@ public class TestFaceBuilder
 		builder.populateMasks(cuboid, (Short value) -> true);
 		builder.buildFaces(cuboid, new FaceBuilder.IWriter() {
 			@Override
-			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 			{
-				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				Assert.assertTrue(value == waterSource.number());
+				Assert.assertTrue((blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_SOURCE) || (blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_STRONG) || (blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_WEAK));
 				BlockAddress address = new BlockAddress(baseX, baseY, baseZ);
 				if (isPositiveNormal)
 				{
@@ -198,9 +201,10 @@ public class TestFaceBuilder
 				}
 			}
 			@Override
-			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 			{
-				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				Assert.assertTrue(value == waterSource.number());
+				Assert.assertTrue((blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_SOURCE) || (blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_STRONG) || (blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_WEAK));
 				BlockAddress address = new BlockAddress(baseX, baseY, baseZ);
 				if (isPositiveNormal)
 				{
@@ -212,9 +216,10 @@ public class TestFaceBuilder
 				}
 			}
 			@Override
-			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+			public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 			{
-				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				Assert.assertTrue(value == waterSource.number());
+				Assert.assertTrue((blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_SOURCE) || (blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_STRONG) || (blockDefinedByte == WaterSurfaceBuilder.FLOW_BYTE_WEAK));
 				BlockAddress address = new BlockAddress(baseX, baseY, baseZ);
 				if (isPositiveNormal)
 				{
@@ -228,7 +233,7 @@ public class TestFaceBuilder
 			@Override
 			public boolean shouldInclude(short value)
 			{
-				Assert.assertTrue((value == waterSource.number()) || (value == waterStrong.number()) || (value == waterWeak.number()));
+				Assert.assertTrue(value == waterSource.number());
 				return true;
 			}
 		});
@@ -254,17 +259,17 @@ public class TestFaceBuilder
 			return true;
 		}
 		@Override
-		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			this.xy += 1;
 		}
 		@Override
-		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			this.xz += 1;
 		}
 		@Override
-		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			this.yz += 1;
 		}

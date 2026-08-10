@@ -11,8 +11,8 @@ public class TestWaterSurfaceBuilder
 	@Test
 	public void singleSource() throws Throwable
 	{
-		WaterSurfaceBuilder surface = new WaterSurfaceBuilder((Short value) -> true, (short)3, (short)2, (short)1);
-		surface.writeXYPlane((byte)5, (byte)6, (byte)7, true, (short)3);
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder((short)3);
+		surface.writeXYPlane((byte)5, (byte)6, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_SOURCE);
 		_NormalCounter counter = new _NormalCounter();
 		surface.writeVertices(counter);
 		Assert.assertEquals(1, counter.up);
@@ -26,26 +26,26 @@ public class TestWaterSurfaceBuilder
 	@Test
 	public void simple() throws Throwable
 	{
-		WaterSurfaceBuilder surface = new WaterSurfaceBuilder((Short value) -> true, (short)3, (short)2, (short)1);
-		surface.writeXYPlane((byte)5, (byte)6, (byte)7, true, (short)3);
-		surface.writeXZPlane((byte)5, (byte)6, (byte)7, false, (short)3);
-		surface.writeYZPlane((byte)5, (byte)6, (byte)7, false, (short)3);
-		surface.writeXYPlane((byte)5, (byte)6, (byte)7, false, (short)3);
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder((short)3);
+		surface.writeXYPlane((byte)5, (byte)6, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_SOURCE);
+		surface.writeXZPlane((byte)5, (byte)6, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_SOURCE);
+		surface.writeYZPlane((byte)5, (byte)6, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_SOURCE);
+		surface.writeXYPlane((byte)5, (byte)6, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_SOURCE);
 		
-		surface.writeXYPlane((byte)6, (byte)6, (byte)7, true, (short)2);
-		surface.writeXZPlane((byte)6, (byte)6, (byte)7, false, (short)2);
-		surface.writeYZPlane((byte)6, (byte)6, (byte)7, true, (short)2);
-		surface.writeXYPlane((byte)6, (byte)6, (byte)7, false, (short)2);
+		surface.writeXYPlane((byte)6, (byte)6, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeXZPlane((byte)6, (byte)6, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeYZPlane((byte)6, (byte)6, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeXYPlane((byte)6, (byte)6, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
 		
-		surface.writeXYPlane((byte)5, (byte)7, (byte)7, true, (short)2);
-		surface.writeXZPlane((byte)5, (byte)7, (byte)7, true, (short)2);
-		surface.writeYZPlane((byte)5, (byte)7, (byte)7, false, (short)2);
-		surface.writeXYPlane((byte)5, (byte)7, (byte)7, false, (short)2);
+		surface.writeXYPlane((byte)5, (byte)7, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeXZPlane((byte)5, (byte)7, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeYZPlane((byte)5, (byte)7, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeXYPlane((byte)5, (byte)7, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
 		
-		surface.writeXYPlane((byte)6, (byte)7, (byte)7, true, (short)1);
-		surface.writeXZPlane((byte)6, (byte)7, (byte)7, true, (short)1);
-		surface.writeYZPlane((byte)6, (byte)7, (byte)7, true, (short)1);
-		surface.writeXYPlane((byte)6, (byte)7, (byte)7, false, (short)1);
+		surface.writeXYPlane((byte)6, (byte)7, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		surface.writeXZPlane((byte)6, (byte)7, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		surface.writeYZPlane((byte)6, (byte)7, (byte)7, true, (short)3, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		surface.writeXYPlane((byte)6, (byte)7, (byte)7, false, (short)3, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
 		
 		_NormalCounter counter = new _NormalCounter();
 		surface.writeVertices(counter);
@@ -61,10 +61,11 @@ public class TestWaterSurfaceBuilder
 	public void waterFlow() throws Throwable
 	{
 		// Create some downward flowing water to see what callbacks we get for faces.
-		short waterSource = 3;
-		short waterStrong = 2;
-		short waterWeak = 1;
-		WaterSurfaceBuilder surface = new WaterSurfaceBuilder((Short value) -> true, waterSource, waterStrong, waterWeak);
+		short value = 1;
+		byte waterSource = WaterSurfaceBuilder.FLOW_BYTE_SOURCE;
+		byte waterStrong = WaterSurfaceBuilder.FLOW_BYTE_STRONG;
+		byte waterWeak = WaterSurfaceBuilder.FLOW_BYTE_WEAK;
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(value);
 		
 		BlockAddress sourceBlock = new BlockAddress((byte)5, (byte)5, (byte)5);
 		BlockAddress flowBlock = new BlockAddress((byte)5, (byte)5, (byte)4);
@@ -72,27 +73,27 @@ public class TestWaterSurfaceBuilder
 		BlockAddress spillBlock = new BlockAddress((byte)5, (byte)6, (byte)3);
 		
 		// We should see only the external faces but the internal ones will be skipped.
-		surface.writeXYPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, waterSource);
-		surface.writeXZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, waterSource);
-		surface.writeXZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), false, waterSource);
-		surface.writeYZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, waterSource);
-		surface.writeYZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), false, waterSource);
+		surface.writeXYPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, value, waterSource);
+		surface.writeXZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, value, waterSource);
+		surface.writeXZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), false, value, waterSource);
+		surface.writeYZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), true, value, waterSource);
+		surface.writeYZPlane(sourceBlock.x(), sourceBlock.y(), sourceBlock.z(), false, value, waterSource);
 		
-		surface.writeXZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), true, waterWeak);
-		surface.writeXZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), false, waterWeak);
-		surface.writeYZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), true, waterWeak);
-		surface.writeYZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), false, waterWeak);
+		surface.writeXZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), true, value, waterWeak);
+		surface.writeXZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), false, value, waterWeak);
+		surface.writeYZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), true, value, waterWeak);
+		surface.writeYZPlane(flowBlock.x(), flowBlock.y(), flowBlock.z(), false, value, waterWeak);
 		
-		surface.writeXYPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, waterStrong);
-		surface.writeXZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, waterStrong);
-		surface.writeYZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), true, waterStrong);
-		surface.writeYZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, waterStrong);
+		surface.writeXYPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, value, waterStrong);
+		surface.writeXZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, value, waterStrong);
+		surface.writeYZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), true, value, waterStrong);
+		surface.writeYZPlane(bottomBlock.x(), bottomBlock.y(), bottomBlock.z(), false, value, waterStrong);
 		
-		surface.writeXYPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
-		surface.writeXYPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, waterWeak);
-		surface.writeXZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
-		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, waterWeak);
-		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, waterWeak);
+		surface.writeXYPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, value, waterWeak);
+		surface.writeXYPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, value, waterWeak);
+		surface.writeXZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, value, waterWeak);
+		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), true, value, waterWeak);
+		surface.writeYZPlane(spillBlock.x(), spillBlock.y(), spillBlock.z(), false, value, waterWeak);
 		
 		int[] counters = new int[6];
 		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {

@@ -3,9 +3,9 @@ package com.jeffdisher.october.peaks.animation;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.EntityLocation;
+import com.jeffdisher.october.types.FixedRegion;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.utils.Assert;
@@ -59,7 +59,7 @@ public class GhostManager
 		{
 			_Ghost<PartialPassive> ghost = new _Ghost<>(passive
 				, currentTimeMillis + PICK_UP_DELAY_MILLIS
-				, SpatialHelpers.getCentreOfRegion(entity.location(), entity.type().volume())
+				, FixedRegion.fromBaseAndVolume(entity.location(), entity.type().volume()).getCentre()
 			);
 			_ghostPassives.add(ghost);
 		}

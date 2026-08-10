@@ -1,7 +1,6 @@
 package com.jeffdisher.october.peaks.scene;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -58,21 +57,21 @@ public class SceneMeshHelpers
 		Predicate<Short> shouldInclude;
 		if (opaqueVertices)
 		{
-			Set<Short> lava = _buildLavaNumberSet(env);
+			short lava = env.items.getItemById("op.lava_source").number();
 			shouldInclude = (Short value) -> {
 				return blockAtlas.isInBasicAtlas(value)
-						&& !blockAtlas.textureHasNonOpaquePixels(value)
-						&& !lava.contains(value)
+					&& !blockAtlas.textureHasNonOpaquePixels(value)
+					&& (lava != value)
 				;
 			};
 		}
 		else
 		{
-			Set<Short> water = _buildWaterNumberSet(env);
+			short water = env.items.getItemById("op.water_source").number();
 			shouldInclude = (Short value) -> {
 				return blockAtlas.isInBasicAtlas(value)
-						&& blockAtlas.textureHasNonOpaquePixels(value)
-						&& !water.contains(value)
+					&& blockAtlas.textureHasNonOpaquePixels(value)
+					&& (water != value)
 				;
 			};
 		}
@@ -174,32 +173,25 @@ public class SceneMeshHelpers
 			, AuxilliaryTextureAtlas auxAtlas
 			, MeshInputData inputData
 			, short sourceNumber
-			, short strongNumber
-			, short weakNumber
 			, boolean drawInternalSurfaces
 	)
 	{
-		// In this case, we need to configure a WaterSurfaceBuilder since water's surface depends on the strength of flow.
-		Set<Short> water = Set.of(sourceNumber
-				, strongNumber
-				, weakNumber
-		);
 		Predicate<Short> shouldInclude = (Short value) -> {
-			return water.contains(value);
+			return (sourceNumber == value);
 		};
-		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(shouldInclude, sourceNumber, strongNumber, weakNumber);
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(sourceNumber);
 		FaceBuilder faces = new FaceBuilder();
 		_preSeed(faces
-				, shouldInclude
-				, new FaceBuilder.IEdgeWriter()
+			, shouldInclude
+			, new FaceBuilder.IEdgeWriter()
+			{
+				@Override
+				public void writeEdgeValue(byte baseX, byte baseY, byte baseZ, short value, byte blockDefinedByte)
 				{
-					@Override
-					public void writeEdgeValue(byte baseX, byte baseY, byte baseZ, short value)
-					{
-						surface.setEdgeValue(baseX, baseY, baseZ, value);
-					}
+					surface.setEdgeValue(baseX, baseY, baseZ, value, blockDefinedByte);
 				}
-				, inputData
+			}
+			, inputData
 		);
 		faces.populateMasks(inputData.cuboid, shouldInclude);
 		faces.buildFaces(inputData.cuboid, surface);
@@ -656,24 +648,6 @@ public class SceneMeshHelpers
 		);
 	}
 
-	private static Set<Short> _buildWaterNumberSet(Environment env)
-	{
-		Set<Short> water = Set.of(env.items.getItemById("op.water_source").number()
-				, env.items.getItemById("op.water_strong").number()
-				, env.items.getItemById("op.water_weak").number()
-		);
-		return water;
-	}
-
-	private static Set<Short> _buildLavaNumberSet(Environment env)
-	{
-		Set<Short> water = Set.of(env.items.getItemById("op.lava_source").number()
-				, env.items.getItemById("op.lava_strong").number()
-				, env.items.getItemById("op.lava_weak").number()
-		);
-		return water;
-	}
-
 	private static float _mapBlockLight(byte inputValue)
 	{
 		float maxLightFloat = (float)LightAspect.MAX_LIGHT;
@@ -743,7 +717,7 @@ public class SceneMeshHelpers
 			return _shouldInclude.test(value);
 		}
 		@Override
-		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
@@ -833,7 +807,7 @@ public class SceneMeshHelpers
 			}
 		}
 		@Override
-		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
@@ -905,7 +879,7 @@ public class SceneMeshHelpers
 			}
 		}
 		@Override
-		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
