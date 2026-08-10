@@ -7,7 +7,6 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
-import com.jeffdisher.october.config.TabListReader;
 import com.jeffdisher.october.peaks.animation.ParticleEngine;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
@@ -123,7 +122,7 @@ public class OctoberPeaks extends ApplicationAdapter
 				, particles
 			);
 		}
-		catch (IOException | TabListReader.TabListException e)
+		catch (IOException e)
 		{
 			throw new AssertionError("Startup scene", e);
 		}

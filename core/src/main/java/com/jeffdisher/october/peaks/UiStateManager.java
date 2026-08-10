@@ -156,8 +156,8 @@ public class UiStateManager implements GameSession.ICallouts
 	private String[] _errorPayload;
 
 	// Data related to the liquid overlay.
-	private final Set<Block> _waterBlockTypes;
-	private final Set<Block> _lavaBlockTypes;
+	private final Block _waterBlock;
+	private final Block _lavaBlock;
 	private AbsoluteLocation _eyeBlockLocation;
 
 	// The current game session (can be null if not in the right state).
@@ -306,14 +306,8 @@ public class UiStateManager implements GameSession.ICallouts
 		_leftTradingWindow = new Window(WINDOW_LEFT, bottomTradingView);
 		
 		// Look up the liquid overlay types.
-		_waterBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.water_source"))
-				, _env.blocks.fromItem(_env.items.getItemById("op.water_strong"))
-				, _env.blocks.fromItem(_env.items.getItemById("op.water_weak"))
-		);
-		_lavaBlockTypes = Set.of(_env.blocks.fromItem(_env.items.getItemById("op.lava_source"))
-				, _env.blocks.fromItem(_env.items.getItemById("op.lava_strong"))
-				, _env.blocks.fromItem(_env.items.getItemById("op.lava_weak"))
-		);
+		_waterBlock = _env.blocks.fromItem(_env.items.getItemById("op.water_source"));
+		_lavaBlock = _env.blocks.fromItem(_env.items.getItemById("op.lava_source"));
 		
 		// Build the fixed UI windows.
 		_startWindow = UiResources.buildStartWindow(_ui, this, _uiData);
@@ -1694,11 +1688,11 @@ public class UiStateManager implements GameSession.ICallouts
 			if (null != eyeProxy)
 			{
 				Block blockType = eyeProxy.getBlock();
-				if (_waterBlockTypes.contains(blockType))
+				if (_waterBlock == blockType)
 				{
 					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 				}
-				else if (_lavaBlockTypes.contains(blockType))
+				else if (_lavaBlock == blockType)
 				{
 					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
 				}

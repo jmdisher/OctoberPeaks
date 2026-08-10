@@ -427,16 +427,12 @@ public class CuboidMeshManager
 		);
 		// Lava is also treated as an opaque surface.
 		short lavaSourceNumber = _env.items.getItemById("op.lava_source").number();
-		short lavaStrongNumber = _env.items.getItemById("op.lava_strong").number();
-		short lavaWeakNumber = _env.items.getItemById("op.lava_weak").number();
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
 				, builderWrapper
 				, _blockTextures
 				, _auxBlockTextures
 				, request.inputs
 				, lavaSourceNumber
-				, lavaStrongNumber
-				, lavaWeakNumber
 				, false
 		);
 		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
@@ -470,16 +466,12 @@ public class CuboidMeshManager
 		
 		// Create the water cuboid vertices.
 		short waterSourceNumber = _env.items.getItemById("op.water_source").number();
-		short waterStrongNumber = _env.items.getItemById("op.water_strong").number();
-		short waterWeakNumber = _env.items.getItemById("op.water_weak").number();
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
 				, builderWrapper
 				, _blockTextures
 				, _auxBlockTextures
 				, request.inputs
 				, waterSourceNumber
-				, waterStrongNumber
-				, waterWeakNumber
 				, true
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();

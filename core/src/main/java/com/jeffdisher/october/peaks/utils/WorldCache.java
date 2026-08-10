@@ -8,12 +8,12 @@ import java.util.function.Function;
 
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IReadOnlyCuboidData;
-import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.CuboidAddress;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
+import com.jeffdisher.october.types.FixedRegion;
 import com.jeffdisher.october.types.Pair;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
@@ -97,12 +97,12 @@ public class WorldCache
 		EntityLocation centre;
 		if (_thisEntity.id() == id)
 		{
-			centre = SpatialHelpers.getCentreOfRegion(_thisEntity.location(), this.playerType.volume());
+			centre = FixedRegion.fromEntity(_thisEntity).getCentre();
 		}
 		else
 		{
 			PartialEntity partial = _otherEntities.get(id);
-			centre = SpatialHelpers.getCentreOfRegion(partial.location(), partial.type().volume());
+			centre = FixedRegion.fromBaseAndVolume(partial.location(), partial.type().volume()).getCentre();
 		}
 		return centre;
 	}

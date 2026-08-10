@@ -44,11 +44,7 @@ public class TestSceneMeshHelpers
 	private static Environment ENV;
 	private static Item STONE;
 	private static Item WATER_SOURCE;
-	private static Item WATER_STRONG;
-	private static Item WATER_WEAK;
 	private static Item LAVA_SOURCE;
-	private static Item LAVA_STRONG;
-	private static Item LAVA_WEAK;
 	private static Attribute[] ATTRIBUTES;
 	@BeforeClass
 	public static void setup() throws Throwable
@@ -56,11 +52,7 @@ public class TestSceneMeshHelpers
 		ENV = Environment.createSharedInstance();
 		STONE = ENV.items.getItemById("op.stone");
 		WATER_SOURCE = ENV.items.getItemById("op.water_source");
-		WATER_STRONG = ENV.items.getItemById("op.water_strong");
-		WATER_WEAK = ENV.items.getItemById("op.water_weak");
 		LAVA_SOURCE = ENV.items.getItemById("op.lava_source");
-		LAVA_STRONG = ENV.items.getItemById("op.lava_strong");
-		LAVA_WEAK = ENV.items.getItemById("op.lava_weak");
 		ATTRIBUTES = new Attribute[] {
 				new Attribute("aPosition", 3),
 				new Attribute("aNormal", 3),
@@ -86,9 +78,12 @@ public class TestSceneMeshHelpers
 		BlockAddress bottomBlock = new BlockAddress((byte)5, (byte)5, (byte)3);
 		BlockAddress spillBlock = new BlockAddress((byte)5, (byte)6, (byte)3);
 		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, WATER_SOURCE.number());
-		cuboid.setData15(AspectRegistry.BLOCK, flowBlock, WATER_WEAK.number());
-		cuboid.setData15(AspectRegistry.BLOCK, bottomBlock, WATER_STRONG.number());
-		cuboid.setData15(AspectRegistry.BLOCK, spillBlock, WATER_WEAK.number());
+		cuboid.setData15(AspectRegistry.BLOCK, flowBlock, WATER_SOURCE.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, flowBlock, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		cuboid.setData15(AspectRegistry.BLOCK, bottomBlock, WATER_SOURCE.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, bottomBlock, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		cuboid.setData15(AspectRegistry.BLOCK, spillBlock, WATER_SOURCE.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, spillBlock, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
 		
 		BufferBuilder.Buffer waterBuffer = _buildWaterBuffer(cuboid, null, null);
 		int quadsWritten = _countQuadsInBuffer(waterBuffer);
@@ -127,7 +122,8 @@ public class TestSceneMeshHelpers
 		// Check the callbacks we get for a water block at the edge of the cuboid.
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
 		BlockAddress sourceBlock = new BlockAddress((byte)0, (byte)0, (byte)0);
-		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, WATER_WEAK.number());
+		cuboid.setData15(AspectRegistry.BLOCK, sourceBlock, WATER_SOURCE.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, sourceBlock, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
 		
 		BufferBuilder.Buffer waterBuffer = _buildWaterBuffer(cuboid, null, null);
 		int quadsWritten = _countQuadsInBuffer(waterBuffer);
@@ -152,7 +148,8 @@ public class TestSceneMeshHelpers
 	{
 		// Check what we render when flowing water at an edge meets another water block in the north cuboid.
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
-		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)0, (byte)31, (byte)0), WATER_STRONG.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)0, (byte)31, (byte)0), WATER_SOURCE.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, new BlockAddress((byte)0, (byte)31, (byte)0), WaterSurfaceBuilder.FLOW_BYTE_STRONG);
 		CuboidData north = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)1, (short)0), ENV.special.AIR);
 		north.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)0, (byte)0, (byte)0), WATER_SOURCE.number());
 		
@@ -183,7 +180,8 @@ public class TestSceneMeshHelpers
 	{
 		// Check what we render when flowing water at the top of one cuboid is under a source above it.
 		CuboidData cuboid = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)0), ENV.special.AIR);
-		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)5, (byte)31), WATER_STRONG.number());
+		cuboid.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)5, (byte)31), WATER_SOURCE.number());
+		cuboid.setData7(AspectRegistry.BLOCK_DEFINED_BYTE, new BlockAddress((byte)5, (byte)5, (byte)31), WaterSurfaceBuilder.FLOW_BYTE_STRONG);
 		CuboidData up = CuboidGenerator.createFilledCuboid(new CuboidAddress((short)0, (short)0, (short)1), ENV.special.AIR);
 		up.setData15(AspectRegistry.BLOCK, new BlockAddress((byte)5, (byte)5, (byte)0), WATER_SOURCE.number());
 		
@@ -611,15 +609,15 @@ public class TestSceneMeshHelpers
 
 	private static BufferBuilder.Buffer _buildWaterBuffer(CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
-		return _buildLiquidBuffer(WATER_SOURCE, WATER_STRONG, WATER_WEAK, cuboid, optionalUp, optionalNorth);
+		return _buildLiquidBuffer(WATER_SOURCE, cuboid, optionalUp, optionalNorth);
 	}
 
 	private static BufferBuilder.Buffer _buildLavaBuffer(CuboidData cuboid)
 	{
-		return _buildLiquidBuffer(LAVA_SOURCE, LAVA_STRONG, LAVA_WEAK, cuboid, null, null);
+		return _buildLiquidBuffer(LAVA_SOURCE, cuboid, null, null);
 	}
 
-	private static BufferBuilder.Buffer _buildLiquidBuffer(Item source, Item strong, Item weak, CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
+	private static BufferBuilder.Buffer _buildLiquidBuffer(Item source, CuboidData cuboid, CuboidData optionalUp, CuboidData optionalNorth)
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		
@@ -627,8 +625,6 @@ public class TestSceneMeshHelpers
 		Block[] blocks = new Block[] {
 				ENV.special.AIR,
 				ENV.blocks.fromItem(source),
-				ENV.blocks.fromItem(strong),
-				ENV.blocks.fromItem(weak),
 		};
 		boolean[] nonOpaqueVector = new boolean[] {
 				true,
@@ -688,8 +684,6 @@ public class TestSceneMeshHelpers
 				, auxAtlas
 				, inputData
 				, source.number()
-				, strong.number()
-				, weak.number()
 				, true
 		);
 		return builder.finishOne();

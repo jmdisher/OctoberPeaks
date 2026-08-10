@@ -411,11 +411,7 @@ public class TestCuboidMeshManager
 				+ "f 2/1/1 3/2/1 1/3/1\n"
 		;
 		Block waterSource = ENV.blocks.fromItem(ENV.items.getItemById("op.water_source"));
-		Block waterStrong = ENV.blocks.fromItem(ENV.items.getItemById("op.water_strong"));
-		Block waterWeak = ENV.blocks.fromItem(ENV.items.getItemById("op.water_weak"));
 		Block lavaSource = ENV.blocks.fromItem(ENV.items.getItemById("op.lava_source"));
-		Block lavaStrong = ENV.blocks.fromItem(ENV.items.getItemById("op.lava_strong"));
-		Block lavaWeak = ENV.blocks.fromItem(ENV.items.getItemById("op.lava_weak"));
 		_Gpu testingGpu = new _Gpu();
 		int textureCount = STONE_VALUE + 1;
 		AuxilliaryTextureAtlas auxBlockTextures = _buildAuxAtlas();
@@ -423,7 +419,7 @@ public class TestCuboidMeshManager
 		Map<Block, BlockModelsAndAtlas.Indices> blockToIndex = Map.of(STONE_BLOCK, new BlockModelsAndAtlas.Indices((short)0, (short)0, (short)0));
 		BlockModelsAndAtlas models = _buildBlockModelsAndAtlas(textureCount, blockToIndex, modelBuffers);
 		// Note that the Block[] must minimally include water sources.
-		Block[] basicBlocks = new Block[] {waterSource, waterStrong, waterWeak, lavaSource, lavaStrong, lavaWeak};
+		Block[] basicBlocks = new Block[] {waterSource, lavaSource};
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(0, basicBlocks, new boolean[basicBlocks.length]);
 		CuboidMeshManager manager = new CuboidMeshManager(ENV, testingGpu, ATTRIBUTES, models, blockAtlas, auxBlockTextures);
 		
