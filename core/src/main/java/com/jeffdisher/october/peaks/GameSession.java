@@ -188,11 +188,13 @@ public class GameSession
 		{
 			// We only update the scene is this is part of a cuboid we actually render.
 			// Note that MULTI_BLOCK_ROOT and ORIENTATION also matter, but they don't change on their own.
+			// BLOCK_DEFINED_BYTE is required for liquid and plant growth changes.
 			if (changedAspects.contains(AspectRegistry.BLOCK)
 				|| changedAspects.contains(AspectRegistry.DAMAGE)
 				|| changedAspects.contains(AspectRegistry.LIGHT)
 				|| changedAspects.contains(AspectRegistry.FLAGS)
 				|| changedAspects.contains(AspectRegistry.SPECIAL_ITEM_SLOT)
+				|| changedAspects.contains(AspectRegistry.BLOCK_DEFINED_BYTE)
 			)
 			{
 				GameSession.this.scene.setCuboid(cuboid, heightMap, changedBlocks);

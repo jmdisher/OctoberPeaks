@@ -1,7 +1,5 @@
 package com.jeffdisher.october.peaks.scene;
 
-import java.util.function.Predicate;
-
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.utils.Assert;
@@ -51,53 +49,49 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 	public static final byte BYTE_WEST = 0x20;
 	public static final byte BYTE_DOWN = 0x40;
 
-	private final Predicate<Short> _shouldInclude;
-	private final short _valueSource;
-	private final short _valueStrong;
-	private final short _valueWeak;
+	// TODO:  We should look up the per-liquid flow distances instead of hard-coding them.
+	public static final byte FLOW_BYTE_SOURCE = 0;
+	public static final byte FLOW_BYTE_STRONG = 1;
+	public static final byte FLOW_BYTE_WEAK = 2;
+
+	private final short _liquidValue;
 	private final byte[][] _zLayers;
 
-	public WaterSurfaceBuilder(Predicate<Short> shouldInclude
-			, short valueSource
-			, short valueStrong
-			, short valueWeak
-	)
+	public WaterSurfaceBuilder(short liquidValue)
 	{
-		_shouldInclude = shouldInclude;
-		_valueSource = valueSource;
-		_valueStrong = valueStrong;
-		_valueWeak = valueWeak;
+		_liquidValue = liquidValue;
 		_zLayers = new byte[EDGE_SIZE][];
 	}
 
 	@Override
 	public boolean shouldInclude(short value)
 	{
-		return _shouldInclude.test(value);
+		return (_liquidValue == value);
 	}
 
 	@Override
-	public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+	public void writeXYPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 	{
 		byte toWrite;
 		if (isPositiveNormal)
 		{
-			if (_valueSource == value)
+			// We only call this after filter.
+			Assert.assertTrue(_liquidValue == value);
+			
+			switch (blockDefinedByte)
 			{
+			case FLOW_BYTE_SOURCE:
 				toWrite = BYTE_SOURCE;
-			}
-			else if (_valueStrong == value)
-			{
+				break;
+			case FLOW_BYTE_STRONG:
 				toWrite = BYTE_STRONG;
-			}
-			else if (_valueWeak == value)
-			{
+				break;
+			case FLOW_BYTE_WEAK:
 				toWrite = BYTE_WEAK;
-			}
-			else
-			{
-				// We are only expecting water flow values here.
-				throw Assert.unreachable();
+				break;
+				default:
+					// Unknown flow strength.
+					throw Assert.unreachable();
 			}
 		}
 		else
@@ -108,39 +102,41 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 	}
 
 	@Override
-	public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+	public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 	{
 		byte toWrite = isPositiveNormal ? BYTE_NORTH : BYTE_SOUTH;
 		_writeValue(baseX, baseY, baseZ, toWrite);
 	}
 
 	@Override
-	public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value)
+	public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 	{
 		byte toWrite = isPositiveNormal ? BYTE_EAST : BYTE_WEST;
 		_writeValue(baseX, baseY, baseZ, toWrite);
 	}
 
-	public void setEdgeValue(byte baseX, byte baseY, byte baseZ, short value)
+	public void setEdgeValue(byte baseX, byte baseY, byte baseZ, short value, byte blockDefinedByte)
 	{
+		// We only call this after filter.
+		Assert.assertTrue(_liquidValue == value);
+		
 		byte toWrite;
-		if (_valueSource == value)
+		switch (blockDefinedByte)
 		{
+		case FLOW_BYTE_SOURCE:
 			toWrite = BYTE_SOURCE;
-		}
-		else if (_valueStrong == value)
-		{
+			break;
+		case FLOW_BYTE_STRONG:
 			toWrite = BYTE_STRONG;
-		}
-		else if (_valueWeak == value)
-		{
+			break;
+		case FLOW_BYTE_WEAK:
 			toWrite = BYTE_WEAK;
+			break;
+			default:
+				// Unknown flow strength.
+				throw Assert.unreachable();
 		}
-		else
-		{
-			// We are only expecting water flow values here.
-			throw Assert.unreachable();
-		}
+		
 		_writeValue(baseX, baseY, baseZ, toWrite);
 	}
 

@@ -12,6 +12,7 @@ import com.jeffdisher.october.aspects.Aspect;
 import com.jeffdisher.october.aspects.AspectRegistry;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.aspects.LiquidRegistry;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.client.RelativeDirection;
 import com.jeffdisher.october.client.VerticalDirection;
@@ -23,27 +24,28 @@ import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.logic.PropagationHelpers;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.logic.ViscosityReader;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.persistence.ResourceLoader;
 import com.jeffdisher.october.process.ClientProcess;
 import com.jeffdisher.october.process.ServerProcess;
 import com.jeffdisher.october.server.MonitoringAgent;
 import com.jeffdisher.october.server.ServerRunner;
-import com.jeffdisher.october.subactions.EntityChangeAttackEntity;
-import com.jeffdisher.october.subactions.EntityChangeChangeHotbarSlot;
-import com.jeffdisher.october.subactions.EntityChangeCraft;
-import com.jeffdisher.october.subactions.EntityChangeCraftInBlock;
-import com.jeffdisher.october.subactions.EntityChangeIncrementalBlockBreak;
-import com.jeffdisher.october.subactions.EntityChangeIncrementalBlockRepair;
-import com.jeffdisher.october.subactions.EntityChangeJump;
-import com.jeffdisher.october.subactions.EntityChangePlaceMultiBlock;
-import com.jeffdisher.october.subactions.EntityChangeSetBlockLogicState;
-import com.jeffdisher.october.subactions.EntityChangeSetDayAndSpawn;
-import com.jeffdisher.october.subactions.EntityChangeSwapArmour;
-import com.jeffdisher.october.subactions.EntityChangeSwim;
-import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnBlock;
-import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnEntity;
-import com.jeffdisher.october.subactions.EntityChangeUseSelectedItemOnSelf;
+import com.jeffdisher.october.subactions.EntitySubActionAttackEntity;
+import com.jeffdisher.october.subactions.EntitySubActionChangeHotbarSlot;
+import com.jeffdisher.october.subactions.EntitySubActionCraft;
+import com.jeffdisher.october.subactions.EntitySubActionCraftInBlock;
+import com.jeffdisher.october.subactions.EntitySubActionIncrementalBlockBreak;
+import com.jeffdisher.october.subactions.EntitySubActionIncrementalBlockRepair;
+import com.jeffdisher.october.subactions.EntitySubActionJump;
+import com.jeffdisher.october.subactions.EntitySubActionPlaceSelectedBlockGeneric;
+import com.jeffdisher.october.subactions.EntitySubActionSetBlockLogicState;
+import com.jeffdisher.october.subactions.EntitySubActionSetDayAndSpawn;
+import com.jeffdisher.october.subactions.EntitySubActionSwapArmour;
+import com.jeffdisher.october.subactions.EntitySubActionSwim;
+import com.jeffdisher.october.subactions.EntitySubActionUseSelectedItemOnBlock;
+import com.jeffdisher.october.subactions.EntitySubActionUseSelectedItemOnEntity;
+import com.jeffdisher.october.subactions.EntitySubActionUseSelectedItemOnSelf;
 import com.jeffdisher.october.subactions.EntitySubActionChargeWeapon;
 import com.jeffdisher.october.subactions.EntitySubActionDropItemsAsPassive;
 import com.jeffdisher.october.subactions.EntitySubActionLadderAscend;
@@ -54,10 +56,9 @@ import com.jeffdisher.october.subactions.EntitySubActionRequestSwapSpecialSlot;
 import com.jeffdisher.october.subactions.EntitySubActionSendTrade;
 import com.jeffdisher.october.subactions.EntitySubActionStepUp;
 import com.jeffdisher.october.subactions.EntitySubActionTravelViaBlock;
-import com.jeffdisher.october.subactions.MutationEntityPushItems;
-import com.jeffdisher.october.subactions.MutationEntityRequestItemPickUp;
-import com.jeffdisher.october.subactions.MutationEntitySelectItem;
-import com.jeffdisher.october.subactions.MutationPlaceSelectedBlock;
+import com.jeffdisher.october.subactions.EntitySubActionPushItems;
+import com.jeffdisher.october.subactions.EntitySubActionRequestItemPickUp;
+import com.jeffdisher.october.subactions.EntitySubActionSelectItem;
 import com.jeffdisher.october.ticks.TickSnapshot;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -82,9 +83,11 @@ import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.MinimalEntity;
 import com.jeffdisher.october.types.MutableInventory;
 import com.jeffdisher.october.types.NonStackableItem;
+import com.jeffdisher.october.types.Pair;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.PartialPassive;
 import com.jeffdisher.october.types.PassiveType;
+import com.jeffdisher.october.types.SlotReader;
 import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
@@ -396,21 +399,21 @@ public class ClientWrapper
 			{
 				subAction = new EntitySubActionLadderAscend<>();
 			}
-			else if (EntityChangeJump.canJumpWithReader(reader
+			else if (EntitySubActionJump.canJumpWithReader(reader
 				, location
 				, playerVolume
 				, vector
 			))
 			{
-				subAction = new EntityChangeJump<>();
+				subAction = new EntitySubActionJump<>();
 			}
-			else if (EntityChangeSwim.canSwim(previousBlockLookUp
+			else if (EntitySubActionSwim.canSwim(previousBlockLookUp
 				, location
 				, playerVolume
 				, vector
 			))
 			{
-				subAction = new EntityChangeSwim<>();
+				subAction = new EntitySubActionSwim<>();
 			}
 			
 			// Run this, if we found something.
@@ -471,7 +474,7 @@ public class ClientWrapper
 			if (!_environment.blocks.canBeReplaced(proxy.getBlock()))
 			{
 				// This block is not the kind which can be replaced, meaning it can potentially be broken.
-				EntityChangeIncrementalBlockBreak change = new EntityChangeIncrementalBlockBreak(blockLocation);
+				EntitySubActionIncrementalBlockBreak change = new EntitySubActionIncrementalBlockBreak(blockLocation);
 				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(blockLocation, currentTimeMillis);
 				didHit = true;
@@ -487,52 +490,60 @@ public class ClientWrapper
 	 * Note that this is only used in the cases where there is a solid block selected and it is a single click, not just
 	 * held down.
 	 * 
-	 * @param solidBlock The solid block the user clicked (cannot be null).
-	 * @param emptyBlock The block block before where the user clicked (can be null).
+	 * @param stopBlock The solid block the user clicked (cannot be null).
+	 * @param preStopBlock The block block before where the user clicked (can be null).
 	 * @return True if an action was taken, false if no action was available.
 	 */
-	public boolean runRightClickOnBlock(AbsoluteLocation solidBlock, AbsoluteLocation emptyBlock)
+	public boolean runRightClickOnBlock(AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
-		Assert.assertTrue(null != solidBlock);
+		Assert.assertTrue(null != stopBlock);
 		
 		// We need to check our selected item and see what "action" is associated with it.
 		Entity thisEntity = _worldCache.getThisEntity();
 		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 		
-		Block solidBlockType = _getBlockType(solidBlock);
-		Block emptyBlockType = (null != emptyBlock)
-			? _getBlockType(emptyBlock)
+		Pair<Block, LiquidRegistry.LiquidBlock> stopBlockPair = _getBlockType(stopBlock);
+		Pair<Block, LiquidRegistry.LiquidBlock> preStopBlockPair = (null != preStopBlock)
+			? _getBlockType(preStopBlock)
 			: null
 		;
 		long currentTimeMillis = System.currentTimeMillis();
 		
+		// Note that the "solid block" is either null (not loaded) or solid (we never select a liquid this way).
+		// The "empty block" before it, however, can be either null (not loaded), a liquid or replaceable block (air).
+		Block solidBlockType = null;
+		if (null != stopBlockPair)
+		{
+			solidBlockType = stopBlockPair.one();
+		}
+		
 		// First, see if the target block has a general logic state we can change.
 		IEntitySubAction<IMutablePlayerEntity> change;
-		if ((null == solidBlockType) || ((null != emptyBlock) && (null == emptyBlockType)))
+		if ((null == stopBlockPair) || ((null != preStopBlock) && (null == preStopBlockPair)))
 		{
 			// The target isn't loaded.
 			change = null;
 		}
-		else if (EntityChangeSetBlockLogicState.canChangeBlockLogicState(solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
+		else if (EntitySubActionSetBlockLogicState.canChangeBlockLogicState(solidBlockType) && _readyToInteractOneOff(stopBlock, currentTimeMillis))
 		{
-			byte flags = _worldCache.getCuboid(solidBlock.getCuboidAddress()).getData7(AspectRegistry.FLAGS, solidBlock.getBlockAddress());
-			boolean existingState = EntityChangeSetBlockLogicState.getCurrentBlockLogicState(solidBlockType, flags);
-			change = new EntityChangeSetBlockLogicState(solidBlock, !existingState);
-			_resetBlockTarget(solidBlock, currentTimeMillis);
+			byte flags = _worldCache.getCuboid(stopBlock.getCuboidAddress()).getData7(AspectRegistry.FLAGS, stopBlock.getBlockAddress());
+			boolean existingState = EntitySubActionSetBlockLogicState.getCurrentBlockLogicState(solidBlockType, flags);
+			change = new EntitySubActionSetBlockLogicState(stopBlock, !existingState);
+			_resetBlockTarget(stopBlock, currentTimeMillis);
 		}
-		else if ((_environment.items.getItemById("op.bed") == solidBlockType.item()) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
+		else if ((null != solidBlockType) && (_environment.items.getItemById("op.bed") == solidBlockType.item()) && _readyToInteractOneOff(stopBlock, currentTimeMillis))
 		{
 			// This is a bed so we need to take a special action to set spawn and reset the day.
-			change = new EntityChangeSetDayAndSpawn(solidBlock);
-			_resetBlockTarget(solidBlock, currentTimeMillis);
+			change = new EntitySubActionSetDayAndSpawn(stopBlock);
+			_resetBlockTarget(stopBlock, currentTimeMillis);
 		}
-		else if (_environment.specialSlot.hasSpecialSlot(solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
+		else if (_environment.specialSlot.hasSpecialSlot(solidBlockType) && _readyToInteractOneOff(stopBlock, currentTimeMillis))
 		{
 			// This change will typically succeed even if nothing changes.
 			// For now, we will always send all.
 			boolean sendAll = true;
-			change = new EntitySubActionRequestSwapSpecialSlot(solidBlock, sendAll);
-			_resetBlockTarget(solidBlock, currentTimeMillis);
+			change = new EntitySubActionRequestSwapSpecialSlot(stopBlock, sendAll);
+			_resetBlockTarget(stopBlock, currentTimeMillis);
 		}
 		else if (Entity.NO_SELECTION != selectedKey)
 		{
@@ -544,16 +555,16 @@ public class ClientWrapper
 			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
 			
 			// First, can we use this on the block.
-			if (EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, solidBlockType) && _readyToInteractOneOff(solidBlock, currentTimeMillis))
+			if ((null != stopBlockPair) && EntitySubActionUseSelectedItemOnBlock.canUseOnBlock(selectedType, stopBlockPair) && _readyToInteractOneOff(stopBlock, currentTimeMillis))
 			{
-				change = new EntityChangeUseSelectedItemOnBlock(solidBlock);
-				_resetBlockTarget(solidBlock, currentTimeMillis);
+				change = new EntitySubActionUseSelectedItemOnBlock(stopBlock);
+				_resetBlockTarget(stopBlock, currentTimeMillis);
 			}
 			// See if we can use it on the empty block
-			else if ((null != emptyBlockType) && EntityChangeUseSelectedItemOnBlock.canUseOnBlock(selectedType, emptyBlockType) && _readyToInteractOneOff(emptyBlock, currentTimeMillis))
+			else if ((null != preStopBlockPair) && EntitySubActionUseSelectedItemOnBlock.canUseOnBlock(selectedType, preStopBlockPair) && _readyToInteractOneOff(preStopBlock, currentTimeMillis))
 			{
-				change = new EntityChangeUseSelectedItemOnBlock(emptyBlock);
-				_resetBlockTarget(emptyBlock, currentTimeMillis);
+				change = new EntitySubActionUseSelectedItemOnBlock(preStopBlock);
+				_resetBlockTarget(preStopBlock, currentTimeMillis);
 			}
 			else
 			{
@@ -595,9 +606,9 @@ public class ClientWrapper
 			Items stack = inventory.getStackForKey(selectedKey);
 			NonStackableItem nonStack = inventory.getNonStackableForKey(selectedKey);
 			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
-			if (EntityChangeUseSelectedItemOnSelf.canBeUsedOnSelf(selectedType))
+			if (EntitySubActionUseSelectedItemOnSelf.canBeUsedOnSelf(selectedType))
 			{
-				change = new EntityChangeUseSelectedItemOnSelf();
+				change = new EntitySubActionUseSelectedItemOnSelf();
 			}
 			else
 			{
@@ -725,18 +736,8 @@ public class ClientWrapper
 			Block block = _environment.blocks.getAsPlaceableBlock(type);
 			if (null != block)
 			{
-				IEntitySubAction<IMutablePlayerEntity> change;
-				if (_environment.blocks.isMultiBlock(block))
-				{
-					// We will place the multi-block in the same orientation as this user.
-					byte yaw = thisEntity.yaw();
-					FacingDirection direction = OrientationHelpers.getYawDirection(yaw);
-					change = new EntityChangePlaceMultiBlock(emptyBlock, direction);
-				}
-				else
-				{
-					change = new MutationPlaceSelectedBlock(emptyBlock, solidBlock);
-				}
+				FacingDirection facingDirection = MiscPeaksHelpers.findBlockPlacementDirection(_environment, solidBlock, emptyBlock, thisEntity.yaw(), block);
+				EntitySubActionPlaceSelectedBlockGeneric change = new EntitySubActionPlaceSelectedBlockGeneric(emptyBlock, facingDirection);
 				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(emptyBlock, currentTimeMillis);
 				didAttemptPlace = true;
@@ -756,7 +757,7 @@ public class ClientWrapper
 			int damage = proxy.getDamage();
 			if (damage > 0)
 			{
-				EntityChangeIncrementalBlockRepair change = new EntityChangeIncrementalBlockRepair(blockLocation);
+				EntitySubActionIncrementalBlockRepair change = new EntitySubActionIncrementalBlockRepair(blockLocation);
 				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(blockLocation, currentTimeMillis);
 				didAttemptRepair = true;
@@ -779,9 +780,9 @@ public class ClientWrapper
 			Item selectedType = (null != stack) ? stack.type() : nonStack.type();
 			
 			long gameTimeMillis = _client.serverState.millisPerTick * _client.serverState.latestTickNumber;
-			if (EntityChangeUseSelectedItemOnEntity.canUseOnEntity(selectedType, selectedEntity, gameTimeMillis))
+			if (EntitySubActionUseSelectedItemOnEntity.canUseOnEntity(selectedType, selectedEntity, gameTimeMillis))
 			{
-				EntityChangeUseSelectedItemOnEntity change = new EntityChangeUseSelectedItemOnEntity(selectedEntity.id());
+				EntitySubActionUseSelectedItemOnEntity change = new EntitySubActionUseSelectedItemOnEntity(selectedEntity.id());
 				long currentTimeMillis = System.currentTimeMillis();
 				_sendHighPrioritySubAction(change, currentTimeMillis);
 				_resetBlockTarget(null, currentTimeMillis);
@@ -792,7 +793,7 @@ public class ClientWrapper
 	public void changeHotbarIndex(int index)
 	{
 		Assert.assertTrue(!_isAgentPaused);
-		EntityChangeChangeHotbarSlot change = new EntityChangeChangeHotbarSlot(index);
+		EntitySubActionChangeHotbarSlot change = new EntitySubActionChangeHotbarSlot(index);
 		long currentTimeMillis = System.currentTimeMillis();
 		_sendHighPrioritySubAction(change, currentTimeMillis);
 	}
@@ -807,7 +808,7 @@ public class ClientWrapper
 		;
 		
 		Assert.assertTrue(!_isAgentPaused);
-		MutationEntitySelectItem select = new MutationEntitySelectItem(keyToSelect);
+		EntitySubActionSelectItem select = new EntitySubActionSelectItem(keyToSelect);
 		long currentTimeMillis = System.currentTimeMillis();
 		_sendHighPrioritySubAction(select, currentTimeMillis);
 	}
@@ -859,7 +860,7 @@ public class ClientWrapper
 				
 				if (count > 0)
 				{
-					MutationEntityRequestItemPickUp request = new MutationEntityRequestItemPickUp(location, blockInventoryKey, count, inventoryAspect);
+					EntitySubActionRequestItemPickUp request = new EntitySubActionRequestItemPickUp(location, blockInventoryKey, count, inventoryAspect);
 					long currentTimeMillis = System.currentTimeMillis();
 					_sendHighPrioritySubAction(request, currentTimeMillis);
 					didSubmit = true;
@@ -923,7 +924,7 @@ public class ClientWrapper
 				int count = quantity.getCount(Math.min(available, vacancy));
 				if (count > 0)
 				{
-					MutationEntityPushItems push = new MutationEntityPushItems(location, entityInventoryKey, count, inventoryAspect);
+					EntitySubActionPushItems push = new EntitySubActionPushItems(location, entityInventoryKey, count, inventoryAspect);
 					long currentTimeMillis = System.currentTimeMillis();
 					_sendHighPrioritySubAction(push, currentTimeMillis);
 					didSubmit = true;
@@ -937,7 +938,7 @@ public class ClientWrapper
 	{
 		Assert.assertTrue(!_isAgentPaused);
 		long currentTimeMillis = System.currentTimeMillis();
-		EntityChangeCraft change = new EntityChangeCraft(craft);
+		EntitySubActionCraft change = new EntitySubActionCraft(craft);
 		_sendHighPrioritySubAction(change, currentTimeMillis);
 	}
 
@@ -945,7 +946,7 @@ public class ClientWrapper
 	{
 		Assert.assertTrue(!_isAgentPaused);
 		long currentTimeMillis = System.currentTimeMillis();
-		EntityChangeCraftInBlock change = new EntityChangeCraftInBlock(block, craft);
+		EntitySubActionCraftInBlock change = new EntitySubActionCraftInBlock(block, craft);
 		_sendHighPrioritySubAction(change, currentTimeMillis);
 	}
 
@@ -955,7 +956,7 @@ public class ClientWrapper
 		// In order to avoid gratuitous validation duplication, we will submit this mutation if it seems possible and rely on its own validation.
 		Entity thisEntity = _worldCache.getThisEntity();
 		int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
-		EntityChangeSwapArmour swap = new EntityChangeSwapArmour(part, selectedKey);
+		EntitySubActionSwapArmour swap = new EntitySubActionSwapArmour(part, selectedKey);
 		long currentTimeMillis = System.currentTimeMillis();
 		_sendHighPrioritySubAction(swap, currentTimeMillis);
 	}
@@ -963,7 +964,7 @@ public class ClientWrapper
 	public void hitEntity(PartialEntity selectedEntity)
 	{
 		Assert.assertTrue(!_isAgentPaused);
-		EntityChangeAttackEntity attack = new EntityChangeAttackEntity(selectedEntity.id());
+		EntitySubActionAttackEntity attack = new EntitySubActionAttackEntity(selectedEntity.id());
 		long currentTimeMillis = System.currentTimeMillis();
 		_sendHighPrioritySubAction(attack, currentTimeMillis);
 		_resetBlockTarget(null, currentTimeMillis);
@@ -995,7 +996,8 @@ public class ClientWrapper
 		
 		// In this case, just see if this can be applied to the Entity's current inventory.
 		Inventory inventory = _getEntityInventory();
-		return CraftAspect.canApply(rescheduleInInventory, inventory);
+		SlotReader slotManager = new SlotReader(inventory);
+		return CraftAspect.canApply(rescheduleInInventory, slotManager);
 	}
 
 	public boolean isCraftInBlockValid(AbsoluteLocation openStationLocation, Craft rescheduleInBlock)
@@ -1016,7 +1018,8 @@ public class ClientWrapper
 		// If this is the wrong type of block, we should have cleared it before getting here.
 		Assert.assertTrue(null != inventory);
 		
-		return CraftAspect.canApply(rescheduleInBlock, inventory);
+		SlotReader slotManager = new SlotReader(inventory);
+		return CraftAspect.canApply(rescheduleInBlock, slotManager);
 	}
 
 	public boolean sendTrade(MinimalEntity villager, Item tradeItem)
@@ -1150,15 +1153,15 @@ public class ClientWrapper
 		return inventory;
 	}
 
-	private Block _getBlockType(AbsoluteLocation block)
+	private Pair<Block, LiquidRegistry.LiquidBlock> _getBlockType(AbsoluteLocation block)
 	{
 		// This can be null when the action is taken due to loading issues, respawn, etc.
 		BlockProxy proxy = _worldCache.blockLookup.readBlock(block);
-		Block blockType = (null != proxy)
-			? proxy.getBlock()
+		Pair<Block, LiquidRegistry.LiquidBlock> pair = (null != proxy)
+			? _environment.liquids.pairFrom(proxy)
 			: null
 		;
-		return blockType;
+		return pair;
 	}
 
 	private IEntitySubAction<IMutablePlayerEntity> _tryImplicitSubActionsWhileMoving(long currentTimeMillis
@@ -1298,11 +1301,11 @@ public class ClientWrapper
 		CraftOperation ongoing = thisEntity.ephemeralShared().localCraftOperation();
 		if (null != ongoing)
 		{
-			subAction = new EntityChangeCraft(null);
+			subAction = new EntitySubActionCraft(null);
 		}
 		else if (null != rescheduleInInventory)
 		{
-			subAction = new EntityChangeCraft(rescheduleInInventory);
+			subAction = new EntitySubActionCraft(rescheduleInInventory);
 		}
 		else if (null != openStationLocation)
 		{
@@ -1313,11 +1316,11 @@ public class ClientWrapper
 			if (null != blockOperation)
 			{
 				// Much like EntityChangeCraft, a null here just means "continue".
-				subAction = new EntityChangeCraftInBlock(openStationLocation, null);
+				subAction = new EntitySubActionCraftInBlock(openStationLocation, null);
 			}
 			else if (null != rescheduleInBlock)
 			{
-				subAction = new EntityChangeCraftInBlock(openStationLocation, rescheduleInBlock);
+				subAction = new EntitySubActionCraftInBlock(openStationLocation, rescheduleInBlock);
 			}
 		}
 		else
@@ -1471,6 +1474,9 @@ public class ClientWrapper
 			case BLOCK_PLACED:
 				_updateConsumer.blockPlaced(event.location());
 				break;
+			case BLOCK_REPAIRED:
+				// TODO:  Add something to show this (just added the handling to consume the event).
+				break;
 			case ENTITY_HURT:
 				if (_assignedLocalEntityId == event.entityTarget())
 				{
@@ -1507,6 +1513,7 @@ public class ClientWrapper
 			case LIQUID_PLACED:
 			case LIQUID_REMOVED:
 			case ENTITY_ATE_FOOD:
+			case ENTITY_BROKE_TOOL:
 				// Ignore these.
 				break;
 			default:
