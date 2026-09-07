@@ -142,8 +142,10 @@ public class SceneMeshHelpers
 										// If we have a special down-facing model for this block, use that without rotation (north).
 										multiBlockDirection = FacingDirection.NORTH;
 									}
-									float[] uv = blockModels.baseOfModelTexture(includedBlock, isActive, isDown);
-									ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock, isActive, isDown);
+									// Block-defined bytes are rare but they do usually involve different models.
+									byte blockDefinedByte = inputData.cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, thisAddress);
+									float[] uv = blockModels.baseOfModelTexture(includedBlock, isActive, isDown, blockDefinedByte);
+									ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock, isActive, isDown, blockDefinedByte);
 									_renderModel(builder
 											, variantMap
 											, auxAtlas

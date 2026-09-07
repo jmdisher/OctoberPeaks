@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,12 +33,17 @@ public class BlockModelsAndAtlas
 		// We will look for "model_ITEM_ID.obj" and "model_ITEM_ID.png" - both or neither must be present.
 		// We will then store the vertex data for these models (in Java heap), and store the textures into an atlas.
 		Map<Block, Indices> blockToIndex = new HashMap<>();
+		Map<Block, short[]> blockToBytes = new HashMap<>();
 		List<ModelBuffer> modelList = new ArrayList<>();
 		List<FileHandle> textureHandleList = new ArrayList<>();
 		for (Block block : blocks)
 		{
+			// Figure out which model variant type this is (active/inactive/down or block-defined-byte - can be at most one).
 			String itemId = block.item().id();
-			_ModelPair inactive = _loadPair("model_" + itemId + ".obj", "model_" + itemId + ".png");
+			_ModelPair inactive = _loadPair("model_" + itemId);
+			_ModelPair blockDefinedByte = _loadPair("model_" + itemId + "_byte0");
+			Assert.assertTrue((null == inactive) || (null == blockDefinedByte));
+			
 			if (null != inactive)
 			{
 				short inactiveIndex = (short)modelList.size();
@@ -46,7 +52,7 @@ public class BlockModelsAndAtlas
 				modelList.add(model);
 				textureHandleList.add(inactive.texture);
 				
-				_ModelPair active = _loadPair("model_" + itemId + "_ACTIVE.obj", "model_" + itemId + "_ACTIVE.png");
+				_ModelPair active = _loadPair("model_" + itemId + "_ACTIVE");
 				short activeIndex = inactiveIndex;
 				if (null != active)
 				{
@@ -57,7 +63,7 @@ public class BlockModelsAndAtlas
 					textureHandleList.add(active.texture);
 				}
 				
-				_ModelPair down = _loadPair("model_" + itemId + "_DOWN.obj", "model_" + itemId + "_DOWN.png");
+				_ModelPair down = _loadPair("model_" + itemId + "_DOWN");
 				short downIndex = -1;
 				if (null != down)
 				{
@@ -70,6 +76,29 @@ public class BlockModelsAndAtlas
 				
 				blockToIndex.put(block, new Indices(inactiveIndex, activeIndex, downIndex));
 			}
+			else if (null != blockDefinedByte)
+			{
+				// The block-defined byte case is kind of hacked in here (block interpretation may need a redesign) but we will load all defined variants in order.
+				short baseIndex =(short)modelList.size();
+				int count = 0;
+				while (null != blockDefinedByte)
+				{
+					String text = blockDefinedByte.model.readString();
+					ModelBuffer model = ModelBuffer.buildFromWavefront(text);
+					modelList.add(model);
+					textureHandleList.add(blockDefinedByte.texture);
+					
+					count += 1;
+					blockDefinedByte = _loadPair("model_" + itemId + "_byte" + count);
+				}
+				
+				short[] indices = new short[count];
+				for (int i = 0; i < count; ++i)
+				{
+					indices[i] = (short)(baseIndex + i);
+				}
+				blockToBytes.put(block, indices);
+			}
 		}
 		
 		// Assemble the atlas.
@@ -77,39 +106,46 @@ public class BlockModelsAndAtlas
 		RawTextureAtlas atlas = TextureHelpers.loadRawAtlasFromModelTextureHandles(gl, handles);
 		
 		ModelBuffer[] models = modelList.toArray((int size) -> new ModelBuffer[size]);
-		return new BlockModelsAndAtlas(blockToIndex, models, atlas);
+		return new BlockModelsAndAtlas(blockToIndex, blockToBytes, models, atlas);
 	}
 
 	public static BlockModelsAndAtlas testInstance(Map<Block, Indices> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
 	{
-		return new BlockModelsAndAtlas(blockToIndex, models, atlas);
+		return new BlockModelsAndAtlas(blockToIndex, Map.of(), models, atlas);
 	}
 
 
+	private final Set<Block> _blockSet;
 	private final Map<Block, Indices> _blockToIndex;
+	private final Map<Block, short[]> _blockToBytes;
 	private final ModelBuffer[] _models;
 	private final RawTextureAtlas _atlas;
 
-	private BlockModelsAndAtlas(Map<Block, Indices> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
+	private BlockModelsAndAtlas(Map<Block, Indices> blockToIndex
+		, Map<Block, short[]> blockToBytes
+		, ModelBuffer[] models
+		, RawTextureAtlas atlas
+	)
 	{
+		Set<Block> blocks = new HashSet<>();
+		blocks.addAll(blockToIndex.keySet());
+		blocks.addAll(blockToBytes.keySet());
+		
+		_blockSet = Collections.unmodifiableSet(blocks);
 		_blockToIndex = Collections.unmodifiableMap(blockToIndex);
+		_blockToBytes = Collections.unmodifiableMap(blockToBytes);
 		_models = models;
 		_atlas = atlas;
 	}
 
 	public Set<Block> getBlockSet()
 	{
-		return _blockToIndex.keySet();
+		return _blockSet;
 	}
 
-	public ModelBuffer getModelForBlock(Block block, boolean isActive, boolean isDown)
+	public ModelBuffer getModelForBlock(Block block, boolean isActive, boolean isDown, byte blockDefinedByte)
 	{
-		Indices indices = _blockToIndex.get(block);
-		boolean hasSpecialDown = (-1 != indices.down);
-		short index = isActive
-			? indices.active
-			: (isDown && hasSpecialDown) ? indices.down : indices.inactive
-		;
+		short index = getCommonIndexForBlock(block, isActive, isDown, blockDefinedByte);
 		return _models[index];
 	}
 
@@ -121,18 +157,13 @@ public class BlockModelsAndAtlas
 	public boolean hasDownModel(Block block)
 	{
 		Indices indices = _blockToIndex.get(block);
-		boolean hasSpecialDown = (-1 != indices.down);
+		boolean hasSpecialDown = (null != indices) && (-1 != indices.down);
 		return hasSpecialDown;
 	}
 
-	public float[] baseOfModelTexture(Block block, boolean isActive, boolean isDown)
+	public float[] baseOfModelTexture(Block block, boolean isActive, boolean isDown, byte blockDefinedByte)
 	{
-		Indices indices = _blockToIndex.get(block);
-		boolean hasSpecialDown = (-1 != indices.down);
-		short index = isActive
-			? indices.active
-			: (isDown && hasSpecialDown) ? indices.down : indices.inactive
-		;
+		short index = getCommonIndexForBlock(block, isActive, isDown, blockDefinedByte);
 		return _atlas.baseOfTexture(index);
 	}
 
@@ -149,23 +180,34 @@ public class BlockModelsAndAtlas
 			Block block = elt.getKey();
 			// We will assume that the active and inactive are the same bounds.
 			short index = elt.getValue().inactive;
-			ModelBuffer buffer = _models[index];
-			Prism bounds = _buildBounds(buffer);
-			
-			// We still want multi-blocks to be selected as individual blocks, so clamp the range of each axis to a block.
-			if ((bounds.east() - bounds.west()) > 1.0f)
-			{
-				bounds = new Prism(0.0f, bounds.south(), bounds.bottom(), 1.0f, bounds.north(), bounds.top());
-			}
-			if ((bounds.north() - bounds.south()) > 1.0f)
-			{
-				bounds = new Prism(bounds.west(), 0.0f, bounds.bottom(), bounds.east(), 1.0f, bounds.top());
-			}
-			if ((bounds.top() - bounds.bottom()) > 1.0f)
-			{
-				bounds = new Prism(bounds.west(), bounds.south(), 0.0f, bounds.east(), bounds.north(), 1.0f);
-			}
+			Prism bounds = _buildBoundsForModelIndex(index);
 			boxes.put(block, bounds);
+		}
+		for (Map.Entry<Block, short[]> elt : _blockToBytes.entrySet())
+		{
+			Block block = elt.getKey();
+			short[] indices = elt.getValue();
+			
+			// We will take the "superset" of all the variants for this block.
+			Prism maxPrism = new Prism(1.0f
+				, 1.0f
+				, 1.0f
+				, 0.0f
+				, 0.0f
+				, 0.0f
+			);
+			for (short index : indices)
+			{
+				Prism bounds = _buildBoundsForModelIndex(index);
+				maxPrism = new Prism(Math.min(maxPrism.west(), bounds.west())
+					, Math.min(maxPrism.south(), bounds.south())
+					, Math.min(maxPrism.bottom(), bounds.bottom())
+					, Math.max(maxPrism.east(), bounds.east())
+					, Math.max(maxPrism.north(), bounds.north())
+					, Math.max(maxPrism.top(), bounds.top())
+				);
+			}
+			boxes.put(block, maxPrism);
 		}
 		return Collections.unmodifiableMap(boxes);
 	}
@@ -201,13 +243,15 @@ public class BlockModelsAndAtlas
 		return new Prism(west, south, bottom, east, north, top);
 	}
 
-	private static _ModelPair _loadPair(String modelFile, String textureFile)
+	private static _ModelPair _loadPair(String baseName)
 	{
+		String modelFile = baseName + ".obj";
 		FileHandle modelHandle = Gdx.files.internal(modelFile);
 		if (!modelHandle.exists())
 		{
 			modelHandle = null;
 		}
+		String textureFile = baseName + ".png";
 		FileHandle textureHandle = Gdx.files.internal(textureFile);
 		if (!textureHandle.exists())
 		{
@@ -220,6 +264,47 @@ public class BlockModelsAndAtlas
 			? new _ModelPair(modelHandle, textureHandle)
 			: null
 		;
+	}
+
+	private Prism _buildBoundsForModelIndex(short index)
+	{
+		ModelBuffer buffer = _models[index];
+		Prism bounds = _buildBounds(buffer);
+		
+		// We still want multi-blocks to be selected as individual blocks, so clamp the range of each axis to a block.
+		if ((bounds.east() - bounds.west()) > 1.0f)
+		{
+			bounds = new Prism(0.0f, bounds.south(), bounds.bottom(), 1.0f, bounds.north(), bounds.top());
+		}
+		if ((bounds.north() - bounds.south()) > 1.0f)
+		{
+			bounds = new Prism(bounds.west(), 0.0f, bounds.bottom(), bounds.east(), 1.0f, bounds.top());
+		}
+		if ((bounds.top() - bounds.bottom()) > 1.0f)
+		{
+			bounds = new Prism(bounds.west(), bounds.south(), 0.0f, bounds.east(), bounds.north(), 1.0f);
+		}
+		return bounds;
+	}
+
+	private short getCommonIndexForBlock(Block block, boolean isActive, boolean isDown, byte blockDefinedByte)
+	{
+		Indices indices = _blockToIndex.get(block);
+		short index;
+		if (null != indices)
+		{
+			boolean hasSpecialDown = (-1 != indices.down);
+			index = isActive
+				? indices.active
+				: (isDown && hasSpecialDown) ? indices.down : indices.inactive
+			;
+		}
+		else
+		{
+			short[] variants = _blockToBytes.get(block);
+			index = variants[blockDefinedByte];
+		}
+		return index;
 	}
 
 
