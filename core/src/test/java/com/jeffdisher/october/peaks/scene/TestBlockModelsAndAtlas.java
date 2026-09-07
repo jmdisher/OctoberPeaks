@@ -34,9 +34,9 @@ public class TestBlockModelsAndAtlas
 		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(1, blockToIndex, models);
 		
 		Assert.assertEquals(1, modelsAndAtlas.getBlockSet().size());
-		Assert.assertEquals(models[0], modelsAndAtlas.getModelForBlock(block, false, false));
+		Assert.assertEquals(models[0], modelsAndAtlas.getModelForBlock(block, false, false, (byte)0));
 		Assert.assertEquals(1, modelsAndAtlas.getModelAtlasTexture());
-		Assert.assertArrayEquals(new float[] { 0.0f, 0.0f }, modelsAndAtlas.baseOfModelTexture(block, false, false), 0.01f);
+		Assert.assertArrayEquals(new float[] { 0.0f, 0.0f }, modelsAndAtlas.baseOfModelTexture(block, false, false, (byte)0), 0.01f);
 		Assert.assertEquals(1.0f, modelsAndAtlas.getCoordinateSize(), 0.01f);
 	}
 
