@@ -12,21 +12,25 @@ public class BasicBlockAtlas
 	private final RawTextureAtlas _blockTextures;
 	private final Faces[] _inactiveLookupByBlock;
 	private final Faces[] _activeLookupByBlock;
+	private final Faces[][] _blockDefinedByteLookupByBlock;
 	private final boolean[] _nonOpaque_block;
 
 	public BasicBlockAtlas(RawTextureAtlas blockTextures
 		, Faces[] inactiveLookupByBlock
 		, Faces[] activeLookupByBlock
+		, Faces[][] blockDefinedByteLookupByBlock
 		, boolean[] nonOpaque_block
 	)
 	{
 		// Note that the BasicBlockCollector, which calls this constructor, has intimate knowledge of this class's implementation.
 		// These arrays must be the same length but the active variant entries are usually null.
 		Assert.assertTrue(inactiveLookupByBlock.length == activeLookupByBlock.length);
+		Assert.assertTrue(inactiveLookupByBlock.length == blockDefinedByteLookupByBlock.length);
 		
 		_blockTextures = blockTextures;
 		_inactiveLookupByBlock = inactiveLookupByBlock;
 		_activeLookupByBlock = activeLookupByBlock;
+		_blockDefinedByteLookupByBlock = blockDefinedByteLookupByBlock;
 		_nonOpaque_block = nonOpaque_block;
 	}
 
@@ -41,8 +45,10 @@ public class BasicBlockAtlas
 		boolean isIn;
 		if (value < _inactiveLookupByBlock.length)
 		{
-			// There is always an inactive variant, if the block is a basic block.
-			isIn = (null != _inactiveLookupByBlock[value]);
+			// There is always an inactive variant or byte0 variant, if the block is a basic block.
+			isIn = (null != _inactiveLookupByBlock[value])
+				|| (null != _blockDefinedByteLookupByBlock[value])
+			;
 		}
 		else
 		{
@@ -67,23 +73,23 @@ public class BasicBlockAtlas
 		return _blockTextures.coordinateSize;
 	}
 
-	public float[] baseOfTopTexture(boolean isActive, short value)
+	public float[] baseOfTopTexture(boolean isActive, short value, byte blockDefinedByte)
 	{
-		Faces faces = _getFacesForBlock(isActive, value);
+		Faces faces = _getFacesForBlock(isActive, value, blockDefinedByte);
 		int rawIndex = faces.top;
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
-	public float[] baseOfBottomTexture(boolean isActive, short value)
+	public float[] baseOfBottomTexture(boolean isActive, short value, byte blockDefinedByte)
 	{
-		Faces faces = _getFacesForBlock(isActive, value);
+		Faces faces = _getFacesForBlock(isActive, value, blockDefinedByte);
 		int rawIndex = faces.bottom;
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
-	public float[] baseOfSideTexture(boolean isActive, short value)
+	public float[] baseOfSideTexture(boolean isActive, short value, byte blockDefinedByte)
 	{
-		Faces faces = _getFacesForBlock(isActive, value);
+		Faces faces = _getFacesForBlock(isActive, value, blockDefinedByte);
 		int rawIndex = faces.side;
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
@@ -99,9 +105,11 @@ public class BasicBlockAtlas
 	}
 
 
-	private Faces _getFacesForBlock(boolean isActive, short value)
+	private Faces _getFacesForBlock(boolean isActive, short value, byte blockDefinedByte)
 	{
 		Faces faces;
+		
+		// Prioritize the active/inactive split.
 		if (isActive)
 		{
 			faces = _activeLookupByBlock[value];
@@ -114,6 +122,12 @@ public class BasicBlockAtlas
 		else
 		{
 			faces = _inactiveLookupByBlock[value];
+		}
+		
+		if (null == faces)
+		{
+			// If we didn't find this, try the block-defined-byte variations.
+			faces = _blockDefinedByteLookupByBlock[value][blockDefinedByte];
 		}
 		return faces;
 	}
