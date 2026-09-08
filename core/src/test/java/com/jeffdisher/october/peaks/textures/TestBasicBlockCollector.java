@@ -42,7 +42,7 @@ public class TestBasicBlockCollector
 		collector.setBlockFallback(DIRT, dirtFallback);
 		
 		BufferedImage stoneTop = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-		collector.addVariant(STONE, BasicBlockAtlas.Variant.INACTIVE_TOP, stoneTop);
+		collector.addFace(STONE, false, BasicBlockCollector.BlockFace.TOP, stoneTop);
 		
 		Block[] blockOrder = new Block[] { STONE, DIRT, LOG };
 		BufferedImage[] textureOrder = collector.getImagesInOrder(blockOrder);

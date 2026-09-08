@@ -650,13 +650,15 @@ public class TestCuboidMeshManager
 			maxItemNumber = Math.max(maxItemNumber, block.item().number());
 		}
 		int index = 0;
-		int[][] mapping = new int[maxItemNumber + 1][];
+		BasicBlockAtlas.Faces[] inactiveLookupByBlock = new BasicBlockAtlas.Faces[maxItemNumber + 1];
+		BasicBlockAtlas.Faces[] activeLookupByBlock = new BasicBlockAtlas.Faces[maxItemNumber + 1];
 		for (Block block : blocksIncluded)
 		{
-			mapping[block.item().number()] = new int[] { index, index, index };
+			// We only bother populating the inactive.
+			inactiveLookupByBlock[block.item().number()] = new BasicBlockAtlas.Faces(index, index, index);
 			index += 1;
 		}
-		return new BasicBlockAtlas(raw, mapping, nonOpaqueVector);
+		return new BasicBlockAtlas(raw, inactiveLookupByBlock, activeLookupByBlock, nonOpaqueVector);
 	}
 
 	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, BlockModelsAndAtlas.Indices> blockToIndex, ModelBuffer[] models)
