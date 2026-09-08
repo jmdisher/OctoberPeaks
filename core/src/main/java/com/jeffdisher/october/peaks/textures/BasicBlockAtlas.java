@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks.textures;
 
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -9,14 +10,23 @@ import com.badlogic.gdx.graphics.GL20;
 public class BasicBlockAtlas
 {
 	private final RawTextureAtlas _blockTextures;
-	private final int[][] _indexLookup_block_variant;
+	private final Faces[] _inactiveLookupByBlock;
+	private final Faces[] _activeLookupByBlock;
 	private final boolean[] _nonOpaque_block;
 
-	public BasicBlockAtlas(RawTextureAtlas blockTextures, int[][] indexLookup_block_variant, boolean[] nonOpaque_block)
+	public BasicBlockAtlas(RawTextureAtlas blockTextures
+		, Faces[] inactiveLookupByBlock
+		, Faces[] activeLookupByBlock
+		, boolean[] nonOpaque_block
+	)
 	{
 		// Note that the BasicBlockCollector, which calls this constructor, has intimate knowledge of this class's implementation.
+		// These arrays must be the same length but the active variant entries are usually null.
+		Assert.assertTrue(inactiveLookupByBlock.length == activeLookupByBlock.length);
+		
 		_blockTextures = blockTextures;
-		_indexLookup_block_variant = indexLookup_block_variant;
+		_inactiveLookupByBlock = inactiveLookupByBlock;
+		_activeLookupByBlock = activeLookupByBlock;
 		_nonOpaque_block = nonOpaque_block;
 	}
 
@@ -29,10 +39,10 @@ public class BasicBlockAtlas
 	public boolean isInBasicAtlas(short value)
 	{
 		boolean isIn;
-		if (value < _indexLookup_block_variant.length)
+		if (value < _inactiveLookupByBlock.length)
 		{
-			int[] variants = _indexLookup_block_variant[value];
-			isIn = (null != variants);
+			// There is always an inactive variant, if the block is a basic block.
+			isIn = (null != _inactiveLookupByBlock[value]);
 		}
 		else
 		{
@@ -59,25 +69,22 @@ public class BasicBlockAtlas
 
 	public float[] baseOfTopTexture(boolean isActive, short value)
 	{
-		int[] variants = _indexLookup_block_variant[value];
-		Variant variant = isActive ? Variant.ACTIVE_TOP : Variant.INACTIVE_TOP;
-		int rawIndex = variants[variant.ordinal()];
+		Faces faces = _getFacesForBlock(isActive, value);
+		int rawIndex = faces.top;
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
 	public float[] baseOfBottomTexture(boolean isActive, short value)
 	{
-		int[] variants = _indexLookup_block_variant[value];
-		Variant variant = isActive ? Variant.ACTIVE_BOTTOM : Variant.INACTIVE_BOTTOM;
-		int rawIndex = variants[variant.ordinal()];
+		Faces faces = _getFacesForBlock(isActive, value);
+		int rawIndex = faces.bottom;
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
 	public float[] baseOfSideTexture(boolean isActive, short value)
 	{
-		int[] variants = _indexLookup_block_variant[value];
-		Variant variant = isActive ? Variant.ACTIVE_SIDE : Variant.INACTIVE_SIDE;
-		int rawIndex = variants[variant.ordinal()];
+		Faces faces = _getFacesForBlock(isActive, value);
+		int rawIndex = faces.side;
 		return _blockTextures.baseOfTexture(rawIndex);
 	}
 
@@ -92,18 +99,32 @@ public class BasicBlockAtlas
 	}
 
 
-	/**
-	 * Blocks can have different variants for different faces, but also whether they are active or not.
-	 */
-	public static enum Variant
+	private Faces _getFacesForBlock(boolean isActive, short value)
 	{
-		INACTIVE_TOP,
-		INACTIVE_BOTTOM,
-		INACTIVE_SIDE,
-		ACTIVE_TOP,
-		ACTIVE_BOTTOM,
-		ACTIVE_SIDE,
-		;
-		public static int FIRST_ACTIVE_INDEX = ACTIVE_TOP.ordinal();
+		Faces faces;
+		if (isActive)
+		{
+			faces = _activeLookupByBlock[value];
+			if (null == faces)
+			{
+				// If there is no active variant, default to inactive.
+				faces = _inactiveLookupByBlock[value];
+			}
+		}
+		else
+		{
+			faces = _inactiveLookupByBlock[value];
+		}
+		return faces;
 	}
+
+
+	/**
+	 * The index of the faces of a given block in the texture atlas.
+	 * These are always all valid (or the object would be null).
+	 */
+	public static record Faces(int top
+		, int side
+		, int bottom
+	) {}
 }

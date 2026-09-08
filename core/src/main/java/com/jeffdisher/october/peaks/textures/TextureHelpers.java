@@ -118,13 +118,25 @@ public class TextureHelpers
 				collector.setBlockFallback(block, fallback);
 			}
 			
-			for (BasicBlockAtlas.Variant variant : BasicBlockAtlas.Variant.values())
+			// We want to walk faces for inactive and inactive versions.
+			String inactiveRoot = "block_" + block.item().id() + "_INACTIVE_";
+			for (BasicBlockCollector.BlockFace face : BasicBlockCollector.BlockFace.values())
 			{
-				String name = "block_" + block.item().id() + "_" + variant.name() + ".png";
-				BufferedImage variantTexture = _loadOneImage(name, textureEdgePixels);
-				if (null != variantTexture)
+				String name = inactiveRoot + face.name() + ".png";
+				BufferedImage faceTexture = _loadOneImage(name, textureEdgePixels);
+				if (null != faceTexture)
 				{
-					collector.addVariant(block, variant, variantTexture);
+					collector.addFace(block, false, face, faceTexture);
+				}
+			}
+			String activeRoot = "block_" + block.item().id() + "_ACTIVE_";
+			for (BasicBlockCollector.BlockFace face : BasicBlockCollector.BlockFace.values())
+			{
+				String name = activeRoot + face.name() + ".png";
+				BufferedImage faceTexture = _loadOneImage(name, textureEdgePixels);
+				if (null != faceTexture)
+				{
+					collector.addFace(block, true, face, faceTexture);
 				}
 			}
 		}
