@@ -139,6 +139,33 @@ public class TextureHelpers
 					collector.addFace(block, true, face, faceTexture);
 				}
 			}
+			
+			// See if we need the block-defined-byte variations.
+			String byteRoot = "block_" + block.item().id() + "_byte";
+			byte b = 0;
+			while (b >= 0)
+			{
+				String oneRoot = byteRoot + b + "_";
+				boolean didFind = false;
+				for (BasicBlockCollector.BlockFace face : BasicBlockCollector.BlockFace.values())
+				{
+					String name = oneRoot + face.name() + ".png";
+					BufferedImage faceTexture = _loadOneImage(name, textureEdgePixels);
+					if (null != faceTexture)
+					{
+						collector.addFaceForByte(block, b, face, faceTexture);
+						didFind = true;
+					}
+				}
+				if (didFind)
+				{
+					b += 1;
+				}
+				else
+				{
+					b = -1;
+				}
+			}
 		}
 		
 		// We will now stitch these into the atlas, using the common helper and RawTextureAtlas.

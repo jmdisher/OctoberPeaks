@@ -201,7 +201,9 @@ public class SceneMeshHelpers
 		// For now, just use the same image for all faces.
 		// (we assume liquids are never "active").
 		boolean isActive = false;
-		float[] uvBase = blockAtlas.baseOfTopTexture(isActive, sourceNumber);
+		// (similarly, we only use block-defined for shape, not texture).
+		byte blockDefinedByte = 0;
+		float[] uvBase = blockAtlas.baseOfTopTexture(isActive, sourceNumber, blockDefinedByte);
 		float textureSize = blockAtlas.getCoordinateSize();
 		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
@@ -398,7 +400,8 @@ public class SceneMeshHelpers
 	)
 	{
 		// We assume that the "air" block we are using as the block texture is the same on all sides.
-		float airCoords[] = blockAtlas.baseOfSideTexture(false, env.special.AIR.item().number());
+		byte blockDefinedByte = 0;
+		float airCoords[] = blockAtlas.baseOfSideTexture(false, env.special.AIR.item().number(), blockDefinedByte);
 		float coordinateSize = blockAtlas.getCoordinateSize();
 		
 		// We rely on the fire texture being swapped between frames but is currently bound to the entire texture (might change for more animations, in the future).
@@ -726,8 +729,8 @@ public class SceneMeshHelpers
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
 			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
-			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value);
-			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value);
+			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value, blockDefinedByte);
+			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value, blockDefinedByte);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
@@ -815,7 +818,7 @@ public class SceneMeshHelpers
 			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
 			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
-			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
+			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value, blockDefinedByte);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
@@ -887,7 +890,7 @@ public class SceneMeshHelpers
 			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
 			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
-			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value);
+			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value, blockDefinedByte);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);

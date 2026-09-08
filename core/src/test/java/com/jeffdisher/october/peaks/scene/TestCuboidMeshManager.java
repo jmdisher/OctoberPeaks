@@ -652,13 +652,14 @@ public class TestCuboidMeshManager
 		int index = 0;
 		BasicBlockAtlas.Faces[] inactiveLookupByBlock = new BasicBlockAtlas.Faces[maxItemNumber + 1];
 		BasicBlockAtlas.Faces[] activeLookupByBlock = new BasicBlockAtlas.Faces[maxItemNumber + 1];
+		BasicBlockAtlas.Faces[][] blockDefinedByteLookupByBlock = new BasicBlockAtlas.Faces[maxItemNumber + 1][];
 		for (Block block : blocksIncluded)
 		{
 			// We only bother populating the inactive.
 			inactiveLookupByBlock[block.item().number()] = new BasicBlockAtlas.Faces(index, index, index);
 			index += 1;
 		}
-		return new BasicBlockAtlas(raw, inactiveLookupByBlock, activeLookupByBlock, nonOpaqueVector);
+		return new BasicBlockAtlas(raw, inactiveLookupByBlock, activeLookupByBlock, blockDefinedByteLookupByBlock, nonOpaqueVector);
 	}
 
 	private static BlockModelsAndAtlas _buildBlockModelsAndAtlas(int textureCount, Map<Block, BlockModelsAndAtlas.Indices> blockToIndex, ModelBuffer[] models)
