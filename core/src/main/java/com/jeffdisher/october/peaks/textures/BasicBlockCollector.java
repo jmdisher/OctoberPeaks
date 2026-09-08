@@ -16,38 +16,45 @@ public class BasicBlockCollector
 	public static final int MISSING_TEXTURE_INDEX = 0;
 
 	private final BufferedImage _missingTexture;
-	private final Map<Block, Map<BasicBlockAtlas.Variant, BufferedImage>> _blockVariantTextures;
+	private final Map<Block, Map<BlockFace, BufferedImage>> _blockInactiveTextures;
+	private final Map<Block, Map<BlockFace, BufferedImage>> _blockActiveTextures;
 	private final Map<Block, BufferedImage> _blockFallbackTextures;
 	private int _textureCount;
 
 	public BasicBlockCollector(BufferedImage missingTexture)
 	{
 		_missingTexture = missingTexture;
-		_blockVariantTextures = new HashMap<>();
+		_blockInactiveTextures = new HashMap<>();
+		_blockActiveTextures = new HashMap<>();
 		_blockFallbackTextures = new HashMap<>();
 		_textureCount = 1;
 	}
 
 	public void setBlockFallback(Block block, BufferedImage image)
 	{
-		Assert.assertTrue(!_blockVariantTextures.containsKey(block));
+		Assert.assertTrue(!_blockInactiveTextures.containsKey(block));
+		Assert.assertTrue(!_blockActiveTextures.containsKey(block));
 		Assert.assertTrue(!_blockFallbackTextures.containsKey(block));
 		
 		_blockFallbackTextures.put(block, image);
 		_textureCount += 1;
 	}
 
-	public void addVariant(Block block, BasicBlockAtlas.Variant variant, BufferedImage image)
+	public void addFace(Block block, boolean isActive, BlockFace face, BufferedImage image)
 	{
-		if (!_blockVariantTextures.containsKey(block))
+		Map<Block, Map<BlockFace, BufferedImage>> container = isActive
+			? _blockActiveTextures
+			: _blockInactiveTextures
+		;
+		if (!container.containsKey(block))
 		{
-			_blockVariantTextures.put(block, new HashMap<>());
+			container.put(block, new HashMap<>());
 		}
-		BufferedImage old = _blockVariantTextures.get(block).put(variant, image);
+		BufferedImage old = container.get(block).put(face, image);
 		Assert.assertTrue(null == old);
 		
-		// If this filled all variants, remove the fallback.
-		if (BasicBlockAtlas.Variant.values().length == _blockVariantTextures.get(block).size())
+		// If this filled all faces for at least the inactive version, then we can drop the fallback since we will always have this one.
+		if (!isActive && _blockFallbackTextures.containsKey(block) && (BlockFace.values().length == _blockInactiveTextures.get(block).size()))
 		{
 			old = _blockFallbackTextures.remove(block);
 			Assert.assertTrue(null != old);
@@ -65,18 +72,35 @@ public class BasicBlockCollector
 		int index = MISSING_TEXTURE_INDEX + 1;
 		for (Block block : blockOrder)
 		{
+			// If we need a fallback, we write that first, for the block.
 			if (_blockFallbackTextures.containsKey(block))
 			{
 				images[index] = _blockFallbackTextures.get(block);
 				index += 1;
 			}
 			
-			Map<BasicBlockAtlas.Variant, BufferedImage> map = _blockVariantTextures.get(block);
-			if (null != map)
+			// Write any inactive faces, in enum order.
+			Map<BlockFace, BufferedImage> inactive = _blockInactiveTextures.get(block);
+			if (null != inactive)
 			{
-				for (BasicBlockAtlas.Variant variant : BasicBlockAtlas.Variant.values())
+				for (BlockFace face : BlockFace.values())
 				{
-					BufferedImage image = map.get(variant);
+					BufferedImage image = inactive.get(face);
+					if (null != image)
+					{
+						images[index] = image;
+						index += 1;
+					}
+				}
+			}
+			
+			// Write any active faces, in enum order.
+			Map<BlockFace, BufferedImage> active = _blockActiveTextures.get(block);
+			if (null != active)
+			{
+				for (BlockFace face : BlockFace.values())
+				{
+					BufferedImage image = active.get(face);
 					if (null != image)
 					{
 						images[index] = image;
@@ -101,49 +125,91 @@ public class BasicBlockCollector
 		
 		// NOTE:  This textureIndex MUST match the order of images returned in getImagesInOrder().
 		int textureIndex = MISSING_TEXTURE_INDEX + 1;
-		int[][] indexLookup_block_variant = new int[maxIndex + 1][];
+		BasicBlockAtlas.Faces[] inactiveLookupByBlock = new BasicBlockAtlas.Faces[maxIndex + 1];
+		BasicBlockAtlas.Faces[] activeLookupByBlock = new BasicBlockAtlas.Faces[maxIndex + 1];
 		boolean[] nonOpaque_block = new boolean[maxIndex + 1];
 		for (Block block : blockOrder)
 		{
+			boolean isNotOpaque = false;
+			
+			// If we need a fallback, we write that first, for the block.
 			int fallback = MISSING_TEXTURE_INDEX;
 			if (_blockFallbackTextures.containsKey(block))
 			{
+				isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
 				fallback = textureIndex;
 				textureIndex += 1;
 			}
-			Map<BasicBlockAtlas.Variant, BufferedImage> map = _blockVariantTextures.get(block);
-			int[] variantIndices = new int[BasicBlockAtlas.Variant.values().length];
-			boolean isNotOpaque = false;
-			for (BasicBlockAtlas.Variant variant : BasicBlockAtlas.Variant.values())
+			
+			// Write any inactive faces, in enum order.
+			Map<BlockFace, BufferedImage> inactive = _blockInactiveTextures.get(block);
+			BasicBlockAtlas.Faces fallbackFaces = new BasicBlockAtlas.Faces(fallback, fallback, fallback);
+			if (null != inactive)
 			{
-				BufferedImage image = (null != map)
-						? map.get(variant)
-						: null
-				;
-				int variantIndex = variant.ordinal();
-				if (null != image)
+				int top = fallbackFaces.top();
+				if (inactive.containsKey(BlockFace.TOP))
 				{
-					// We have a specific index for this one so use it.
-					variantIndices[variantIndex] = textureIndex;
 					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
+					top = textureIndex;
 					textureIndex += 1;
 				}
-				else if (variant.ordinal() >= BasicBlockAtlas.Variant.FIRST_ACTIVE_INDEX)
+				int side = fallbackFaces.side();
+				if (inactive.containsKey(BlockFace.SIDE))
 				{
-					// If we don't have a texture, but are active, default to the inactive.
-					variantIndices[variantIndex] = variantIndices[BasicBlockAtlas.Variant.FIRST_ACTIVE_INDEX - 3];
+					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
+					side = textureIndex;
+					textureIndex += 1;
 				}
-				else
+				int bottom = fallbackFaces.bottom();
+				if (inactive.containsKey(BlockFace.BOTTOM))
 				{
-					// We know this block should be in the atlas but there isn't a texture for this variant so try the
-					// fallback or, failing that, missing texture.
-					variantIndices[variantIndex] = fallback;
-					isNotOpaque |= nonOpaqueVectorByTexture[fallback];
+					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
+					bottom = textureIndex;
+					textureIndex += 1;
 				}
+				fallbackFaces = new BasicBlockAtlas.Faces(top, side, bottom);
 			}
-			indexLookup_block_variant[block.item().number()] = variantIndices;
+			// Even if nothing was loaded for inactive, we store something.
+			inactiveLookupByBlock[block.item().number()] = fallbackFaces;
+			
+			// Write any active faces, in enum order.
+			Map<BlockFace, BufferedImage> active = _blockActiveTextures.get(block);
+			if (null != active)
+			{
+				int top = fallbackFaces.top();
+				if (active.containsKey(BlockFace.TOP))
+				{
+					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
+					top = textureIndex;
+					textureIndex += 1;
+				}
+				int side = fallbackFaces.side();
+				if (active.containsKey(BlockFace.SIDE))
+				{
+					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
+					side = textureIndex;
+					textureIndex += 1;
+				}
+				int bottom = fallbackFaces.bottom();
+				if (active.containsKey(BlockFace.BOTTOM))
+				{
+					isNotOpaque |= nonOpaqueVectorByTexture[textureIndex];
+					bottom = textureIndex;
+					textureIndex += 1;
+				}
+				activeLookupByBlock[block.item().number()] = new BasicBlockAtlas.Faces(top, side, bottom);
+			}
 			nonOpaque_block[block.item().number()] = isNotOpaque;
 		}
-		return new BasicBlockAtlas(rawAtlas, indexLookup_block_variant, nonOpaque_block);
+		return new BasicBlockAtlas(rawAtlas, inactiveLookupByBlock, activeLookupByBlock, nonOpaque_block);
+	}
+
+
+	public static enum BlockFace
+	{
+		TOP,
+		SIDE,
+		BOTTOM,
+		;
 	}
 }
