@@ -12,6 +12,8 @@ import java.util.Set;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.graphics.SubBlockMesh;
 import com.jeffdisher.october.peaks.textures.RawTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Prism;
@@ -32,21 +34,38 @@ public class BlockModelsAndAtlas
 	{
 		// We will look for "model_ITEM_ID.obj" and "model_ITEM_ID.png" - both or neither must be present.
 		// We will then store the vertex data for these models (in Java heap), and store the textures into an atlas.
+		Environment env = Environment.getShared();
 		Map<Block, Indices> blockToIndex = new HashMap<>();
 		Map<Block, short[]> blockToBytes = new HashMap<>();
+		Map<Block, SubBlockMesh> subBlockMeshes = new HashMap<>();
+		Map<Block, Short> subBlockTextureIndices = new HashMap<>();
 		List<ModelBuffer> modelList = new ArrayList<>();
 		List<FileHandle> textureHandleList = new ArrayList<>();
 		for (Block block : blocks)
 		{
-			// Figure out which model variant type this is (active/inactive/down or block-defined-byte - can be at most one).
+			// Figure out which model variant type this is (active/inactive/down, block-defined-byte, or sub-blocks - can be at most one).
 			String itemId = block.item().id();
 			_ModelPair inactive = _loadPair("model_" + itemId);
 			_ModelPair blockDefinedByte = _loadPair("model_" + itemId + "_byte0");
-			Assert.assertTrue((null == inactive) || (null == blockDefinedByte));
+			FileHandle subBlockTextureHandle = Gdx.files.internal("sub-block_" + itemId + ".png");
+			int versionsFound = 0;
+			if (null != inactive)
+			{
+				versionsFound += 1;
+			}
+			if (null != blockDefinedByte)
+			{
+				versionsFound += 1;
+			}
+			if (subBlockTextureHandle.exists())
+			{
+				versionsFound += 1;
+			}
+			Assert.assertTrue(versionsFound <= 1);
 			
 			if (null != inactive)
 			{
-				short inactiveIndex = (short)modelList.size();
+				short inactiveIndex = (short)textureHandleList.size();
 				String text = inactive.model.readString();
 				ModelBuffer model = ModelBuffer.buildFromWavefront(text);
 				modelList.add(model);
@@ -56,7 +75,7 @@ public class BlockModelsAndAtlas
 				short activeIndex = inactiveIndex;
 				if (null != active)
 				{
-					activeIndex = (short)modelList.size();
+					activeIndex = (short)textureHandleList.size();
 					text = active.model.readString();
 					model = ModelBuffer.buildFromWavefront(text);
 					modelList.add(model);
@@ -67,7 +86,7 @@ public class BlockModelsAndAtlas
 				short downIndex = -1;
 				if (null != down)
 				{
-					downIndex = (short)modelList.size();
+					downIndex = (short)textureHandleList.size();
 					text = down.model.readString();
 					model = ModelBuffer.buildFromWavefront(text);
 					modelList.add(model);
@@ -79,7 +98,7 @@ public class BlockModelsAndAtlas
 			else if (null != blockDefinedByte)
 			{
 				// The block-defined byte case is kind of hacked in here (block interpretation may need a redesign) but we will load all defined variants in order.
-				short baseIndex =(short)modelList.size();
+				short baseIndex =(short)textureHandleList.size();
 				int count = 0;
 				while (null != blockDefinedByte)
 				{
@@ -99,6 +118,19 @@ public class BlockModelsAndAtlas
 				}
 				blockToBytes.put(block, indices);
 			}
+			else if (subBlockTextureHandle.exists())
+			{
+				// Add a placeholder to the model list.
+				modelList.add(null);
+				// The sub-blocks are generated meshes based on the block's collision mask with only the single given texture.
+				// (note that all of the cases which currently use this are inactive - this will likely remain the case).
+				SubBlockMesh mesh = SubBlockMesh.builder(env.blocks.getSubBlocks(block, false));
+				subBlockMeshes.put(block, mesh);
+				
+				short textureIndex = (short)textureHandleList.size();
+				textureHandleList.add(subBlockTextureHandle);
+				subBlockTextureIndices.put(block, textureIndex);
+			}
 		}
 		
 		// Assemble the atlas.
@@ -106,12 +138,12 @@ public class BlockModelsAndAtlas
 		RawTextureAtlas atlas = TextureHelpers.loadRawAtlasFromModelTextureHandles(gl, handles);
 		
 		ModelBuffer[] models = modelList.toArray((int size) -> new ModelBuffer[size]);
-		return new BlockModelsAndAtlas(blockToIndex, blockToBytes, models, atlas);
+		return new BlockModelsAndAtlas(blockToIndex, blockToBytes, models, subBlockMeshes, subBlockTextureIndices, atlas);
 	}
 
 	public static BlockModelsAndAtlas testInstance(Map<Block, Indices> blockToIndex, ModelBuffer[] models, RawTextureAtlas atlas)
 	{
-		return new BlockModelsAndAtlas(blockToIndex, Map.of(), models, atlas);
+		return new BlockModelsAndAtlas(blockToIndex, Map.of(), models, Map.of(), Map.of(), atlas);
 	}
 
 
@@ -119,22 +151,29 @@ public class BlockModelsAndAtlas
 	private final Map<Block, Indices> _blockToIndex;
 	private final Map<Block, short[]> _blockToBytes;
 	private final ModelBuffer[] _models;
+	private final Map<Block, SubBlockMesh> _subBlocks;
+	private final Map<Block, Short> _subBlockTextureIndices;
 	private final RawTextureAtlas _atlas;
 
 	private BlockModelsAndAtlas(Map<Block, Indices> blockToIndex
 		, Map<Block, short[]> blockToBytes
 		, ModelBuffer[] models
+		, Map<Block, SubBlockMesh> subBlocks
+		, Map<Block, Short> subBlockTextureIndices
 		, RawTextureAtlas atlas
 	)
 	{
 		Set<Block> blocks = new HashSet<>();
 		blocks.addAll(blockToIndex.keySet());
 		blocks.addAll(blockToBytes.keySet());
+		blocks.addAll(subBlocks.keySet());
 		
 		_blockSet = Collections.unmodifiableSet(blocks);
 		_blockToIndex = Collections.unmodifiableMap(blockToIndex);
 		_blockToBytes = Collections.unmodifiableMap(blockToBytes);
 		_models = models;
+		_subBlocks = Collections.unmodifiableMap(subBlocks);
+		_subBlockTextureIndices = Collections.unmodifiableMap(subBlockTextureIndices);
 		_atlas = atlas;
 	}
 
@@ -147,6 +186,11 @@ public class BlockModelsAndAtlas
 	{
 		short index = getCommonIndexForBlock(block, isActive, isDown, blockDefinedByte);
 		return _models[index];
+	}
+
+	public SubBlockMesh getSubBlockMesh(Block block)
+	{
+		return _subBlocks.get(block);
 	}
 
 	public int getModelAtlasTexture()
@@ -299,10 +343,14 @@ public class BlockModelsAndAtlas
 				: (isDown && hasSpecialDown) ? indices.down : indices.inactive
 			;
 		}
-		else
+		else if (_blockToBytes.containsKey(block))
 		{
 			short[] variants = _blockToBytes.get(block);
 			index = variants[blockDefinedByte];
+		}
+		else
+		{
+			index = _subBlockTextureIndices.get(block);
 		}
 		return index;
 	}
