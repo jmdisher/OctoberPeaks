@@ -85,8 +85,8 @@ public class SceneMeshHelpers
 				, null
 				, inputData
 		);
-		faces.populateMasks(inputData.cuboid, shouldInclude);
-		faces.buildFaces(inputData.cuboid, new _CommonVertexWriter(env
+		faces.populateMasks(inputData.cuboid(), shouldInclude);
+		faces.buildFaces(inputData.cuboid(), new _CommonVertexWriter(env
 			, builder
 			, variantMap
 			, blockAtlas
@@ -108,7 +108,7 @@ public class SceneMeshHelpers
 		Map<Short, Block> included = blockModels.getBlockSet().stream().collect(Collectors.toMap((Block block) -> block.item().number(), (Block block) -> block));
 		float uvCoordinateSize = blockModels.getCoordinateSize();
 		float auxCoordinateSize = auxAtlas.coordinateSize;
-		inputData.cuboid.walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
+		inputData.cuboid().walkData(AspectRegistry.BLOCK, new IOctree.IWalkerCallback<Short>() {
 			@Override
 			public void visit(BlockAddress base, byte size, Short object)
 			{
@@ -131,15 +131,15 @@ public class SceneMeshHelpers
 								byte baseZ = (byte)(base.z() + z);
 								// Multi-blocks with complex models should only render at the root.
 								BlockAddress thisAddress = new BlockAddress(baseX, baseY, baseZ);
-								if (null == inputData.cuboid.getDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, thisAddress))
+								if (null == inputData.cuboid().getDataSpecial(AspectRegistry.MULTI_BLOCK_ROOT, thisAddress))
 								{
 									// We need to see if this block has an active variant, since that is required to select the appropriate model.
 									boolean hasActiveVariant = env.blocks.hasActiveVariant(env.blocks.fromItem(env.items.ITEMS_BY_TYPE[value]));
 									boolean isActive = hasActiveVariant
-											? FlagsAspect.isSet(inputData.cuboid.getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
+											? FlagsAspect.isSet(inputData.cuboid().getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
 											: false
 									;
-									FacingDirection multiBlockDirection = FacingDirection.byteToDirection(inputData.cuboid.getData7(AspectRegistry.ORIENTATION, thisAddress));
+									FacingDirection multiBlockDirection = FacingDirection.byteToDirection(inputData.cuboid().getData7(AspectRegistry.ORIENTATION, thisAddress));
 									boolean isDown = (FacingDirection.DOWN == multiBlockDirection);
 									if (isDown && blockModels.hasDownModel(includedBlock))
 									{
@@ -147,7 +147,7 @@ public class SceneMeshHelpers
 										multiBlockDirection = FacingDirection.NORTH;
 									}
 									// Block-defined bytes are rare but they do usually involve different models.
-									byte blockDefinedByte = inputData.cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, thisAddress);
+									byte blockDefinedByte = inputData.cuboid().getData7(AspectRegistry.BLOCK_DEFINED_BYTE, thisAddress);
 									float[] uv = blockModels.baseOfModelTexture(includedBlock, isActive, isDown, blockDefinedByte);
 									
 									BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
@@ -156,7 +156,7 @@ public class SceneMeshHelpers
 									float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
 									// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
 									float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), SKY_LIGHT_PARTIAL) };
-									EntityLocation absoluteBase = inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress).toEntityLocation();
+									EntityLocation absoluteBase = inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress).toEntityLocation();
 									
 									SubBlockMesh subBlock = blockModels.getSubBlockMesh(includedBlock);
 									if (null != subBlock)
@@ -224,8 +224,8 @@ public class SceneMeshHelpers
 			}
 			, inputData
 		);
-		faces.populateMasks(inputData.cuboid, shouldInclude);
-		faces.buildFaces(inputData.cuboid, surface);
+		faces.populateMasks(inputData.cuboid(), shouldInclude);
+		faces.buildFaces(inputData.cuboid(), surface);
 		
 		// For now, just use the same image for all faces.
 		// (we assume liquids are never "active").
@@ -237,7 +237,7 @@ public class SceneMeshHelpers
 		float[] auxUv = auxAtlas.baseOfTexture(AuxilliaryTextureAtlas.Variant.NONE);
 		float auxTextureSize = auxAtlas.coordinateSize;
 		
-		AbsoluteLocation cuboidBase = inputData.cuboid.getCuboidAddress().getBase();
+		AbsoluteLocation cuboidBase = inputData.cuboid().getCuboidAddress().getBase();
 		surface.writeVertices(new WaterSurfaceBuilder.IQuadWriter() {
 			float[] _base = new float[] { (float)cuboidBase.x(), (float)cuboidBase.y(), (float)cuboidBase.z() };
 			@Override
@@ -548,29 +548,29 @@ public class SceneMeshHelpers
 		byte omit = -1;
 		byte zero = 0;
 		byte edge = Encoding.CUBOID_EDGE_SIZE;
-		if (null != inputData.up)
+		if (null != inputData.up())
 		{
-			faces.preSeedMasks(inputData.up, shouldInclude, edgeWriter, zero, omit, omit, omit, omit, omit);
+			faces.preSeedMasks(inputData.up(), shouldInclude, edgeWriter, zero, omit, omit, omit, omit, omit);
 		}
-		if (null != inputData.down)
+		if (null != inputData.down())
 		{
-			faces.preSeedMasks(inputData.down, shouldInclude, edgeWriter, omit, edge, omit, omit, omit, omit);
+			faces.preSeedMasks(inputData.down(), shouldInclude, edgeWriter, omit, edge, omit, omit, omit, omit);
 		}
-		if (null != inputData.north)
+		if (null != inputData.north())
 		{
-			faces.preSeedMasks(inputData.north, shouldInclude, edgeWriter, omit, omit, zero, omit, omit, omit);
+			faces.preSeedMasks(inputData.north(), shouldInclude, edgeWriter, omit, omit, zero, omit, omit, omit);
 		}
-		if (null != inputData.south)
+		if (null != inputData.south())
 		{
-			faces.preSeedMasks(inputData.south, shouldInclude, edgeWriter, omit, omit, omit, edge, omit, omit);
+			faces.preSeedMasks(inputData.south(), shouldInclude, edgeWriter, omit, omit, omit, edge, omit, omit);
 		}
-		if (null != inputData.east)
+		if (null != inputData.east())
 		{
-			faces.preSeedMasks(inputData.east, shouldInclude, edgeWriter, omit, omit, omit, omit, zero, omit);
+			faces.preSeedMasks(inputData.east(), shouldInclude, edgeWriter, omit, omit, omit, omit, zero, omit);
 		}
-		if (null != inputData.west)
+		if (null != inputData.west())
 		{
-			faces.preSeedMasks(inputData.west, shouldInclude, edgeWriter, omit, omit, omit, omit, omit, edge);
+			faces.preSeedMasks(inputData.west(), shouldInclude, edgeWriter, omit, omit, omit, omit, omit, edge);
 		}
 	}
 
@@ -756,7 +756,7 @@ public class SceneMeshHelpers
 			// Note that the Z-normal creates surfaces parallel to the ground so we will define "up" as "positive y".
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
-			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+			AbsoluteLocation absoluteBase = _inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
 			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value, blockDefinedByte);
 			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value, blockDefinedByte);
@@ -844,7 +844,7 @@ public class SceneMeshHelpers
 		public void writeXZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
-			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+			AbsoluteLocation absoluteBase = _inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
 			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value, blockDefinedByte);
@@ -916,7 +916,7 @@ public class SceneMeshHelpers
 		public void writeYZPlane(byte baseX, byte baseY, byte baseZ, boolean isPositiveNormal, short value, byte blockDefinedByte)
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
-			AbsoluteLocation absoluteBase = _inputData.cuboid.getCuboidAddress().getBase().relativeForBlock(blockAddress);
+			AbsoluteLocation absoluteBase = _inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
 			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value, blockDefinedByte);
@@ -988,7 +988,7 @@ public class SceneMeshHelpers
 		{
 			boolean hasActiveVariant = _env.blocks.hasActiveVariant(_env.blocks.fromItem(_env.items.ITEMS_BY_TYPE[value]));
 			boolean isActive = hasActiveVariant
-					? FlagsAspect.isSet(_inputData.cuboid.getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
+					? FlagsAspect.isSet(_inputData.cuboid().getData7(AspectRegistry.FLAGS, new BlockAddress(baseX, baseY, baseZ)), FlagsAspect.FLAG_ACTIVE)
 					: false
 			;
 			return isActive;
@@ -1068,7 +1068,7 @@ public class SceneMeshHelpers
 			indexZ += 1;
 		}
 		
-		IReadOnlyCuboidData toRead = data.cuboidsXYZ[indexX][indexY][indexZ];
+		IReadOnlyCuboidData toRead = data.cuboidsXYZ()[indexX][indexY][indexZ];
 		return (null != toRead)
 				? toRead.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, baseZ))
 				: 0
@@ -1102,8 +1102,8 @@ public class SceneMeshHelpers
 			indexY += 1;
 		}
 		
-		ColumnHeightMap toRead = data.columnHeightXY[indexX][indexY];
-		int realZ = data.cuboid.getCuboidAddress().getBase().z() + baseZ - 1;
+		ColumnHeightMap toRead = data.columnHeightXY()[indexX][indexY];
+		int realZ = data.cuboid().getCuboidAddress().getBase().z() + baseZ - 1;
 		
 		boolean isLit;
 		if (null != toRead)
@@ -1123,14 +1123,14 @@ public class SceneMeshHelpers
 
 	private static float _getSkyLightMultiplier(MeshInputData data, byte baseX, byte baseY, byte baseZ, float aboveOrMatchLight)
 	{
-		int realZ = data.cuboid.getCuboidAddress().getBase().z() + baseZ - 1;
+		int realZ = data.cuboid().getCuboidAddress().getBase().z() + baseZ - 1;
 		
 		boolean isLit;
 		if (baseX < 0)
 		{
-			if (null != data.westHeight)
+			if (null != data.westHeight())
 			{
-				isLit = (realZ >= data.westHeight.getHeight(baseX + Encoding.CUBOID_EDGE_SIZE, baseY));
+				isLit = (realZ >= data.westHeight().getHeight(baseX + Encoding.CUBOID_EDGE_SIZE, baseY));
 			}
 			else
 			{
@@ -1139,9 +1139,9 @@ public class SceneMeshHelpers
 		}
 		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.eastHeight)
+			if (null != data.eastHeight())
 			{
-				isLit = (realZ >= data.eastHeight.getHeight(baseX - Encoding.CUBOID_EDGE_SIZE, baseY));
+				isLit = (realZ >= data.eastHeight().getHeight(baseX - Encoding.CUBOID_EDGE_SIZE, baseY));
 			}
 			else
 			{
@@ -1150,9 +1150,9 @@ public class SceneMeshHelpers
 		}
 		else if (baseY < 0)
 		{
-			if (null != data.southHeight)
+			if (null != data.southHeight())
 			{
-				isLit = (realZ >= data.southHeight.getHeight(baseX, baseY + Encoding.CUBOID_EDGE_SIZE));
+				isLit = (realZ >= data.southHeight().getHeight(baseX, baseY + Encoding.CUBOID_EDGE_SIZE));
 			}
 			else
 			{
@@ -1161,9 +1161,9 @@ public class SceneMeshHelpers
 		}
 		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.northHeight)
+			if (null != data.northHeight())
 			{
-				isLit = (realZ >= data.northHeight.getHeight(baseX, baseY - Encoding.CUBOID_EDGE_SIZE));
+				isLit = (realZ >= data.northHeight().getHeight(baseX, baseY - Encoding.CUBOID_EDGE_SIZE));
 			}
 			else
 			{
@@ -1172,9 +1172,9 @@ public class SceneMeshHelpers
 		}
 		else if (baseZ < 0)
 		{
-			if (null != data.downHeight)
+			if (null != data.downHeight())
 			{
-				isLit = (realZ >= data.downHeight.getHeight(baseX, baseY));
+				isLit = (realZ >= data.downHeight().getHeight(baseX, baseY));
 			}
 			else
 			{
@@ -1183,9 +1183,9 @@ public class SceneMeshHelpers
 		}
 		else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.upHeight)
+			if (null != data.upHeight())
 			{
-				isLit = (realZ >= data.upHeight.getHeight(baseX, baseY));
+				isLit = (realZ >= data.upHeight().getHeight(baseX, baseY));
 			}
 			else
 			{
@@ -1194,7 +1194,7 @@ public class SceneMeshHelpers
 		}
 		else
 		{
-			isLit = (realZ >= data.height.getHeight(baseX, baseY));
+			isLit = (realZ >= data.height().getHeight(baseX, baseY));
 		}
 		return isLit
 				? aboveOrMatchLight
@@ -1207,9 +1207,9 @@ public class SceneMeshHelpers
 		Block blockType;
 		if (address.x() < 0)
 		{
-			if (null != data.west)
+			if (null != data.west())
 			{
-				blockType = BlockProxy.load(new BlockAddress((byte)(address.x() + Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.west).getBlock();
+				blockType = BlockProxy.load(new BlockAddress((byte)(address.x() + Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.west()).getBlock();
 			}
 			else
 			{
@@ -1218,9 +1218,9 @@ public class SceneMeshHelpers
 		}
 		else if (address.x() >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.east)
+			if (null != data.east())
 			{
-				blockType = BlockProxy.load(new BlockAddress((byte)(address.x() - Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.east).getBlock();
+				blockType = BlockProxy.load(new BlockAddress((byte)(address.x() - Encoding.CUBOID_EDGE_SIZE), address.y(), address.z()), data.east()).getBlock();
 			}
 			else
 			{
@@ -1229,9 +1229,9 @@ public class SceneMeshHelpers
 		}
 		else if (address.y() < 0)
 		{
-			if (null != data.south)
+			if (null != data.south())
 			{
-				blockType = BlockProxy.load(new BlockAddress(address.x(), (byte)(address.y() + Encoding.CUBOID_EDGE_SIZE), address.z()), data.south).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), (byte)(address.y() + Encoding.CUBOID_EDGE_SIZE), address.z()), data.south()).getBlock();
 			}
 			else
 			{
@@ -1240,9 +1240,9 @@ public class SceneMeshHelpers
 		}
 		else if (address.y() >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.north)
+			if (null != data.north())
 			{
-				blockType = BlockProxy.load(new BlockAddress(address.x(), (byte)(address.y() - Encoding.CUBOID_EDGE_SIZE), address.z()), data.north).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), (byte)(address.y() - Encoding.CUBOID_EDGE_SIZE), address.z()), data.north()).getBlock();
 			}
 			else
 			{
@@ -1251,9 +1251,9 @@ public class SceneMeshHelpers
 		}
 		else if (address.z() < 0)
 		{
-			if (null != data.down)
+			if (null != data.down())
 			{
-				blockType = BlockProxy.load(new BlockAddress(address.x(), address.y(), (byte)(address.z() + Encoding.CUBOID_EDGE_SIZE)), data.down).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), address.y(), (byte)(address.z() + Encoding.CUBOID_EDGE_SIZE)), data.down()).getBlock();
 			}
 			else
 			{
@@ -1262,9 +1262,9 @@ public class SceneMeshHelpers
 		}
 		else if (address.z() >= Encoding.CUBOID_EDGE_SIZE)
 		{
-			if (null != data.up)
+			if (null != data.up())
 			{
-				blockType = BlockProxy.load(new BlockAddress(address.x(), address.y(), (byte)(address.z() - Encoding.CUBOID_EDGE_SIZE)), data.up).getBlock();
+				blockType = BlockProxy.load(new BlockAddress(address.x(), address.y(), (byte)(address.z() - Encoding.CUBOID_EDGE_SIZE)), data.up()).getBlock();
 			}
 			else
 			{
@@ -1273,7 +1273,7 @@ public class SceneMeshHelpers
 		}
 		else
 		{
-			blockType = BlockProxy.load(address, data.cuboid).getBlock();
+			blockType = BlockProxy.load(address, data.cuboid()).getBlock();
 		}
 		return (null != blockType)
 				? (LightAspect.OPAQUE ==  env.lighting.getOpacity(blockType))
@@ -1608,28 +1608,4 @@ public class SceneMeshHelpers
 	{
 		public void buildQuad(float[] localBase, float[][] vertices, float[] normal);
 	}
-
-	/**
-	 * Packaged-up data passed into the mesh generation helpers.
-	 * This record exists to give names to the inputs, instead of just a long parameter list.
-	 * Note that any of the fields can be null except for "cuboid".
-	 */
-	public static record MeshInputData(IReadOnlyCuboidData cuboid
-			, ColumnHeightMap height
-			, IReadOnlyCuboidData up
-			, ColumnHeightMap upHeight
-			, IReadOnlyCuboidData down
-			, ColumnHeightMap downHeight
-			, IReadOnlyCuboidData north
-			, ColumnHeightMap northHeight
-			, IReadOnlyCuboidData south
-			, ColumnHeightMap southHeight
-			, IReadOnlyCuboidData east
-			, ColumnHeightMap eastHeight
-			, IReadOnlyCuboidData west
-			, ColumnHeightMap westHeight
-			
-			, IReadOnlyCuboidData[][][] cuboidsXYZ
-			, ColumnHeightMap[][] columnHeightXY
-	) {}
 }
