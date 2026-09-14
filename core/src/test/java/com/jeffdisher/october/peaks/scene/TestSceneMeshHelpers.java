@@ -245,7 +245,7 @@ public class TestSceneMeshHelpers
 		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
-		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
+		MeshInputData inputData = new MeshInputData(cuboid, heightMap
 				, null, null
 				, null, null
 				, null, null
@@ -635,7 +635,7 @@ public class TestSceneMeshHelpers
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
-		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
+		MeshInputData inputData = new MeshInputData(cuboid, heightMap
 				, optionalUp, (null != optionalUp) ?  heightMap : null
 				, null, null
 				, optionalNorth, (null != optionalNorth) ? heightMap : null
@@ -705,7 +705,7 @@ public class TestSceneMeshHelpers
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(4, blocks, nonOpaqueVector);
 		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
-		SceneMeshHelpers.MeshInputData inputData = new SceneMeshHelpers.MeshInputData(cuboid, heightMap
+		MeshInputData inputData = new MeshInputData(cuboid, heightMap
 				, null, null
 				, null, null
 				, null, null

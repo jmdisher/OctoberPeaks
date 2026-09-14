@@ -406,7 +406,7 @@ public class CuboidMeshManager
 	private _Response _backgroundBuildMesh(_Request request)
 	{
 		// Collect information about the cuboid.
-		IReadOnlyCuboidData cuboid = request.inputs.cuboid();
+		IReadOnlyCuboidData cuboid = request.inputs().cuboid();
 		AuxVariantMap variantMap = new AuxVariantMap(_env, cuboid);
 		
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
@@ -422,7 +422,7 @@ public class CuboidMeshManager
 				, variantMap
 				, _auxBlockTextures
 				, fireTracker
-				, request.inputs
+				, request.inputs()
 				, true
 		);
 		// Lava is also treated as an opaque surface.
@@ -431,7 +431,7 @@ public class CuboidMeshManager
 				, builderWrapper
 				, _blockTextures
 				, _auxBlockTextures
-				, request.inputs
+				, request.inputs()
 				, lavaSourceNumber
 				, false
 		);
@@ -443,7 +443,7 @@ public class CuboidMeshManager
 				, _blockModels
 				, variantMap
 				, _auxBlockTextures
-				, request.inputs
+				, request.inputs()
 		);
 		BufferBuilder.Buffer modelBuffer = builder.finishOne();
 		
@@ -455,7 +455,7 @@ public class CuboidMeshManager
 				, variantMap
 				, _auxBlockTextures
 				, fireTracker
-				, request.inputs
+				, request.inputs()
 				, false
 		);
 		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
@@ -470,7 +470,7 @@ public class CuboidMeshManager
 				, builderWrapper
 				, _blockTextures
 				, _auxBlockTextures
-				, request.inputs
+				, request.inputs()
 				, waterSourceNumber
 				, true
 		);
@@ -552,7 +552,7 @@ public class CuboidMeshManager
 		;
 	}
 
-	private SceneMeshHelpers.MeshInputData _packageRequestInput(CuboidAddress address)
+	private MeshInputData _packageRequestInput(CuboidAddress address)
 	{
 		CuboidAddress otherUpAddress = address.getRelative(0, 0, 1);
 		CuboidAddress otherDownAddress = address.getRelative(0, 0, -1);
@@ -611,7 +611,7 @@ public class CuboidMeshManager
 					_getHeightMapOrNull(address.getRelative(1, 1, 0)),
 			},
 		};
-		return new SceneMeshHelpers.MeshInputData(cuboid
+		return new MeshInputData(cuboid
 				, heightMap
 				, otherUp
 				, mapUp
@@ -681,7 +681,7 @@ public class CuboidMeshManager
 	) {}
 
 	private static record _Request(FloatBuffer meshBuffer
-			, SceneMeshHelpers.MeshInputData inputs
+		, MeshInputData inputs
 	) {}
 
 	// Note that most of these fields prefer null instead of empty (all but meshBuffer and cuboid).
