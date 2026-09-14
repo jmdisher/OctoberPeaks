@@ -11,9 +11,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.FlagsAspect;
 import com.jeffdisher.october.aspects.LightAspect;
 import com.jeffdisher.october.data.BlockProxy;
-import com.jeffdisher.october.data.ColumnHeightMap;
 import com.jeffdisher.october.data.IOctree;
-import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
@@ -33,21 +31,6 @@ import com.jeffdisher.october.utils.Encoding;
 
 public class SceneMeshHelpers
 {
-	/**
-	 * The light value we will see for block light in the case of "total darkness".  Actual block light is added on top
-	 * of this.
-	 */
-	public static final float MINIMUM_LIGHT = 0.1f;
-	public static final float SKY_LIGHT_SHADOW = 0.0f;
-	public static final float SKY_LIGHT_PARTIAL = 0.5f;
-	public static final float SKY_LIGHT_DIRECT = 1.0f;
-	public static final float DEBRIS_ELEMENT_SIZE = 0.5f;
-	public static final float[][] DEBRIS_BASES = new float[][] {
-		new float[] { 0.1f, 0.1f, 0.05f }
-		, new float[] { 0.4f, 0.4f, 0.1f }
-		, new float[] { 0.2f, 0.3f, 0.15f }
-	};
-
 	public static void populateMeshBufferForCuboid(Environment env
 			, MeshHelperBufferBuilder builder
 			, BasicBlockAtlas blockAtlas
@@ -155,7 +138,7 @@ public class SceneMeshHelpers
 									// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
 									float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
 									// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
-									float[] skyLight = new float[] { _getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), SKY_LIGHT_PARTIAL) };
+									float[] skyLight = new float[] { LightReadingHelpers.getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), LightReadingHelpers.SKY_LIGHT_PARTIAL) };
 									EntityLocation absoluteBase = inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress).toEntityLocation();
 									
 									SubBlockMesh subBlock = blockModels.getSubBlockMesh(includedBlock);
@@ -249,10 +232,10 @@ public class SceneMeshHelpers
 				{
 					// Liquids may be translucent or light emitters so we want to take the maximum of the external face light and the internal light.
 					// (this avoids cases where lava is dark just because there is a partial block next to it).
-					byte externalLight = _getBlockLight(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z());
-					byte internalLight = _getBlockLight(inputData, address.x(), address.y(), address.z());
+					byte externalLight = LightReadingHelpers.getBlockLight(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z());
+					byte internalLight = LightReadingHelpers.getBlockLight(inputData, address.x(), address.y(), address.z());
 					float blockLightMultiplier = _mapBlockLight((byte)Math.max(externalLight, internalLight));
-					float skyLightMultiplier = _getSkyLightMultiplier(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z(), SKY_LIGHT_DIRECT);
+					float skyLightMultiplier = LightReadingHelpers.getSkyLightMultiplier(inputData, externalBlock.x(), externalBlock.y(), externalBlock.z(), LightReadingHelpers.SKY_LIGHT_DIRECT);
 					// For now, at least, we will leave the liquid surfaces without blending.
 					float[] blockLightMultipliers = new float[] {blockLightMultiplier, blockLightMultiplier, blockLightMultiplier, blockLightMultiplier};
 					float[] skyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
@@ -685,7 +668,7 @@ public class SceneMeshHelpers
 	private static float _mapBlockLight(byte inputValue)
 	{
 		float maxLightFloat = (float)LightAspect.MAX_LIGHT;
-		return MINIMUM_LIGHT + (((float)inputValue) / maxLightFloat);
+		return LightReadingHelpers.MINIMUM_LIGHT + (((float)inputValue) / maxLightFloat);
 	}
 
 
@@ -769,30 +752,30 @@ public class SceneMeshHelpers
 			byte eastX = (byte)(baseX + 1);
 			byte southY = (byte)(baseY - 1);
 			byte northY = (byte)(baseY + 1);
-			byte thisBlockLight = _getBlockLight(_inputData, baseX, baseY, z);
-			byte eastBlockLight = _getBlockLight(_inputData, eastX, baseY, z);
-			byte westBlockLight = _getBlockLight(_inputData, westX, baseY, z);
-			byte northBlockLight = _getBlockLight(_inputData, baseX, northY, z);
-			byte southBlockLight = _getBlockLight(_inputData, baseX, southY, z);
-			byte SWBlockLight = _getBlockLight(_inputData, westX, southY, z);
-			byte SEBlockLight = _getBlockLight(_inputData, eastX, southY, z);
-			byte NWBlockLight = _getBlockLight(_inputData, westX, northY, z);
-			byte NEBlockLight = _getBlockLight(_inputData, eastX, northY, z);
+			byte thisBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, baseY, z);
+			byte eastBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, baseY, z);
+			byte westBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, baseY, z);
+			byte northBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, northY, z);
+			byte southBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, southY, z);
+			byte SWBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, southY, z);
+			byte SEBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, southY, z);
+			byte NWBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, northY, z);
+			byte NEBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, northY, z);
 			
 			if (isPositiveNormal)
 			{
 				
 				// We handle sky slight specially for z+ faces, since the sky is in that direction.
 				// We actually want to average the 4 block faces adjacent to each corner, in this case.
-				float skySW = _getUpFacingSkyMultipler(_inputData, westX, southY, z);
-				float skyS = _getUpFacingSkyMultipler(_inputData, baseX, southY, z);
-				float skySE = _getUpFacingSkyMultipler(_inputData, eastX, southY, z);
-				float skyW = _getUpFacingSkyMultipler(_inputData, westX, baseY, z);
-				float sky = _getUpFacingSkyMultipler(_inputData, baseX, baseY, z);
-				float skyE = _getUpFacingSkyMultipler(_inputData, eastX, baseY, z);
-				float skyNW = _getUpFacingSkyMultipler(_inputData, westX, northY, z);
-				float skyN = _getUpFacingSkyMultipler(_inputData, baseX, northY, z);
-				float skyNE = _getUpFacingSkyMultipler(_inputData, eastX, northY, z);
+				float skySW = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, westX, southY, z);
+				float skyS = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, baseX, southY, z);
+				float skySE = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, eastX, southY, z);
+				float skyW = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, westX, baseY, z);
+				float sky = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, baseX, baseY, z);
+				float skyE = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, eastX, baseY, z);
+				float skyNW = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, westX, northY, z);
+				float skyN = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, baseX, northY, z);
+				float skyNE = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, eastX, northY, z);
 				
 				_populateQuad(_builder, localBase, new float[][] {
 						_v.v001, _v.v101, _v.v111, _v.v011
@@ -825,7 +808,7 @@ public class SceneMeshHelpers
 						, _maxLightAsFloat(westBlockLight, northBlockLight, NWBlockLight, thisBlockLight)
 						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
 					}
-					, new float[] {SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW, SKY_LIGHT_SHADOW}
+					, new float[] {LightReadingHelpers.SKY_LIGHT_SHADOW, LightReadingHelpers.SKY_LIGHT_SHADOW, LightReadingHelpers.SKY_LIGHT_SHADOW, LightReadingHelpers.SKY_LIGHT_SHADOW}
 					, false
 				);
 			}
@@ -857,16 +840,16 @@ public class SceneMeshHelpers
 			byte eastX = (byte)(baseX + 1);
 			byte downZ = (byte)(baseZ - 1);
 			byte upZ = (byte)(baseZ + 1);
-			byte thisBlockLight = _getBlockLight(_inputData, baseX, y, baseZ);
-			byte eastBlockLight = _getBlockLight(_inputData, eastX, y, baseZ);
-			byte westBlockLight = _getBlockLight(_inputData, westX, y, baseZ);
-			byte upBlockLight = _getBlockLight(_inputData, baseX, y, upZ);
-			byte downBlockLight = _getBlockLight(_inputData, baseX, y, downZ);
-			byte WDBlockLight = _getBlockLight(_inputData, westX, y, downZ);
-			byte WUBlockLight = _getBlockLight(_inputData, westX, y, upZ);
-			byte EDBlockLight = _getBlockLight(_inputData, eastX, y, downZ);
-			byte EUBlockLight = _getBlockLight(_inputData, eastX, y, upZ);
-			float skyLightMultiplier = _getSkyLightMultiplier(_inputData, baseX, y, baseZ, SKY_LIGHT_PARTIAL);
+			byte thisBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, y, baseZ);
+			byte eastBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, y, baseZ);
+			byte westBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, y, baseZ);
+			byte upBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, y, upZ);
+			byte downBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, y, downZ);
+			byte WDBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, y, downZ);
+			byte WUBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, y, upZ);
+			byte EDBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, y, downZ);
+			byte EUBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, y, upZ);
+			float skyLightMultiplier = LightReadingHelpers.getSkyLightMultiplier(_inputData, baseX, y, baseZ, LightReadingHelpers.SKY_LIGHT_PARTIAL);
 			float[] commonSkyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
 			
 			if (isPositiveNormal)
@@ -929,16 +912,16 @@ public class SceneMeshHelpers
 			byte northY = (byte)(baseY + 1);
 			byte downZ = (byte)(baseZ - 1);
 			byte upZ = (byte)(baseZ + 1);
-			byte thisBlockLight = _getBlockLight(_inputData, x, baseY, baseZ);
-			byte northBlockLight = _getBlockLight(_inputData, x, northY, baseZ);
-			byte southBlockLight = _getBlockLight(_inputData, x, southY, baseZ);
-			byte upBlockLight = _getBlockLight(_inputData, x, baseY, upZ);
-			byte downBlockLight = _getBlockLight(_inputData, x, baseY, downZ);
-			byte SDBlockLight = _getBlockLight(_inputData, x, southY, downZ);
-			byte SUBlockLight = _getBlockLight(_inputData, x, southY, upZ);
-			byte NDBlockLight = _getBlockLight(_inputData, x, northY, downZ);
-			byte NUBlockLight = _getBlockLight(_inputData, x, northY, upZ);
-			float skyLightMultiplier = _getSkyLightMultiplier(_inputData, x, baseY, baseZ, SKY_LIGHT_PARTIAL);
+			byte thisBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, baseY, baseZ);
+			byte northBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, northY, baseZ);
+			byte southBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, southY, baseZ);
+			byte upBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, baseY, upZ);
+			byte downBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, baseY, downZ);
+			byte SDBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, southY, downZ);
+			byte SUBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, southY, upZ);
+			byte NDBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, northY, downZ);
+			byte NUBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, northY, upZ);
+			float skyLightMultiplier = LightReadingHelpers.getSkyLightMultiplier(_inputData, x, baseY, baseZ, LightReadingHelpers.SKY_LIGHT_PARTIAL);
 			float[] commonSkyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
 			
 			if (isPositiveNormal)
@@ -1009,13 +992,13 @@ public class SceneMeshHelpers
 	private static byte _getMaxAreaLight(MeshInputData data, byte baseX, byte baseY, byte baseZ)
 	{
 		// Check this block and the adjacent ones, returning the maximum light value.
-		byte centre = _getBlockLight(data, baseX, baseY, baseZ);
-		byte xm = _getBlockLight(data, (byte)(baseX - 1), baseY, baseZ);
-		byte xp = _getBlockLight(data, (byte)(baseX + 1), baseY, baseZ);
-		byte ym = _getBlockLight(data, baseX, (byte)(baseY - 1), baseZ);
-		byte yp = _getBlockLight(data, baseX, (byte)(baseY + 1), baseZ);
-		byte zm = _getBlockLight(data, baseX, baseY, (byte)(baseZ - 1));
-		byte zp = _getBlockLight(data, baseX, baseY, (byte)(baseZ + 1));
+		byte centre = LightReadingHelpers.getBlockLight(data, baseX, baseY, baseZ);
+		byte xm = LightReadingHelpers.getBlockLight(data, (byte)(baseX - 1), baseY, baseZ);
+		byte xp = LightReadingHelpers.getBlockLight(data, (byte)(baseX + 1), baseY, baseZ);
+		byte ym = LightReadingHelpers.getBlockLight(data, baseX, (byte)(baseY - 1), baseZ);
+		byte yp = LightReadingHelpers.getBlockLight(data, baseX, (byte)(baseY + 1), baseZ);
+		byte zm = LightReadingHelpers.getBlockLight(data, baseX, baseY, (byte)(baseZ - 1));
+		byte zp = LightReadingHelpers.getBlockLight(data, baseX, baseY, (byte)(baseZ + 1));
 		
 		return (byte) Math.max(
 				Math.max(
@@ -1027,179 +1010,6 @@ public class SceneMeshHelpers
 						, Math.max(zm, zp)
 				)
 		);
-	}
-
-	private static byte _getBlockLight(MeshInputData data, byte baseX, byte baseY, byte baseZ)
-	{
-		int indexX = 1;
-		int indexY = 1;
-		int indexZ = 1;
-		
-		if (baseX < 0)
-		{
-			baseX = (byte)(baseX + Encoding.CUBOID_EDGE_SIZE);
-			indexX -= 1;
-		}
-		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			baseX = (byte)(baseX - Encoding.CUBOID_EDGE_SIZE);
-			indexX += 1;
-		}
-		
-		if (baseY < 0)
-		{
-			baseY = (byte)(baseY + Encoding.CUBOID_EDGE_SIZE);
-			indexY -= 1;
-		}
-		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			baseY = (byte)(baseY - Encoding.CUBOID_EDGE_SIZE);
-			indexY += 1;
-		}
-		
-		if (baseZ < 0)
-		{
-			baseZ = (byte)(baseZ + Encoding.CUBOID_EDGE_SIZE);
-			indexZ -= 1;
-		}
-		else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			baseZ = (byte)(baseZ - Encoding.CUBOID_EDGE_SIZE);
-			indexZ += 1;
-		}
-		
-		IReadOnlyCuboidData toRead = data.cuboidsXYZ()[indexX][indexY][indexZ];
-		return (null != toRead)
-				? toRead.getData7(AspectRegistry.LIGHT, new BlockAddress(baseX, baseY, baseZ))
-				: 0
-		;
-	}
-
-	private static float _getUpFacingSkyMultipler(MeshInputData data, byte baseX, byte baseY, byte baseZ)
-	{
-		int indexX = 1;
-		int indexY = 1;
-		
-		if (baseX < 0)
-		{
-			baseX = (byte)(baseX + Encoding.CUBOID_EDGE_SIZE);
-			indexX -= 1;
-		}
-		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			baseX = (byte)(baseX - Encoding.CUBOID_EDGE_SIZE);
-			indexX += 1;
-		}
-		
-		if (baseY < 0)
-		{
-			baseY = (byte)(baseY + Encoding.CUBOID_EDGE_SIZE);
-			indexY -= 1;
-		}
-		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			baseY = (byte)(baseY - Encoding.CUBOID_EDGE_SIZE);
-			indexY += 1;
-		}
-		
-		ColumnHeightMap toRead = data.columnHeightXY()[indexX][indexY];
-		int realZ = data.cuboid().getCuboidAddress().getBase().z() + baseZ - 1;
-		
-		boolean isLit;
-		if (null != toRead)
-		{
-			isLit = (realZ >= toRead.getHeight(baseX, baseY));
-		}
-		else
-		{
-			isLit = true;
-		}
-		
-		return isLit
-				? SKY_LIGHT_DIRECT
-				: SKY_LIGHT_SHADOW
-		;
-	}
-
-	private static float _getSkyLightMultiplier(MeshInputData data, byte baseX, byte baseY, byte baseZ, float aboveOrMatchLight)
-	{
-		int realZ = data.cuboid().getCuboidAddress().getBase().z() + baseZ - 1;
-		
-		boolean isLit;
-		if (baseX < 0)
-		{
-			if (null != data.westHeight())
-			{
-				isLit = (realZ >= data.westHeight().getHeight(baseX + Encoding.CUBOID_EDGE_SIZE, baseY));
-			}
-			else
-			{
-				isLit = true;
-			}
-		}
-		else if (baseX >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			if (null != data.eastHeight())
-			{
-				isLit = (realZ >= data.eastHeight().getHeight(baseX - Encoding.CUBOID_EDGE_SIZE, baseY));
-			}
-			else
-			{
-				isLit = true;
-			}
-		}
-		else if (baseY < 0)
-		{
-			if (null != data.southHeight())
-			{
-				isLit = (realZ >= data.southHeight().getHeight(baseX, baseY + Encoding.CUBOID_EDGE_SIZE));
-			}
-			else
-			{
-				isLit = true;
-			}
-		}
-		else if (baseY >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			if (null != data.northHeight())
-			{
-				isLit = (realZ >= data.northHeight().getHeight(baseX, baseY - Encoding.CUBOID_EDGE_SIZE));
-			}
-			else
-			{
-				isLit = true;
-			}
-		}
-		else if (baseZ < 0)
-		{
-			if (null != data.downHeight())
-			{
-				isLit = (realZ >= data.downHeight().getHeight(baseX, baseY));
-			}
-			else
-			{
-				isLit = true;
-			}
-		}
-		else if (baseZ >= Encoding.CUBOID_EDGE_SIZE)
-		{
-			if (null != data.upHeight())
-			{
-				isLit = (realZ >= data.upHeight().getHeight(baseX, baseY));
-			}
-			else
-			{
-				isLit = true;
-			}
-		}
-		else
-		{
-			isLit = (realZ >= data.height().getHeight(baseX, baseY));
-		}
-		return isLit
-				? aboveOrMatchLight
-				: SKY_LIGHT_SHADOW
-		;
 	}
 
 	private static boolean _isBlockOpaque(Environment env, MeshInputData data, BlockAddress address)
