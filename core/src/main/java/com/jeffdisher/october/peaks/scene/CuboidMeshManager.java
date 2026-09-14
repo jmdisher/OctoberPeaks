@@ -439,7 +439,7 @@ public class CuboidMeshManager
 		
 		// We will render the complex models (they need a different texture binding so they can't be part of the opaque buffer).
 		SceneMeshHelpers.populateBufferWithComplexModels(_env
-				, builder
+				, builderWrapper
 				, _blockModels
 				, variantMap
 				, _auxBlockTextures

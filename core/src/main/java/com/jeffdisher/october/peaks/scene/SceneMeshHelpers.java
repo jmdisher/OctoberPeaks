@@ -13,7 +13,6 @@ import com.jeffdisher.october.aspects.LightAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.logic.SparseByteCube;
-import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.peaks.graphics.SubBlockMesh;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
@@ -81,11 +80,11 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateBufferWithComplexModels(Environment env
-			, BufferBuilder builder
-			, BlockModelsAndAtlas blockModels
-			, AuxVariantMap variantMap
-			, AuxilliaryTextureAtlas auxAtlas
-			, MeshInputData inputData
+		, MeshHelperBufferBuilder builder
+		, BlockModelsAndAtlas blockModels
+		, AuxVariantMap variantMap
+		, AuxilliaryTextureAtlas auxAtlas
+		, MeshInputData inputData
 	)
 	{
 		Map<Short, Block> included = blockModels.getBlockSet().stream().collect(Collectors.toMap((Block block) -> block.item().number(), (Block block) -> block));
@@ -1091,7 +1090,7 @@ public class SceneMeshHelpers
 		;
 	}
 
-	private static void _renderModel(BufferBuilder builder
+	private static void _renderModel(MeshHelperBufferBuilder builder
 		, EntityLocation absoluteBase
 		, float uvCoordinateSize
 		, float auxCoordinateSize
@@ -1155,7 +1154,7 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _renderSubBlock(BufferBuilder builder
+	private static void _renderSubBlock(MeshHelperBufferBuilder builder
 		, EntityLocation absoluteBase
 		, float uvCoordinateSize
 		, float auxCoordinateSize
@@ -1188,7 +1187,7 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _renderSubBlockFace(BufferBuilder builder
+	private static void _renderSubBlockFace(MeshHelperBufferBuilder builder
 		, FacingDirection faceDirection
 		, EntityLocation absoluteBase
 		, float uvCoordinateSize
