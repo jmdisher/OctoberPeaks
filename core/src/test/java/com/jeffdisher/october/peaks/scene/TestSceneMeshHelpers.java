@@ -242,6 +242,7 @@ public class TestSceneMeshHelpers
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
 		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
@@ -287,7 +288,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builder, modelsAndAtlas, variantMap, auxAtlas, inputData);
+		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builderWrapper, modelsAndAtlas, variantMap, auxAtlas, inputData);
 		BufferBuilder.Buffer finished = builder.finishOne();
 		Set<_Vertex> vertices = _collectVerticesInBuffer(finished);
 		Assert.assertEquals(3, vertices.size());
