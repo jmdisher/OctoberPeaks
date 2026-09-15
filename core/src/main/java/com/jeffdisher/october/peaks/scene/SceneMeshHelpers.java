@@ -1167,28 +1167,25 @@ public class SceneMeshHelpers
 	)
 	{
 		// We need to walk each of the 6 faces (we know that the "up" is the last direct face).
-		for (FacingDirection face : FacingDirection.values())
+		for (AlignedFaceBuilder.Normal normal : AlignedFaceBuilder.Normal.values())
 		{
-			if (face.ordinal() <= FacingDirection.UP.ordinal())
-			{
-				_renderSubBlockFace(builder
-					, face
-					, absoluteBase
-					, uvCoordinateSize
-					, auxCoordinateSize
-					, uv
-					, auxUv
-					, subBlock
-					, rotation
-					, blockLight
-					, skyLight
-				);
-			}
+			_renderSubBlockFace(builder
+				, normal
+				, absoluteBase
+				, uvCoordinateSize
+				, auxCoordinateSize
+				, uv
+				, auxUv
+				, subBlock
+				, rotation
+				, blockLight
+				, skyLight
+			);
 		}
 	}
 
 	private static void _renderSubBlockFace(MeshHelperBufferBuilder builder
-		, FacingDirection faceDirection
+		, AlignedFaceBuilder.Normal faceDirection
 		, EntityLocation absoluteBase
 		, float uvCoordinateSize
 		, float auxCoordinateSize
@@ -1204,8 +1201,7 @@ public class SceneMeshHelpers
 		List<SubBlockMesh.Face> upFaces = subBlock.getFaces(faceDirection, rotation);
 		
 		// We use the same normal for the entire face, which we can derive from the output direction of the face.
-		EntityLocation normalLocation = faceDirection.getOutputBlockLocation(new AbsoluteLocation(0, 0, 0)).toEntityLocation();
-		float[] normal = new float[] { normalLocation.x(), normalLocation.y(), normalLocation.z() };
+		float[] normal = faceDirection.normal;
 		
 		// The texture offsets we will use are also derived by which face we are rendering.
 		int uIndex;

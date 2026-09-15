@@ -5,9 +5,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.jeffdisher.october.peaks.scene.AlignedFaceBuilder;
 import com.jeffdisher.october.types.FacingDirection;
 import com.jeffdisher.october.types.SubBlock;
-import com.jeffdisher.october.utils.Assert;
 
 
 /**
@@ -25,76 +25,76 @@ public class SubBlockMesh
 	/**
 	 * In order to access the correct faces, we need to determine what requested face resolves to under each kind of rotation.
 	 */
-	public static final Map<FacingDirection, Map<FacingDirection, FacingDirection>> RUBIK
-		= Map.of(FacingDirection.NORTH, Map.of(FacingDirection.NORTH, FacingDirection.NORTH
-			, FacingDirection.WEST, FacingDirection.WEST
-			, FacingDirection.SOUTH, FacingDirection.SOUTH
-			, FacingDirection.EAST, FacingDirection.EAST
-			, FacingDirection.DOWN, FacingDirection.DOWN
-			, FacingDirection.UP, FacingDirection.UP
+	public static final Map<FacingDirection, Map<AlignedFaceBuilder.Normal, AlignedFaceBuilder.Normal>> RUBIK
+		= Map.of(FacingDirection.NORTH, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.DOWN
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.UP
 		)
-		, FacingDirection.WEST, Map.of(FacingDirection.NORTH, FacingDirection.EAST
-			, FacingDirection.WEST, FacingDirection.NORTH
-			, FacingDirection.SOUTH, FacingDirection.WEST
-			, FacingDirection.EAST, FacingDirection.SOUTH
-			, FacingDirection.DOWN, FacingDirection.DOWN
-			, FacingDirection.UP, FacingDirection.UP
+		, FacingDirection.WEST, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.DOWN
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.UP
 		)
-		, FacingDirection.SOUTH, Map.of(FacingDirection.NORTH, FacingDirection.SOUTH
-			, FacingDirection.WEST, FacingDirection.EAST
-			, FacingDirection.SOUTH, FacingDirection.NORTH
-			, FacingDirection.EAST, FacingDirection.WEST
-			, FacingDirection.DOWN, FacingDirection.DOWN
-			, FacingDirection.UP, FacingDirection.UP
+		, FacingDirection.SOUTH, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.DOWN
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.UP
 		)
-		, FacingDirection.EAST, Map.of(FacingDirection.NORTH, FacingDirection.WEST
-			, FacingDirection.WEST, FacingDirection.SOUTH
-			, FacingDirection.SOUTH, FacingDirection.EAST
-			, FacingDirection.EAST, FacingDirection.NORTH
-			, FacingDirection.DOWN, FacingDirection.DOWN
-			, FacingDirection.UP, FacingDirection.UP
+		, FacingDirection.EAST, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.DOWN
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.UP
 		)
-		, FacingDirection.DOWN, Map.of(FacingDirection.NORTH, FacingDirection.UP
-			, FacingDirection.WEST, FacingDirection.WEST
-			, FacingDirection.SOUTH, FacingDirection.DOWN
-			, FacingDirection.EAST, FacingDirection.EAST
-			, FacingDirection.DOWN, FacingDirection.NORTH
-			, FacingDirection.UP, FacingDirection.SOUTH
+		, FacingDirection.DOWN, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.UP
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.DOWN
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.SOUTH
 		)
-		, FacingDirection.UP, Map.of(FacingDirection.NORTH, FacingDirection.DOWN
-			, FacingDirection.WEST, FacingDirection.WEST
-			, FacingDirection.SOUTH, FacingDirection.UP
-			, FacingDirection.EAST, FacingDirection.EAST
-			, FacingDirection.DOWN, FacingDirection.SOUTH
-			, FacingDirection.UP, FacingDirection.NORTH
+		, FacingDirection.UP, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.DOWN
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.UP
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.NORTH
 		)
-		, FacingDirection.FLIPPED_NORTH, Map.of(FacingDirection.NORTH, FacingDirection.NORTH
-			, FacingDirection.WEST, FacingDirection.WEST
-			, FacingDirection.SOUTH, FacingDirection.SOUTH
-			, FacingDirection.EAST, FacingDirection.EAST
-			, FacingDirection.DOWN, FacingDirection.UP
-			, FacingDirection.UP, FacingDirection.DOWN
+		, FacingDirection.FLIPPED_NORTH, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.UP
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.DOWN
 		)
-		, FacingDirection.FLIPPED_WEST, Map.of(FacingDirection.NORTH, FacingDirection.EAST
-			, FacingDirection.WEST, FacingDirection.NORTH
-			, FacingDirection.SOUTH, FacingDirection.WEST
-			, FacingDirection.EAST, FacingDirection.SOUTH
-			, FacingDirection.DOWN, FacingDirection.UP
-			, FacingDirection.UP, FacingDirection.DOWN
+		, FacingDirection.FLIPPED_WEST, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.UP
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.DOWN
 		)
-		, FacingDirection.FLIPPED_SOUTH, Map.of(FacingDirection.NORTH, FacingDirection.SOUTH
-			, FacingDirection.WEST, FacingDirection.EAST
-			, FacingDirection.SOUTH, FacingDirection.NORTH
-			, FacingDirection.EAST, FacingDirection.WEST
-			, FacingDirection.DOWN, FacingDirection.UP
-			, FacingDirection.UP, FacingDirection.DOWN
+		, FacingDirection.FLIPPED_SOUTH, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.UP
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.DOWN
 		)
-		, FacingDirection.FLIPPED_EAST, Map.of(FacingDirection.NORTH, FacingDirection.WEST
-			, FacingDirection.WEST, FacingDirection.SOUTH
-			, FacingDirection.SOUTH, FacingDirection.EAST
-			, FacingDirection.EAST, FacingDirection.NORTH
-			, FacingDirection.DOWN, FacingDirection.UP
-			, FacingDirection.UP, FacingDirection.DOWN
+		, FacingDirection.FLIPPED_EAST, Map.of(AlignedFaceBuilder.Normal.NORTH, AlignedFaceBuilder.Normal.WEST
+			, AlignedFaceBuilder.Normal.WEST, AlignedFaceBuilder.Normal.SOUTH
+			, AlignedFaceBuilder.Normal.SOUTH, AlignedFaceBuilder.Normal.EAST
+			, AlignedFaceBuilder.Normal.EAST, AlignedFaceBuilder.Normal.NORTH
+			, AlignedFaceBuilder.Normal.DOWN, AlignedFaceBuilder.Normal.UP
+			, AlignedFaceBuilder.Normal.UP, AlignedFaceBuilder.Normal.DOWN
 		)
 	);
 
@@ -259,7 +259,7 @@ public class SubBlockMesh
 	}
 
 
-	private final Map<FacingDirection, List<Face>> _faces;
+	private final Map<AlignedFaceBuilder.Normal, List<Face>> _faces;
 
 	private SubBlockMesh(List<Face> xyp
 		, List<Face> xyn
@@ -269,12 +269,12 @@ public class SubBlockMesh
 		, List<Face> xzn
 	)
 	{
-		_faces = Map.of(FacingDirection.UP, xyp
-			, FacingDirection.DOWN, xyn
-			, FacingDirection.EAST, yzp
-			, FacingDirection.WEST, yzn
-			, FacingDirection.NORTH, xzp
-			, FacingDirection.SOUTH, xzn
+		_faces = Map.of(AlignedFaceBuilder.Normal.UP, xyp
+			, AlignedFaceBuilder.Normal.DOWN, xyn
+			, AlignedFaceBuilder.Normal.EAST, yzp
+			, AlignedFaceBuilder.Normal.WEST, yzn
+			, AlignedFaceBuilder.Normal.NORTH, xzp
+			, AlignedFaceBuilder.Normal.SOUTH, xzn
 		);
 	}
 
@@ -286,13 +286,10 @@ public class SubBlockMesh
 	 * @param blockRotation The direction to rotate the block (both the faces and all vertices).
 	 * @return The list of faces on the requestedFace after applying blockRotation.
 	 */
-	public List<Face> getFaces(FacingDirection requestedFace, FacingDirection blockRotation)
+	public List<Face> getFaces(AlignedFaceBuilder.Normal requestedFace, FacingDirection blockRotation)
 	{
-		// RequestedFace can only be any of the default 6 faces while blockRotation can be anything.
-		Assert.assertTrue(requestedFace.ordinal() <= FacingDirection.UP.ordinal());
-		
 		// We need to reverse-rotate the selected face by blockRotation so that we select the vertices which will end up rotated onto the requested face,
-		FacingDirection faceToSelct = RUBIK.get(blockRotation).get(requestedFace);
+		AlignedFaceBuilder.Normal faceToSelct = RUBIK.get(blockRotation).get(requestedFace);
 		List<Face> faces = _faces.get(faceToSelct);
 		return faces.stream().map((Face face) -> {
 			float[] rotBase = blockRotation.rotateTripletAboutZ(face.base3);
