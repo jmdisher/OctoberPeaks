@@ -24,7 +24,6 @@ import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.FacingDirection;
-import com.jeffdisher.october.utils.Assert;
 import com.jeffdisher.october.utils.Encoding;
 
 
@@ -134,17 +133,14 @@ public class SceneMeshHelpers
 									
 									BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 									float[] auxUv = auxAtlas.baseOfTexture(variantMap.get(blockAddress));
-									// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
-									float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
-									// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
-									float[] skyLight = new float[] { LightReadingHelpers.getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), LightReadingHelpers.SKY_LIGHT_PARTIAL) };
-									EntityLocation absoluteBase = inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress).toEntityLocation();
+									AbsoluteLocation absoluteBase = inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
 									
 									SubBlockMesh subBlock = blockModels.getSubBlockMesh(includedBlock);
 									if (null != subBlock)
 									{
 										// If this isn't a normal model buffer, it MUST be a sub-block, since we are filtering at the top.
-										_renderSubBlock(builder
+										_renderSubBlock(inputData
+											, builder
 											, absoluteBase
 											, uvCoordinateSize
 											, auxCoordinateSize
@@ -152,15 +148,18 @@ public class SceneMeshHelpers
 											, auxUv
 											, subBlock
 											, multiBlockDirection
-											, blockLight
-											, skyLight
 										);
 									}
 									else
 									{
+										// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
+										float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
+										// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
+										float[] skyLight = new float[] { LightReadingHelpers.getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), LightReadingHelpers.SKY_LIGHT_PARTIAL) };
+										
 										ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock, isActive, isDown, blockDefinedByte);
 										_renderModel(builder
-											, absoluteBase
+											, absoluteBase.toEntityLocation()
 											, uvCoordinateSize
 											, auxCoordinateSize
 											, uv
@@ -1154,179 +1153,34 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _renderSubBlock(MeshHelperBufferBuilder builder
-		, EntityLocation absoluteBase
+	private static void _renderSubBlock(MeshInputData inputData
+		, MeshHelperBufferBuilder builder
+		, AbsoluteLocation absoluteBase
 		, float uvCoordinateSize
 		, float auxCoordinateSize
 		, float[] uv
 		, float[] auxUv
 		, SubBlockMesh subBlock
 		, FacingDirection rotation
-		, float[] blockLight
-		, float[] skyLight
 	)
 	{
 		// We need to walk each of the 6 faces (we know that the "up" is the last direct face).
 		for (AlignedFaceBuilder.Normal normal : AlignedFaceBuilder.Normal.values())
 		{
-			_renderSubBlockFace(builder
-				, normal
-				, absoluteBase
-				, uvCoordinateSize
-				, auxCoordinateSize
+			AlignedFaceBuilder faceBuilder = new AlignedFaceBuilder(inputData
 				, uv
+				, uvCoordinateSize
 				, auxUv
-				, subBlock
-				, rotation
-				, blockLight
-				, skyLight
+				, auxCoordinateSize
+				, absoluteBase
+				, normal
 			);
-		}
-	}
-
-	private static void _renderSubBlockFace(MeshHelperBufferBuilder builder
-		, AlignedFaceBuilder.Normal faceDirection
-		, EntityLocation absoluteBase
-		, float uvCoordinateSize
-		, float auxCoordinateSize
-		, float[] uv
-		, float[] auxUv
-		, SubBlockMesh subBlock
-		, FacingDirection rotation
-		, float[] blockLight
-		, float[] skyLight
-	)
-	{
-		// We need to walk each of the 6 faces.
-		List<SubBlockMesh.Face> upFaces = subBlock.getFaces(faceDirection, rotation);
-		
-		// We use the same normal for the entire face, which we can derive from the output direction of the face.
-		float[] normal = faceDirection.normal;
-		
-		// The texture offsets we will use are also derived by which face we are rendering.
-		int uIndex;
-		int vIndex;
-		switch (faceDirection)
-		{
-		case WEST:
-			uIndex = 1;
-			vIndex = 2;
-			break;
-		case EAST:
-			uIndex = 1;
-			vIndex = 2;
-			break;
-		case SOUTH:
-			uIndex = 0;
-			vIndex = 2;
-			break;
-		case NORTH:
-			uIndex = 0;
-			vIndex = 2;
-			break;
-		case DOWN:
-			uIndex = 0;
-			vIndex = 1;
-			break;
-		case UP:
-			uIndex = 0;
-			vIndex = 1;
-			break;
-		default:
-			throw Assert.unreachable();
-		}
-		
-		for (SubBlockMesh.Face face : upFaces)
-		{
-			// Find the quad to determine rotation.
-			float minX = Math.min(face.base3[0], face.edge3[0]);
-			float maxX = Math.max(face.base3[0], face.edge3[0]);
-			float minY = Math.min(face.base3[1], face.edge3[1]);
-			float maxY = Math.max(face.base3[1], face.edge3[1]);
-			float minZ = Math.min(face.base3[2], face.edge3[2]);
-			float maxZ = Math.max(face.base3[2], face.edge3[2]);
+			// We need to walk each of the 6 faces.
+			List<SubBlockMesh.Face> upFaces = subBlock.getFaces(normal, rotation);
 			
-			// We want to select the counter-clockwise vertices we will render, which requires face-specific logic (similar to _buildCube, below).
-			float[] v0;
-			float[] v1;
-			float[] v2;
-			float[] v3;
-			switch (faceDirection)
+			for (SubBlockMesh.Face face : upFaces)
 			{
-			case WEST:
-				v0 = new float[] {minX, maxY, minZ};
-				v1 = new float[] {minX, minY, minZ};
-				v2 = new float[] {minX, minY, maxZ};
-				v3 = new float[] {minX, maxY, maxZ};
-				break;
-			case EAST:
-				v0 = new float[] {minX, minY, minZ};
-				v1 = new float[] {minX, maxY, minZ};
-				v2 = new float[] {minX, maxY, maxZ};
-				v3 = new float[] {minX, minY, maxZ};
-				break;
-			case SOUTH:
-				v0 = new float[] {minX, minY, minZ};
-				v1 = new float[] {maxX, minY, minZ};
-				v2 = new float[] {maxX, minY, maxZ};
-				v3 = new float[] {minX, minY, maxZ};
-				break;
-			case NORTH:
-				v0 = new float[] {maxX, minY, minZ};
-				v1 = new float[] {minX, minY, minZ};
-				v2 = new float[] {minX, minY, maxZ};
-				v3 = new float[] {maxX, minY, maxZ};
-				break;
-			case DOWN:
-				v0 = new float[] {maxX, minY, minZ};
-				v1 = new float[] {minX, minY, minZ};
-				v2 = new float[] {minX, maxY, minZ};
-				v3 = new float[] {maxX, maxY, minZ};
-				break;
-			case UP:
-				v0 = new float[] {minX, minY, minZ};
-				v1 = new float[] {maxX, minY, minZ};
-				v2 = new float[] {maxX, maxY, minZ};
-				v3 = new float[] {minX, maxY, minZ};
-				break;
-			default:
-				throw Assert.unreachable();
-			}
-			
-			float[][] coords = new float[][] {
-				v0, v1, v2,
-				v0, v2, v3,
-			};
-			for (float[] coord : coords)
-			{
-				// Each element is:
-				// vx, vy, vz
-				// nx, ny, nz
-				// u, v
-				// aux_U, aux_V
-				// blockLight
-				// skyLight
-				float[] positions = new float[] {
-					absoluteBase.x() + coord[0],
-					absoluteBase.y() + coord[1],
-					absoluteBase.z() + coord[2],
-				};
-				float[] textures = new float[] {
-					uv[0] + (coord[uIndex] * uvCoordinateSize),
-					uv[1] + (coord[vIndex] * uvCoordinateSize),
-				};
-				float[] otherTextures = new float[] {
-					auxUv[0] + (coord[uIndex] * auxCoordinateSize),
-					auxUv[1] + (coord[vIndex] * auxCoordinateSize),
-				};
-				
-				builder.appendVertex(positions
-					, normal
-					, textures
-					, otherTextures
-					, blockLight
-					, skyLight
-				);
+				faceBuilder.generateQuad(builder, face.base3, face.edge3);
 			}
 		}
 	}
