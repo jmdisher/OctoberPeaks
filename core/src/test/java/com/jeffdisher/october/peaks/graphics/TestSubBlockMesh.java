@@ -8,6 +8,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.peaks.scene.AlignedFaceBuilder;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.FacingDirection;
 
@@ -34,7 +35,7 @@ public class TestSubBlockMesh
 	public void stair() throws Throwable
 	{
 		SubBlockMesh mesh = SubBlockMesh.builder(ENV.blocks.getSubBlocks(STONE_STAIR, false));
-		List<SubBlockMesh.Face> north = mesh.getFaces(FacingDirection.UP, FacingDirection.NORTH);
+		List<SubBlockMesh.Face> north = mesh.getFaces(AlignedFaceBuilder.Normal.UP, FacingDirection.NORTH);
 		Assert.assertEquals(4, north.size());
 		Assert.assertArrayEquals(new float[] {0.0f, 0.0f, 0.5f}, north.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.25f, 0.5f}, north.get(0).edge3, 0.01f);
@@ -45,7 +46,7 @@ public class TestSubBlockMesh
 		Assert.assertArrayEquals(new float[] {0.0f, 0.75f, 1.0f}, north.get(3).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 1.0f, 1.0f}, north.get(3).edge3, 0.01f);
 		
-		List<SubBlockMesh.Face> west = mesh.getFaces(FacingDirection.UP, FacingDirection.WEST);
+		List<SubBlockMesh.Face> west = mesh.getFaces(AlignedFaceBuilder.Normal.UP, FacingDirection.WEST);
 		Assert.assertEquals(4, west.size());
 		Assert.assertArrayEquals(new float[] {1.0f, 0.0f, 0.5f}, west.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.75f, 1.0f, 0.5f}, west.get(0).edge3, 0.01f);
@@ -56,7 +57,7 @@ public class TestSubBlockMesh
 		Assert.assertArrayEquals(new float[] {0.25f, 0.0f, 1.0f}, west.get(3).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.0f, 1.0f, 1.0f}, west.get(3).edge3, 0.01f);
 		
-		List<SubBlockMesh.Face> flippedEast = mesh.getFaces(FacingDirection.UP, FacingDirection.FLIPPED_EAST);
+		List<SubBlockMesh.Face> flippedEast = mesh.getFaces(AlignedFaceBuilder.Normal.UP, FacingDirection.FLIPPED_EAST);
 		Assert.assertEquals(4, flippedEast.size());
 		Assert.assertArrayEquals(new float[] {0.0f, 1.0f, 1.0f}, flippedEast.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.25f, 0.0f, 1.0f}, flippedEast.get(0).edge3, 0.01f);
@@ -67,7 +68,7 @@ public class TestSubBlockMesh
 		Assert.assertArrayEquals(new float[] {0.75f, 1.0f, 1.0f}, flippedEast.get(3).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.0f, 1.0f}, flippedEast.get(3).edge3, 0.01f);
 		
-		List<SubBlockMesh.Face> flippedEastFromSouth = mesh.getFaces(FacingDirection.SOUTH, FacingDirection.FLIPPED_EAST);
+		List<SubBlockMesh.Face> flippedEastFromSouth = mesh.getFaces(AlignedFaceBuilder.Normal.SOUTH, FacingDirection.FLIPPED_EAST);
 		Assert.assertEquals(4, flippedEastFromSouth.size());
 		Assert.assertArrayEquals(new float[] {0.0f, 0.0f, 1.0f}, flippedEastFromSouth.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.0f, 0.75f}, flippedEastFromSouth.get(0).edge3, 0.01f);
@@ -83,21 +84,21 @@ public class TestSubBlockMesh
 	public void slab() throws Throwable
 	{
 		SubBlockMesh mesh = SubBlockMesh.builder(ENV.blocks.getSubBlocks(STONE_SLAB, false));
-		List<SubBlockMesh.Face> north = mesh.getFaces(FacingDirection.UP, FacingDirection.NORTH);
+		List<SubBlockMesh.Face> north = mesh.getFaces(AlignedFaceBuilder.Normal.UP, FacingDirection.NORTH);
 		Assert.assertEquals(2, north.size());
 		Assert.assertArrayEquals(new float[] {0.0f, 0.5f, 1.0f}, north.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.75f, 1.0f}, north.get(0).edge3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.0f, 0.75f, 1.0f}, north.get(1).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 1.0f, 1.0f}, north.get(1).edge3, 0.01f);
 		
-		List<SubBlockMesh.Face> west = mesh.getFaces(FacingDirection.UP, FacingDirection.WEST);
+		List<SubBlockMesh.Face> west = mesh.getFaces(AlignedFaceBuilder.Normal.UP, FacingDirection.WEST);
 		Assert.assertEquals(2, west.size());
 		Assert.assertArrayEquals(new float[] {0.5f, 0.0f, 1.0f}, west.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.25f, 1.0f, 1.0f}, west.get(0).edge3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.25f, 0.0f, 1.0f}, west.get(1).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {0.0f, 1.0f, 1.0f}, west.get(1).edge3, 0.01f);
 		
-		List<SubBlockMesh.Face> up = mesh.getFaces(FacingDirection.UP, FacingDirection.UP);
+		List<SubBlockMesh.Face> up = mesh.getFaces(AlignedFaceBuilder.Normal.UP, FacingDirection.UP);
 		Assert.assertEquals(4, up.size());
 		Assert.assertArrayEquals(new float[] {0.0f, 1.0f, 1.0f}, up.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.75f, 1.0f}, up.get(0).edge3, 0.01f);
@@ -108,7 +109,7 @@ public class TestSubBlockMesh
 		Assert.assertArrayEquals(new float[] {0.0f, 0.25f, 1.0f}, up.get(3).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.0f, 1.0f}, up.get(3).edge3, 0.01f);
 		
-		List<SubBlockMesh.Face> down = mesh.getFaces(FacingDirection.DOWN, FacingDirection.UP);
+		List<SubBlockMesh.Face> down = mesh.getFaces(AlignedFaceBuilder.Normal.DOWN, FacingDirection.UP);
 		Assert.assertEquals(4, down.size());
 		Assert.assertArrayEquals(new float[] {0.0f, 1.0f, 0.5f}, down.get(0).base3, 0.01f);
 		Assert.assertArrayEquals(new float[] {1.0f, 0.75f, 0.5f}, down.get(0).edge3, 0.01f);
