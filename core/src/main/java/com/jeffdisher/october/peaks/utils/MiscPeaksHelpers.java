@@ -54,6 +54,28 @@ public class MiscPeaksHelpers
 		else if (solidBlock.z() > emptyBlock.z())
 		{
 			direction = FacingDirection.UP;
+			
+			// We will handle the flipped orientations as a special-case of "up".
+			if (!EntitySubActionPlaceSelectedBlockGeneric.isValidOrientationForBlock(env, placedBlock, direction))
+			{
+				switch (OrientationHelpers.getYawDirection(yaw))
+				{
+				case EAST:
+					direction = FacingDirection.FLIPPED_EAST;
+					break;
+				case SOUTH:
+					direction = FacingDirection.FLIPPED_SOUTH;
+					break;
+				case WEST:
+					direction = FacingDirection.FLIPPED_WEST;
+					break;
+				case NORTH:
+					direction = FacingDirection.FLIPPED_NORTH;
+					break;
+					default:
+						// In this case, fall through to the general case.
+				}
+			}
 		}
 		else if (solidBlock.z() < emptyBlock.z())
 		{

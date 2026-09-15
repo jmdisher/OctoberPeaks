@@ -44,4 +44,21 @@ public class TestMiscPeaksHelpers
 		Assert.assertEquals(FacingDirection.DOWN, MiscPeaksHelpers.findBlockPlacementDirection(ENV, solidBlock, emptyBlock, yaw, slab));
 		Assert.assertEquals(FacingDirection.WEST, MiscPeaksHelpers.findBlockPlacementDirection(ENV, solidBlock, emptyBlock, yaw, door));
 	}
+
+	@Test
+	public void flippedDirection() throws Throwable
+	{
+		Block log = ENV.blocks.fromItem(ENV.items.getItemById("op.log"));
+		Block stair = ENV.blocks.fromItem(ENV.items.getItemById("op.stone_brick_stair"));
+		Block slab = ENV.blocks.fromItem(ENV.items.getItemById("op.stone_brick_slab"));
+		
+		// We will click against the up block but face West.
+		AbsoluteLocation emptyBlock = new AbsoluteLocation(5, 6, 7);
+		AbsoluteLocation solidBlock = emptyBlock.getRelative(0, 0, 1);
+		byte yaw = OrientationHelpers.YAW_WEST;
+		
+		Assert.assertNull(MiscPeaksHelpers.findBlockPlacementDirection(ENV, solidBlock, emptyBlock, yaw, log));
+		Assert.assertEquals(FacingDirection.FLIPPED_WEST, MiscPeaksHelpers.findBlockPlacementDirection(ENV, solidBlock, emptyBlock, yaw, stair));
+		Assert.assertEquals(FacingDirection.UP, MiscPeaksHelpers.findBlockPlacementDirection(ENV, solidBlock, emptyBlock, yaw, slab));
+	}
 }

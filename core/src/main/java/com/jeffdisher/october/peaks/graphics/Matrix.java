@@ -173,6 +173,38 @@ public class Matrix
 				0.0f, 0.0f, 0.0f, 1.0f,
 			};
 			break;
+		case FLIPPED_NORTH:
+			rowInner = new float[] {
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, -1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case FLIPPED_WEST:
+			rowInner = new float[] {
+				0.0f, -1.0f, 0.0f, 0.0f,
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, -1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case FLIPPED_SOUTH:
+			rowInner = new float[] {
+				-1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, -1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, -1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
+		case FLIPPED_EAST:
+			rowInner = new float[] {
+				0.0f, 1.0f, 0.0f, 0.0f,
+				-1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, -1.0f, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f,
+			};
+			break;
 		default:
 			throw Assert.unreachable();
 		}
