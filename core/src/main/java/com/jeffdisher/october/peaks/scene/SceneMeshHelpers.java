@@ -738,78 +738,38 @@ public class SceneMeshHelpers
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			AbsoluteLocation absoluteBase = _inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
-			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
-			float[] uvBaseTop = _blockAtlas.baseOfTopTexture(isActive, value, blockDefinedByte);
-			float[] uvBaseBottom = _blockAtlas.baseOfBottomTexture(isActive, value, blockDefinedByte);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			
-			byte z = (byte)(baseZ + (isPositiveNormal ? 1 : -1));
-			byte westX = (byte)(baseX - 1);
-			byte eastX = (byte)(baseX + 1);
-			byte southY = (byte)(baseY - 1);
-			byte northY = (byte)(baseY + 1);
-			byte thisBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, baseY, z);
-			byte eastBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, baseY, z);
-			byte westBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, baseY, z);
-			byte northBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, northY, z);
-			byte southBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, southY, z);
-			byte SWBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, southY, z);
-			byte SEBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, southY, z);
-			byte NWBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, northY, z);
-			byte NEBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, northY, z);
-			
+			float[] uvBase;
+			AlignedFaceBuilder.Normal normal;
+			float[] localBase;
+			float[] localEdge;
 			if (isPositiveNormal)
 			{
-				
-				// We handle sky slight specially for z+ faces, since the sky is in that direction.
-				// We actually want to average the 4 block faces adjacent to each corner, in this case.
-				float skySW = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, westX, southY, z);
-				float skyS = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, baseX, southY, z);
-				float skySE = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, eastX, southY, z);
-				float skyW = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, westX, baseY, z);
-				float sky = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, baseX, baseY, z);
-				float skyE = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, eastX, baseY, z);
-				float skyNW = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, westX, northY, z);
-				float skyN = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, baseX, northY, z);
-				float skyNE = LightReadingHelpers.getUpFacingSkyMultipler(_inputData, eastX, northY, z);
-				
-				_populateQuad(_builder, localBase, new float[][] {
-						_v.v001, _v.v101, _v.v111, _v.v011
-					}, new float[] {0.0f, 0.0f, 1.0f}
-					, uvBaseTop, uvCoordinateSize
-					, auxUv, _auxAtlas.coordinateSize
-					, new float[] {_maxLightAsFloat(westBlockLight, southBlockLight, SWBlockLight, thisBlockLight)
-						, _maxLightAsFloat(eastBlockLight, southBlockLight, SEBlockLight, thisBlockLight)
-						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
-						, _maxLightAsFloat(westBlockLight, northBlockLight, NWBlockLight, thisBlockLight)
-					}
-					, new float[] {
-						_blendSkyLight(skyW, skyS, skySW, sky),
-						_blendSkyLight(skyE, skyS, skySE, sky),
-						_blendSkyLight(skyE, skyN, skyNE, sky),
-						_blendSkyLight(skyW, skyN, skyNW, sky),
-					}
-					, false
-				);
+				uvBase = _blockAtlas.baseOfTopTexture(isActive, value, blockDefinedByte);
+				normal = AlignedFaceBuilder.Normal.UP;
+				localBase = _v.v001;
+				localEdge = _v.v111;
 			}
 			else
 			{
-				_populateQuad(_builder, localBase, new float[][] {
-						_v.v100, _v.v000, _v.v010, _v.v110
-					}, new float[] {0.0f, 0.0f, -1.0f}
-					, uvBaseBottom, uvCoordinateSize
-					, auxUv, _auxAtlas.coordinateSize
-					, new float[] {_maxLightAsFloat(eastBlockLight, southBlockLight, SEBlockLight, thisBlockLight)
-						, _maxLightAsFloat(westBlockLight, southBlockLight, SWBlockLight, thisBlockLight)
-						, _maxLightAsFloat(westBlockLight, northBlockLight, NWBlockLight, thisBlockLight)
-						, _maxLightAsFloat(eastBlockLight, northBlockLight, NEBlockLight, thisBlockLight)
-					}
-					, new float[] {LightReadingHelpers.SKY_LIGHT_SHADOW, LightReadingHelpers.SKY_LIGHT_SHADOW, LightReadingHelpers.SKY_LIGHT_SHADOW, LightReadingHelpers.SKY_LIGHT_SHADOW}
-					, false
-				);
+				uvBase = _blockAtlas.baseOfBottomTexture(isActive, value, blockDefinedByte);
+				normal = AlignedFaceBuilder.Normal.DOWN;
+				localBase = _v.v000;
+				localEdge = _v.v110;
 			}
+			
+			AlignedFaceBuilder faceBuilder = new AlignedFaceBuilder(_inputData
+				, uvBase
+				, uvCoordinateSize
+				, auxUv
+				, _auxAtlas.coordinateSize
+				, absoluteBase
+				, normal
+			);
+			faceBuilder.generateQuad(_builder, localBase, localEdge);
 			
 			// Track any burning faces.
 			if (_variantMap.isBurning(blockAddress))
@@ -826,62 +786,37 @@ public class SceneMeshHelpers
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			AbsoluteLocation absoluteBase = _inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
-			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value, blockDefinedByte);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			
-			byte y = (byte)(baseY + (isPositiveNormal ? 1 : -1));
-			byte westX = (byte)(baseX - 1);
-			byte eastX = (byte)(baseX + 1);
-			byte downZ = (byte)(baseZ - 1);
-			byte upZ = (byte)(baseZ + 1);
-			byte thisBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, y, baseZ);
-			byte eastBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, y, baseZ);
-			byte westBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, y, baseZ);
-			byte upBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, y, upZ);
-			byte downBlockLight = LightReadingHelpers.getBlockLight(_inputData, baseX, y, downZ);
-			byte WDBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, y, downZ);
-			byte WUBlockLight = LightReadingHelpers.getBlockLight(_inputData, westX, y, upZ);
-			byte EDBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, y, downZ);
-			byte EUBlockLight = LightReadingHelpers.getBlockLight(_inputData, eastX, y, upZ);
-			float skyLightMultiplier = LightReadingHelpers.getSkyLightMultiplier(_inputData, baseX, y, baseZ, LightReadingHelpers.SKY_LIGHT_PARTIAL);
-			float[] commonSkyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
-			
+			AlignedFaceBuilder.Normal normal;
+			float[] localBase;
+			float[] localEdge;
 			if (isPositiveNormal)
 			{
-				_populateQuad(_builder, localBase, new float[][] {
-						_v.v110, _v.v010, _v.v011, _v.v111
-					}, new float[] {0.0f, 1.0f, 0.0f}
-					, uvBaseSide, uvCoordinateSize
-					, auxUv, _auxAtlas.coordinateSize
-					, new float[] {_maxLightAsFloat(eastBlockLight, thisBlockLight, downBlockLight, EDBlockLight)
-						, _maxLightAsFloat(westBlockLight, thisBlockLight, downBlockLight, WDBlockLight)
-						, _maxLightAsFloat(westBlockLight, thisBlockLight, upBlockLight, WUBlockLight)
-						, _maxLightAsFloat(eastBlockLight, thisBlockLight, upBlockLight, EUBlockLight)
-					}
-					, commonSkyLightMultipliers
-					, false
-				);
+				normal = AlignedFaceBuilder.Normal.NORTH;
+				localBase = _v.v010;
+				localEdge = _v.v111;
 			}
 			else
 			{
-				_populateQuad(_builder, localBase, new float[][] {
-						_v.v000, _v.v100, _v.v101, _v.v001
-					}, new float[] {0.0f, -1.0f,0.0f}
-					, uvBaseSide, uvCoordinateSize
-					, auxUv, _auxAtlas.coordinateSize
-					, new float[] {_maxLightAsFloat(westBlockLight, thisBlockLight, downBlockLight, WDBlockLight)
-						, _maxLightAsFloat(eastBlockLight, thisBlockLight, downBlockLight, EDBlockLight)
-						, _maxLightAsFloat(eastBlockLight, thisBlockLight, upBlockLight, EUBlockLight)
-						, _maxLightAsFloat(westBlockLight, thisBlockLight, upBlockLight, WUBlockLight)
-					}
-					, commonSkyLightMultipliers
-					, false
-				);
+				normal = AlignedFaceBuilder.Normal.SOUTH;
+				localBase = _v.v000;
+				localEdge = _v.v101;
 			}
+			
+			AlignedFaceBuilder faceBuilder = new AlignedFaceBuilder(_inputData
+				, uvBaseSide
+				, uvCoordinateSize
+				, auxUv
+				, _auxAtlas.coordinateSize
+				, absoluteBase
+				, normal
+			);
+			faceBuilder.generateQuad(_builder, localBase, localEdge);
 			
 			// Track any burning faces.
 			if (_variantMap.isBurning(blockAddress))
@@ -898,62 +833,37 @@ public class SceneMeshHelpers
 		{
 			BlockAddress blockAddress = new BlockAddress(baseX, baseY, baseZ);
 			AbsoluteLocation absoluteBase = _inputData.cuboid().getCuboidAddress().getBase().relativeForBlock(blockAddress);
-			float[] localBase = new float[] { (float)absoluteBase.x(), (float)absoluteBase.y(), (float)absoluteBase.z() };
 			boolean isActive = _isActive(baseX, baseY, baseZ, value);
 			float[] uvBaseSide = _blockAtlas.baseOfSideTexture(isActive, value, blockDefinedByte);
 			float uvCoordinateSize = _blockAtlas.getCoordinateSize();
 			AuxilliaryTextureAtlas.Variant variant = _variantMap.get(blockAddress);
 			float[] auxUv = _auxAtlas.baseOfTexture(variant);
 			
-			byte x = (byte)(baseX + (isPositiveNormal ? 1 : -1));
-			byte southY = (byte)(baseY - 1);
-			byte northY = (byte)(baseY + 1);
-			byte downZ = (byte)(baseZ - 1);
-			byte upZ = (byte)(baseZ + 1);
-			byte thisBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, baseY, baseZ);
-			byte northBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, northY, baseZ);
-			byte southBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, southY, baseZ);
-			byte upBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, baseY, upZ);
-			byte downBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, baseY, downZ);
-			byte SDBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, southY, downZ);
-			byte SUBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, southY, upZ);
-			byte NDBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, northY, downZ);
-			byte NUBlockLight = LightReadingHelpers.getBlockLight(_inputData, x, northY, upZ);
-			float skyLightMultiplier = LightReadingHelpers.getSkyLightMultiplier(_inputData, x, baseY, baseZ, LightReadingHelpers.SKY_LIGHT_PARTIAL);
-			float[] commonSkyLightMultipliers = new float[] {skyLightMultiplier, skyLightMultiplier, skyLightMultiplier, skyLightMultiplier};
-			
+			AlignedFaceBuilder.Normal normal;
+			float[] localBase;
+			float[] localEdge;
 			if (isPositiveNormal)
 			{
-				_populateQuad(_builder, localBase, new float[][] {
-						_v.v100, _v.v110, _v.v111, _v.v101
-					}, new float[] {1.0f, 0.0f, 0.0f}
-					, uvBaseSide, uvCoordinateSize
-					, auxUv, _auxAtlas.coordinateSize
-					, new float[] {_maxLightAsFloat(thisBlockLight, southBlockLight, downBlockLight, SDBlockLight)
-						, _maxLightAsFloat(thisBlockLight, northBlockLight, downBlockLight, NDBlockLight)
-						, _maxLightAsFloat(thisBlockLight, northBlockLight, upBlockLight, NUBlockLight)
-						, _maxLightAsFloat(thisBlockLight, southBlockLight, upBlockLight, SUBlockLight)
-					}
-					, commonSkyLightMultipliers
-					, false
-				);
+				normal = AlignedFaceBuilder.Normal.EAST;
+				localBase = _v.v100;
+				localEdge = _v.v111;
 			}
 			else
 			{
-				_populateQuad(_builder, localBase, new float[][] {
-						_v.v010, _v.v000, _v.v001, _v.v011
-					}, new float[] {-1.0f, 0.0f, 0.0f}
-					, uvBaseSide, uvCoordinateSize
-					, auxUv, _auxAtlas.coordinateSize
-					, new float[] {_maxLightAsFloat(thisBlockLight, northBlockLight, downBlockLight, NDBlockLight)
-						, _maxLightAsFloat(thisBlockLight, southBlockLight, downBlockLight, SDBlockLight)
-						, _maxLightAsFloat(thisBlockLight, southBlockLight, upBlockLight, SUBlockLight)
-						, _maxLightAsFloat(thisBlockLight, northBlockLight, upBlockLight, NUBlockLight)
-					}
-					, commonSkyLightMultipliers
-					, false
-				);
+				normal = AlignedFaceBuilder.Normal.WEST;
+				localBase = _v.v000;
+				localEdge = _v.v011;
 			}
+			
+			AlignedFaceBuilder faceBuilder = new AlignedFaceBuilder(_inputData
+				, uvBaseSide
+				, uvCoordinateSize
+				, auxUv
+				, _auxAtlas.coordinateSize
+				, absoluteBase
+				, normal
+			);
+			faceBuilder.generateQuad(_builder, localBase, localEdge);
 			
 			// Track any burning faces.
 			if (_variantMap.isBurning(blockAddress))
@@ -973,17 +883,6 @@ public class SceneMeshHelpers
 					: false
 			;
 			return isActive;
-		}
-		private static float _maxLightAsFloat(byte one, byte two, byte three, byte four)
-		{
-			// We just want to take the maximum of the given 4 light values and convert them to a float light multiplier.
-			byte max = (byte)Math.max(Math.max(one, two), Math.max(three, four));
-			return _mapBlockLight(max);
-		}
-		private static float _blendSkyLight(float one, float two, float three, float four)
-		{
-			// We will average these so that blocks in the open are brighter than those in corners.
-			return (one + two + three + four) / 4.0f;
 		}
 	}
 
