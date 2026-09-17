@@ -16,6 +16,7 @@ public class InputManager
 {
 	// The mapping we use to check key codes.
 	private final MutableControls _controls;
+	private final MouseState _mouseState;
 	private final boolean[] _activeControls;
 	private int _lastKeyUp;
 
@@ -41,9 +42,10 @@ public class InputManager
 	private boolean _didHandleButton1;
 	private boolean _didHandleKeyEsc;
 
-	public InputManager(MutableControls mutableControls)
+	public InputManager(MutableControls mutableControls, MouseState mouseState)
 	{
 		_controls = mutableControls;
+		_mouseState = mouseState;
 		_activeControls = new boolean[MutableControls.Control.values().length];
 		_lastKeyUp = Keys.UNKNOWN;
 		
@@ -211,6 +213,9 @@ public class InputManager
 
 	public void flushEventsToStateManager(UiStateManager uiManager)
 	{
+		// Clear the existing mouse state.
+		_mouseState.resetState();
+		
 		// We want to go down the list of things we might need to report and tell the UI Manager.
 		
 		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
@@ -224,12 +229,12 @@ public class InputManager
 			uiManager.capturedMouseMoved(deltaX, deltaY);
 			if (_buttonDown0)
 			{
-				uiManager.captureMouse0Down(!_didHandleButton0);
+				_mouseState.captureMouse0Down(!_didHandleButton0);
 				_didHandleButton0 = true;
 			}
 			if (_buttonDown1)
 			{
-				uiManager.captureMouse1Down(!_didHandleButton1, _leftShiftDown);
+				_mouseState.captureMouse1Down(!_didHandleButton1, _leftShiftDown);
 				_didHandleButton1 = true;
 			}
 			
@@ -270,15 +275,15 @@ public class InputManager
 		{
 			// When we are not capturing, we are just interested in knowing where the mouse is and if there are any clicks.
 			Point cursor = _getGlCursor();
-			uiManager.normalMouseMoved(cursor);
+			_mouseState.normalMouseMoved(cursor);
 			if (!_didHandleButton0)
 			{
-				uiManager.normalMouse0Clicked(_leftShiftDown);
+				_mouseState.normalMouse0Clicked(_leftShiftDown);
 				_didHandleButton0 = true;
 			}
 			if (!_didHandleButton1)
 			{
-				uiManager.normalMouse1Clicked(_leftShiftDown);
+				_mouseState.normalMouse1Clicked(_leftShiftDown);
 				_didHandleButton1 = true;
 			}
 			

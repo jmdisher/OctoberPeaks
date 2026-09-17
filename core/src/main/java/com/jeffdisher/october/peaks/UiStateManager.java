@@ -35,7 +35,6 @@ import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.peaks.ui.Point;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.UiIdioms;
@@ -91,6 +90,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private final Environment _env;
 	private final GlUi _ui;
+	private final MouseState _mouseState;
 	private final UiData _uiData;
 	private final EntityVolume _playerVolume;
 	private final EntityType _villagerEntityType;
@@ -103,17 +103,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _rotationDidUpdate;
 	private boolean _didAccountForTimeInFrame;
 	private _AudibleMotion _audibleMotionInFrame;
-	private boolean _mouseHeld0;
-	private boolean _mouseHeld1;
-	private boolean _mouseClicked0;
-	private boolean _mouseClicked1;
 	private boolean _waitingForMouseRelease1;
-	private Point _cursor;
-
-	// Variables related to the window overlay mode.
-	private boolean _leftClick;
-	private boolean _leftShiftClick;
-	private boolean _rightClick;
 	private boolean _ctrlQPressed;
 	private boolean _qPressed;
 
@@ -183,16 +173,18 @@ public class UiStateManager implements GameSession.ICallouts
 	private final FixedWindow _listProfileRunsStateWindow;
 
 	public UiStateManager(Environment environment
-			, GL20 gl
-			, File localStorageDirectory
-			, LoadedResources resources
-			, MutableControls mutableControls
-			, MutablePreferences mutablePreferences
-			, ICallouts captureState
+		, GL20 gl
+		, MouseState mouseState
+		, File localStorageDirectory
+		, LoadedResources resources
+		, MutableControls mutableControls
+		, MutablePreferences mutablePreferences
+		, ICallouts captureState
 	)
 	{
 		_env = environment;
 		_ui = new GlUi(gl, resources);
+		_mouseState = mouseState;
 		_uiData = new UiData(localStorageDirectory, mutableControls, mutablePreferences);
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_villagerEntityType = environment.creatures.getTypeById("op.villager");
@@ -245,24 +237,24 @@ public class UiStateManager implements GameSession.ICallouts
 			_pullFromBlockToEntityInventory(relevantBlock, key);
 		};
 		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
-			if (_isManualCraftingStation && (_leftClick || _leftShiftClick))
+			if (_isManualCraftingStation && (_mouseState.leftClick || _mouseState.leftShiftClick))
 			{
 				Craft craft = desc.craft();
 				if (null != _openStationLocation)
 				{
-					_continuousInBlock = _leftShiftClick ? craft : null;
+					_continuousInBlock = _mouseState.leftShiftClick ? craft : null;
 					_currentGameSession.client.beginCraftInBlock(_openStationLocation, craft);
 				}
 				else
 				{
-					_continuousInInventory = _leftShiftClick ? craft : null;
+					_continuousInInventory = _mouseState.leftShiftClick ? craft : null;
 					_currentGameSession.client.beginCraftInInventory(craft);
 				}
 				_didAccountForTimeInFrame = true;
 			}
 		};
 		
-		BooleanSupplier isLeftClick = () -> _leftClick;
+		BooleanSupplier isLeftClick = () -> _mouseState.leftClick;
 		
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
@@ -275,7 +267,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_metaDataWindow = new Window(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
 		_hotbarWindow = new Window(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
-			if (_leftClick)
+			if (_mouseState.leftClick)
 			{
 				// Note that we ignore the result since this will be reflected in the UI, if valid.
 				_currentGameSession.client.swapArmour(hoverPart);
@@ -286,7 +278,7 @@ public class UiStateManager implements GameSession.ICallouts
 		Function<AbsoluteLocation, BlockProxy> blockLookup = (AbsoluteLocation location) -> _currentGameSession.blockLookup.readBlock(location);
 		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, blockLookup, _otherPlayersById));
 		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
-			if (_leftClick)
+			if (_mouseState.leftClick)
 			{
 				MinimalEntity villager = MinimalEntity.fromPartialEntity(_currentGameSession.getEntityForId(_currentTradingPartnerIdBinding.get()));
 				boolean didSend = _currentGameSession.client.sendTrade(villager, tradeItem);
@@ -417,24 +409,6 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void captureMouse0Down(boolean justClicked)
-	{
-		_mouseHeld0 = true;
-		_mouseClicked0 = justClicked;
-	}
-
-	public void captureMouse1Down(boolean justClicked, boolean leftShiftHeld)
-	{
-		_mouseHeld1 = true;
-		// We use the shift to allow us to set the "held" without "clicked".
-		// In the future, this will likely be expanded but it isn't obvious where the interpretation of this key should
-		// go (InputManager, where it can associated with key settings, or here where it is associated with the UI state).
-		if (!leftShiftHeld)
-		{
-			_mouseClicked1 = justClicked;
-		}
-	}
-
 	public void walk(RelativeDirection relative)
 	{
 		boolean runningSpeed = false;
@@ -468,28 +442,6 @@ public class UiStateManager implements GameSession.ICallouts
 	public void tryDescend()
 	{
 		_currentGameSession.client.tryDescend();
-	}
-
-	public void normalMouseMoved(Point cursor)
-	{
-		_cursor = cursor;
-	}
-
-	public void normalMouse0Clicked(boolean leftShiftDown)
-	{
-		if (leftShiftDown)
-		{
-			_leftShiftClick = true;
-		}
-		else
-		{
-			_leftClick = true;
-		}
-	}
-
-	public void normalMouse1Clicked(boolean leftShiftDown)
-	{
-		_rightClick = true;
 	}
 
 	public void handleKeyEsc()
@@ -732,8 +684,6 @@ public class UiStateManager implements GameSession.ICallouts
 			// No special events in this case.
 			break;
 		}
-		
-		_clearEvents();
 	}
 
 	public void handleScreenResize(int width, int height)
@@ -794,7 +744,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickSinglePlayerButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Enter the single-player list.
 			Assert.assertTrue(_UiState.START == _uiState);
@@ -807,7 +757,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickMultiPlayerButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Enter the single-player list.
 			Assert.assertTrue(_UiState.START == _uiState);
@@ -820,7 +770,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickQuitButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// From here, we quit directly, as this is top-level.
 			if (null == _errorPayload)
@@ -837,7 +787,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickEnterSingleWorldButton(String directoryName)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We just pass nulls for our new game options.
 			_enterSingleWorld(_gl, _localStorageDirectory, _resources, directoryName, null, null, null, 0);
@@ -846,7 +796,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickDeleteSingleWorldButton(String directoryName)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We want to enter the confirmation state.
 			Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
@@ -859,7 +809,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickBackButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// This is the same as hitting escape.
 			_doBackStateTransition();
@@ -868,7 +818,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickCreateSingleWorldButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Enter the single-player creation window.
 			Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
@@ -881,7 +831,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickConfirmDeleteButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Verify state transition.
 			Assert.assertTrue(_UiState.CONFIRM_DELETE_SINGLE_PLAYER == _uiState);
@@ -901,7 +851,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickWorldGeneratorRadioButton(WorldConfig.WorldGeneratorName selected)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.worldGeneratorNameBinding.set(selected);
 		}
@@ -909,7 +859,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickPlayerModeRadioButton(WorldConfig.DefaultPlayerMode selected)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.defaultPlayerModeBinding.set(selected);
 		}
@@ -917,7 +867,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickDifficultyRadioButton(Difficulty selected)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.difficultyBinding.set(selected);
 		}
@@ -926,7 +876,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public void action_clickSeedTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.typingCapture = _uiData.newSeedBinding;
 		}
@@ -934,7 +884,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickConfirmCreateSingleWorldButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We want to start a single-player game.
 			Assert.assertTrue(_UiState.NEW_SINGLE_PLAYER == _uiState);
@@ -980,7 +930,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public void action_clickNewWorldNameTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.typingCapture = _uiData.newWorldNameBinding;
 		}
@@ -988,7 +938,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickJoinMultiWorldButton(MutableServerList.ServerRecord server)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Note that "_connectToServer" will try to connect to server and change state, but only if successful.
 			String clientName = _uiData.mutablePreferences.clientName.get();
@@ -999,7 +949,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickDeleteMultiWorldButton(MutableServerList.ServerRecord server)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.serverList.removeServerFromList(server);
 		}
@@ -1007,7 +957,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickAddNewServerButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Enter the single-player creation window.
 			Assert.assertTrue(_UiState.LIST_MULTI_PLAYER == _uiState);
@@ -1024,7 +974,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public void action_clickServerAddressTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.typingCapture = _uiData.newServerAddressBinding;
 		}
@@ -1032,7 +982,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickTestServerButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We want to do the test for version, etc, and add this to our list on success.
 			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
@@ -1057,7 +1007,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickSaveServerButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
 			
@@ -1076,7 +1026,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickCancelConnectButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We just want to back out.
 			_doBackStateTransition();
@@ -1085,7 +1035,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickExitGameButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_currentGameSession.shutdown();
 			_currentGameSession = null;
@@ -1095,7 +1045,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickOptionsButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiState = _UiState.OPTIONS;
 		}
@@ -1103,7 +1053,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickKeyBindingsButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiState = _UiState.KEY_BINDINGS;
 			_uiData.currentlyChangingControl.set(null);
@@ -1112,7 +1062,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickReturnToGameButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiState = _UiState.PLAY;
 			_captureState.shouldCaptureMouse(true);
@@ -1122,7 +1072,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickFullScreenToggle(boolean isFullScreen)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We will toggle the full screen and update the binding data.
 			boolean newFullScreen = !isFullScreen;
@@ -1142,7 +1092,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickViewDistanceSlider(boolean shouldIncrease)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// TODO:  When we persist preferences, put this there whether or not in game.
 			if (null != _currentGameSession)
@@ -1165,7 +1115,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickBrightnessSlider(boolean shouldIncrease)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We just want to increment this by 0.1 increments between 1.0 and 2.0.
 			int current = (int)(10.0f * _uiData.mutablePreferences.screenBrightness.get());
@@ -1185,7 +1135,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickClientNameTextField()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// We want to enable text capture for this binding.
 			_uiData.typingCapture = _uiData.mutablePreferences.clientName;
@@ -1194,7 +1144,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickKeyBindingSelector(MutableControls.Control selectedControl)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			_uiData.currentlyChangingControl.set(selectedControl);
 		}
@@ -1202,7 +1152,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickCopyToClipboardButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Just copy the payload to the clipboard.
 			StringBuilder builder = new StringBuilder();
@@ -1217,7 +1167,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickProfileRunsButton()
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// This just changes state.
 			_uiState = _UiState.LIST_FOR_PROFILE;
@@ -1226,7 +1176,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void action_clickProfileRunButton(ProfilingModes mode)
 	{
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// This just changes state.
 			_profilingSession = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
@@ -1248,16 +1198,16 @@ public class UiStateManager implements GameSession.ICallouts
 	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{
 		// This is the helper called when looking at the player's own inventory.
-		if (_leftClick)
+		if (_mouseState.leftClick)
 		{
 			// Select this in the hotbar (this will clear if already set).
 			_currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
 		}
-		else if (_rightClick)
+		else if (_mouseState.rightClick)
 		{
 			_currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
 		}
-		else if (_leftShiftClick)
+		else if (_mouseState.leftShiftClick)
 		{
 			_currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
@@ -1273,11 +1223,11 @@ public class UiStateManager implements GameSession.ICallouts
 	private void _pullFromBlockToEntityInventory(AbsoluteLocation targetBlock, int entityInventoryKey)
 	{
 		// Note that we ignore the result since this will be reflected in the UI, if valid.
-		if (_rightClick)
+		if (_mouseState.rightClick)
 		{
 			_currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
 		}
-		else if (_leftShiftClick)
+		else if (_mouseState.leftShiftClick)
 		{
 			_currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
@@ -1307,42 +1257,42 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_ui.enterUiRenderMode();
 		
-		return _startWindow.render(_cursor);
+		return _startWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawListSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listSinglePlayerStateWindow.render(_cursor);
+		return _listSinglePlayerStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawConfirmDeleteSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _confirmDeleteSinglePlayerStateWindow.render(_cursor);
+		return _confirmDeleteSinglePlayerStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawNewSinglePlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _newSinglePlayerStateWindow.render(_cursor);
+		return _newSinglePlayerStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawListMultiPlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listMultiPlayerStateWindow.render(_cursor);
+		return _listMultiPlayerStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawNewMultiPlayerStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _newMultiPlayerStateWindow.render(_cursor);
+		return _newMultiPlayerStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawInventoryStateWindows()
@@ -1482,18 +1432,18 @@ public class UiStateManager implements GameSession.ICallouts
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
 		{
-			IAction hover = _craftingWindow.doRender(_cursor);
+			IAction hover = _craftingWindow.doRender(_mouseState.cursor);
 			if (null != hover)
 			{
 				action = hover;
 			}
 		}
-		IAction hover = _thisEntityInventoryWindow.doRender(_cursor);
+		IAction hover = _thisEntityInventoryWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
-		hover = _bottomInventoryWindow.doRender(_cursor);
+		hover = _bottomInventoryWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -1502,7 +1452,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
-			action.renderHover(_cursor);
+			action.renderHover(_mouseState.cursor);
 		}
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
@@ -1513,7 +1463,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_drawCommonPauseBackground();
 		
-		return _pauseStateWindow.render(_cursor);
+		return _pauseStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawErrorStateWindows()
@@ -1532,7 +1482,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		// Now, just draw the rest of the fixed window to get the buttons we want.
-		return _errorStateWindow.render(_cursor);
+		return _errorStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawPlayStateWindows()
@@ -1579,13 +1529,13 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = _drawCommonWindowModeElements();
 		
 		// The trading window is the interesting part of this view.
-		IAction hover = _leftTradingWindow.doRender(_cursor);
+		IAction hover = _leftTradingWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
 		
-		hover = _thisEntityInventoryWindow.doRender(_cursor);
+		hover = _thisEntityInventoryWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -1594,7 +1544,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
-			action.renderHover(_cursor);
+			action.renderHover(_mouseState.cursor);
 		}
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
@@ -1608,7 +1558,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_drawCommonPauseBackground();
 		}
 		
-		return _optionsStateWindow.render(_cursor);
+		return _optionsStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawKeyBindingStateWindows()
@@ -1618,21 +1568,21 @@ public class UiStateManager implements GameSession.ICallouts
 			_drawCommonPauseBackground();
 		}
 		
-		return _keyBindingsStateWindow.render(_cursor);
+		return _keyBindingsStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawConnectingStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _connectingStateWindow.render(_cursor);
+		return _connectingStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawListProfileRunsStateWindows()
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listProfileRunsStateWindow.render(_cursor);
+		return _listProfileRunsStateWindow.render(_mouseState.cursor);
 	}
 
 	private void _drawCommonPauseBackground()
@@ -1653,12 +1603,12 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw the other common elements (inventory, armour, hotbar, etc).
 		if (null != _entityBinding.get())
 		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
+			IAction noAction = _hotbarWindow.doRender(_mouseState.cursor);
 			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
+			noAction = _metaDataWindow.doRender(_mouseState.cursor);
 			Assert.assertTrue(null == noAction);
 		}
-		return _armourWindow.doRender(_cursor);
+		return _armourWindow.doRender(_mouseState.cursor);
 	}
 
 	private void _drawCommonPlayModeElements()
@@ -1666,14 +1616,14 @@ public class UiStateManager implements GameSession.ICallouts
 		// Once we have loaded the entity, we can draw the hotbar and meta-data.
 		if (null != _entityBinding.get())
 		{
-			IAction noAction = _hotbarWindow.doRender(_cursor);
+			IAction noAction = _hotbarWindow.doRender(_mouseState.cursor);
 			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_cursor);
+			noAction = _metaDataWindow.doRender(_mouseState.cursor);
 			Assert.assertTrue(null == noAction);
 		}
 		
 		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _selectionWindow.doRender(_cursor);
+		IAction noAction = _selectionWindow.doRender(_mouseState.cursor);
 		Assert.assertTrue(null == noAction);
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
@@ -1774,7 +1724,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// See if the click refers to anything selected.
 		boolean didAct = false;
-		if (_mouseHeld0)
+		if (_mouseState.mouseHeld0)
 		{
 			if (null != stopBlock)
 			{
@@ -1782,14 +1732,14 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			else if (null != entity)
 			{
-				if (_mouseClicked0)
+				if (_mouseState.mouseClicked0)
 				{
 					_currentGameSession.client.hitEntity(entity);
 					didAct = true;
 				}
 			}
 		}
-		else if (_mouseHeld1)
+		else if (_mouseState.mouseHeld1)
 		{
 			// We want to treat things like a bow as the highest priority, so we will handle that first, whether or not
 			// the mouse button is held or clicked (although these priorities may be reconsidered).
@@ -1802,14 +1752,14 @@ public class UiStateManager implements GameSession.ICallouts
 			if (null != stopBlock)
 			{
 				// First, see if we need to change the UI state if this is a station we just clicked on.
-				if (!didAct && _mouseClicked1)
+				if (!didAct && _mouseState.mouseClicked1)
 				{
 					didAct = _didOpenStationInventory(stopBlock);
 				}
 			}
 			else if (null != entity)
 			{
-				if (!didAct && _mouseClicked1)
+				if (!didAct && _mouseState.mouseClicked1)
 				{
 					// Check if this is a villager and then switch into the trading UI mode.
 					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
@@ -1830,11 +1780,11 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			
 			// If we still didn't do anything, try clicks on the block or self.
-			if (!didAct && _mouseClicked1 && (null != stopBlock))
+			if (!didAct && _mouseState.mouseClicked1 && (null != stopBlock))
 			{
 				didAct = _currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
 			}
-			if (!didAct && _mouseClicked1)
+			if (!didAct && _mouseState.mouseClicked1)
 			{
 				didAct = _currentGameSession.client.runRightClickOnSelf();
 			}
@@ -1929,18 +1879,6 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_didAccountForTimeInFrame = false;
 		_audibleMotionInFrame = null;
-	}
-
-	private void _clearEvents()
-	{
-		_mouseHeld0 = false;
-		_mouseHeld1 = false;
-		_mouseClicked0 = false;
-		_mouseClicked1 = false;
-		
-		_leftClick = false;
-		_leftShiftClick = false;
-		_rightClick = false;
 	}
 
 	private void _doBackStateTransition()
