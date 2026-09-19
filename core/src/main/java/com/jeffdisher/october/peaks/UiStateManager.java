@@ -82,7 +82,6 @@ public class UiStateManager implements GameSession.ICallouts
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final Rect WINDOW_LEFT = new Rect(-0.95f, -0.80f, -0.05f, 0.95f);
 	public static final int MAX_WORLD_NAME = 16;
-	public static final String WORLD_DIRECTORY_PREFIX = "world_";
 	public static final float CHARGE_BAR_WIDTH_MAX = 0.4f;
 	public static final float CHARGE_BAR_LEFT = -0.2f;
 	public static final float CHARGE_BAR_BOTTOM = -0.25f;
@@ -96,7 +95,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final EntityType _villagerEntityType;
 	private final ICallouts _captureState;
 	private final GL20 _gl;
-	private final File _localStorageDirectory;
+	private final LocalStorageManager _localStorageManager;
 	private final LoadedResources _resources;
 	private final Map<Integer, String> _otherPlayersById;
 
@@ -190,7 +189,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_villagerEntityType = environment.creatures.getTypeById("op.villager");
 		_captureState = captureState;
 		_gl = gl;
-		_localStorageDirectory = localStorageDirectory;
+		_localStorageManager = new LocalStorageManager(_uiData.worldListBinding, localStorageDirectory);
 		_resources = resources;
 		_otherPlayersById = new HashMap<>();
 		
@@ -307,12 +306,12 @@ public class UiStateManager implements GameSession.ICallouts
 			, this
 			, _uiData
 			, isLeftClick
-			, WORLD_DIRECTORY_PREFIX
+			, LocalStorageManager.WORLD_DIRECTORY_PREFIX
 		);
 		_confirmDeleteSinglePlayerStateWindow = UiResources.buildConfirmDeleteSinglePlayerStateWindow(_ui
 			, this
 			, _uiData
-			, WORLD_DIRECTORY_PREFIX
+			, LocalStorageManager.WORLD_DIRECTORY_PREFIX
 		);
 		_newSinglePlayerStateWindow = UiResources.buildNewSinglePlayerStateWindow(_ui, this, _uiData);
 		_listMultiPlayerStateWindow = UiResources.buildListMultiPlayerStateWindow(_ui, this, _uiData, isLeftClick);
@@ -751,7 +750,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.LIST_SINGLE_PLAYER;
 			
 			// Update the world name list since we are entering that state.
-			_rebuildSinglePlayerListBinding(_uiData.worldListBinding, _localStorageDirectory);
+			_localStorageManager.rebuildSinglePlayerListBinding();
 		}
 	}
 
@@ -790,7 +789,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// We just pass nulls for our new game options.
-			_enterSingleWorld(_gl, _localStorageDirectory, _resources, directoryName, null, null, null, 0);
+			_enterSingleWorld(_gl, _resources, directoryName, null, null, null, 0);
 		}
 	}
 
@@ -838,14 +837,9 @@ public class UiStateManager implements GameSession.ICallouts
 			_uiState = _UiState.LIST_SINGLE_PLAYER;
 			
 			// Delete the directory, then return to the listing.
-			File localWorldDirectory = new File(_localStorageDirectory, _uiData.selectedWorldNameForDelete.get());
-			System.out.println("Deleting local world: " + localWorldDirectory);
-			_deleteWorldRecursively(localWorldDirectory);
+			_localStorageManager.deleteWorldAndUpdateList(_uiData.selectedWorldNameForDelete.get());
 			
 			_uiData.selectedWorldNameForDelete.set(null);
-			
-			// We also need to rebuild the list.
-			_rebuildSinglePlayerListBinding(_uiData.worldListBinding, _localStorageDirectory);
 		}
 	}
 
@@ -913,7 +907,6 @@ public class UiStateManager implements GameSession.ICallouts
 					}
 				}
 				_enterSingleWorld(_gl
-					, _localStorageDirectory
 					, _resources
 					, directoryName
 					, worldGeneratorName
@@ -943,7 +936,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// Note that "_connectToServer" will try to connect to server and change state, but only if successful.
 			String clientName = _uiData.mutablePreferences.clientName.get();
 			int startingViewDistance = _uiData.mutablePreferences.preferredViewDistance.get();
-			_connectToServer(_gl, _localStorageDirectory, _resources, clientName, startingViewDistance, server.address);
+			_connectToServer(_gl, _resources, clientName, startingViewDistance, server.address);
 		}
 	}
 
@@ -1983,7 +1976,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData.typingCapture = null;
 	}
 
-	private void _enterSingleWorld(GL20 gl, File localStorageDirectory
+	private void _enterSingleWorld(GL20 gl
 		, LoadedResources resources
 		, String directoryName
 		, WorldConfig.WorldGeneratorName worldGeneratorName
@@ -1994,7 +1987,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		Assert.assertTrue(null == _pendingGameSession);
 		_uiState = _UiState.CONNECTING;
-		File localWorldDirectory = new File(localStorageDirectory, directoryName);
+		File localWorldDirectory = _localStorageManager.getWorldDirectory(directoryName);
 		try
 		{
 			_pendingGameSession = new GameSession(_env
@@ -2021,7 +2014,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
 	}
 
-	private void _connectToServer(GL20 gl, File localStorageDirectory, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress)
+	private void _connectToServer(GL20 gl, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress)
 	{
 		Assert.assertTrue(null == _pendingGameSession);
 		try
@@ -2038,32 +2031,6 @@ public class UiStateManager implements GameSession.ICallouts
 			// Something went wrong, so don't change state, but we can log this (might want somewhere in the UI to show this, later).
 			e.printStackTrace();
 		}
-	}
-
-	private static void _rebuildSinglePlayerListBinding(Binding<List<String>> worldListBinding, File localStorageDirectory)
-	{
-		List<String> worldNames = List.of(localStorageDirectory.list((File dir, String name) -> name.startsWith(WORLD_DIRECTORY_PREFIX)));
-		worldListBinding.set(worldNames);
-	}
-
-	private static void _deleteWorldRecursively(File directory)
-	{
-		// We should only see directories this way (unless someone was messing with our on-disk data).
-		Assert.assertTrue(directory.isDirectory());
-		
-		// Walk all the files, recursively deleting directories.
-		for (File sub : directory.listFiles())
-		{
-			if (sub.isDirectory())
-			{
-				_deleteWorldRecursively(sub);
-			}
-			else
-			{
-				sub.delete();
-			}
-		}
-		directory.delete();
 	}
 
 	private static Inventory _getInventory(Entity entity)
