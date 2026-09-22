@@ -23,6 +23,23 @@ import com.jeffdisher.october.creatures.ExtensionVillager;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.logic.SpatialHelpers;
 import com.jeffdisher.october.logic.ViscosityReader;
+import com.jeffdisher.october.peaks.modes.ModeConfirmDeleteSinglePlayer;
+import com.jeffdisher.october.peaks.modes.ModeConnecting;
+import com.jeffdisher.october.peaks.modes.ModeContainer;
+import com.jeffdisher.october.peaks.modes.ModeError;
+import com.jeffdisher.october.peaks.modes.ModeInventory;
+import com.jeffdisher.october.peaks.modes.ModeKeyBindings;
+import com.jeffdisher.october.peaks.modes.ModeListForProfile;
+import com.jeffdisher.october.peaks.modes.ModeListMultiPlayer;
+import com.jeffdisher.october.peaks.modes.ModeListSinglePlayer;
+import com.jeffdisher.october.peaks.modes.ModeNewMultiPlayer;
+import com.jeffdisher.october.peaks.modes.ModeNewSinglePlayer;
+import com.jeffdisher.october.peaks.modes.ModeOptions;
+import com.jeffdisher.october.peaks.modes.ModePause;
+import com.jeffdisher.october.peaks.modes.ModePlay;
+import com.jeffdisher.october.peaks.modes.ModeProfile;
+import com.jeffdisher.october.peaks.modes.ModeStart;
+import com.jeffdisher.october.peaks.modes.ModeTrading;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.persistence.MutableServerList;
@@ -97,6 +114,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final GL20 _gl;
 	private final LocalStorageManager _localStorageManager;
 	private final LoadedResources _resources;
+	private final ModeContainer _modeContainer;
 	private final Map<Integer, String> _otherPlayersById;
 
 	private boolean _rotationDidUpdate;
@@ -107,7 +125,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private boolean _qPressed;
 
 	// Data specifically related to high-level UI state.
-	private _UiState _uiState;
 	private boolean _isRunningOnServer;
 	private AbsoluteLocation _openStationLocation;
 	private boolean _viewingFuelInventory;
@@ -191,10 +208,8 @@ public class UiStateManager implements GameSession.ICallouts
 		_gl = gl;
 		_localStorageManager = new LocalStorageManager(_uiData.worldListBinding, localStorageDirectory);
 		_resources = resources;
+		_modeContainer = new ModeContainer();
 		_otherPlayersById = new HashMap<>();
-		
-		// The UI state is fairly high-level, deciding what is on screen and how we handle inputs.
-		_uiState = _UiState.START;
 		
 		// Define all of our bindings.
 		_selectionBinding = new Binding<>(null);
@@ -322,6 +337,25 @@ public class UiStateManager implements GameSession.ICallouts
 		_keyBindingsStateWindow = UiResources.buildKeyBindingsStateWindow(_ui, this, _uiData);
 		_connectingStateWindow = UiResources.buildConnectingStateWindow(_ui, this, _uiData);
 		_listProfileRunsStateWindow = UiResources.buildListProfileRunsStateWindow(_ui, this, _uiData, ProfilingModes.ALL_MODES);
+		
+		// Build the modes (we add these late since they should be allowed to depend on arbitrary things here).
+		_modeContainer.start = new ModeStart();
+		_modeContainer.listSinglePlayer = new ModeListSinglePlayer();
+		_modeContainer.confirmDeleteSinglePlayer = new ModeConfirmDeleteSinglePlayer();
+		_modeContainer.newSinglePlayer =  new ModeNewSinglePlayer();
+		_modeContainer.listMultiPlayer = new ModeListMultiPlayer();
+		_modeContainer.newMultiPlayer = new ModeNewMultiPlayer();
+		_modeContainer.listForProfile = new ModeListForProfile();
+		_modeContainer.options = new ModeOptions();
+		_modeContainer.keyBindings = new ModeKeyBindings();
+		_modeContainer.connecting = new ModeConnecting();
+		_modeContainer.play = new ModePlay();
+		_modeContainer.inventory = new ModeInventory();
+		_modeContainer.pause = new ModePause();
+		_modeContainer.profile = new ModeProfile();
+		_modeContainer.trading = new ModeTrading();
+		_modeContainer.error = new ModeError();
+		_modeContainer.currentMode = _modeContainer.start;
 	}
 
 	@Override
@@ -336,13 +370,13 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// This is called when the server unexpectedly disconnects us so we want to change top-level state.
 		// It can only happen if we are in the PLAY state or CONNECTING state (that is, we haven't completed the handshake).
-		if (_UiState.PLAY == _uiState)
+		if (_modeContainer.play == _modeContainer.currentMode)
 		{
 			Assert.assertTrue(null == _pendingGameSession);
 			_currentGameSession.shutdown();
 			_currentGameSession = null;
 		}
-		else if (_UiState.CONNECTING == _uiState)
+		else if (_modeContainer.connecting == _modeContainer.currentMode)
 		{
 			Assert.assertTrue(null == _currentGameSession);
 			_pendingGameSession.shutdown();
@@ -355,11 +389,11 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		
 		// If we were in the active play state, release the mouse capture (this check just makes the transition more explicit).
-		if (_UiState.PLAY == _uiState)
+		if (_modeContainer.play == _modeContainer.currentMode)
 		{
 			_captureState.shouldCaptureMouse(false);
 		}
-		_uiState = _UiState.START;
+		_modeContainer.currentMode = _modeContainer.start;
 	}
 
 	@Override
@@ -453,10 +487,15 @@ public class UiStateManager implements GameSession.ICallouts
 	public void handleHotbarIndex(int hotbarIndex)
 	{
 		// We need an active session and not paused but logically this means play or inventory.
-		if ((_UiState.PLAY == _uiState)
-			|| (_UiState.INVENTORY == _uiState)
-			|| (_UiState.TRADING == _uiState)
-		)
+		if (_modeContainer.play == _modeContainer.currentMode)
+		{
+			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
+		}
+		else if (_modeContainer.inventory == _modeContainer.currentMode)
+		{
+			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
+		}
+		else if (_modeContainer.trading == _modeContainer.currentMode)
 		{
 			_currentGameSession.client.changeHotbarIndex(hotbarIndex);
 		}
@@ -465,14 +504,14 @@ public class UiStateManager implements GameSession.ICallouts
 	public void handleKeyI()
 	{
 		// This only matters if we are playing or in the inventory screen.
-		if (_UiState.INVENTORY == _uiState)
+		if (_modeContainer.inventory == _modeContainer.currentMode)
 		{
-			_uiState = _UiState.PLAY;
+			_modeContainer.currentMode = _modeContainer.play;
 			_captureState.shouldCaptureMouse(true);
 		}
-		else if (_UiState.PLAY == _uiState)
+		else if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			_uiState = _UiState.INVENTORY;
+			_modeContainer.currentMode = _modeContainer.inventory;
 			_openStationLocation = null;
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
@@ -521,7 +560,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void keyCodeUp(int lastKeyUp)
 	{
-		if ((_UiState.KEY_BINDINGS == _uiState) && (null != _uiData.currentlyChangingControl.get()))
+		if ((_modeContainer.keyBindings == _modeContainer.currentMode) && (null != _uiData.currentlyChangingControl.get()))
 		{
 			boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), lastKeyUp);
 			if (didSet)
@@ -546,7 +585,7 @@ public class UiStateManager implements GameSession.ICallouts
 		FacingDirection stopBlockOrientation = null;
 		Block stopBlockType = null;
 		AbsoluteLocation preStopBlock = null;
-		if (_UiState.PLAY == _uiState)
+		if (_modeContainer.play == _modeContainer.currentMode)
 		{
 			// See if the perspective changed.
 			if (_rotationDidUpdate)
@@ -610,21 +649,9 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _handleEndOfFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
 	{
-		// We will switch on the UI state to be notified that this needs a change if more are ever added.
-		switch (_uiState)
+		if ((_modeContainer.currentMode == _modeContainer.options)
+			|| (_modeContainer.currentMode == _modeContainer.keyBindings))
 		{
-		case START:
-		case LIST_SINGLE_PLAYER:
-		case CONFIRM_DELETE_SINGLE_PLAYER:
-		case NEW_SINGLE_PLAYER:
-		case LIST_MULTI_PLAYER:
-		case NEW_MULTI_PLAYER:
-		case LIST_FOR_PROFILE:
-			// No events.
-			Assert.assertTrue(null == _currentGameSession);
-			break;
-		case OPTIONS:
-		case KEY_BINDINGS:
 			// We can be in these states while the game is running or while waiting to connect.
 			if (null != _currentGameSession)
 			{
@@ -638,8 +665,9 @@ public class UiStateManager implements GameSession.ICallouts
 					_currentGameSession.client.passTimeWhilePaused();
 				}
 			}
-			break;
-		case CONNECTING:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.connecting)
+		{
 			// This is a bit of a hack but we can easily poll for state change here instead of coming up with a cross-
 			// thread callback mechanism (some kind of message queue)just for this.
 			Assert.assertTrue(null == _currentGameSession);
@@ -647,22 +675,25 @@ public class UiStateManager implements GameSession.ICallouts
 			{
 				_currentGameSession = _pendingGameSession;
 				_pendingGameSession = null;
-				_uiState = _UiState.PLAY;
+				_modeContainer.currentMode = _modeContainer.play;
 				_captureState.shouldCaptureMouse(true);
 			}
-			break;
-		case PLAY:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.play)
+		{
 			// This is the most common mode where events matter since it is where most of them start and passive events still need to be applied, in the background.
 			// Finalize the event processing with this selection and accounting for inter-frame time.
 			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
 			_finalizeFrameEvents(entity, stopBlock, preStopBlock);
 			_passTimeWhileRunning();
-			break;
-		case INVENTORY:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.inventory)
+		{
 			// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
 			_passTimeWhileRunning();
-			break;
-		case PAUSE:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.pause)
+		{
 			if (_isRunningOnServer)
 			{
 				_passTimeWhileRunning();
@@ -671,17 +702,11 @@ public class UiStateManager implements GameSession.ICallouts
 			{
 				_currentGameSession.client.passTimeWhilePaused();
 			}
-			break;
-		case PROFILE:
-			// No event flushing in profiling.
-			break;
-		case TRADING:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.trading)
+		{
 			// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
 			_passTimeWhileRunning();
-			break;
-		case ERROR:
-			// No special events in this case.
-			break;
 		}
 	}
 
@@ -736,7 +761,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void enterErrorState(String[] payload)
 	{
-		_uiState = _UiState.ERROR;
+		_modeContainer.currentMode = _modeContainer.error;
 		_errorPayload = payload;
 		_captureState.shouldCaptureMouse(false);
 	}
@@ -746,8 +771,8 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// Enter the single-player list.
-			Assert.assertTrue(_UiState.START == _uiState);
-			_uiState = _UiState.LIST_SINGLE_PLAYER;
+			Assert.assertTrue(_modeContainer.start == _modeContainer.currentMode);
+			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
 			
 			// Update the world name list since we are entering that state.
 			_localStorageManager.rebuildSinglePlayerListBinding();
@@ -759,8 +784,8 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// Enter the single-player list.
-			Assert.assertTrue(_UiState.START == _uiState);
-			_uiState = _UiState.LIST_MULTI_PLAYER;
+			Assert.assertTrue(_modeContainer.start == _modeContainer.currentMode);
+			_modeContainer.currentMode = _modeContainer.listMultiPlayer;
 			
 			// Request that this list be validated.
 			_uiData.serverList.pollServers();
@@ -798,8 +823,8 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// We want to enter the confirmation state.
-			Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
-			_uiState = _UiState.CONFIRM_DELETE_SINGLE_PLAYER;
+			Assert.assertTrue(_modeContainer.listSinglePlayer == _modeContainer.currentMode);
+			_modeContainer.currentMode = _modeContainer.confirmDeleteSinglePlayer;
 			
 			// We also need to put this chosen directory in the binding.
 			_uiData.selectedWorldNameForDelete.set(directoryName);
@@ -820,8 +845,8 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// Enter the single-player creation window.
-			Assert.assertTrue(_UiState.LIST_SINGLE_PLAYER == _uiState);
-			_uiState = _UiState.NEW_SINGLE_PLAYER;
+			Assert.assertTrue(_modeContainer.listSinglePlayer == _modeContainer.currentMode);
+			_modeContainer.currentMode = _modeContainer.newSinglePlayer;
 			
 			// Select the default text field.
 			_uiData.typingCapture = _uiData.newWorldNameBinding;
@@ -833,8 +858,8 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// Verify state transition.
-			Assert.assertTrue(_UiState.CONFIRM_DELETE_SINGLE_PLAYER == _uiState);
-			_uiState = _UiState.LIST_SINGLE_PLAYER;
+			Assert.assertTrue(_modeContainer.confirmDeleteSinglePlayer == _modeContainer.currentMode);
+			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
 			
 			// Delete the directory, then return to the listing.
 			_localStorageManager.deleteWorldAndUpdateList(_uiData.selectedWorldNameForDelete.get());
@@ -881,7 +906,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// We want to start a single-player game.
-			Assert.assertTrue(_UiState.NEW_SINGLE_PLAYER == _uiState);
+			Assert.assertTrue(_modeContainer.newSinglePlayer == _modeContainer.currentMode);
 			
 			// Make sure that the name is non-empty and not already used.
 			String worldName = _uiData.newWorldNameBinding.get();
@@ -953,8 +978,8 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// Enter the single-player creation window.
-			Assert.assertTrue(_UiState.LIST_MULTI_PLAYER == _uiState);
-			_uiState = _UiState.NEW_MULTI_PLAYER;
+			Assert.assertTrue(_modeContainer.listMultiPlayer == _modeContainer.currentMode);
+			_modeContainer.currentMode = _modeContainer.newMultiPlayer;
 			
 			// Select the default text field.
 			_uiData.typingCapture = _uiData.newServerAddressBinding;
@@ -978,7 +1003,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// We want to do the test for version, etc, and add this to our list on success.
-			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
+			Assert.assertTrue(_modeContainer.newMultiPlayer == _modeContainer.currentMode);
 			
 			// We will need to parse this address from the binding.
 			String rawAddress = _uiData.newServerAddressBinding.get();
@@ -1002,7 +1027,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			Assert.assertTrue(_UiState.NEW_MULTI_PLAYER == _uiState);
+			Assert.assertTrue(_modeContainer.newMultiPlayer == _modeContainer.currentMode);
 			
 			// If there is a binding, and it is good, add it to the server list and back out of this.
 			MutableServerList.ServerRecord record = _uiData.currentlyTestingServerBinding.get();
@@ -1032,7 +1057,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_currentGameSession.shutdown();
 			_currentGameSession = null;
-			_uiState = _UiState.START;
+			_modeContainer.currentMode = _modeContainer.start;
 		}
 	}
 
@@ -1040,7 +1065,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			_uiState = _UiState.OPTIONS;
+			_modeContainer.currentMode = _modeContainer.options;
 		}
 	}
 
@@ -1048,7 +1073,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			_uiState = _UiState.KEY_BINDINGS;
+			_modeContainer.currentMode = _modeContainer.keyBindings;
 			_uiData.currentlyChangingControl.set(null);
 		}
 	}
@@ -1057,7 +1082,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			_uiState = _UiState.PLAY;
+			_modeContainer.currentMode = _modeContainer.play;
 			_captureState.shouldCaptureMouse(true);
 			_currentGameSession.client.resumeGame();
 		}
@@ -1163,7 +1188,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// This just changes state.
-			_uiState = _UiState.LIST_FOR_PROFILE;
+			_modeContainer.currentMode = _modeContainer.listForProfile;
 		}
 	}
 
@@ -1174,7 +1199,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// This just changes state.
 			_profilingSession = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
 			mode.populate.accept(_env, _profilingSession);
-			_uiState = _UiState.PROFILE;
+			_modeContainer.currentMode = _modeContainer.profile;
 		}
 	}
 
@@ -1236,7 +1261,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_env.stations.getNormalInventorySize(block) > 0)
 		{
 			// We are at least some kind of station with an inventory.
-			_uiState = _UiState.INVENTORY;
+			_modeContainer.currentMode = _modeContainer.inventory;
 			_openStationLocation = blockLocation;
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
@@ -1647,56 +1672,74 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// Perform state-specific drawing.
 		IAction action = null;
-		switch (_uiState)
+		if (_modeContainer.currentMode == _modeContainer.start)
 		{
-		case START:
 			action = _drawStartStateWindows();
-			break;
-		case LIST_SINGLE_PLAYER:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.listSinglePlayer)
+		{
 			action = _drawListSinglePlayerStateWindows();
-			break;
-		case CONFIRM_DELETE_SINGLE_PLAYER:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.confirmDeleteSinglePlayer)
+		{
 			action = _drawConfirmDeleteSinglePlayerStateWindows();
-			break;
-		case NEW_SINGLE_PLAYER:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.newSinglePlayer)
+		{
 			action = _drawNewSinglePlayerStateWindows();
-			break;
-		case LIST_MULTI_PLAYER:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.listMultiPlayer)
+		{
 			action = _drawListMultiPlayerStateWindows();
-			break;
-		case NEW_MULTI_PLAYER:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.newMultiPlayer)
+		{
 			action = _drawNewMultiPlayerStateWindows();
-			break;
-		case LIST_FOR_PROFILE:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.listForProfile)
+		{
 			action = _drawListProfileRunsStateWindows();
-			break;
-		case OPTIONS:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.options)
+		{
 			action = _drawOptionsStateWindows();
-			break;
-		case KEY_BINDINGS:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.keyBindings)
+		{
 			action = _drawKeyBindingStateWindows();
-			break;
-		case CONNECTING:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.connecting)
+		{
 			action = _drawConnectingStateWindows();
-			break;
-		case PLAY:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.play)
+		{
 			action = _drawPlayStateWindows();
-			break;
-		case INVENTORY:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.inventory)
+		{
 			action = _drawInventoryStateWindows();
-			break;
-		case PAUSE:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.pause)
+		{
 			action = _drawPauseStateWindows();
-			break;
-		case PROFILE:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.profile)
+		{
 			action = _drawPlayStateWindows();
-			break;
-		case TRADING:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.trading)
+		{
 			action = _drawTradingStateWindows();
-			break;
-		case ERROR:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.error)
+		{
 			action = _drawErrorStateWindows();
-			break;
+		}
+		else
+		{
+			// Every state needs drawing support.
+			throw Assert.unreachable();
 		}
 		
 		// Run any actions based on clicking on the UI.
@@ -1758,7 +1801,7 @@ public class UiStateManager implements GameSession.ICallouts
 					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
 					{
 						// This is a villager with a profession so switch to our trading UI mode.
-						_uiState = _UiState.TRADING;
+						_modeContainer.currentMode = _modeContainer.trading;
 						_captureState.shouldCaptureMouse(false);
 						_currentTradingPartnerIdBinding.set(entity.id());
 					}
@@ -1876,71 +1919,56 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _doBackStateTransition()
 	{
-		switch (_uiState)
+		if (_modeContainer.currentMode == _modeContainer.start)
 		{
-		case START:
 			// Key events are ignored in start state.
-			break;
-		case LIST_SINGLE_PLAYER:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.listSinglePlayer)
+		{
 			// We just want to go back.
-			_uiState = _UiState.START;
-			break;
-		case CONFIRM_DELETE_SINGLE_PLAYER:
+			_modeContainer.currentMode = _modeContainer.start;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.confirmDeleteSinglePlayer)
+		{
 			// Go back to the list.
-			_uiState = _UiState.LIST_SINGLE_PLAYER;
-			break;
-		case NEW_SINGLE_PLAYER:
+			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.newSinglePlayer)
+		{
 			// Go back to the list.
-			_uiState = _UiState.LIST_SINGLE_PLAYER;
-			break;
-		case LIST_MULTI_PLAYER:
+			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.listMultiPlayer)
+		{
 			// We just want to go back.
-			_uiState = _UiState.START;
-			break;
-		case NEW_MULTI_PLAYER:
+			_modeContainer.currentMode = _modeContainer.start;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.newMultiPlayer)
+		{
 			// Go back to the list.
-			_uiState = _UiState.LIST_MULTI_PLAYER;
-			break;
-		case LIST_FOR_PROFILE:
+			_modeContainer.currentMode = _modeContainer.listMultiPlayer;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.listForProfile)
+		{
 			// We just want to go back.
-			_uiState = _UiState.START;
-			break;
-		case INVENTORY:
-			_uiState = _UiState.PLAY;
-			_captureState.shouldCaptureMouse(true);
-			break;
-		case PAUSE:
-			_uiState = _UiState.PLAY;
-			_captureState.shouldCaptureMouse(true);
-			_currentGameSession.client.resumeGame();
-			break;
-		case CONNECTING:
-			// We need to cancel the disconnect and switch back to start.
-			Assert.assertTrue(null == _currentGameSession);
-			_pendingGameSession.shutdown();
-			_pendingGameSession = null;
-			_uiState = _UiState.START;
-			break;
-		case PLAY:
-			_uiState = _UiState.PAUSE;
-			_openStationLocation = null;
-			_captureState.shouldCaptureMouse(false);
-			_currentGameSession.client.pauseGame();
-			break;
-		case OPTIONS:
+			_modeContainer.currentMode = _modeContainer.start;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.options)
+		{
 			// Write-back preferences.
 			_uiData.mutablePreferences.saveToDisk();
 			// Options depends on whether is a game playing.
 			if (null != _currentGameSession)
 			{
-				_uiState = _UiState.PAUSE;
+				_modeContainer.currentMode = _modeContainer.pause;
 			}
 			else
 			{
-				_uiState = _UiState.START;
+				_modeContainer.currentMode = _modeContainer.start;
 			}
-			break;
-		case KEY_BINDINGS:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.keyBindings)
+		{
 			if (null != _uiData.currentlyChangingControl.get())
 			{
 				_uiData.currentlyChangingControl.set(null);
@@ -1950,28 +1978,62 @@ public class UiStateManager implements GameSession.ICallouts
 				// Key bindings depends on whether is a game playing.
 				if (null != _currentGameSession)
 				{
-					_uiState = _UiState.PAUSE;
+					_modeContainer.currentMode = _modeContainer.pause;
 				}
 				else
 				{
-					_uiState = _UiState.START;
+					_modeContainer.currentMode = _modeContainer.start;
 				}
 			}
-			break;
-		case PROFILE:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.connecting)
+		{
+			// We need to cancel the disconnect and switch back to start.
+			Assert.assertTrue(null == _currentGameSession);
+			_pendingGameSession.shutdown();
+			_pendingGameSession = null;
+			_modeContainer.currentMode = _modeContainer.start;
+		}
+		else if (_modeContainer.currentMode == _modeContainer.play)
+		{
+			_modeContainer.currentMode = _modeContainer.pause;
+			_openStationLocation = null;
+			_captureState.shouldCaptureMouse(false);
+			_currentGameSession.client.pauseGame();
+		}
+		else if (_modeContainer.currentMode == _modeContainer.inventory)
+		{
+			_modeContainer.currentMode = _modeContainer.play;
+			_captureState.shouldCaptureMouse(true);
+		}
+		else if (_modeContainer.currentMode == _modeContainer.pause)
+		{
+			_modeContainer.currentMode = _modeContainer.play;
+			_captureState.shouldCaptureMouse(true);
+			_currentGameSession.client.resumeGame();
+		}
+		else if (_modeContainer.currentMode == _modeContainer.profile)
+		{
 			// We just want to exit, in this case.
 			System.out.println("Ending Profile Run");
 			_profilingSession.shutdown();
 			Gdx.app.exit();
-			break;
-		case TRADING:
+		}
+		else if (_modeContainer.currentMode == _modeContainer.trading)
+		{
 			// This is similar to the inventory mode so just return to play.
 			_exitTradingMode();
-			break;
-		case ERROR:
-			// There is no transition from this state.
-			break;
 		}
+		else if (_modeContainer.currentMode == _modeContainer.error)
+		{
+			// There is no transition from this state.
+		}
+		else
+		{
+			// Every state needs to handle back support.
+			throw Assert.unreachable();
+		}
+		
 		// Any meaning of "back" should stop text input.
 		_uiData.typingCapture = null;
 	}
@@ -1986,7 +2048,7 @@ public class UiStateManager implements GameSession.ICallouts
 	)
 	{
 		Assert.assertTrue(null == _pendingGameSession);
-		_uiState = _UiState.CONNECTING;
+		_modeContainer.currentMode = _modeContainer.connecting;
 		File localWorldDirectory = _localStorageManager.getWorldDirectory(directoryName);
 		try
 		{
@@ -2022,7 +2084,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_pendingGameSession = new GameSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
 			
 			// This was a success, so change state.
-			_uiState = _UiState.CONNECTING;
+			_modeContainer.currentMode = _modeContainer.connecting;
 			_isRunningOnServer = true;
 			_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
 		}
@@ -2046,95 +2108,10 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// Whenever we exit trading mode, we always go back into play mode.
 		_currentTradingPartnerIdBinding.set(0);
-		_uiState = _UiState.PLAY;
+		_modeContainer.currentMode = _modeContainer.play;
 		_captureState.shouldCaptureMouse(true);
 	}
 
-
-	/**
-	 *  Represents the high-level state of the UI.  This will likely be split out into a class to specifically manage UI
-	 *  state, later one.
-	 */
-	private static enum _UiState
-	{
-		/**
-		 * The game starts here when invoked without any arguments.  It presents a starting menu to create/join games.
-		 */
-		START,
-		/**
-		 * The state where we show a list of existing single-player worlds and present an option to create a new one.
-		 */
-		LIST_SINGLE_PLAYER,
-		/**
-		 * The state where we just allow confirmation to delete a single-player world.
-		 */
-		CONFIRM_DELETE_SINGLE_PLAYER,
-		/**
-		 * The state where we present an option to create a new one.
-		 */
-		NEW_SINGLE_PLAYER,
-		/**
-		 * The state where we show a list of known multi-player servers.
-		 */
-		LIST_MULTI_PLAYER,
-		/**
-		 * The state where present an option to add a new one server to our list.
-		 */
-		NEW_MULTI_PLAYER,
- 		/**
-		 * A special state which is like the other LIST_* modes but the listed options are just the hard-coded profile
-		 * options for use with a local profile during performance investigations.
-		 * NOTE:  This state is only reachable if the "OCTOBER_PEAKS_PROFILE" environment variable is set.
-		 */
-		LIST_FOR_PROFILE,
-		/**
-		 * The UI state under the PAUSE screen where we enter an options menu to view/change settings.
-		 * If there is a _currentGameSession, it will be shown in the background.
-		 */
-		OPTIONS,
-		/**
-		 * The UI state under the PAUSE screen where the user can change key bindings.
-		 * If there is a _currentGameSession, it will be shown in the background.
-		 */
-		KEY_BINDINGS,
-		/**
-		 * The mode where we are waiting for the connection to complete.  This will naturally change into play on
-		 * success.
-		 */
-		CONNECTING,
-		
-		// These modes are specific to something involving a running game .
-		/**
-		 * The mode where play is normal.  Cursor is captured and there is no open window.
-		 */
-		PLAY,
-		/**
-		 * The mode where player control is largely disabled and the interface is mostly about clicking on buttons, etc.
-		 */
-		INVENTORY,
-		/**
-		 * The mode where play is effectively "paused".  The cursor is released and buttons to change game setup will be
-		 * presented.
-		 * Note that we call the state "paused" even though servers are never "paused" (the title will reflect this
-		 * difference).
-		 */
-		PAUSE,
- 		/**
-		 * This state is similar to PLAY, in that it draws the game to the screen, but it is different in that it can
-		 * accept no UI interaction and beyond using Esc to quit the program.
-		 * Only possible to reach this state from LIST_FOR_PROFILE state.
-		 */
-		PROFILE,
-		/**
-		 * Similar to inventory state, but for when we are viewing the trading UI for a villager.  The current villager
-		 * ID is stored in _currentTradingPartnerIdBinding (stored by ID, not instance, since they might move while open).
-		 */
-		TRADING,
-		/**
-		 * A state used to display a fatal error message before exiting.
-		 */
-		ERROR,
-	}
 
 	private static enum _AudibleMotion
 	{
