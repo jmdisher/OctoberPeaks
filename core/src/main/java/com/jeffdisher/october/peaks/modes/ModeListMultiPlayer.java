@@ -6,4 +6,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeListMultiPlayer implements IGameMode
 {
+	public ModeListMultiPlayer becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }

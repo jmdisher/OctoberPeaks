@@ -7,4 +7,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeKeyBindings implements IGameMode
 {
+	public ModeKeyBindings becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }

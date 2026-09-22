@@ -8,4 +8,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeListForProfile implements IGameMode
 {
+	public ModeListForProfile becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }
