@@ -6,4 +6,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeNewSinglePlayer implements IGameMode
 {
+	public ModeNewSinglePlayer becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }

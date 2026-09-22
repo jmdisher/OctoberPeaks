@@ -9,4 +9,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModePause implements IGameMode
 {
+	public ModePause becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }

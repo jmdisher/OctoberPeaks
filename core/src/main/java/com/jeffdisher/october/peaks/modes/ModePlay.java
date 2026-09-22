@@ -6,4 +6,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModePlay implements IGameMode
 {
+	public ModePlay becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }

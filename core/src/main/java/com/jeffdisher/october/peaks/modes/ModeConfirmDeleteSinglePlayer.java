@@ -6,4 +6,13 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeConfirmDeleteSinglePlayer implements IGameMode
 {
+	public ModeConfirmDeleteSinglePlayer becomeActive()
+	{
+		return this;
+	}
+
+	@Override
+	public void didBecomeInactive()
+	{
+	}
 }

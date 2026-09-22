@@ -355,7 +355,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_modeContainer.profile = new ModeProfile();
 		_modeContainer.trading = new ModeTrading();
 		_modeContainer.error = new ModeError();
-		_modeContainer.currentMode = _modeContainer.start;
+		_modeContainer.currentMode = _modeContainer.start.becomeActive();
 	}
 
 	@Override
@@ -393,7 +393,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_captureState.shouldCaptureMouse(false);
 		}
-		_modeContainer.currentMode = _modeContainer.start;
+		_modeContainer.setActive(_modeContainer.start.becomeActive());
 	}
 
 	@Override
@@ -506,12 +506,12 @@ public class UiStateManager implements GameSession.ICallouts
 		// This only matters if we are playing or in the inventory screen.
 		if (_modeContainer.inventory == _modeContainer.currentMode)
 		{
-			_modeContainer.currentMode = _modeContainer.play;
+			_modeContainer.setActive(_modeContainer.play.becomeActive());
 			_captureState.shouldCaptureMouse(true);
 		}
 		else if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			_modeContainer.currentMode = _modeContainer.inventory;
+			_modeContainer.setActive(_modeContainer.inventory.becomeActive());
 			_openStationLocation = null;
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
@@ -675,7 +675,7 @@ public class UiStateManager implements GameSession.ICallouts
 			{
 				_currentGameSession = _pendingGameSession;
 				_pendingGameSession = null;
-				_modeContainer.currentMode = _modeContainer.play;
+				_modeContainer.setActive(_modeContainer.play.becomeActive());
 				_captureState.shouldCaptureMouse(true);
 			}
 		}
@@ -761,7 +761,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void enterErrorState(String[] payload)
 	{
-		_modeContainer.currentMode = _modeContainer.error;
+		_modeContainer.setActive(_modeContainer.error.becomeActive());
 		_errorPayload = payload;
 		_captureState.shouldCaptureMouse(false);
 	}
@@ -772,7 +772,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// Enter the single-player list.
 			Assert.assertTrue(_modeContainer.start == _modeContainer.currentMode);
-			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
+			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
 			
 			// Update the world name list since we are entering that state.
 			_localStorageManager.rebuildSinglePlayerListBinding();
@@ -785,7 +785,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// Enter the single-player list.
 			Assert.assertTrue(_modeContainer.start == _modeContainer.currentMode);
-			_modeContainer.currentMode = _modeContainer.listMultiPlayer;
+			_modeContainer.setActive(_modeContainer.listMultiPlayer.becomeActive());
 			
 			// Request that this list be validated.
 			_uiData.serverList.pollServers();
@@ -824,7 +824,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// We want to enter the confirmation state.
 			Assert.assertTrue(_modeContainer.listSinglePlayer == _modeContainer.currentMode);
-			_modeContainer.currentMode = _modeContainer.confirmDeleteSinglePlayer;
+			_modeContainer.setActive(_modeContainer.confirmDeleteSinglePlayer);
 			
 			// We also need to put this chosen directory in the binding.
 			_uiData.selectedWorldNameForDelete.set(directoryName);
@@ -846,7 +846,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// Enter the single-player creation window.
 			Assert.assertTrue(_modeContainer.listSinglePlayer == _modeContainer.currentMode);
-			_modeContainer.currentMode = _modeContainer.newSinglePlayer;
+			_modeContainer.setActive(_modeContainer.newSinglePlayer.becomeActive());
 			
 			// Select the default text field.
 			_uiData.typingCapture = _uiData.newWorldNameBinding;
@@ -859,7 +859,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// Verify state transition.
 			Assert.assertTrue(_modeContainer.confirmDeleteSinglePlayer == _modeContainer.currentMode);
-			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
+			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
 			
 			// Delete the directory, then return to the listing.
 			_localStorageManager.deleteWorldAndUpdateList(_uiData.selectedWorldNameForDelete.get());
@@ -979,7 +979,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			// Enter the single-player creation window.
 			Assert.assertTrue(_modeContainer.listMultiPlayer == _modeContainer.currentMode);
-			_modeContainer.currentMode = _modeContainer.newMultiPlayer;
+			_modeContainer.setActive(_modeContainer.newMultiPlayer.becomeActive());
 			
 			// Select the default text field.
 			_uiData.typingCapture = _uiData.newServerAddressBinding;
@@ -1057,7 +1057,7 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_currentGameSession.shutdown();
 			_currentGameSession = null;
-			_modeContainer.currentMode = _modeContainer.start;
+			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
 	}
 
@@ -1065,7 +1065,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			_modeContainer.currentMode = _modeContainer.options;
+			_modeContainer.setActive(_modeContainer.options.becomeActive());
 		}
 	}
 
@@ -1073,7 +1073,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			_modeContainer.currentMode = _modeContainer.keyBindings;
+			_modeContainer.setActive(_modeContainer.keyBindings.becomeActive());
 			_uiData.currentlyChangingControl.set(null);
 		}
 	}
@@ -1082,7 +1082,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (_mouseState.leftClick)
 		{
-			_modeContainer.currentMode = _modeContainer.play;
+			_modeContainer.setActive(_modeContainer.play.becomeActive());
 			_captureState.shouldCaptureMouse(true);
 			_currentGameSession.client.resumeGame();
 		}
@@ -1188,7 +1188,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_mouseState.leftClick)
 		{
 			// This just changes state.
-			_modeContainer.currentMode = _modeContainer.listForProfile;
+			_modeContainer.setActive(_modeContainer.listForProfile.becomeActive());
 		}
 	}
 
@@ -1199,7 +1199,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// This just changes state.
 			_profilingSession = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
 			mode.populate.accept(_env, _profilingSession);
-			_modeContainer.currentMode = _modeContainer.profile;
+			_modeContainer.setActive(_modeContainer.profile.becomeActive());
 		}
 	}
 
@@ -1261,7 +1261,7 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_env.stations.getNormalInventorySize(block) > 0)
 		{
 			// We are at least some kind of station with an inventory.
-			_modeContainer.currentMode = _modeContainer.inventory;
+			_modeContainer.setActive(_modeContainer.inventory.becomeActive());
 			_openStationLocation = blockLocation;
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 			_viewingFuelInventory = false;
@@ -1801,7 +1801,7 @@ public class UiStateManager implements GameSession.ICallouts
 					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
 					{
 						// This is a villager with a profession so switch to our trading UI mode.
-						_modeContainer.currentMode = _modeContainer.trading;
+						_modeContainer.setActive(_modeContainer.trading.becomeActive());
 						_captureState.shouldCaptureMouse(false);
 						_currentTradingPartnerIdBinding.set(entity.id());
 					}
@@ -1926,32 +1926,32 @@ public class UiStateManager implements GameSession.ICallouts
 		else if (_modeContainer.currentMode == _modeContainer.listSinglePlayer)
 		{
 			// We just want to go back.
-			_modeContainer.currentMode = _modeContainer.start;
+			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.confirmDeleteSinglePlayer)
 		{
 			// Go back to the list.
-			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
+			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.newSinglePlayer)
 		{
 			// Go back to the list.
-			_modeContainer.currentMode = _modeContainer.listSinglePlayer;
+			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.listMultiPlayer)
 		{
 			// We just want to go back.
-			_modeContainer.currentMode = _modeContainer.start;
+			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.newMultiPlayer)
 		{
 			// Go back to the list.
-			_modeContainer.currentMode = _modeContainer.listMultiPlayer;
+			_modeContainer.setActive(_modeContainer.listMultiPlayer.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.listForProfile)
 		{
 			// We just want to go back.
-			_modeContainer.currentMode = _modeContainer.start;
+			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.options)
 		{
@@ -1960,11 +1960,11 @@ public class UiStateManager implements GameSession.ICallouts
 			// Options depends on whether is a game playing.
 			if (null != _currentGameSession)
 			{
-				_modeContainer.currentMode = _modeContainer.pause;
+				_modeContainer.setActive(_modeContainer.pause.becomeActive());
 			}
 			else
 			{
-				_modeContainer.currentMode = _modeContainer.start;
+				_modeContainer.setActive(_modeContainer.start.becomeActive());
 			}
 		}
 		else if (_modeContainer.currentMode == _modeContainer.keyBindings)
@@ -1978,11 +1978,11 @@ public class UiStateManager implements GameSession.ICallouts
 				// Key bindings depends on whether is a game playing.
 				if (null != _currentGameSession)
 				{
-					_modeContainer.currentMode = _modeContainer.pause;
+					_modeContainer.setActive(_modeContainer.pause.becomeActive());
 				}
 				else
 				{
-					_modeContainer.currentMode = _modeContainer.start;
+					_modeContainer.setActive(_modeContainer.start.becomeActive());
 				}
 			}
 		}
@@ -1992,23 +1992,23 @@ public class UiStateManager implements GameSession.ICallouts
 			Assert.assertTrue(null == _currentGameSession);
 			_pendingGameSession.shutdown();
 			_pendingGameSession = null;
-			_modeContainer.currentMode = _modeContainer.start;
+			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
 		else if (_modeContainer.currentMode == _modeContainer.play)
 		{
-			_modeContainer.currentMode = _modeContainer.pause;
+			_modeContainer.setActive(_modeContainer.pause.becomeActive());
 			_openStationLocation = null;
 			_captureState.shouldCaptureMouse(false);
 			_currentGameSession.client.pauseGame();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.inventory)
 		{
-			_modeContainer.currentMode = _modeContainer.play;
+			_modeContainer.setActive(_modeContainer.play.becomeActive());
 			_captureState.shouldCaptureMouse(true);
 		}
 		else if (_modeContainer.currentMode == _modeContainer.pause)
 		{
-			_modeContainer.currentMode = _modeContainer.play;
+			_modeContainer.setActive(_modeContainer.play.becomeActive());
 			_captureState.shouldCaptureMouse(true);
 			_currentGameSession.client.resumeGame();
 		}
@@ -2048,7 +2048,7 @@ public class UiStateManager implements GameSession.ICallouts
 	)
 	{
 		Assert.assertTrue(null == _pendingGameSession);
-		_modeContainer.currentMode = _modeContainer.connecting;
+		_modeContainer.setActive(_modeContainer.connecting.becomeActive());
 		File localWorldDirectory = _localStorageManager.getWorldDirectory(directoryName);
 		try
 		{
@@ -2084,7 +2084,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_pendingGameSession = new GameSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources, clientName, startingViewDistance, serverAddress, null, null, null, null, null, this);
 			
 			// This was a success, so change state.
-			_modeContainer.currentMode = _modeContainer.connecting;
+			_modeContainer.setActive(_modeContainer.connecting.becomeActive());
 			_isRunningOnServer = true;
 			_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
 		}
@@ -2108,7 +2108,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// Whenever we exit trading mode, we always go back into play mode.
 		_currentTradingPartnerIdBinding.set(0);
-		_modeContainer.currentMode = _modeContainer.play;
+		_modeContainer.setActive(_modeContainer.play.becomeActive());
 		_captureState.shouldCaptureMouse(true);
 	}
 
