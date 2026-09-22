@@ -23,4 +23,10 @@ public class ModeContainer
 	public ModeProfile profile;
 	public ModeTrading trading;
 	public ModeError error;
+
+	public void setActive(IGameMode active)
+	{
+		this.currentMode.didBecomeInactive();
+		this.currentMode = active;
+	}
 }

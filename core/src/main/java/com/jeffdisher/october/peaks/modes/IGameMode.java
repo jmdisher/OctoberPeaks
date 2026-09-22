@@ -6,4 +6,5 @@ package com.jeffdisher.october.peaks.modes;
  */
 public interface IGameMode
 {
+	void didBecomeInactive();
 }
