@@ -6,13 +6,17 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeError implements IGameMode
 {
-	public ModeError becomeActive()
+	public String[] errorPayload;
+
+	public ModeError becomeActive(String[] errorPayload)
 	{
+		this.errorPayload = errorPayload;
 		return this;
 	}
 
 	@Override
 	public void didBecomeInactive()
 	{
+		this.errorPayload = null;
 	}
 }

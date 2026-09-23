@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
+import com.jeffdisher.october.peaks.GameSession;
+
 
 /**
  * The UI state under the PAUSE screen where the user can change key bindings.
@@ -7,13 +9,17 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeKeyBindings implements IGameMode
 {
-	public ModeKeyBindings becomeActive()
+	public GameSession currentGameSession;
+
+	public ModeKeyBindings becomeActive(GameSession currentGameSession)
 	{
+		this.currentGameSession = currentGameSession;
 		return this;
 	}
 
 	@Override
 	public void didBecomeInactive()
 	{
+		this.currentGameSession = null;
 	}
 }

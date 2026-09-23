@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
+import com.jeffdisher.october.peaks.profiling.ProfilingSession;
+
 
 /**
  * This state is similar to PLAY, in that it draws the game to the screen, but it is different in that it can
@@ -8,13 +10,17 @@ package com.jeffdisher.october.peaks.modes;
  */
 public class ModeProfile implements IGameMode
 {
-	public ModeProfile becomeActive()
+	public ProfilingSession profilingSession;
+
+	public ModeProfile becomeActive(ProfilingSession profilingSession)
 	{
+		this.profilingSession = profilingSession;
 		return this;
 	}
 
 	@Override
 	public void didBecomeInactive()
 	{
+		this.profilingSession = null;
 	}
 }
