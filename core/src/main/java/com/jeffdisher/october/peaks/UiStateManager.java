@@ -41,19 +41,16 @@ import com.jeffdisher.october.peaks.modes.ModeStart;
 import com.jeffdisher.october.peaks.modes.ModeTrading;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
-import com.jeffdisher.october.peaks.persistence.MutableServerList;
 import com.jeffdisher.october.peaks.profiling.ProfilingModes;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
-import com.jeffdisher.october.peaks.ui.FixedWindow;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
-import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
@@ -156,20 +153,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Block _waterBlock;
 	private final Block _lavaBlock;
 	private AbsoluteLocation _eyeBlockLocation;
-
-	// The non-game UI fixed windows.
-	private final FixedWindow _startWindow;
-	private final FixedWindow _listSinglePlayerStateWindow;
-	private final FixedWindow _confirmDeleteSinglePlayerStateWindow;
-	private final FixedWindow _newSinglePlayerStateWindow;
-	private final FixedWindow _listMultiPlayerStateWindow;
-	private final FixedWindow _newMultiPlayerStateWindow;
-	private final FixedWindow _pauseStateWindow;
-	private final FixedWindow _errorStateWindow;
-	private final FixedWindow _optionsStateWindow;
-	private final FixedWindow _keyBindingsStateWindow;
-	private final FixedWindow _connectingStateWindow;
-	private final FixedWindow _listProfileRunsStateWindow;
 
 	public UiStateManager(Environment environment
 		, GL20 gl
@@ -316,46 +299,142 @@ public class UiStateManager implements GameSession.ICallouts
 		_waterBlock = _env.blocks.fromItem(_env.items.getItemById("op.water_source"));
 		_lavaBlock = _env.blocks.fromItem(_env.items.getItemById("op.lava_source"));
 		
-		// Build the fixed UI windows.
-		_startWindow = UiResources.buildStartWindow(_ui, this, _uiData);
-		_listSinglePlayerStateWindow = UiResources.buildListSinglePlayerStateWindow(_ui
-			, this
-			, _uiData
-			, isLeftClick
-			, LocalStorageManager.WORLD_DIRECTORY_PREFIX
-		);
-		_confirmDeleteSinglePlayerStateWindow = UiResources.buildConfirmDeleteSinglePlayerStateWindow(_ui
-			, this
-			, _uiData
-			, LocalStorageManager.WORLD_DIRECTORY_PREFIX
-		);
-		_newSinglePlayerStateWindow = UiResources.buildNewSinglePlayerStateWindow(_ui, this, _uiData);
-		_listMultiPlayerStateWindow = UiResources.buildListMultiPlayerStateWindow(_ui, this, _uiData, isLeftClick);
-		_newMultiPlayerStateWindow = UiResources.buildNewMultiPlayerStateWindow(_ui, this, _uiData);
-		_pauseStateWindow = UiResources.buildPauseStateWindow(_ui, this, _uiData);
-		_errorStateWindow = UiResources.buildErrorStateWindow(_ui, this, _uiData);
-		_optionsStateWindow = UiResources.buildOptionsStateWindow(_ui, this, _uiData);
-		_keyBindingsStateWindow = UiResources.buildKeyBindingsStateWindow(_ui, this, _uiData);
-		_connectingStateWindow = UiResources.buildConnectingStateWindow(_ui, this, _uiData);
-		_listProfileRunsStateWindow = UiResources.buildListProfileRunsStateWindow(_ui, this, _uiData, ProfilingModes.ALL_MODES);
-		
 		// Build the modes (we add these late since they should be allowed to depend on arbitrary things here).
-		_modeContainer.start = new ModeStart();
-		_modeContainer.listSinglePlayer = new ModeListSinglePlayer();
-		_modeContainer.confirmDeleteSinglePlayer = new ModeConfirmDeleteSinglePlayer();
-		_modeContainer.newSinglePlayer =  new ModeNewSinglePlayer();
-		_modeContainer.listMultiPlayer = new ModeListMultiPlayer();
-		_modeContainer.newMultiPlayer = new ModeNewMultiPlayer();
-		_modeContainer.listForProfile = new ModeListForProfile();
-		_modeContainer.options = new ModeOptions();
-		_modeContainer.keyBindings = new ModeKeyBindings();
-		_modeContainer.connecting = new ModeConnecting();
+		_modeContainer.start = new ModeStart(_modeContainer
+			, _localStorageManager
+			, _ui
+			, _mouseState
+			, _uiData
+		);
+		_modeContainer.listSinglePlayer = new ModeListSinglePlayer(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (String directoryName) -> {
+				// We just pass nulls for our new game options.
+				GameSession session = _createSinglePlayerSession(_gl, _resources, directoryName, null, null, null, 0);
+				_isRunningOnServer = false;
+				_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+				return session;
+			}
+		);
+		_modeContainer.confirmDeleteSinglePlayer = new ModeConfirmDeleteSinglePlayer(_modeContainer
+			, _localStorageManager
+			, _ui
+			, _mouseState
+			, _uiData
+		);
+		_modeContainer.newSinglePlayer =  new ModeNewSinglePlayer(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (String directoryName
+				, WorldConfig.WorldGeneratorName worldGeneratorName
+				, WorldConfig.DefaultPlayerMode defaultPlayerMode
+				, Difficulty difficulty
+				, Integer basicWorldGeneratorSeed
+			) -> {
+				GameSession session = _createSinglePlayerSession(_gl, _resources, directoryName, worldGeneratorName, defaultPlayerMode, difficulty, basicWorldGeneratorSeed);
+				_isRunningOnServer = false;
+				_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+				return session;
+			}
+		);
+		_modeContainer.listMultiPlayer = new ModeListMultiPlayer(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (String clientName, int startingViewDistance, InetSocketAddress serverAddress) -> {
+				GameSession session;
+				try
+				{
+					session = new GameSession(_env
+						, gl
+						, _uiData.mutablePreferences.screenBrightness
+						, resources
+						, clientName
+						, startingViewDistance
+						, serverAddress
+						, null
+						, null
+						, null
+						, null
+						, null
+						, this
+					);
+				}
+				catch (ConnectException e)
+				{
+					// Something went wrong, so don't change state, but we can log this (might want somewhere in the UI to show this, later).
+					e.printStackTrace();
+					session = null;
+				}
+				
+				if (null != session)
+				{
+					// This was a success, so change state.
+					_isRunningOnServer = true;
+					_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+				}
+				return session;
+			}
+		);
+		_modeContainer.newMultiPlayer = new ModeNewMultiPlayer(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+		);
+		_modeContainer.listForProfile = new ModeListForProfile(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (ProfilingModes mode) -> {
+				ProfilingSession session = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
+				mode.populate.accept(_env, session);
+				return session;
+			}
+		);
+		_modeContainer.options = new ModeOptions(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (GameSession session) -> {
+				_drawCommonPauseBackground(session);
+			}
+		);
+		_modeContainer.keyBindings = new ModeKeyBindings(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (GameSession session) -> {
+				_drawCommonPauseBackground(session);
+			}
+		);
+		_modeContainer.connecting = new ModeConnecting(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+		);
 		_modeContainer.play = new ModePlay();
 		_modeContainer.inventory = new ModeInventory();
-		_modeContainer.pause = new ModePause();
+		_modeContainer.pause = new ModePause(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+			, (GameSession session) -> {
+				_drawCommonPauseBackground(session);
+			}
+			, () -> {
+				_captureState.shouldCaptureMouse(true);
+			}
+		);
 		_modeContainer.profile = new ModeProfile();
 		_modeContainer.trading = new ModeTrading();
-		_modeContainer.error = new ModeError();
+		_modeContainer.error = new ModeError(_modeContainer
+			, _ui
+			, _mouseState
+			, _uiData
+		);
 		_modeContainer.currentMode = _modeContainer.start.becomeActive();
 	}
 
@@ -803,457 +882,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_captureState.shouldCaptureMouse(false);
 	}
 
-	public void action_clickSinglePlayerButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// Enter the single-player list.
-			Assert.assertTrue(_modeContainer.start == _modeContainer.currentMode);
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
-			
-			// Update the world name list since we are entering that state.
-			_localStorageManager.rebuildSinglePlayerListBinding();
-		}
-	}
-
-	public void action_clickMultiPlayerButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// Enter the single-player list.
-			Assert.assertTrue(_modeContainer.start == _modeContainer.currentMode);
-			_modeContainer.setActive(_modeContainer.listMultiPlayer.becomeActive());
-			
-			// Request that this list be validated.
-			_uiData.serverList.pollServers();
-		}
-	}
-
-	public void action_clickQuitButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// From here, we quit directly, as this is top-level.
-			if (_modeContainer.currentMode == _modeContainer.error)
-			{
-				Gdx.app.exit();
-			}
-			else
-			{
-				// (if there is an error payload, we won't wait for the app to quit).
-				System.exit(1);
-			}
-		}
-	}
-
-	public void action_clickEnterSingleWorldButton(String directoryName)
-	{
-		if (_mouseState.leftClick)
-		{
-			// We just pass nulls for our new game options.
-			_enterSingleWorld(_gl, _resources, directoryName, null, null, null, 0);
-		}
-	}
-
-	public void action_clickDeleteSingleWorldButton(String directoryName)
-	{
-		if (_mouseState.leftClick)
-		{
-			// We want to enter the confirmation state.
-			Assert.assertTrue(_modeContainer.listSinglePlayer == _modeContainer.currentMode);
-			_modeContainer.setActive(_modeContainer.confirmDeleteSinglePlayer);
-			
-			// We also need to put this chosen directory in the binding.
-			_uiData.selectedWorldNameForDelete.set(directoryName);
-		}
-	}
-
-	public void action_clickBackButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// This is the same as hitting escape.
-			_doBackStateTransition();
-		}
-	}
-
-	public void action_clickCreateSingleWorldButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// Enter the single-player creation window.
-			Assert.assertTrue(_modeContainer.listSinglePlayer == _modeContainer.currentMode);
-			_modeContainer.setActive(_modeContainer.newSinglePlayer.becomeActive());
-			
-			// Select the default text field.
-			_uiData.typingCapture = _uiData.newWorldNameBinding;
-		}
-	}
-
-	public void action_clickConfirmDeleteButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// Verify state transition.
-			Assert.assertTrue(_modeContainer.confirmDeleteSinglePlayer == _modeContainer.currentMode);
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
-			
-			// Delete the directory, then return to the listing.
-			_localStorageManager.deleteWorldAndUpdateList(_uiData.selectedWorldNameForDelete.get());
-			
-			_uiData.selectedWorldNameForDelete.set(null);
-		}
-	}
-
-	public void action_clickWorldGeneratorRadioButton(WorldConfig.WorldGeneratorName selected)
-	{
-		if (_mouseState.leftClick)
-		{
-			_uiData.worldGeneratorNameBinding.set(selected);
-		}
-	}
-
-	public void action_clickPlayerModeRadioButton(WorldConfig.DefaultPlayerMode selected)
-	{
-		if (_mouseState.leftClick)
-		{
-			_uiData.defaultPlayerModeBinding.set(selected);
-		}
-	}
-
-	public void action_clickDifficultyRadioButton(Difficulty selected)
-	{
-		if (_mouseState.leftClick)
-		{
-			_uiData.difficultyBinding.set(selected);
-		}
-	}
-
-	public void action_clickSeedTextField()
-	{
-		// We want to enable text capture for this binding.
-		if (_mouseState.leftClick)
-		{
-			_uiData.typingCapture = _uiData.newSeedBinding;
-		}
-	}
-
-	public void action_clickConfirmCreateSingleWorldButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// We want to start a single-player game.
-			Assert.assertTrue(_modeContainer.newSinglePlayer == _modeContainer.currentMode);
-			
-			// Make sure that the name is non-empty and not already used.
-			String worldName = _uiData.newWorldNameBinding.get();
-			String directoryName = "world_" + worldName;
-			boolean alreadyExists = _uiData.worldListBinding.get().contains(directoryName);
-			if (!alreadyExists && (worldName.length() > 0))
-			{
-				WorldConfig.WorldGeneratorName worldGeneratorName = _uiData.worldGeneratorNameBinding.get();
-				WorldConfig.DefaultPlayerMode defaultPlayerMode = _uiData.defaultPlayerModeBinding.get();
-				Difficulty difficulty = _uiData.difficultyBinding.get();
-				// The seed is a little tricky: if empty, use the default, if a number, use the number, if text, use the hash.
-				Integer basicWorldGeneratorSeed = null;
-				String rawSeed = _uiData.newSeedBinding.get();
-				if (!rawSeed.isEmpty())
-				{
-					try
-					{
-						basicWorldGeneratorSeed = Integer.parseInt(rawSeed);
-					}
-					catch (NumberFormatException e)
-					{
-						basicWorldGeneratorSeed = rawSeed.hashCode();
-					}
-				}
-				_enterSingleWorld(_gl
-					, _resources
-					, directoryName
-					, worldGeneratorName
-					, defaultPlayerMode
-					, difficulty
-					, basicWorldGeneratorSeed
-				);
-				_uiData.newWorldNameBinding.set("");
-				_uiData.typingCapture = null;
-			}
-		}
-	}
-
-	public void action_clickNewWorldNameTextField()
-	{
-		// We want to enable text capture for this binding.
-		if (_mouseState.leftClick)
-		{
-			_uiData.typingCapture = _uiData.newWorldNameBinding;
-		}
-	}
-
-	public void action_clickJoinMultiWorldButton(MutableServerList.ServerRecord server)
-	{
-		if (_mouseState.leftClick)
-		{
-			// Note that "_connectToServer" will try to connect to server and change state, but only if successful.
-			String clientName = _uiData.mutablePreferences.clientName.get();
-			int startingViewDistance = _uiData.mutablePreferences.preferredViewDistance.get();
-			_connectToServer(_gl, _resources, clientName, startingViewDistance, server.address);
-		}
-	}
-
-	public void action_clickDeleteMultiWorldButton(MutableServerList.ServerRecord server)
-	{
-		if (_mouseState.leftClick)
-		{
-			_uiData.serverList.removeServerFromList(server);
-		}
-	}
-
-	public void action_clickAddNewServerButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// Enter the single-player creation window.
-			Assert.assertTrue(_modeContainer.listMultiPlayer == _modeContainer.currentMode);
-			_modeContainer.setActive(_modeContainer.newMultiPlayer.becomeActive());
-			
-			// Select the default text field.
-			_uiData.typingCapture = _uiData.newServerAddressBinding;
-			
-			// Clear any stale state from last time.
-			_uiData.currentlyTestingServerBinding.set(null);
-		}
-	}
-
-	public void action_clickServerAddressTextField()
-	{
-		// We want to enable text capture for this binding.
-		if (_mouseState.leftClick)
-		{
-			_uiData.typingCapture = _uiData.newServerAddressBinding;
-		}
-	}
-
-	public void action_clickTestServerButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// We want to do the test for version, etc, and add this to our list on success.
-			Assert.assertTrue(_modeContainer.newMultiPlayer == _modeContainer.currentMode);
-			
-			// We will need to parse this address from the binding.
-			String rawAddress = _uiData.newServerAddressBinding.get();
-			int colonIndex = rawAddress.indexOf(":");
-			if (-1 != colonIndex)
-			{
-				String ipHostName = rawAddress.substring(0, colonIndex);
-				int port = Integer.parseInt(rawAddress.substring(colonIndex + 1));
-				InetSocketAddress address = new InetSocketAddress(ipHostName, port);
-				
-				// Create the socket and start the background test, storing the new token in the binding.
-				MutableServerList.ServerRecord record = _uiData.serverList.beginSpecialPollRequest(address);
-				_uiData.currentlyTestingServerBinding.set(record);
-				_uiData.newServerAddressBinding.set("");
-				_uiData.typingCapture = null;
-			}
-		}
-	}
-
-	public void action_clickSaveServerButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			Assert.assertTrue(_modeContainer.newMultiPlayer == _modeContainer.currentMode);
-			
-			// If there is a binding, and it is good, add it to the server list and back out of this.
-			MutableServerList.ServerRecord record = _uiData.currentlyTestingServerBinding.get();
-			if ((null != record) && record.isGood)
-			{
-				_uiData.serverList.addServerToList(record);
-				_uiData.currentlyTestingServerBinding.set(null);
-				
-				// We can escape this state.
-				_doBackStateTransition();
-			}
-		}
-	}
-
-	public void action_clickCancelConnectButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// We just want to back out.
-			_doBackStateTransition();
-		}
-	}
-
-	public void action_clickExitGameButton()
-	{
-		Assert.assertTrue(_modeContainer.pause == _modeContainer.currentMode);
-		
-		if (_mouseState.leftClick)
-		{
-			_modeContainer.pause.currentGameSession.shutdown();
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
-		}
-	}
-
-	public void action_clickOptionsButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			GameSession gameSession = (_modeContainer.pause == _modeContainer.currentMode)
-				? _modeContainer.pause.currentGameSession
-				: null
-			;
-			_modeContainer.setActive(_modeContainer.options.becomeActive(gameSession));
-		}
-	}
-
-	public void action_clickKeyBindingsButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			GameSession gameSession = (_modeContainer.pause == _modeContainer.currentMode)
-				? _modeContainer.pause.currentGameSession
-				: null
-			;
-			_modeContainer.setActive(_modeContainer.keyBindings.becomeActive(gameSession));
-			_uiData.currentlyChangingControl.set(null);
-		}
-	}
-
-	public void action_clickReturnToGameButton()
-	{
-		Assert.assertTrue(_modeContainer.pause == _modeContainer.currentMode);
-		
-		if (_mouseState.leftClick)
-		{
-			_modeContainer.pause.currentGameSession.client.resumeGame();
-			_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.pause.currentGameSession));
-			_captureState.shouldCaptureMouse(true);
-		}
-	}
-
-	public void action_clickFullScreenToggle(boolean isFullScreen)
-	{
-		if (_mouseState.leftClick)
-		{
-			// We will toggle the full screen and update the binding data.
-			boolean newFullScreen = !isFullScreen;
-			if (newFullScreen)
-			{
-				// We will just use the full screen of the current display mode.
-				Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
-			}
-			else
-			{
-				// For now, we will always use this same default window size.
-				Gdx.graphics.setWindowedMode(1280, 960);
-			}
-			_uiData.mutablePreferences.isFullScreen.set(newFullScreen);
-		}
-	}
-
-	public void action_clickViewDistanceSlider(boolean shouldIncrease)
-	{
-		Assert.assertTrue(_modeContainer.options == _modeContainer.currentMode);
-		
-		if (_mouseState.leftClick)
-		{
-			// TODO:  When we persist preferences, put this there whether or not in game.
-			if (null != _modeContainer.options.currentGameSession)
-			{
-				// We try changing this in the client and it will return the updated value.
-				int oldDistance = _uiData.mutablePreferences.preferredViewDistance.get();
-				int newDistance = oldDistance +
-					(shouldIncrease ? 1 : -1)
-				;
-				int finalValue = _modeContainer.options.currentGameSession.client.trySetViewDistance(newDistance);
-				if (finalValue != oldDistance)
-				{
-					// If this change did anything, update the UI and save changes.
-					_uiData.mutablePreferences.preferredViewDistance.set(finalValue);
-					_uiData.mutablePreferences.saveToDisk();
-				}
-			}
-		}
-	}
-
-	public void action_clickBrightnessSlider(boolean shouldIncrease)
-	{
-		if (_mouseState.leftClick)
-		{
-			// We just want to increment this by 0.1 increments between 1.0 and 2.0.
-			int current = (int)(10.0f * _uiData.mutablePreferences.screenBrightness.get());
-			int next;
-			if (shouldIncrease)
-			{
-				next = Math.min(20, current + 1);
-			}
-			else
-			{
-				next = Math.max(10, current - 1);
-			}
-			float updated = ((float) next) / 10.0f;
-			_uiData.mutablePreferences.screenBrightness.set(updated);
-		}
-	}
-
-	public void action_clickClientNameTextField()
-	{
-		if (_mouseState.leftClick)
-		{
-			// We want to enable text capture for this binding.
-			_uiData.typingCapture = _uiData.mutablePreferences.clientName;
-		}
-	}
-
-	public void action_clickKeyBindingSelector(MutableControls.Control selectedControl)
-	{
-		if (_mouseState.leftClick)
-		{
-			_uiData.currentlyChangingControl.set(selectedControl);
-		}
-	}
-
-	public void action_clickCopyToClipboardButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// Just copy the payload to the clipboard.
-			StringBuilder builder = new StringBuilder();
-			Assert.assertTrue(_modeContainer.currentMode == _modeContainer.error);
-			for (String elt : _modeContainer.error.errorPayload)
-			{
-				builder.append(elt);
-				builder.append('\n');
-			}
-			Gdx.app.getClipboard().setContents(builder.toString());
-		}
-	}
-
-	public void action_clickProfileRunsButton()
-	{
-		if (_mouseState.leftClick)
-		{
-			// This just changes state.
-			_modeContainer.setActive(_modeContainer.listForProfile.becomeActive());
-		}
-	}
-
-	public void action_clickProfileRunButton(ProfilingModes mode)
-	{
-		if (_mouseState.leftClick)
-		{
-			// This just changes state.
-			ProfilingSession session = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
-			mode.populate.accept(_env, session);
-			_modeContainer.setActive(_modeContainer.profile.becomeActive(session));
-		}
-	}
-
 	public void shutdown()
 	{
 		// If we are in a state which has a game session, shut it down.
@@ -1362,48 +990,6 @@ public class UiStateManager implements GameSession.ICallouts
 			didOpen = true;
 		}
 		return didOpen;
-	}
-
-	private IAction _drawStartStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _startWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawListSinglePlayerStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _listSinglePlayerStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawConfirmDeleteSinglePlayerStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _confirmDeleteSinglePlayerStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawNewSinglePlayerStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _newSinglePlayerStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawListMultiPlayerStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _listMultiPlayerStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawNewMultiPlayerStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _newMultiPlayerStateWindow.render(_mouseState.cursor);
 	}
 
 	private IAction _drawInventoryStateWindows()
@@ -1572,32 +1158,6 @@ public class UiStateManager implements GameSession.ICallouts
 		return action;
 	}
 
-	private IAction _drawPauseStateWindows()
-	{
-		_drawCommonPauseBackground(_modeContainer.pause.currentGameSession);
-		
-		return _pauseStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawErrorStateWindows()
-	{
-		// We will treat dumping the payload as a special case and just write it to the screen instead of making a binding to stitch it into the rest of the error window.
-		float topY = 0.6f;
-		for (String elt : _modeContainer.error.errorPayload)
-		{
-			float bottomY = topY - UiIdioms.GENERAL_TEXT_HEIGHT;
-			UiIdioms.drawTextLeft(_ui, new Rect(-0.8f, bottomY, 0.8f, topY), elt);
-			topY = bottomY;
-			if (topY < -0.6f)
-			{
-				break;
-			}
-		}
-		
-		// Now, just draw the rest of the fixed window to get the buttons we want.
-		return _errorStateWindow.render(_mouseState.cursor);
-	}
-
 	private IAction _drawPlayStateWindows()
 	{
 		// In this case, just draw the common UI elements.
@@ -1674,46 +1234,19 @@ public class UiStateManager implements GameSession.ICallouts
 		return action;
 	}
 
-	private IAction _drawOptionsStateWindows()
-	{
-		Assert.assertTrue(_modeContainer.options == _modeContainer.currentMode);
-		
-		if (null != _modeContainer.options.currentGameSession)
-		{
-			_drawCommonPauseBackground(_modeContainer.options.currentGameSession);
-		}
-		
-		return _optionsStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawKeyBindingStateWindows()
-	{
-		Assert.assertTrue(_modeContainer.keyBindings == _modeContainer.currentMode);
-		
-		if (null != _modeContainer.keyBindings.currentGameSession)
-		{
-			_drawCommonPauseBackground(_modeContainer.keyBindings.currentGameSession);
-		}
-		
-		return _keyBindingsStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawConnectingStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _connectingStateWindow.render(_mouseState.cursor);
-	}
-
-	private IAction _drawListProfileRunsStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		return _listProfileRunsStateWindow.render(_mouseState.cursor);
-	}
-
 	private void _drawCommonPauseBackground(GameSession currentGameSession)
 	{
+		if (null != currentGameSession)
+		{
+			// We don't use these actual parameters unless in the proper play mode.
+			PartialEntity selectedEntity = null;
+			AbsoluteLocation selectedBlock = null;
+			Block selectedType = null;
+			FacingDirection orientation = null;
+			currentGameSession.scene.render(selectedEntity, selectedBlock, selectedType, orientation);
+			currentGameSession.eyeEffect.drawEyeEffect();
+		}
+		
 		// Draw whatever is common to states where we draw interactive buttons on top.
 		_ui.enterUiRenderMode();
 		
@@ -1777,53 +1310,43 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = null;
 		if (_modeContainer.currentMode == _modeContainer.start)
 		{
-			action = _drawStartStateWindows();
+			action = _modeContainer.start.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.listSinglePlayer)
 		{
-			action = _drawListSinglePlayerStateWindows();
+			action = _modeContainer.listSinglePlayer.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.confirmDeleteSinglePlayer)
 		{
-			action = _drawConfirmDeleteSinglePlayerStateWindows();
+			action = _modeContainer.confirmDeleteSinglePlayer.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.newSinglePlayer)
 		{
-			action = _drawNewSinglePlayerStateWindows();
+			action = _modeContainer.newSinglePlayer.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.listMultiPlayer)
 		{
-			action = _drawListMultiPlayerStateWindows();
+			action = _modeContainer.listMultiPlayer.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.newMultiPlayer)
 		{
-			action = _drawNewMultiPlayerStateWindows();
+			action = _modeContainer.newMultiPlayer.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.listForProfile)
 		{
-			action = _drawListProfileRunsStateWindows();
+			action = _modeContainer.listForProfile.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.options)
 		{
-			if (null != _modeContainer.options.currentGameSession)
-			{
-				_modeContainer.options.currentGameSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
-				_modeContainer.options.currentGameSession.eyeEffect.drawEyeEffect();
-			}
-			action = _drawOptionsStateWindows();
+			action = _modeContainer.options.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.keyBindings)
 		{
-			if (null != _modeContainer.keyBindings.currentGameSession)
-			{
-				_modeContainer.keyBindings.currentGameSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
-				_modeContainer.keyBindings.currentGameSession.eyeEffect.drawEyeEffect();
-			}
-			action = _drawKeyBindingStateWindows();
+			action = _modeContainer.keyBindings.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.connecting)
 		{
-			action = _drawConnectingStateWindows();
+			action = _modeContainer.connecting.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.play)
 		{
@@ -1839,9 +1362,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		else if (_modeContainer.currentMode == _modeContainer.pause)
 		{
-			_modeContainer.pause.currentGameSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
-			_modeContainer.pause.currentGameSession.eyeEffect.drawEyeEffect();
-			action = _drawPauseStateWindows();
+			action = _modeContainer.pause.drawRelevantWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.profile)
 		{
@@ -1857,7 +1378,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		else if (_modeContainer.currentMode == _modeContainer.error)
 		{
-			action = _drawErrorStateWindows();
+			action = _modeContainer.error.drawRelevantWindows();
 		}
 		else
 		{
@@ -2185,7 +1706,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData.typingCapture = null;
 	}
 
-	private void _enterSingleWorld(GL20 gl
+	private GameSession _createSinglePlayerSession(GL20 gl
 		, LoadedResources resources
 		, String directoryName
 		, WorldConfig.WorldGeneratorName worldGeneratorName
@@ -2194,10 +1715,11 @@ public class UiStateManager implements GameSession.ICallouts
 		, Integer basicWorldGeneratorSeed
 	)
 	{
+		GameSession pendingGameSession;
 		File localWorldDirectory = _localStorageManager.getWorldDirectory(directoryName);
 		try
 		{
-			GameSession pendingGameSession = new GameSession(_env
+			pendingGameSession = new GameSession(_env
 				, gl
 				, _uiData.mutablePreferences.screenBrightness
 				, resources
@@ -2211,46 +1733,13 @@ public class UiStateManager implements GameSession.ICallouts
 				, basicWorldGeneratorSeed
 				, this
 			);
-			_modeContainer.setActive(_modeContainer.connecting.becomeActive(pendingGameSession));
 		}
 		catch (ConnectException e)
 		{
 			// There are no connections in this case.
 			throw Assert.unexpected(e);
 		}
-		_isRunningOnServer = false;
-		_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
-	}
-
-	private void _connectToServer(GL20 gl, LoadedResources resources, String clientName, int startingViewDistance, InetSocketAddress serverAddress)
-	{
-		try
-		{
-			GameSession pendingGameSession = new GameSession(_env
-				, gl
-				, _uiData.mutablePreferences.screenBrightness
-				, resources
-				, clientName
-				, startingViewDistance
-				, serverAddress
-				, null
-				, null
-				, null
-				, null
-				, null
-				, this
-			);
-			
-			// This was a success, so change state.
-			_modeContainer.setActive(_modeContainer.connecting.becomeActive(pendingGameSession));
-			_isRunningOnServer = true;
-			_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
-		}
-		catch (ConnectException e)
-		{
-			// Something went wrong, so don't change state, but we can log this (might want somewhere in the UI to show this, later).
-			e.printStackTrace();
-		}
+		return pendingGameSession;
 	}
 
 	private static Inventory _getInventory(Entity entity)
