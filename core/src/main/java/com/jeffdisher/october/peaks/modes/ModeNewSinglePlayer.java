@@ -55,6 +55,12 @@ public class ModeNewSinglePlayer implements IGameMode
 	{
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_goBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -271,9 +277,14 @@ public class ModeNewSinglePlayer implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			// Go back to the list.
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
+			_goBack();
 		}
+	}
+
+	private void _goBack()
+	{
+		// Go back to the list.
+		_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
 	}
 
 

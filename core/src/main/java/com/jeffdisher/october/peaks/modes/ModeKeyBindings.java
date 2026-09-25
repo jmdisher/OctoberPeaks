@@ -59,6 +59,12 @@ public class ModeKeyBindings implements IGameMode
 		this.currentGameSession = null;
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_escapeOrBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		if (null != this.currentGameSession)
@@ -117,21 +123,26 @@ public class ModeKeyBindings implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			if (null != _uiData.currentlyChangingControl.get())
+			_escapeOrBack();
+		}
+	}
+
+	private void _escapeOrBack()
+	{
+		if (null != _uiData.currentlyChangingControl.get())
+		{
+			_uiData.currentlyChangingControl.set(null);
+		}
+		else
+		{
+			// Key bindings depends on whether is a game playing.
+			if (null != this.currentGameSession)
 			{
-				_uiData.currentlyChangingControl.set(null);
+				_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
 			}
 			else
 			{
-				// Key bindings depends on whether is a game playing.
-				if (null != this.currentGameSession)
-				{
-					_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
-				}
-				else
-				{
-					_modeContainer.setActive(_modeContainer.start.becomeActive());
-				}
+				_modeContainer.setActive(_modeContainer.start.becomeActive());
 			}
 		}
 	}

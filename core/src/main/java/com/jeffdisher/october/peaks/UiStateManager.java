@@ -12,7 +12,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
@@ -282,7 +281,7 @@ public class UiStateManager implements GameSession.ICallouts
 				if (!didSend)
 				{
 					// If we failed to send the trade, it means something went wrong (usually out of range) so exit trading mode.
-					_exitTradingMode();
+					_modeContainer.trading.handleEscape();
 				}
 			}
 		};
@@ -415,8 +414,16 @@ public class UiStateManager implements GameSession.ICallouts
 			, _mouseState
 			, _uiData
 		);
-		_modeContainer.play = new ModePlay();
-		_modeContainer.inventory = new ModeInventory();
+		_modeContainer.play = new ModePlay(_modeContainer
+			, () -> {
+				_captureState.shouldCaptureMouse(false);
+			}
+		);
+		_modeContainer.inventory = new ModeInventory(_modeContainer
+			, () -> {
+				_captureState.shouldCaptureMouse(true);
+			}
+		);
 		_modeContainer.pause = new ModePause(_modeContainer
 			, _ui
 			, _mouseState
@@ -429,7 +436,12 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		);
 		_modeContainer.profile = new ModeProfile();
-		_modeContainer.trading = new ModeTrading();
+		_modeContainer.trading = new ModeTrading(_modeContainer
+			, _currentTradingPartnerIdBinding
+			, () -> {
+				_captureState.shouldCaptureMouse(true);
+			}
+		);
 		_modeContainer.error = new ModeError(_modeContainer
 			, _ui
 			, _mouseState
@@ -565,7 +577,10 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public void handleKeyEsc()
 	{
-		_doBackStateTransition();
+		_modeContainer.currentMode.handleEscape();
+		
+		// Any meaning of "back" should stop text input.
+		_uiData.typingCapture = null;
 	}
 
 	public void handleHotbarIndex(int hotbarIndex)
@@ -1587,125 +1602,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_audibleMotionInFrame = null;
 	}
 
-	private void _doBackStateTransition()
-	{
-		if (_modeContainer.currentMode == _modeContainer.start)
-		{
-			// Key events are ignored in start state.
-		}
-		else if (_modeContainer.currentMode == _modeContainer.listSinglePlayer)
-		{
-			// We just want to go back.
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.confirmDeleteSinglePlayer)
-		{
-			// Go back to the list.
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.newSinglePlayer)
-		{
-			// Go back to the list.
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.listMultiPlayer)
-		{
-			// We just want to go back.
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.newMultiPlayer)
-		{
-			// Go back to the list.
-			_modeContainer.setActive(_modeContainer.listMultiPlayer.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.listForProfile)
-		{
-			// We just want to go back.
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.options)
-		{
-			// Write-back preferences.
-			_uiData.mutablePreferences.saveToDisk();
-			// Options depends on whether is a game playing.
-			if (null != _modeContainer.options.currentGameSession)
-			{
-				_modeContainer.setActive(_modeContainer.pause.becomeActive(_modeContainer.options.currentGameSession));
-			}
-			else
-			{
-				_modeContainer.setActive(_modeContainer.start.becomeActive());
-			}
-		}
-		else if (_modeContainer.currentMode == _modeContainer.keyBindings)
-		{
-			if (null != _uiData.currentlyChangingControl.get())
-			{
-				_uiData.currentlyChangingControl.set(null);
-			}
-			else
-			{
-				// Key bindings depends on whether is a game playing.
-				if (null != _modeContainer.keyBindings.currentGameSession)
-				{
-					_modeContainer.setActive(_modeContainer.pause.becomeActive(_modeContainer.keyBindings.currentGameSession));
-				}
-				else
-				{
-					_modeContainer.setActive(_modeContainer.start.becomeActive());
-				}
-			}
-		}
-		else if (_modeContainer.currentMode == _modeContainer.connecting)
-		{
-			// We need to cancel the disconnect and switch back to start.
-			_modeContainer.connecting.pendingGameSession.shutdown();
-			_modeContainer.connecting.pendingGameSession = null;
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
-		}
-		else if (_modeContainer.currentMode == _modeContainer.play)
-		{
-			_modeContainer.play.currentGameSession.client.pauseGame();
-			_modeContainer.setActive(_modeContainer.pause.becomeActive(_modeContainer.play.currentGameSession));
-			_captureState.shouldCaptureMouse(false);
-		}
-		else if (_modeContainer.currentMode == _modeContainer.inventory)
-		{
-			_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
-			_captureState.shouldCaptureMouse(true);
-		}
-		else if (_modeContainer.currentMode == _modeContainer.pause)
-		{
-			_modeContainer.pause.currentGameSession.client.resumeGame();
-			_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.pause.currentGameSession));
-			_captureState.shouldCaptureMouse(true);
-		}
-		else if (_modeContainer.currentMode == _modeContainer.profile)
-		{
-			// We just want to exit, in this case.
-			System.out.println("Ending Profile Run");
-			_modeContainer.profile.profilingSession.shutdown();
-			Gdx.app.exit();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.trading)
-		{
-			// This is similar to the inventory mode so just return to play.
-			_exitTradingMode();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.error)
-		{
-			// There is no transition from this state.
-		}
-		else
-		{
-			// Every state needs to handle back support.
-			throw Assert.unreachable();
-		}
-		
-		// Any meaning of "back" should stop text input.
-		_uiData.typingCapture = null;
-	}
-
 	private GameSession _createSinglePlayerSession(GL20 gl
 		, LoadedResources resources
 		, String directoryName
@@ -1749,14 +1645,6 @@ public class UiStateManager implements GameSession.ICallouts
 			: entity.inventory()
 		;
 		return inventory;
-	}
-
-	private void _exitTradingMode()
-	{
-		// Whenever we exit trading mode, we always go back into play mode.
-		_currentTradingPartnerIdBinding.set(0);
-		_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.trading.currentGameSession));
-		_captureState.shouldCaptureMouse(true);
 	}
 
 

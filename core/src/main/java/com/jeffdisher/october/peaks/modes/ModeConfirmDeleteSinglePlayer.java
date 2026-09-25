@@ -53,6 +53,12 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 	{
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_goBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -101,8 +107,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			// Verify state transition.
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
+			_goBack();
 			
 			// Delete the directory, then return to the listing.
 			_localStorageManager.deleteWorldAndUpdateList(_uiData.selectedWorldNameForDelete.get());
@@ -115,8 +120,13 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			// Go back to the list.
-			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
+			_goBack();
 		}
+	}
+
+	private void _goBack()
+	{
+		// Go back to the list.
+		_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
 	}
 }
