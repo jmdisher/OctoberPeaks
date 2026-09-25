@@ -53,6 +53,12 @@ public class ModeNewMultiPlayer implements IGameMode
 	{
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_goBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -180,7 +186,7 @@ public class ModeNewMultiPlayer implements IGameMode
 				_uiData.currentlyTestingServerBinding.set(null);
 				
 				// We can escape this state.
-				_doBackStateTransition();
+				_goBack();
 			}
 		}
 	}
@@ -189,11 +195,11 @@ public class ModeNewMultiPlayer implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			_doBackStateTransition();
+			_goBack();
 		}
 	}
 
-	private void _doBackStateTransition()
+	private void _goBack()
 	{
 		// Go back to the list.
 		_modeContainer.setActive(_modeContainer.listMultiPlayer.becomeActive());

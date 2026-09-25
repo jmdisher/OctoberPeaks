@@ -52,6 +52,12 @@ public class ModeConnecting implements IGameMode
 		this.pendingGameSession = null;
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_goBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -85,10 +91,15 @@ public class ModeConnecting implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			// We need to cancel the disconnect and switch back to start.
-			this.pendingGameSession.shutdown();
-			this.pendingGameSession = null;
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
+			_goBack();
 		}
+	}
+
+	private void _goBack()
+	{
+		// We need to cancel the disconnect and switch back to start.
+		this.pendingGameSession.shutdown();
+		this.pendingGameSession = null;
+		_modeContainer.setActive(_modeContainer.start.becomeActive());
 	}
 }

@@ -60,6 +60,12 @@ public class ModeOptions implements IGameMode
 		this.currentGameSession = null;
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_goBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		if (null != this.currentGameSession)
@@ -226,17 +232,22 @@ public class ModeOptions implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			// Write-back preferences.
-			_uiData.mutablePreferences.saveToDisk();
-			// Options depends on whether is a game playing.
-			if (null != this.currentGameSession)
-			{
-				_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
-			}
-			else
-			{
-				_modeContainer.setActive(_modeContainer.start.becomeActive());
-			}
+			_goBack();
+		}
+	}
+
+	private void _goBack()
+	{
+		// Write-back preferences.
+		_uiData.mutablePreferences.saveToDisk();
+		// Options depends on whether is a game playing.
+		if (null != this.currentGameSession)
+		{
+			_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
+		}
+		else
+		{
+			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
 	}
 }
