@@ -63,6 +63,12 @@ public class ModePause implements IGameMode
 		this.currentGameSession = null;
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_returnToGame();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		_commonPauseRender.accept(this.currentGameSession);
@@ -133,9 +139,7 @@ public class ModePause implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			this.currentGameSession.client.resumeGame();
-			_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-			_mouseCapture.enableMouseCapture();
+			_returnToGame();
 		}
 	}
 
@@ -163,6 +167,13 @@ public class ModePause implements IGameMode
 			this.currentGameSession.shutdown();
 			_modeContainer.setActive(_modeContainer.start.becomeActive());
 		}
+	}
+
+	private void _returnToGame()
+	{
+		this.currentGameSession.client.resumeGame();
+		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
+		_mouseCapture.enableMouseCapture();
 	}
 
 

@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks.modes;
 
+import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
 
 
@@ -22,5 +23,14 @@ public class ModeProfile implements IGameMode
 	public void didBecomeInactive()
 	{
 		this.profilingSession = null;
+	}
+
+	@Override
+	public void handleEscape()
+	{
+		// We just want to exit, in this case.
+		System.out.println("Ending Profile Run");
+		this.profilingSession.shutdown();
+		Gdx.app.exit();
 	}
 }

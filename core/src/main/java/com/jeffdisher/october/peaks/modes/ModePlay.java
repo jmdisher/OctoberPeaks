@@ -8,7 +8,18 @@ import com.jeffdisher.october.peaks.GameSession;
  */
 public class ModePlay implements IGameMode
 {
+	private final ModeContainer _modeContainer;
+	private final IMouseCapture _mouseCapture;
+
 	public GameSession currentGameSession;
+
+	public ModePlay(ModeContainer modeContainer
+		, IMouseCapture mouseCapture
+	)
+	{
+		_modeContainer = modeContainer;
+		_mouseCapture = mouseCapture;
+	}
 
 	public ModePlay becomeActive(GameSession currentGameSession)
 	{
@@ -20,5 +31,19 @@ public class ModePlay implements IGameMode
 	public void didBecomeInactive()
 	{
 		this.currentGameSession = null;
+	}
+
+	@Override
+	public void handleEscape()
+	{
+		this.currentGameSession.client.pauseGame();
+		_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
+		_mouseCapture.disableMouseCapture();
+	}
+
+
+	public static interface IMouseCapture
+	{
+		void disableMouseCapture();
 	}
 }

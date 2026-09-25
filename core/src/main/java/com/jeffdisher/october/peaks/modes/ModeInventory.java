@@ -10,12 +10,23 @@ import com.jeffdisher.october.types.Craft;
  */
 public class ModeInventory implements IGameMode
 {
+	private final ModeContainer _modeContainer;
+	private final IMouseCapture _mouseCapture;
+
 	public GameSession currentGameSession;
 	public AbsoluteLocation openStationLocation;
 	public boolean viewingFuelInventory;
 	public Craft continuousInInventory;
 	public Craft continuousInBlock;
 	public boolean isManualCraftingStation;
+
+	public ModeInventory(ModeContainer modeContainer
+		, IMouseCapture mouseCapture
+	)
+	{
+		_modeContainer = modeContainer;
+		_mouseCapture = mouseCapture;
+	}
 
 	public ModeInventory becomeActive(GameSession currentGameSession, AbsoluteLocation openStationLocation)
 	{
@@ -37,5 +48,18 @@ public class ModeInventory implements IGameMode
 		this.continuousInInventory = null;
 		this.continuousInBlock = null;
 		this.isManualCraftingStation = false;
+	}
+
+	@Override
+	public void handleEscape()
+	{
+		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
+		_mouseCapture.enableMouseCapture();
+	}
+
+
+	public static interface IMouseCapture
+	{
+		void enableMouseCapture();
 	}
 }

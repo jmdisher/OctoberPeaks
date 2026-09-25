@@ -53,6 +53,12 @@ public class ModeListForProfile implements IGameMode
 	{
 	}
 
+	@Override
+	public void handleEscape()
+	{
+		_goBack();
+	}
+
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -110,9 +116,14 @@ public class ModeListForProfile implements IGameMode
 	{
 		if (_mouseState.leftClick)
 		{
-			// We just want to go back.
-			_modeContainer.setActive(_modeContainer.start.becomeActive());
+			_goBack();
 		}
+	}
+
+	private void _goBack()
+	{
+		// We just want to go back.
+		_modeContainer.setActive(_modeContainer.start.becomeActive());
 	}
 
 
