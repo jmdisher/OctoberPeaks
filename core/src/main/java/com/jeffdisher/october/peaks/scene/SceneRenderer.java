@@ -83,7 +83,7 @@ public class SceneRenderer
 		_skyBox.updateView(eye, target, upVector);
 	}
 
-	public void render(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType, FacingDirection orientation)
+	public void renderCommon()
 	{
 		long currentTimeMillis = System.currentTimeMillis();
 		_animationManager.startNewFrame(currentTimeMillis);
@@ -109,6 +109,16 @@ public class SceneRenderer
 		_gl.glDepthMask(true);
 		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
 		
+		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
+		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye);
+		
+		// Do any other end-of-frame cleanup or processing.
+		_blockRenderer.handleEndOfFrame();
+		_particleEngine.freeDeadParticles(currentTimeMillis);
+	}
+
+	public void renderSelection(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block selectedType, FacingDirection orientation)
+	{
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
 		if (null != selectedBlock)
 		{
@@ -118,12 +128,6 @@ public class SceneRenderer
 		{
 			_entityRenderer.renderSelectedEntity(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedEntity);
 		}
-		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
-		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye);
-		
-		// Do any other end-of-frame cleanup or processing.
-		_blockRenderer.handleEndOfFrame();
-		_particleEngine.freeDeadParticles(currentTimeMillis);
 	}
 
 	public void setCuboid(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap, Set<BlockAddress> changedBlocks)

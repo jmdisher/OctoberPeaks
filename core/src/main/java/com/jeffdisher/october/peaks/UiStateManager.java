@@ -1238,12 +1238,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (null != currentGameSession)
 		{
-			// We don't use these actual parameters unless in the proper play mode.
-			PartialEntity selectedEntity = null;
-			AbsoluteLocation selectedBlock = null;
-			Block selectedType = null;
-			FacingDirection orientation = null;
-			currentGameSession.scene.render(selectedEntity, selectedBlock, selectedType, orientation);
+			currentGameSession.scene.renderCommon();
 			currentGameSession.eyeEffect.drawEyeEffect();
 		}
 		
@@ -1352,13 +1347,14 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		else if (_modeContainer.currentMode == _modeContainer.play)
 		{
-			_modeContainer.play.currentGameSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
+			_modeContainer.play.currentGameSession.scene.renderCommon();
+			_modeContainer.play.currentGameSession.scene.renderSelection(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
 			_modeContainer.play.currentGameSession.eyeEffect.drawEyeEffect();
 			action = _drawPlayStateWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.inventory)
 		{
-			_modeContainer.inventory.currentGameSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
+			_modeContainer.inventory.currentGameSession.scene.renderCommon();
 			_modeContainer.inventory.currentGameSession.eyeEffect.drawEyeEffect();
 			action = _drawInventoryStateWindows();
 		}
@@ -1368,13 +1364,13 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		else if (_modeContainer.currentMode == _modeContainer.profile)
 		{
-			_modeContainer.profile.profilingSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
+			_modeContainer.profile.profilingSession.scene.renderCommon();
 			_modeContainer.profile.profilingSession.eyeEffect.drawEyeEffect();
 			action = _drawPlayStateWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.trading)
 		{
-			_modeContainer.trading.currentGameSession.scene.render(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
+			_modeContainer.trading.currentGameSession.scene.renderCommon();
 			_modeContainer.trading.currentGameSession.eyeEffect.drawEyeEffect();
 			action = _drawTradingStateWindows();
 		}
