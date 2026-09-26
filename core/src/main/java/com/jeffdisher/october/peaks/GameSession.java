@@ -3,6 +3,7 @@ package com.jeffdisher.october.peaks;
 import java.io.File;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,6 +34,7 @@ import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.TickProcessingContext;
 import com.jeffdisher.october.types.WorldConfig;
+import com.jeffdisher.october.utils.Assert;
 
 
 public class GameSession
@@ -49,6 +51,7 @@ public class GameSession
 	public final AnimationManager animationManager;
 	public final GhostManager ghostManager;
 	public final TickProcessingContext.IBlockFetcher blockLookup;
+	public final Map<Integer, String> otherPlayerNamesById;
 
 	public GameSession(Environment environment
 			, GL20 gl
@@ -70,6 +73,7 @@ public class GameSession
 		_callouts = callouts;
 		// We just expose this lookup here for the UiStateManager to use.
 		this.blockLookup = _worldCache.blockLookup;
+		this.otherPlayerNamesById = new HashMap<>();
 		
 		long currentTimeMillis = System.currentTimeMillis();
 		ParticleEngine particleEngine = new ParticleEngine(gl, screenBrightness, resources, currentTimeMillis);
@@ -157,8 +161,6 @@ public class GameSession
 		void didDisconnect();
 		
 		void thisEntityUpdated(Entity projectedEntity);
-		void otherClientJoined(int clientId, String name);
-		void otherClientLeft(int clientId);
 	}
 
 
@@ -238,12 +240,14 @@ public class GameSession
 		@Override
 		public void otherClientJoined(int clientId, String name)
 		{
-			_callouts.otherClientJoined(clientId, name);
+			Object old = GameSession.this.otherPlayerNamesById.put(clientId, name);
+			Assert.assertTrue(null == old);
 		}
 		@Override
 		public void otherClientLeft(int clientId)
 		{
-			_callouts.otherClientLeft(clientId);
+			Object old = GameSession.this.otherPlayerNamesById.remove(clientId);
+			Assert.assertTrue(null != old);
 		}
 		@Override
 		public void otherEntityWillUpdate(PartialEntity entity)
