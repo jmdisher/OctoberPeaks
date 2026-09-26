@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks.ui;
 
-import java.util.Map;
 import java.util.function.Function;
 
 import com.jeffdisher.october.aspects.Environment;
@@ -27,20 +26,20 @@ public class ViewSelection implements IView
 	private final Environment _env;
 	private final Binding<WorldSelection> _binding;
 	private final Function<AbsoluteLocation, BlockProxy> _blockLookup;
-	private final Map<Integer, String> _otherPlayersById;
+	private final Function<Integer, String> _otherPlayerNameLookup;
 
 	public ViewSelection(GlUi ui
-			, Environment env
-			, Binding<WorldSelection> binding
-			, Function<AbsoluteLocation, BlockProxy> blockLookup
-			, Map<Integer, String> otherPlayersById
+		, Environment env
+		, Binding<WorldSelection> binding
+		, Function<AbsoluteLocation, BlockProxy> blockLookup
+		, Function<Integer, String> otherPlayerNameLookup
 	)
 	{
 		_ui = ui;
 		_env = env;
 		_binding = binding;
 		_blockLookup = blockLookup;
-		_otherPlayersById = otherPlayersById;
+		_otherPlayerNameLookup = otherPlayerNameLookup;
 	}
 
 	@Override
@@ -76,7 +75,7 @@ public class ViewSelection implements IView
 				Assert.assertTrue(null != selectedEntity);
 				// Draw the entity information.
 				// If this matches a player, show the name instead of the type name.
-				String textToShow = _otherPlayersById.get(selectedEntity.id());
+				String textToShow = _otherPlayerNameLookup.apply(selectedEntity.id());
 				if (null == textToShow)
 				{
 					textToShow = selectedEntity.type().name();
