@@ -112,7 +112,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final ModeContainer _modeContainer;
 	private final Map<Integer, String> _otherPlayersById;
 
-	private boolean _rotationDidUpdate;
 	private boolean _didAccountForTimeInFrame;
 	private _AudibleMotion _audibleMotionInFrame;
 	private boolean _waitingForMouseRelease1;
@@ -151,7 +150,6 @@ public class UiStateManager implements GameSession.ICallouts
 	// Data related to the liquid overlay.
 	private final Block _waterBlock;
 	private final Block _lavaBlock;
-	private AbsoluteLocation _eyeBlockLocation;
 
 	public UiStateManager(Environment environment
 		, GL20 gl
@@ -527,7 +525,6 @@ public class UiStateManager implements GameSession.ICallouts
 			_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
 			_orientationNeedsFlush = true;
 		}
-		_rotationDidUpdate = true;
 	}
 
 	public void walk(RelativeDirection relative)
@@ -687,18 +684,6 @@ public class UiStateManager implements GameSession.ICallouts
 		AbsoluteLocation preStopBlock = null;
 		if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			// See if the perspective changed.
-			if (_rotationDidUpdate)
-			{
-				_rotationDidUpdate = false;
-				Vector eye = _modeContainer.play.currentGameSession.movement.computeEye();
-				Vector target = _modeContainer.play.currentGameSession.movement.computeTarget();
-				Vector upVector = _modeContainer.play.currentGameSession.movement.computeUpVector();
-				_modeContainer.play.currentGameSession.selectionManager.updatePosition(eye, target);
-				_modeContainer.play.currentGameSession.scene.updatePosition(eye, target, upVector);
-				_eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
-			}
-			
 			// Capture whatever is selected.
 			selection = _modeContainer.play.currentGameSession.selectionManager.findSelection();
 			if (null != selection)
@@ -1301,9 +1286,11 @@ public class UiStateManager implements GameSession.ICallouts
 	private void _handleEyeFilter(GameSession currentGameSession)
 	{
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
-		if (null != _eyeBlockLocation)
+		Vector eye = currentGameSession.movement.computeEye();
+		if (null != eye)
 		{
-			BlockProxy eyeProxy = currentGameSession.blockLookup.readBlock(_eyeBlockLocation);
+			AbsoluteLocation eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
+			BlockProxy eyeProxy = currentGameSession.blockLookup.readBlock(eyeBlockLocation);
 			if (null != eyeProxy)
 			{
 				Block blockType = eyeProxy.getBlock();
