@@ -4,9 +4,7 @@ import java.io.File;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -43,7 +41,6 @@ import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.profiling.ProfilingModes;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
 import com.jeffdisher.october.peaks.types.Vector;
-import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
@@ -56,7 +53,6 @@ import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
-import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.ViewTradeOffers;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
@@ -110,7 +106,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final LocalStorageManager _localStorageManager;
 	private final LoadedResources _resources;
 	private final ModeContainer _modeContainer;
-	private final Map<Integer, String> _otherPlayersById;
 
 	private boolean _didAccountForTimeInFrame;
 	private _AudibleMotion _audibleMotionInFrame;
@@ -127,7 +122,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private float _pitchRadians;
 
 	// Bindings related to the game UI during a PLAY state (the in-game UI - not just menus, etc).
-	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
 	private final Binding<Inventory> _thisEntityInventoryBinding;
 	private final Binding<Inventory> _bottomWindowInventoryBinding;
@@ -144,7 +138,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window _metaDataWindow;
 	private final Window _hotbarWindow;
 	private final Window _armourWindow;
-	private final Window _selectionWindow;
 	private final Window _leftTradingWindow;
 
 	// Data related to the liquid overlay.
@@ -172,10 +165,8 @@ public class UiStateManager implements GameSession.ICallouts
 		_localStorageManager = new LocalStorageManager(_uiData.worldListBinding, localStorageDirectory);
 		_resources = resources;
 		_modeContainer = new ModeContainer();
-		_otherPlayersById = new HashMap<>();
 		
 		// Define all of our bindings.
-		_selectionBinding = new Binding<>(null);
 		_entityBinding = new Binding<>(null);
 		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> _getInventory(entity));
 		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(_entityBinding, (Entity entity) -> entity.armourSlots());
@@ -266,10 +257,6 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		};
 		_armourWindow = new Window(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
-		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(_ui, _env, _selectionBinding, (AbsoluteLocation location) -> {
-			Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-			return _modeContainer.play.currentGameSession.blockLookup.readBlock(location);
-		}, _otherPlayersById));
 		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
 			Assert.assertTrue(_modeContainer.trading == _modeContainer.currentMode);
 			if (_mouseState.leftClick)
@@ -413,6 +400,7 @@ public class UiStateManager implements GameSession.ICallouts
 			, _uiData
 		);
 		_modeContainer.play = new ModePlay(_modeContainer
+			, _ui
 			, () -> {
 				_captureState.shouldCaptureMouse(false);
 			}
@@ -499,20 +487,6 @@ public class UiStateManager implements GameSession.ICallouts
 				_modeContainer.inventory.openStationLocation = null;
 			}
 		}
-	}
-
-	@Override
-	public void otherClientJoined(int clientId, String name)
-	{
-		Object old = _otherPlayersById.put(clientId, name);
-		Assert.assertTrue(null == old);
-	}
-
-	@Override
-	public void otherClientLeft(int clientId)
-	{
-		Object old = _otherPlayersById.remove(clientId);
-		Assert.assertTrue(null != old);
 	}
 
 	public void capturedMouseMoved(int deltaX, int deltaY)
@@ -676,49 +650,22 @@ public class UiStateManager implements GameSession.ICallouts
 	public void renderFrame()
 	{
 		// Find the selection, if the mode supports this.
-		WorldSelection selection = null;
-		PartialEntity entity = null;
-		AbsoluteLocation stopBlock = null;
-		FacingDirection stopBlockOrientation = null;
-		Block stopBlockType = null;
-		AbsoluteLocation preStopBlock = null;
 		if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			// Capture whatever is selected.
-			selection = _modeContainer.play.currentGameSession.selectionManager.findSelection();
-			if (null != selection)
-			{
-				entity = selection.entity();
-				stopBlock = selection.stopBlock();
-				BlockProxy proxy = (null != stopBlock)
-					? _modeContainer.play.currentGameSession.blockLookup.readBlock(stopBlock)
-					: null
-				;
-				if (null != proxy)
-				{
-					stopBlockType = proxy.getBlock();
-					stopBlockOrientation = proxy.getOrientation();
-				}
-				else
-				{
-					// Note that the stopBlock can also point at the first not loaded block (since it is a "stop point"), but there is no point in drawing that.
-					stopBlock = null;
-				}
-				preStopBlock = selection.preStopBlock();
-			}
+			// We will reach into this mode in the other cases where this is needed.
+			_modeContainer.play.updateSelection();
 		}
-		_selectionBinding.set(selection);
 		
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
-		_drawRelevantWindows(entity, stopBlock, stopBlockType, stopBlockOrientation);
+		_drawRelevantWindows();
 		
-		_handleEndOfFrameEvents(entity, stopBlock, preStopBlock);
+		_handleEndOfFrameEvents();
 		
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
 	}
 
-	private void _handleEndOfFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
+	private void _handleEndOfFrameEvents()
 	{
 		if (_modeContainer.currentMode == _modeContainer.options)
 		{
@@ -770,7 +717,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// This is the most common mode where events matter since it is where most of them start and passive events still need to be applied, in the background.
 			// Finalize the event processing with this selection and accounting for inter-frame time.
 			// Note that this must be last since we deliver some events while drawing windows, etc, when we discover click locations, etc.
-			_finalizeFrameEvents(entity, stopBlock, preStopBlock);
+			_finalizeFrameEvents();
 			_passTimeWhileRunning(currentGameSession);
 		}
 		else if (_modeContainer.currentMode == _modeContainer.inventory)
@@ -1171,9 +1118,12 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_drawCommonPlayModeElements();
 		
-		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _selectionWindow.doRender(_mouseState.cursor);
-		Assert.assertTrue(null == noAction);
+		if (_modeContainer.play == _modeContainer.currentMode)
+		{
+			// We are not in windowed mode so draw the selection (if any) and crosshairs.
+			IAction noAction = _modeContainer.play.selectionWindow.doRender(_mouseState.cursor);
+			Assert.assertTrue(null == noAction);
+		}
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
 		
@@ -1301,7 +1251,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	private void _drawRelevantWindows(PartialEntity selectedEntity, AbsoluteLocation selectedBlock, Block stopBlockType, FacingDirection stopBlockOrientation)
+	private void _drawRelevantWindows()
 	{
 		// Perform state-specific drawing.
 		IAction action = null;
@@ -1348,6 +1298,10 @@ public class UiStateManager implements GameSession.ICallouts
 		else if (_modeContainer.currentMode == _modeContainer.play)
 		{
 			_modeContainer.play.currentGameSession.scene.renderCommon();
+			PartialEntity selectedEntity = _modeContainer.play.selectedEntity;
+			AbsoluteLocation selectedBlock = _modeContainer.play.selectedBlock;
+			Block stopBlockType = _modeContainer.play.selectedBlockType;
+			FacingDirection stopBlockOrientation = _modeContainer.play.selectedBlockOrientation;
 			_modeContainer.play.currentGameSession.scene.renderSelection(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
 			_modeContainer.play.currentGameSession.eyeEffect.drawEyeEffect();
 			action = _drawPlayStateWindows();
@@ -1391,9 +1345,12 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	private void _finalizeFrameEvents(PartialEntity entity, AbsoluteLocation stopBlock, AbsoluteLocation preStopBlock)
+	private void _finalizeFrameEvents()
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
+		PartialEntity entity = _modeContainer.play.selectedEntity;
+		AbsoluteLocation stopBlock = _modeContainer.play.selectedBlock;
+		AbsoluteLocation preStopBlock = _modeContainer.play.preSelectedBlock;
 		
 		// See if we need to update our orientation.
 		if (_orientationNeedsFlush)
