@@ -51,8 +51,6 @@ import com.jeffdisher.october.peaks.ui.ViewArmour;
 import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
 import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
-import com.jeffdisher.october.peaks.ui.ViewHotbar;
-import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewTradeOffers;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
@@ -84,16 +82,11 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class UiStateManager implements GameSession.ICallouts
 {
-	public static final float RETICLE_SIZE = 0.05f;
 	public static final Rect WINDOW_TOP_LEFT = new Rect(-0.95f, 0.05f, -0.05f, 0.95f);
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
 	public static final Rect WINDOW_LEFT = new Rect(-0.95f, -0.80f, -0.05f, 0.95f);
 	public static final int MAX_WORLD_NAME = 16;
-	public static final float CHARGE_BAR_WIDTH_MAX = 0.4f;
-	public static final float CHARGE_BAR_LEFT = -0.2f;
-	public static final float CHARGE_BAR_BOTTOM = -0.25f;
-	public static final float CHARGE_BAR_TOP = -0.2f;
 
 	private final Environment _env;
 	private final GlUi _ui;
@@ -135,8 +128,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final Window _thisEntityInventoryWindow;
 	private final Window _bottomInventoryWindow;
 	private final Window _craftingWindow;
-	private final Window _metaDataWindow;
-	private final Window _hotbarWindow;
 	private final Window _armourWindow;
 	private final Window _leftTradingWindow;
 
@@ -240,8 +231,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_bottomInventoryWindow = new Window(WINDOW_BOTTOM, bottomInventoryView);
 		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
 		_craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
-		_metaDataWindow = new Window(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
-		_hotbarWindow = new Window(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
 			Assert.assertTrue((_modeContainer.inventory == _modeContainer.currentMode)
 				|| (_modeContainer.trading == _modeContainer.currentMode)
@@ -401,9 +390,11 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.play = new ModePlay(_modeContainer
 			, _ui
+			, _mouseState
 			, () -> {
 				_captureState.shouldCaptureMouse(false);
 			}
+			, _entityBinding
 		);
 		_modeContainer.inventory = new ModeInventory(_modeContainer
 			, () -> {
@@ -1105,53 +1096,6 @@ public class UiStateManager implements GameSession.ICallouts
 		return action;
 	}
 
-	private IAction _drawPlayStateWindows()
-	{
-		// In this case, just draw the common UI elements.
-		_ui.enterUiRenderMode();
-		
-		// We also use this helper for profling where this doesn't do anything so just skip it in that case.
-		if (_modeContainer.play == _modeContainer.currentMode)
-		{
-			_handleEyeFilter(_modeContainer.play.currentGameSession);
-		}
-		
-		_drawCommonPlayModeElements();
-		
-		if (_modeContainer.play == _modeContainer.currentMode)
-		{
-			// We are not in windowed mode so draw the selection (if any) and crosshairs.
-			IAction noAction = _modeContainer.play.selectionWindow.doRender(_mouseState.cursor);
-			Assert.assertTrue(null == noAction);
-		}
-		
-		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
-		
-		Entity entity = _entityBinding.get();
-		if (null != entity)
-		{
-			int chargeMillis = entity.ephemeralShared().chargeMillis();
-			if (chargeMillis > 0)
-			{
-				// We want to show the weapon charge as a horizontal progress bar, from left to right.
-				int key = entity.hotbarItems()[entity.hotbarIndex()];
-				// If we have nothing selected, we should have cleared the charge.
-				Assert.assertTrue(0 != key);
-				int maxCharge = _env.tools.getChargeMillis(_getInventory(entity).getSlotForKey(key).getType());
-				// If we have a charge, we must be charging something.
-				Assert.assertTrue(maxCharge > 0);
-				float progress = (float)chargeMillis / (float)maxCharge;
-				float left = CHARGE_BAR_LEFT;
-				float bottom = CHARGE_BAR_BOTTOM;
-				float right = progress * CHARGE_BAR_WIDTH_MAX + CHARGE_BAR_LEFT;
-				float top = CHARGE_BAR_TOP;
-				_ui.drawWholeTextureRect(_ui.pixelGreenAlpha, left, bottom, right, top);
-			}
-		}
-		
-		return null;
-	}
-
 	private IAction _drawTradingStateWindows()
 	{
 		_ui.enterUiRenderMode();
@@ -1197,7 +1141,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		_handleEyeFilter(currentGameSession);
 		
-		_drawCommonPlayModeElements();
+		_modeContainer.play.drawPassiveOverlayWindows();
 		
 		// Draw the overlay to dim the window.
 		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
@@ -1205,27 +1149,8 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private IAction _drawCommonWindowModeElements()
 	{
-		// Draw the other common elements (inventory, armour, hotbar, etc).
-		if (null != _entityBinding.get())
-		{
-			IAction noAction = _hotbarWindow.doRender(_mouseState.cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_mouseState.cursor);
-			Assert.assertTrue(null == noAction);
-		}
+		_modeContainer.play.drawPassiveOverlayWindows();
 		return _armourWindow.doRender(_mouseState.cursor);
-	}
-
-	private void _drawCommonPlayModeElements()
-	{
-		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		if (null != _entityBinding.get())
-		{
-			IAction noAction = _hotbarWindow.doRender(_mouseState.cursor);
-			Assert.assertTrue(null == noAction);
-			noAction = _metaDataWindow.doRender(_mouseState.cursor);
-			Assert.assertTrue(null == noAction);
-		}
 	}
 
 	private void _handleEyeFilter(GameSession currentGameSession)
@@ -1304,7 +1229,10 @@ public class UiStateManager implements GameSession.ICallouts
 			FacingDirection stopBlockOrientation = _modeContainer.play.selectedBlockOrientation;
 			_modeContainer.play.currentGameSession.scene.renderSelection(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
 			_modeContainer.play.currentGameSession.eyeEffect.drawEyeEffect();
-			action = _drawPlayStateWindows();
+			
+			// Now, draw the overlays.
+			_ui.enterUiRenderMode();
+			_modeContainer.play.drawCommonPlayOverlay(_modeContainer.play.currentGameSession, _waterBlock, _lavaBlock);
 		}
 		else if (_modeContainer.currentMode == _modeContainer.inventory)
 		{
@@ -1320,7 +1248,6 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			_modeContainer.profile.profilingSession.scene.renderCommon();
 			_modeContainer.profile.profilingSession.eyeEffect.drawEyeEffect();
-			action = _drawPlayStateWindows();
 		}
 		else if (_modeContainer.currentMode == _modeContainer.trading)
 		{

@@ -125,6 +125,7 @@ public class SkyBox
 
 	public void render(Matrix projectionMatrix)
 	{
+		_gl.glDisable(GL20.GL_DEPTH_TEST);
 		_resources._program.useProgram();
 		_dayTimeModelMatrix.uploadAsUniform(_gl, _resources._uModelMatrix);
 		_viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
