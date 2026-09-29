@@ -213,16 +213,11 @@ public class UiStateManager implements GameSession.ICallouts
 		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
 		_craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
-			Assert.assertTrue((_modeContainer.inventory == _modeContainer.currentMode)
-				|| (_modeContainer.trading == _modeContainer.currentMode)
-			);
+			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
 			if (_mouseState.leftClick)
 			{
 				// Note that we ignore the result since this will be reflected in the UI, if valid.
-				GameSession currentGameSession = (_modeContainer.inventory == _modeContainer.currentMode)
-					? _modeContainer.inventory.currentGameSession
-					: _modeContainer.trading.currentGameSession
-				;
+				GameSession currentGameSession = _modeContainer.inventory.currentGameSession;
 				currentGameSession.client.swapArmour(hoverPart);
 			}
 		};
@@ -1045,7 +1040,8 @@ public class UiStateManager implements GameSession.ICallouts
 		_handleEyeFilter(_modeContainer.inventory.currentGameSession);
 		
 		// This is a window mode so draw the usual.
-		IAction action = _drawCommonWindowModeElements();
+		_modeContainer.play.drawPassiveOverlayWindows();
+		IAction action = _armourWindow.doRender(_mouseState.cursor);
 		
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
@@ -1084,7 +1080,8 @@ public class UiStateManager implements GameSession.ICallouts
 		_handleEyeFilter(_modeContainer.trading.currentGameSession);
 		
 		// This is a window mode so draw the usual.
-		IAction action = _drawCommonWindowModeElements();
+		_modeContainer.play.drawPassiveOverlayWindows();
+		IAction action = null;
 		
 		// The trading window is the interesting part of this view.
 		IAction hover = _leftTradingWindow.doRender(_mouseState.cursor);
@@ -1126,12 +1123,6 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Draw the overlay to dim the window.
 		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-	}
-
-	private IAction _drawCommonWindowModeElements()
-	{
-		_modeContainer.play.drawPassiveOverlayWindows();
-		return _armourWindow.doRender(_mouseState.cursor);
 	}
 
 	private void _handleEyeFilter(GameSession currentGameSession)
