@@ -176,30 +176,11 @@ public class UiStateManager implements GameSession.ICallouts
 				? _modeContainer.inventory.openStationLocation
 				: null
 			;
-			AbsoluteLocation relevantBlock;
-			if (null != openStation)
-			{
-				relevantBlock = openStation;
-			}
-			else
-			{
-				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_entityBinding.get(), _playerVolume);
-				relevantBlock = feetBlock;
-			}
-			_handleHoverOverEntityInventoryItem(relevantBlock, key);
+			_handleHoverOverEntityInventoryItem(openStation, key);
 		};
 		IntConsumer mouseOverBottomKeyConsumer = (int key) -> {
 			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			AbsoluteLocation relevantBlock;
-			if (null != _modeContainer.inventory.openStationLocation)
-			{
-				relevantBlock = _modeContainer.inventory.openStationLocation;
-			}
-			else
-			{
-				AbsoluteLocation feetBlock = GeometryHelpers.getCentreAtFeet(_entityBinding.get(), _playerVolume);
-				relevantBlock = feetBlock;
-			}
+			AbsoluteLocation relevantBlock = _modeContainer.inventory.openStationLocation;
 			_pullFromBlockToEntityInventory(relevantBlock, key);
 		};
 		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
@@ -878,11 +859,11 @@ public class UiStateManager implements GameSession.ICallouts
 			// Select this in the hotbar (this will clear if already set).
 			currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
 		}
-		else if (_mouseState.rightClick)
+		else if ((null != targetBlock) && _mouseState.rightClick)
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, viewingFuelInventory);
 		}
-		else if (_mouseState.leftShiftClick)
+		else if ((null != targetBlock) && _mouseState.leftShiftClick)
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, viewingFuelInventory);
 		}
