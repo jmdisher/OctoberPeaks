@@ -6,7 +6,6 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -45,19 +44,10 @@ import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.peaks.ui.Rect;
-import com.jeffdisher.october.peaks.ui.SubBinding;
-import com.jeffdisher.october.peaks.ui.ViewArmour;
-import com.jeffdisher.october.peaks.ui.ViewCraftingPanel;
-import com.jeffdisher.october.peaks.ui.ViewEntityInventory;
 import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
-import com.jeffdisher.october.peaks.ui.ViewTradeOffers;
-import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
-import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
-import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Difficulty;
@@ -70,8 +60,6 @@ import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.Item;
 import com.jeffdisher.october.types.Items;
-import com.jeffdisher.october.types.MinimalEntity;
-import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
@@ -82,10 +70,6 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class UiStateManager implements GameSession.ICallouts
 {
-	public static final Rect WINDOW_TOP_LEFT = new Rect(-0.95f, 0.05f, -0.05f, 0.95f);
-	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
-	public static final Rect WINDOW_BOTTOM = new Rect(-0.95f, -0.80f, 0.95f, -0.05f);
-	public static final Rect WINDOW_LEFT = new Rect(-0.95f, -0.80f, -0.05f, 0.95f);
 	public static final int MAX_WORLD_NAME = 16;
 
 	private final Environment _env;
@@ -116,21 +100,8 @@ public class UiStateManager implements GameSession.ICallouts
 
 	// Bindings related to the game UI during a PLAY state (the in-game UI - not just menus, etc).
 	private final Binding<Entity> _entityBinding;
-	private final Binding<Inventory> _thisEntityInventoryBinding;
-	private final Binding<Inventory> _bottomWindowInventoryBinding;
-	private final Binding<String> _bottomWindowTitleBinding;
-	private final Binding<ViewFuelSlot.FuelTuple> _bottomWindowFuelBinding;
-	private final Binding<String> _craftingPanelTitleBinding;
-	private final Binding<List<CraftDescription>> _craftingPanelBinding;
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
 	
-	// Views for rendering parts of the UI in specific modes.
-	private final Window _thisEntityInventoryWindow;
-	private final Window _bottomInventoryWindow;
-	private final Window _craftingWindow;
-	private final Window _armourWindow;
-	private final Window _leftTradingWindow;
-
 	// Data related to the liquid overlay.
 	private final Block _waterBlock;
 	private final Block _lavaBlock;
@@ -159,13 +130,6 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Define all of our bindings.
 		_entityBinding = new Binding<>(null);
-		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
-		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(_entityBinding, (Entity entity) -> entity.armourSlots());
-		_bottomWindowInventoryBinding = new Binding<>(null);
-		_bottomWindowTitleBinding = new Binding<>(null);
-		_bottomWindowFuelBinding = new Binding<>(null);
-		_craftingPanelTitleBinding = new Binding<>(null);
-		_craftingPanelBinding = new Binding<>(null);
 		_currentTradingPartnerIdBinding = new Binding<>(0);
 	
 		// Create our views.
@@ -201,48 +165,6 @@ public class UiStateManager implements GameSession.ICallouts
 				_didAccountForTimeInFrame = true;
 			}
 		};
-		
-		BooleanSupplier isLeftClick = () -> _mouseState.leftClick;
-		
-		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
-		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(_ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
-		_thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
-		ViewFuelSlot fuelProgress = new ViewFuelSlot(_ui, _bottomWindowFuelBinding);
-		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, isLeftClick);
-		_bottomInventoryWindow = new Window(WINDOW_BOTTOM, bottomInventoryView);
-		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
-		_craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
-		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
-			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			if (_mouseState.leftClick)
-			{
-				// Note that we ignore the result since this will be reflected in the UI, if valid.
-				GameSession currentGameSession = _modeContainer.inventory.currentGameSession;
-				currentGameSession.client.swapArmour(hoverPart);
-			}
-		};
-		_armourWindow = new Window(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
-		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
-			Assert.assertTrue(_modeContainer.trading == _modeContainer.currentMode);
-			if (_mouseState.leftClick)
-			{
-				MinimalEntity villager = MinimalEntity.fromPartialEntity(_modeContainer.trading.currentGameSession.getEntityForId(_currentTradingPartnerIdBinding.get()));
-				boolean didSend = _modeContainer.trading.currentGameSession.client.sendTrade(villager, tradeItem);
-				if (!didSend)
-				{
-					// If we failed to send the trade, it means something went wrong (usually out of range) so exit trading mode.
-					_modeContainer.trading.handleEscape();
-				}
-			}
-		};
-		ViewTradeOffers bottomTradingView = new ViewTradeOffers(_ui
-			, _currentTradingPartnerIdBinding
-			, (int villagerId) -> {
-				Assert.assertTrue(_modeContainer.trading == _modeContainer.currentMode);
-				PartialEntity partial = _modeContainer.trading.currentGameSession.getEntityForId(villagerId);
-				return MinimalEntity.fromPartialEntity(partial);
-			}, tradeButtonConsumer);
-		_leftTradingWindow = new Window(WINDOW_LEFT, bottomTradingView);
 		
 		// Look up the liquid overlay types.
 		_waterBlock = _env.blocks.fromItem(_env.items.getItemById("op.water_source"));
@@ -373,9 +295,15 @@ public class UiStateManager implements GameSession.ICallouts
 			, _entityBinding
 		);
 		_modeContainer.inventory = new ModeInventory(_modeContainer
+			, _ui
+			, _mouseState
 			, () -> {
 				_captureState.shouldCaptureMouse(true);
 			}
+			, _entityBinding
+			, mouseOverTopRightKeyConsumer
+			, mouseOverBottomKeyConsumer
+			, craftHoverOverConsumer
 		);
 		_modeContainer.pause = new ModePause(_modeContainer
 			, _ui
@@ -390,10 +318,14 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.profile = new ModeProfile();
 		_modeContainer.trading = new ModeTrading(_modeContainer
-			, _currentTradingPartnerIdBinding
+			, _ui
+			, _mouseState
 			, () -> {
 				_captureState.shouldCaptureMouse(true);
 			}
+			, _currentTradingPartnerIdBinding
+			, _entityBinding
+			, mouseOverTopRightKeyConsumer
 		);
 		_modeContainer.error = new ModeError(_modeContainer
 			, _ui
@@ -977,7 +909,7 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 		}
 		
-		Inventory entityInventory = _thisEntityInventoryBinding.get();
+		Inventory entityInventory = _modeContainer.inventory.thisEntityInventoryBinding.get();
 		if (null == _modeContainer.inventory.openStationLocation)
 		{
 			// We are just looking at the floor at our feet.
@@ -1027,11 +959,11 @@ public class UiStateManager implements GameSession.ICallouts
 		;
 		
 		// We need to update our bindings BEFORE rendering anything.
-		_bottomWindowInventoryBinding.set(relevantInventory);
-		_bottomWindowTitleBinding.set(stationName);
-		_bottomWindowFuelBinding.set(fuelSlot);
-		_craftingPanelTitleBinding.set(craftingType);
-		_craftingPanelBinding.set(convertedCrafts);
+		_modeContainer.inventory.bottomWindowInventoryBinding.set(relevantInventory);
+		_modeContainer.inventory.bottomWindowTitleBinding.set(stationName);
+		_modeContainer.inventory.bottomWindowFuelBinding.set(fuelSlot);
+		_modeContainer.inventory.craftingPanelTitleBinding.set(craftingType);
+		_modeContainer.inventory.craftingPanelBinding.set(convertedCrafts);
 		_modeContainer.inventory.isManualCraftingStation = canBeManuallySelected;
 		
 		// Now, do the actual drawing.
@@ -1041,23 +973,23 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// This is a window mode so draw the usual.
 		_modeContainer.play.drawPassiveOverlayWindows();
-		IAction action = _armourWindow.doRender(_mouseState.cursor);
+		IAction action = _modeContainer.inventory.armourWindow.doRender(_mouseState.cursor);
 		
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
 		{
-			IAction hover = _craftingWindow.doRender(_mouseState.cursor);
+			IAction hover = _modeContainer.inventory.craftingWindow.doRender(_mouseState.cursor);
 			if (null != hover)
 			{
 				action = hover;
 			}
 		}
-		IAction hover = _thisEntityInventoryWindow.doRender(_mouseState.cursor);
+		IAction hover = _modeContainer.inventory.thisEntityInventoryWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
-		hover = _bottomInventoryWindow.doRender(_mouseState.cursor);
+		hover = _modeContainer.inventory.bottomInventoryWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -1084,13 +1016,13 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = null;
 		
 		// The trading window is the interesting part of this view.
-		IAction hover = _leftTradingWindow.doRender(_mouseState.cursor);
+		IAction hover = _modeContainer.trading.leftTradingWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
 		
-		hover = _thisEntityInventoryWindow.doRender(_mouseState.cursor);
+		hover = _modeContainer.trading.thisEntityInventoryWindow.doRender(_mouseState.cursor);
 		if (null != hover)
 		{
 			action = hover;
