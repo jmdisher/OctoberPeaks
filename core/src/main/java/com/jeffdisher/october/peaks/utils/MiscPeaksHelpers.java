@@ -8,7 +8,10 @@ import com.jeffdisher.october.logic.OrientationHelpers;
 import com.jeffdisher.october.subactions.EntitySubActionPlaceSelectedBlockGeneric;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
+import com.jeffdisher.october.types.CreativeInventory;
+import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.FacingDirection;
+import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -96,5 +99,14 @@ public class MiscPeaksHelpers
 			}
 		}
 		return direction;
+	}
+
+	public static Inventory getInventory(Entity entity)
+	{
+		Inventory inventory = entity.isCreativeMode()
+			? CreativeInventory.fakeInventory()
+			: entity.inventory()
+		;
+		return inventory;
 	}
 }

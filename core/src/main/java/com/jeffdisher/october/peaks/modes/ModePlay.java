@@ -14,12 +14,11 @@ import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
-import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.FacingDirection;
-import com.jeffdisher.october.types.Inventory;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.utils.Assert;
 
@@ -181,7 +180,7 @@ public class ModePlay implements IGameMode
 				int key = entity.hotbarItems()[entity.hotbarIndex()];
 				// If we have nothing selected, we should have cleared the charge.
 				Assert.assertTrue(0 != key);
-				int maxCharge = Environment.getShared().tools.getChargeMillis(_getInventory(entity).getSlotForKey(key).getType());
+				int maxCharge = Environment.getShared().tools.getChargeMillis(MiscPeaksHelpers.getInventory(entity).getSlotForKey(key).getType());
 				// If we have a charge, we must be charging something.
 				Assert.assertTrue(maxCharge > 0);
 				float progress = (float)chargeMillis / (float)maxCharge;
@@ -203,15 +202,6 @@ public class ModePlay implements IGameMode
 		}
 	}
 
-
-	private static Inventory _getInventory(Entity entity)
-	{
-		Inventory inventory = entity.isCreativeMode()
-			? CreativeInventory.fakeInventory()
-			: entity.inventory()
-		;
-		return inventory;
-	}
 
 	private void _drawPassiveOverlayWindows()
 	{
