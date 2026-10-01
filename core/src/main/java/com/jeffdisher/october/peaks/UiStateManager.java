@@ -54,12 +54,12 @@ import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
 import com.jeffdisher.october.peaks.ui.ViewTradeOffers;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
+import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.CraftOperation;
-import com.jeffdisher.october.types.CreativeInventory;
 import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
@@ -159,7 +159,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Define all of our bindings.
 		_entityBinding = new Binding<>(null);
-		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> _getInventory(entity));
+		_thisEntityInventoryBinding = new SubBinding<>(_entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(_entityBinding, (Entity entity) -> entity.armourSlots());
 		_bottomWindowInventoryBinding = new Binding<>(null);
 		_bottomWindowTitleBinding = new Binding<>(null);
@@ -1475,15 +1475,6 @@ public class UiStateManager implements GameSession.ICallouts
 			throw Assert.unexpected(e);
 		}
 		return pendingGameSession;
-	}
-
-	private static Inventory _getInventory(Entity entity)
-	{
-		Inventory inventory = entity.isCreativeMode()
-			? CreativeInventory.fakeInventory()
-			: entity.inventory()
-		;
-		return inventory;
 	}
 
 
