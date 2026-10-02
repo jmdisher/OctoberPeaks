@@ -145,16 +145,12 @@ public class OctoberPeaks extends ApplicationAdapter
 	{
 		// Create the input manager and connect the UI state manager to the relevant parts of the system.
 		MutableControls mutableControls = new MutableControls(_localStorageDirectory);
-		MouseState mouseState = new MouseState();
+		MouseState mouseState = new MouseState((boolean setCapture) -> {
+			_windowListener.setLogicMouseCaptureState(setCapture);
+		});
 		_input = new InputManager(mutableControls, mouseState);
 		_windowListener.setInputManager(_input);
-		_uiState = new UiStateManager(_environment, _gl, mouseState, _localStorageDirectory, _resources, mutableControls, mutablePreferences, new UiStateManager.ICallouts() {
-			@Override
-			public void shouldCaptureMouse(boolean setCapture)
-			{
-				_windowListener.setLogicMouseCaptureState(setCapture);
-			}
-		});
+		_uiState = new UiStateManager(_environment, _gl, mouseState, _localStorageDirectory, _resources, mutableControls, mutablePreferences);
 		
 		// Install an exception handler and send it to the state manager.
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()

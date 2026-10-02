@@ -33,7 +33,7 @@ public class ModeTrading implements IGameMode
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 
 	private final ModeContainer _modeContainer;
-	private final IMouseCapture _mouseCapture;
+	private final MouseState _mouseState;
 
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
 	private final Binding<Inventory> _thisEntityInventoryBinding;
@@ -45,15 +45,14 @@ public class ModeTrading implements IGameMode
 	public ModeTrading(ModeContainer modeContainer
 		, GlUi ui
 		, MouseState mouseState
-		, IMouseCapture mouseCapture
 		, Binding<Integer> currentTradingPartnerIdBinding
 		, Binding<Entity> entityBinding
 		, IntConsumer mouseOverTopRightKeyConsumer
 	)
 	{
 		_modeContainer = modeContainer;
+		_mouseState = mouseState;
 		_currentTradingPartnerIdBinding = currentTradingPartnerIdBinding;
-		_mouseCapture = mouseCapture;
 		
 		BooleanSupplier isLeftClick = () -> mouseState.leftClick;
 		_thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
@@ -101,12 +100,6 @@ public class ModeTrading implements IGameMode
 		// Whenever we exit trading mode, we always go back into play mode.
 		_currentTradingPartnerIdBinding.set(0);
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_mouseCapture.enableMouseCapture();
-	}
-
-
-	public static interface IMouseCapture
-	{
-		void enableMouseCapture();
+		_mouseState.captureState.shouldCaptureMouse(true);
 	}
 }
