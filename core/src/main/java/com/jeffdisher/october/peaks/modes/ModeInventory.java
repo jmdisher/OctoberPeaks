@@ -38,7 +38,7 @@ public class ModeInventory implements IGameMode
 
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final IMouseCapture _mouseCapture;
+	private final MouseState _mouseState;
 
 	public final Binding<Inventory> thisEntityInventoryBinding;
 	public final Binding<Inventory> bottomWindowInventoryBinding;
@@ -61,7 +61,6 @@ public class ModeInventory implements IGameMode
 	public ModeInventory(ModeContainer modeContainer
 		, GlUi ui
 		, MouseState mouseState
-		, IMouseCapture mouseCapture
 		, Binding<Entity> entityBinding
 		, IntConsumer mouseOverTopRightKeyConsumer
 		, IntConsumer mouseOverBottomKeyConsumer
@@ -70,7 +69,7 @@ public class ModeInventory implements IGameMode
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseCapture = mouseCapture;
+		_mouseState = mouseState;
 		
 		this.bottomWindowInventoryBinding = new Binding<>(null);
 		this.bottomWindowTitleBinding = new Binding<>(null);
@@ -127,12 +126,6 @@ public class ModeInventory implements IGameMode
 	public void handleEscape()
 	{
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_mouseCapture.enableMouseCapture();
-	}
-
-
-	public static interface IMouseCapture
-	{
-		void enableMouseCapture();
+		_mouseState.captureState.shouldCaptureMouse(true);
 	}
 }

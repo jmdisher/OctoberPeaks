@@ -37,7 +37,6 @@ public class ModePlay implements IGameMode
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
 	private final MouseState _mouseState;
-	private final IMouseCapture _mouseCapture;
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
 	public final Window selectionWindow;
@@ -54,14 +53,12 @@ public class ModePlay implements IGameMode
 	public ModePlay(ModeContainer modeContainer
 		, GlUi ui
 		, MouseState mouseState
-		, IMouseCapture mouseCapture
 		, Binding<Entity> entityBinding
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_mouseState = mouseState;
-		_mouseCapture = mouseCapture;
 		_selectionBinding = new Binding<>(null);
 		_entityBinding = entityBinding;
 		this.selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(ui, Environment.getShared(), _selectionBinding, (AbsoluteLocation location) -> {
@@ -101,7 +98,7 @@ public class ModePlay implements IGameMode
 	{
 		this.currentGameSession.client.pauseGame();
 		_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
-		_mouseCapture.disableMouseCapture();
+		_mouseState.captureState.shouldCaptureMouse(false);
 	}
 
 	public void updateSelection()
@@ -209,11 +206,5 @@ public class ModePlay implements IGameMode
 		Assert.assertTrue(null == noAction);
 		noAction = _metaDataWindow.doRender(_mouseState.cursor);
 		Assert.assertTrue(null == noAction);
-	}
-
-
-	public static interface IMouseCapture
-	{
-		void disableMouseCapture();
 	}
 }
