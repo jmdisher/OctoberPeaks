@@ -1,6 +1,6 @@
 package com.jeffdisher.october.peaks.modes;
 
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.profiling.ProfilingModes;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
@@ -22,21 +22,21 @@ public class ModeListForProfile implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final ISessionStarter _sessionStarter;
 	private final FixedWindow _listProfileRunsStateWindow;
 
 	public ModeListForProfile(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 		, ISessionStarter sessionStarter
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		_sessionStarter = sessionStarter;
 		
@@ -63,7 +63,7 @@ public class ModeListForProfile implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listProfileRunsStateWindow.render(_mouseState.cursor);
+		return _listProfileRunsStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -104,7 +104,7 @@ public class ModeListForProfile implements IGameMode
 
 	private void _action_clickProfileRunButton(ProfilingModes mode)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// This just changes state.
 			ProfilingSession session = _sessionStarter.startSession(mode);
@@ -114,7 +114,7 @@ public class ModeListForProfile implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}

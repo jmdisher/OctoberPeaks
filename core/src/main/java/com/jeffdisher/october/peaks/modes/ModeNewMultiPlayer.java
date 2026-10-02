@@ -2,7 +2,7 @@ package com.jeffdisher.october.peaks.modes;
 
 import java.net.InetSocketAddress;
 
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.persistence.MutableServerList;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -25,19 +25,19 @@ public class ModeNewMultiPlayer implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final FixedWindow _newMultiPlayerStateWindow;
 
 	public ModeNewMultiPlayer(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		
 		_newMultiPlayerStateWindow = _buildNewMultiPlayerStateWindow(_ui, _uiData);
@@ -63,7 +63,7 @@ public class ModeNewMultiPlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _newMultiPlayerStateWindow.render(_mouseState.cursor);
+		return _newMultiPlayerStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -145,7 +145,7 @@ public class ModeNewMultiPlayer implements IGameMode
 	private void _action_clickServerAddressTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.typingCapture = _uiData.newServerAddressBinding;
 		}
@@ -153,7 +153,7 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	private void _action_clickTestServerButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// We want to do the test for version, etc, and add this to our list on success.
 			// We will need to parse this address from the binding.
@@ -176,7 +176,7 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	private void _action_clickSaveServerButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// If there is a binding, and it is good, add it to the server list and back out of this.
 			MutableServerList.ServerRecord record = _uiData.currentlyTestingServerBinding.get();
@@ -193,7 +193,7 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}

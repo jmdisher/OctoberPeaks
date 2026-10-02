@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -25,7 +25,7 @@ public class ModePause implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final Consumer<GameSession> _commonPauseRender;
 	private final FixedWindow _pauseStateWindow;
@@ -34,14 +34,14 @@ public class ModePause implements IGameMode
 
 	public ModePause(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 		, Consumer<GameSession> commonPauseRender
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		_commonPauseRender = commonPauseRender;
 		
@@ -70,7 +70,7 @@ public class ModePause implements IGameMode
 	{
 		_commonPauseRender.accept(this.currentGameSession);
 		
-		return _pauseStateWindow.render(_mouseState.cursor);
+		return _pauseStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -134,7 +134,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickReturnToGameButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_returnToGame();
 		}
@@ -142,7 +142,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickOptionsButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_modeContainer.setActive(_modeContainer.options.becomeActive(this.currentGameSession));
 		}
@@ -150,7 +150,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickKeyBindingsButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_modeContainer.setActive(_modeContainer.keyBindings.becomeActive(this.currentGameSession));
 			_uiData.currentlyChangingControl.set(null);
@@ -159,7 +159,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickExitGameButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			this.currentGameSession.shutdown();
 			_modeContainer.setActive(_modeContainer.start.becomeActive());
@@ -170,6 +170,6 @@ public class ModePause implements IGameMode
 	{
 		this.currentGameSession.client.resumeGame();
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_mouseState.captureState.shouldCaptureMouse(true);
+		_inputCapture.captureState.shouldCaptureMouse(true);
 	}
 }

@@ -3,7 +3,7 @@ package com.jeffdisher.october.peaks.modes;
 import java.util.function.Consumer;
 
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -24,7 +24,7 @@ public class ModeKeyBindings implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final Consumer<GameSession> _commonPauseRender;
 	private final FixedWindow _keyBindingsStateWindow;
@@ -33,14 +33,14 @@ public class ModeKeyBindings implements IGameMode
 
 	public ModeKeyBindings(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 		, Consumer<GameSession> commonPauseRender
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		_commonPauseRender = commonPauseRender;
 		
@@ -72,7 +72,7 @@ public class ModeKeyBindings implements IGameMode
 			_commonPauseRender.accept(this.currentGameSession);
 		}
 		
-		return _keyBindingsStateWindow.render(_mouseState.cursor);
+		return _keyBindingsStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -113,7 +113,7 @@ public class ModeKeyBindings implements IGameMode
 
 	private void _action_clickKeyBindingSelector(MutableControls.Control selectedControl)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.currentlyChangingControl.set(selectedControl);
 		}
@@ -121,7 +121,7 @@ public class ModeKeyBindings implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_escapeOrBack();
 		}

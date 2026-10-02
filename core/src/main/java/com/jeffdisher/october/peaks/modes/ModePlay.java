@@ -3,7 +3,7 @@ package com.jeffdisher.october.peaks.modes;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
@@ -36,7 +36,7 @@ public class ModePlay implements IGameMode
 
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
 	public final Window selectionWindow;
@@ -52,13 +52,13 @@ public class ModePlay implements IGameMode
 
 	public ModePlay(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, Binding<Entity> entityBinding
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_selectionBinding = new Binding<>(null);
 		_entityBinding = entityBinding;
 		this.selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(ui, Environment.getShared(), _selectionBinding, (AbsoluteLocation location) -> {
@@ -98,7 +98,7 @@ public class ModePlay implements IGameMode
 	{
 		this.currentGameSession.client.pauseGame();
 		_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
-		_mouseState.captureState.shouldCaptureMouse(false);
+		_inputCapture.captureState.shouldCaptureMouse(false);
 	}
 
 	public void updateSelection()
@@ -159,7 +159,7 @@ public class ModePlay implements IGameMode
 		}
 		
 		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _modeContainer.play.selectionWindow.doRender(_mouseState.cursor);
+		IAction noAction = _modeContainer.play.selectionWindow.doRender(_inputCapture.cursor);
 		Assert.assertTrue(null == noAction);
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
@@ -202,9 +202,9 @@ public class ModePlay implements IGameMode
 
 	private void _drawPassiveOverlayWindows()
 	{
-		IAction noAction = _hotbarWindow.doRender(_mouseState.cursor);
+		IAction noAction = _hotbarWindow.doRender(_inputCapture.cursor);
 		Assert.assertTrue(null == noAction);
-		noAction = _metaDataWindow.doRender(_mouseState.cursor);
+		noAction = _metaDataWindow.doRender(_inputCapture.cursor);
 		Assert.assertTrue(null == noAction);
 	}
 }
