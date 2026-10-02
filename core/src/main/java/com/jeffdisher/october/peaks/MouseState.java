@@ -10,6 +10,7 @@ import com.jeffdisher.october.peaks.ui.Point;
  */
 public class MouseState
 {
+	public final ICallouts captureState;
 	public Point cursor;
 	public boolean mouseHeld0;
 	public boolean mouseHeld1;
@@ -18,6 +19,11 @@ public class MouseState
 	public boolean leftClick;
 	public boolean leftShiftClick;
 	public boolean rightClick;
+
+	public MouseState(ICallouts captureState)
+	{
+		this.captureState = captureState;
+	}
 
 	public void normalMouseMoved(Point cursor)
 	{
@@ -68,5 +74,15 @@ public class MouseState
 		this.leftClick = false;
 		this.leftShiftClick = false;
 		this.rightClick = false;
+	}
+
+
+	/**
+	 * Methods passed in from a higher-level component to control other aspects of the native window manager environment
+	 * required by the internal logic.
+	 */
+	public static interface ICallouts
+	{
+		public void shouldCaptureMouse(boolean setCapture);
 	}
 }

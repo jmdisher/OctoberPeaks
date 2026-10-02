@@ -28,7 +28,6 @@ public class ModePause implements IGameMode
 	private final MouseState _mouseState;
 	private final UiData _uiData;
 	private final Consumer<GameSession> _commonPauseRender;
-	private final IMouseCapture _mouseCapture;
 	private final FixedWindow _pauseStateWindow;
 
 	public GameSession currentGameSession;
@@ -38,7 +37,6 @@ public class ModePause implements IGameMode
 		, MouseState mouseState
 		, UiData uiData
 		, Consumer<GameSession> commonPauseRender
-		, IMouseCapture mouseCapture
 	)
 	{
 		_modeContainer = modeContainer;
@@ -46,7 +44,6 @@ public class ModePause implements IGameMode
 		_mouseState = mouseState;
 		_uiData = uiData;
 		_commonPauseRender = commonPauseRender;
-		_mouseCapture = mouseCapture;
 		
 		_pauseStateWindow = _buildPauseStateWindow(_ui, _uiData);
 	}
@@ -173,12 +170,6 @@ public class ModePause implements IGameMode
 	{
 		this.currentGameSession.client.resumeGame();
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_mouseCapture.enableMouseCapture();
-	}
-
-
-	public static interface IMouseCapture
-	{
-		void enableMouseCapture();
+		_mouseState.captureState.shouldCaptureMouse(true);
 	}
 }

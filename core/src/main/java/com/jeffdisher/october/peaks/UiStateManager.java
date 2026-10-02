@@ -78,7 +78,6 @@ public class UiStateManager implements GameSession.ICallouts
 	private final UiData _uiData;
 	private final EntityVolume _playerVolume;
 	private final EntityType _villagerEntityType;
-	private final ICallouts _captureState;
 	private final GL20 _gl;
 	private final LocalStorageManager _localStorageManager;
 	private final LoadedResources _resources;
@@ -113,7 +112,6 @@ public class UiStateManager implements GameSession.ICallouts
 		, LoadedResources resources
 		, MutableControls mutableControls
 		, MutablePreferences mutablePreferences
-		, ICallouts captureState
 	)
 	{
 		_env = environment;
@@ -122,7 +120,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData = new UiData(localStorageDirectory, mutableControls, mutablePreferences);
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_villagerEntityType = environment.creatures.getTypeById("op.villager");
-		_captureState = captureState;
 		_gl = gl;
 		_localStorageManager = new LocalStorageManager(_uiData.worldListBinding, localStorageDirectory);
 		_resources = resources;
@@ -289,17 +286,11 @@ public class UiStateManager implements GameSession.ICallouts
 		_modeContainer.play = new ModePlay(_modeContainer
 			, _ui
 			, _mouseState
-			, () -> {
-				_captureState.shouldCaptureMouse(false);
-			}
 			, _entityBinding
 		);
 		_modeContainer.inventory = new ModeInventory(_modeContainer
 			, _ui
 			, _mouseState
-			, () -> {
-				_captureState.shouldCaptureMouse(true);
-			}
 			, _entityBinding
 			, mouseOverTopRightKeyConsumer
 			, mouseOverBottomKeyConsumer
@@ -312,17 +303,11 @@ public class UiStateManager implements GameSession.ICallouts
 			, (GameSession session) -> {
 				_drawCommonPauseBackground(session);
 			}
-			, () -> {
-				_captureState.shouldCaptureMouse(true);
-			}
 		);
 		_modeContainer.profile = new ModeProfile();
 		_modeContainer.trading = new ModeTrading(_modeContainer
 			, _ui
 			, _mouseState
-			, () -> {
-				_captureState.shouldCaptureMouse(true);
-			}
 			, _currentTradingPartnerIdBinding
 			, _entityBinding
 			, mouseOverTopRightKeyConsumer
@@ -365,7 +350,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we were in the active play state, release the mouse capture (this check just makes the transition more explicit).
 		if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			_captureState.shouldCaptureMouse(false);
+			_mouseState.captureState.shouldCaptureMouse(false);
 		}
 		_modeContainer.setActive(_modeContainer.start.becomeActive());
 	}
@@ -476,13 +461,13 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_modeContainer.inventory == _modeContainer.currentMode)
 		{
 			_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
-			_captureState.shouldCaptureMouse(true);
+			_mouseState.captureState.shouldCaptureMouse(true);
 		}
 		else if (_modeContainer.play == _modeContainer.currentMode)
 		{
 			_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, null));
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_captureState.shouldCaptureMouse(false);
+			_mouseState.captureState.shouldCaptureMouse(false);
 		}
 	}
 
@@ -605,7 +590,7 @@ public class UiStateManager implements GameSession.ICallouts
 			if (_modeContainer.connecting.pendingGameSession.isConnectionReady())
 			{
 				_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.connecting.pendingGameSession));
-				_captureState.shouldCaptureMouse(true);
+				_mouseState.captureState.shouldCaptureMouse(true);
 			}
 		}
 		else if (_modeContainer.currentMode == _modeContainer.play)
@@ -725,7 +710,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public void enterErrorState(String[] payload)
 	{
 		_modeContainer.setActive(_modeContainer.error.becomeActive(payload));
-		_captureState.shouldCaptureMouse(false);
+		_mouseState.captureState.shouldCaptureMouse(false);
 	}
 
 	public void shutdown()
@@ -832,7 +817,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// We are at least some kind of station with an inventory.
 			_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, blockLocation));
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_captureState.shouldCaptureMouse(false);
+			_mouseState.captureState.shouldCaptureMouse(false);
 			didOpen = true;
 		}
 		return didOpen;
@@ -1234,7 +1219,7 @@ public class UiStateManager implements GameSession.ICallouts
 					{
 						// This is a villager with a profession so switch to our trading UI mode.
 						_modeContainer.setActive(_modeContainer.trading.becomeActive(_modeContainer.play.currentGameSession));
-						_captureState.shouldCaptureMouse(false);
+						_mouseState.captureState.shouldCaptureMouse(false);
 						_currentTradingPartnerIdBinding.set(entity.id());
 					}
 					else
@@ -1414,15 +1399,5 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		WALK,
 		RUN,
-	}
-
-
-	/**
-	 * Methods passed in from a higher-level component to control other aspects of the native window manager environment
-	 * required by the internal logic.
-	 */
-	public static interface ICallouts
-	{
-		public void shouldCaptureMouse(boolean setCapture);
 	}
 }
