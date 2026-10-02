@@ -1,7 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
 import com.jeffdisher.october.peaks.LocalStorageManager;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -20,21 +20,21 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 	private final ModeContainer _modeContainer;
 	private final LocalStorageManager _localStorageManager;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final FixedWindow _confirmDeleteSinglePlayerStateWindow;
 
 	public ModeConfirmDeleteSinglePlayer(ModeContainer modeContainer
 		, LocalStorageManager localStorageManager
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 	)
 	{
 		_modeContainer = modeContainer;
 		_localStorageManager = localStorageManager;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		
 		_confirmDeleteSinglePlayerStateWindow = _buildConfirmDeleteSinglePlayerStateWindow(_ui
@@ -63,7 +63,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _confirmDeleteSinglePlayerStateWindow.render(_mouseState.cursor);
+		return _confirmDeleteSinglePlayerStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -105,7 +105,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	private void _action_clickConfirmDeleteButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 			
@@ -118,7 +118,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}

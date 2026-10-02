@@ -1,7 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -24,21 +24,21 @@ public class ModeNewSinglePlayer implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final ISessionStarter _sessionStarter;
 	private final FixedWindow _newSinglePlayerStateWindow;
 
 	public ModeNewSinglePlayer(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 		, ISessionStarter sessionStarter
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		_sessionStarter = sessionStarter;
 		
@@ -65,7 +65,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _newSinglePlayerStateWindow.render(_mouseState.cursor);
+		return _newSinglePlayerStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -190,7 +190,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickPlayerModeRadioButton(WorldConfig.DefaultPlayerMode selected)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.defaultPlayerModeBinding.set(selected);
 		}
@@ -198,7 +198,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickWorldGeneratorRadioButton(WorldConfig.WorldGeneratorName selected)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.worldGeneratorNameBinding.set(selected);
 		}
@@ -206,7 +206,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickDifficultyRadioButton(Difficulty selected)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.difficultyBinding.set(selected);
 		}
@@ -215,7 +215,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	private void _action_clickSeedTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.typingCapture = _uiData.newSeedBinding;
 		}
@@ -224,7 +224,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	private void _action_clickNewWorldNameTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_uiData.typingCapture = _uiData.newWorldNameBinding;
 		}
@@ -232,7 +232,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickConfirmCreateSingleWorldButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// Make sure that the name is non-empty and not already used.
 			String worldName = _uiData.newWorldNameBinding.get();
@@ -275,7 +275,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}

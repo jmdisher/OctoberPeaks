@@ -4,11 +4,12 @@ import com.jeffdisher.october.peaks.ui.Point;
 
 
 /**
- * A shared instance which stores the mouse state so that different layers of the UI stack can easily read it.
- * This tracks the state of mouse buttons, but also the related meta-buttons since some of those modify the button
+ * A shared instance which stores the captured input state (mouse and keyboard) so that different layers of the UI stack
+ * can easily read it or request that its mode change.
+ * This tracks the state of keys, mouse buttons, but also the related meta-buttons since some of those modify the button
  * meaning.
  */
-public class MouseState
+public class InputCapture
 {
 	public final ICallouts captureState;
 	public Point cursor;
@@ -20,7 +21,16 @@ public class MouseState
 	public boolean leftShiftClick;
 	public boolean rightClick;
 
-	public MouseState(ICallouts captureState)
+	// Some more complex input state.
+	public boolean waitingForMouseRelease1;
+	public boolean ctrlQPressed;
+	public boolean qPressed;
+
+	// NOTE:  This shouldn't really be here (it is a decision, not input) but it is an simple place to put it with the
+	// correct sharing and lifecycle (since it does move around like input).
+	public boolean didAccountForTimeInFrame;
+
+	public InputCapture(ICallouts captureState)
 	{
 		this.captureState = captureState;
 	}
@@ -74,6 +84,12 @@ public class MouseState
 		this.leftClick = false;
 		this.leftShiftClick = false;
 		this.rightClick = false;
+		
+		// We keep waitingForMouseRelease1 since it crosses frames.
+		this.ctrlQPressed = false;
+		this.qPressed = false;
+		
+		this.didAccountForTimeInFrame = false;
 	}
 
 

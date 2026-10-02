@@ -1,7 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -20,7 +20,7 @@ public class ModeConnecting implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final FixedWindow _connectingStateWindow;
 
@@ -28,13 +28,13 @@ public class ModeConnecting implements IGameMode
 
 	public ModeConnecting(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		
 		_connectingStateWindow = _buildConnectingStateWindow(_ui, _uiData);
@@ -62,7 +62,7 @@ public class ModeConnecting implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _connectingStateWindow.render(_mouseState.cursor);
+		return _connectingStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -89,7 +89,7 @@ public class ModeConnecting implements IGameMode
 
 	private void _action_clickCancelConnectButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}

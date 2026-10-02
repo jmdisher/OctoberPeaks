@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 
 import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -25,7 +25,7 @@ public class ModeOptions implements IGameMode
 {
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final Consumer<GameSession> _commonPauseRender;
 	private final FixedWindow _optionsStateWindow;
@@ -34,14 +34,14 @@ public class ModeOptions implements IGameMode
 
 	public ModeOptions(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 		, Consumer<GameSession> commonPauseRender
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		_commonPauseRender = commonPauseRender;
 		
@@ -73,7 +73,7 @@ public class ModeOptions implements IGameMode
 			_commonPauseRender.accept(this.currentGameSession);
 		}
 		
-		return _optionsStateWindow.render(_mouseState.cursor);
+		return _optionsStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -158,7 +158,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickFullScreenToggle(boolean isFullScreen)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// We will toggle the full screen and update the binding data.
 			boolean newFullScreen = !isFullScreen;
@@ -178,7 +178,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickViewDistanceSlider(boolean shouldIncrease)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// TODO:  When we persist preferences, put this there whether or not in game.
 			if (null != this.currentGameSession)
@@ -201,7 +201,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickBrightnessSlider(boolean shouldIncrease)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// We just want to increment this by 0.1 increments between 1.0 and 2.0.
 			int current = (int)(10.0f * _uiData.mutablePreferences.screenBrightness.get());
@@ -221,7 +221,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickClientNameTextField()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// We want to enable text capture for this binding.
 			_uiData.typingCapture = _uiData.mutablePreferences.clientName;
@@ -230,7 +230,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}

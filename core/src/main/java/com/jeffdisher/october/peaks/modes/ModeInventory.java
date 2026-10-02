@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
@@ -38,7 +38,7 @@ public class ModeInventory implements IGameMode
 
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 
 	public final Binding<Inventory> thisEntityInventoryBinding;
 	public final Binding<Inventory> bottomWindowInventoryBinding;
@@ -60,7 +60,7 @@ public class ModeInventory implements IGameMode
 
 	public ModeInventory(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, Binding<Entity> entityBinding
 		, IntConsumer mouseOverTopRightKeyConsumer
 		, IntConsumer mouseOverBottomKeyConsumer
@@ -69,7 +69,7 @@ public class ModeInventory implements IGameMode
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		
 		this.bottomWindowInventoryBinding = new Binding<>(null);
 		this.bottomWindowTitleBinding = new Binding<>(null);
@@ -77,7 +77,7 @@ public class ModeInventory implements IGameMode
 		this.craftingPanelTitleBinding = new Binding<>(null);
 		this.craftingPanelBinding = new Binding<>(null);
 		
-		BooleanSupplier isLeftClick = () -> mouseState.leftClick;
+		BooleanSupplier isLeftClick = () -> inputCapture.leftClick;
 		this.thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, this.thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
@@ -89,7 +89,7 @@ public class ModeInventory implements IGameMode
 		this.craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
 			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			if (mouseState.leftClick)
+			if (inputCapture.leftClick)
 			{
 				// Note that we ignore the result since this will be reflected in the UI, if valid.
 				GameSession currentGameSession = _modeContainer.inventory.currentGameSession;
@@ -126,6 +126,6 @@ public class ModeInventory implements IGameMode
 	public void handleEscape()
 	{
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_mouseState.captureState.shouldCaptureMouse(true);
+		_inputCapture.captureState.shouldCaptureMouse(true);
 	}
 }

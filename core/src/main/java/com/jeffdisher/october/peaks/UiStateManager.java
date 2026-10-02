@@ -74,7 +74,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private final Environment _env;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final EntityVolume _playerVolume;
 	private final EntityType _villagerEntityType;
@@ -83,11 +83,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final LoadedResources _resources;
 	private final ModeContainer _modeContainer;
 
-	private boolean _didAccountForTimeInFrame;
 	private _AudibleMotion _audibleMotionInFrame;
-	private boolean _waitingForMouseRelease1;
-	private boolean _ctrlQPressed;
-	private boolean _qPressed;
 
 	// Data specifically related to high-level UI state.
 	private boolean _isRunningOnServer;
@@ -107,7 +103,7 @@ public class UiStateManager implements GameSession.ICallouts
 
 	public UiStateManager(Environment environment
 		, GL20 gl
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, File localStorageDirectory
 		, LoadedResources resources
 		, MutableControls mutableControls
@@ -116,7 +112,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		_env = environment;
 		_ui = new GlUi(gl, resources);
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = new UiData(localStorageDirectory, mutableControls, mutablePreferences);
 		_playerVolume = environment.creatures.PLAYER.volume();
 		_villagerEntityType = environment.creatures.getTypeById("op.villager");
@@ -146,20 +142,20 @@ public class UiStateManager implements GameSession.ICallouts
 		};
 		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
 			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			if (_modeContainer.inventory.isManualCraftingStation && (_mouseState.leftClick || _mouseState.leftShiftClick))
+			if (_modeContainer.inventory.isManualCraftingStation && (_inputCapture.leftClick || _inputCapture.leftShiftClick))
 			{
 				Craft craft = desc.craft();
 				if (null != _modeContainer.inventory.openStationLocation)
 				{
-					_modeContainer.inventory.continuousInBlock = _mouseState.leftShiftClick ? craft : null;
+					_modeContainer.inventory.continuousInBlock = _inputCapture.leftShiftClick ? craft : null;
 					_modeContainer.inventory.currentGameSession.client.beginCraftInBlock(_modeContainer.inventory.openStationLocation, craft);
 				}
 				else
 				{
-					_modeContainer.inventory.continuousInInventory = _mouseState.leftShiftClick ? craft : null;
+					_modeContainer.inventory.continuousInInventory = _inputCapture.leftShiftClick ? craft : null;
 					_modeContainer.inventory.currentGameSession.client.beginCraftInInventory(craft);
 				}
-				_didAccountForTimeInFrame = true;
+				_inputCapture.didAccountForTimeInFrame = true;
 			}
 		};
 		
@@ -171,12 +167,12 @@ public class UiStateManager implements GameSession.ICallouts
 		_modeContainer.start = new ModeStart(_modeContainer
 			, _localStorageManager
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 		);
 		_modeContainer.listSinglePlayer = new ModeListSinglePlayer(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (String directoryName) -> {
 				// We just pass nulls for our new game options.
@@ -189,12 +185,12 @@ public class UiStateManager implements GameSession.ICallouts
 		_modeContainer.confirmDeleteSinglePlayer = new ModeConfirmDeleteSinglePlayer(_modeContainer
 			, _localStorageManager
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 		);
 		_modeContainer.newSinglePlayer =  new ModeNewSinglePlayer(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (String directoryName
 				, WorldConfig.WorldGeneratorName worldGeneratorName
@@ -210,7 +206,7 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.listMultiPlayer = new ModeListMultiPlayer(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (String clientName, int startingViewDistance, InetSocketAddress serverAddress) -> {
 				GameSession session;
@@ -249,12 +245,12 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.newMultiPlayer = new ModeNewMultiPlayer(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 		);
 		_modeContainer.listForProfile = new ModeListForProfile(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (ProfilingModes mode) -> {
 				ProfilingSession session = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
@@ -264,7 +260,7 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.options = new ModeOptions(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (GameSession session) -> {
 				_drawCommonPauseBackground(session);
@@ -272,7 +268,7 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.keyBindings = new ModeKeyBindings(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (GameSession session) -> {
 				_drawCommonPauseBackground(session);
@@ -280,17 +276,17 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.connecting = new ModeConnecting(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 		);
 		_modeContainer.play = new ModePlay(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _entityBinding
 		);
 		_modeContainer.inventory = new ModeInventory(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _entityBinding
 			, mouseOverTopRightKeyConsumer
 			, mouseOverBottomKeyConsumer
@@ -298,7 +294,7 @@ public class UiStateManager implements GameSession.ICallouts
 		);
 		_modeContainer.pause = new ModePause(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 			, (GameSession session) -> {
 				_drawCommonPauseBackground(session);
@@ -307,14 +303,14 @@ public class UiStateManager implements GameSession.ICallouts
 		_modeContainer.profile = new ModeProfile();
 		_modeContainer.trading = new ModeTrading(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _currentTradingPartnerIdBinding
 			, _entityBinding
 			, mouseOverTopRightKeyConsumer
 		);
 		_modeContainer.error = new ModeError(_modeContainer
 			, _ui
-			, _mouseState
+			, _inputCapture
 			, _uiData
 		);
 		_modeContainer.currentMode = _modeContainer.start.becomeActive();
@@ -350,7 +346,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we were in the active play state, release the mouse capture (this check just makes the transition more explicit).
 		if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			_mouseState.captureState.shouldCaptureMouse(false);
+			_inputCapture.captureState.shouldCaptureMouse(false);
 		}
 		_modeContainer.setActive(_modeContainer.start.becomeActive());
 	}
@@ -391,7 +387,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		boolean runningSpeed = false;
 		_modeContainer.play.currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
-		_didAccountForTimeInFrame = true;
+		_inputCapture.didAccountForTimeInFrame = true;
 		_audibleMotionInFrame = _AudibleMotion.WALK;
 	}
 
@@ -401,7 +397,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		boolean runningSpeed = true;
 		_modeContainer.play.currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
-		_didAccountForTimeInFrame = true;
+		_inputCapture.didAccountForTimeInFrame = true;
 		_audibleMotionInFrame = _AudibleMotion.RUN;
 	}
 
@@ -410,7 +406,7 @@ public class UiStateManager implements GameSession.ICallouts
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
 		_modeContainer.play.currentGameSession.client.sneak(relative);
-		_didAccountForTimeInFrame = true;
+		_inputCapture.didAccountForTimeInFrame = true;
 		
 		// We will say that sneaking is silent.
 		_audibleMotionInFrame = null;
@@ -461,13 +457,13 @@ public class UiStateManager implements GameSession.ICallouts
 		if (_modeContainer.inventory == _modeContainer.currentMode)
 		{
 			_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
-			_mouseState.captureState.shouldCaptureMouse(true);
+			_inputCapture.captureState.shouldCaptureMouse(true);
 		}
 		else if (_modeContainer.play == _modeContainer.currentMode)
 		{
 			_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, null));
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_mouseState.captureState.shouldCaptureMouse(false);
+			_inputCapture.captureState.shouldCaptureMouse(false);
 		}
 	}
 
@@ -498,11 +494,11 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		if (isCtrlPressed)
 		{
-			_ctrlQPressed = true;
+			_inputCapture.ctrlQPressed = true;
 		}
 		else
 		{
-			_qPressed = true;
+			_inputCapture.qPressed = true;
 		}
 	}
 
@@ -590,7 +586,7 @@ public class UiStateManager implements GameSession.ICallouts
 			if (_modeContainer.connecting.pendingGameSession.isConnectionReady())
 			{
 				_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.connecting.pendingGameSession));
-				_mouseState.captureState.shouldCaptureMouse(true);
+				_inputCapture.captureState.shouldCaptureMouse(true);
 			}
 		}
 		else if (_modeContainer.currentMode == _modeContainer.play)
@@ -710,7 +706,7 @@ public class UiStateManager implements GameSession.ICallouts
 	public void enterErrorState(String[] payload)
 	{
 		_modeContainer.setActive(_modeContainer.error.becomeActive(payload));
-		_mouseState.captureState.shouldCaptureMouse(false);
+		_inputCapture.captureState.shouldCaptureMouse(false);
 	}
 
 	public void shutdown()
@@ -766,25 +762,25 @@ public class UiStateManager implements GameSession.ICallouts
 		boolean viewingFuelInventory = (_modeContainer.inventory == _modeContainer.currentMode) && _modeContainer.inventory.viewingFuelInventory;
 		
 		// This is the helper called when looking at the player's own inventory.
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// Select this in the hotbar (this will clear if already set).
 			currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
 		}
-		else if ((null != targetBlock) && _mouseState.rightClick)
+		else if ((null != targetBlock) && _inputCapture.rightClick)
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, viewingFuelInventory);
 		}
-		else if ((null != targetBlock) && _mouseState.leftShiftClick)
+		else if ((null != targetBlock) && _inputCapture.leftShiftClick)
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, viewingFuelInventory);
 		}
-		else if (_qPressed || _ctrlQPressed)
+		else if (_inputCapture.qPressed || _inputCapture.ctrlQPressed)
 		{
 			// If we are holding ctrl, drop the entire stack.
-			currentGameSession.client.dropItemSlot(entityInventoryKey, _ctrlQPressed);
-			_qPressed = false;
-			_ctrlQPressed = false;
+			currentGameSession.client.dropItemSlot(entityInventoryKey, _inputCapture.ctrlQPressed);
+			_inputCapture.qPressed = false;
+			_inputCapture.ctrlQPressed = false;
 		}
 	}
 
@@ -793,11 +789,11 @@ public class UiStateManager implements GameSession.ICallouts
 		Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
 		
 		// Note that we ignore the result since this will be reflected in the UI, if valid.
-		if (_mouseState.rightClick)
+		if (_inputCapture.rightClick)
 		{
 			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _modeContainer.inventory.viewingFuelInventory);
 		}
-		else if (_mouseState.leftShiftClick)
+		else if (_inputCapture.leftShiftClick)
 		{
 			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _modeContainer.inventory.viewingFuelInventory);
 		}
@@ -817,7 +813,7 @@ public class UiStateManager implements GameSession.ICallouts
 			// We are at least some kind of station with an inventory.
 			_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, blockLocation));
 			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_mouseState.captureState.shouldCaptureMouse(false);
+			_inputCapture.captureState.shouldCaptureMouse(false);
 			didOpen = true;
 		}
 		return didOpen;
@@ -958,23 +954,23 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// This is a window mode so draw the usual.
 		_modeContainer.play.drawPassiveOverlayWindows();
-		IAction action = _modeContainer.inventory.armourWindow.doRender(_mouseState.cursor);
+		IAction action = _modeContainer.inventory.armourWindow.doRender(_inputCapture.cursor);
 		
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
 		{
-			IAction hover = _modeContainer.inventory.craftingWindow.doRender(_mouseState.cursor);
+			IAction hover = _modeContainer.inventory.craftingWindow.doRender(_inputCapture.cursor);
 			if (null != hover)
 			{
 				action = hover;
 			}
 		}
-		IAction hover = _modeContainer.inventory.thisEntityInventoryWindow.doRender(_mouseState.cursor);
+		IAction hover = _modeContainer.inventory.thisEntityInventoryWindow.doRender(_inputCapture.cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
-		hover = _modeContainer.inventory.bottomInventoryWindow.doRender(_mouseState.cursor);
+		hover = _modeContainer.inventory.bottomInventoryWindow.doRender(_inputCapture.cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -983,7 +979,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
-			action.renderHover(_mouseState.cursor);
+			action.renderHover(_inputCapture.cursor);
 		}
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
@@ -1001,13 +997,13 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = null;
 		
 		// The trading window is the interesting part of this view.
-		IAction hover = _modeContainer.trading.leftTradingWindow.doRender(_mouseState.cursor);
+		IAction hover = _modeContainer.trading.leftTradingWindow.doRender(_inputCapture.cursor);
 		if (null != hover)
 		{
 			action = hover;
 		}
 		
-		hover = _modeContainer.trading.thisEntityInventoryWindow.doRender(_mouseState.cursor);
+		hover = _modeContainer.trading.thisEntityInventoryWindow.doRender(_inputCapture.cursor);
 		if (null != hover)
 		{
 			action = hover;
@@ -1016,7 +1012,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
-			action.renderHover(_mouseState.cursor);
+			action.renderHover(_inputCapture.cursor);
 		}
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
@@ -1177,7 +1173,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// See if the click refers to anything selected.
 		boolean didAct = false;
-		if (_mouseState.mouseHeld0)
+		if (_inputCapture.mouseHeld0)
 		{
 			if (null != stopBlock)
 			{
@@ -1185,41 +1181,41 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			else if (null != entity)
 			{
-				if (_mouseState.mouseClicked0)
+				if (_inputCapture.mouseClicked0)
 				{
 					_modeContainer.play.currentGameSession.client.hitEntity(entity);
 					didAct = true;
 				}
 			}
 		}
-		else if (_mouseState.mouseHeld1)
+		else if (_inputCapture.mouseHeld1)
 		{
 			// We want to treat things like a bow as the highest priority, so we will handle that first, whether or not
 			// the mouse button is held or clicked (although these priorities may be reconsidered).
 			didAct = _modeContainer.play.currentGameSession.client.holdRightClickOnSelf();
 			if (didAct)
 			{
-				_waitingForMouseRelease1 = true;
+				_inputCapture.waitingForMouseRelease1 = true;
 			}
 			
 			if (null != stopBlock)
 			{
 				// First, see if we need to change the UI state if this is a station we just clicked on.
-				if (!didAct && _mouseState.mouseClicked1)
+				if (!didAct && _inputCapture.mouseClicked1)
 				{
 					didAct = _didOpenStationInventory(stopBlock);
 				}
 			}
 			else if (null != entity)
 			{
-				if (!didAct && _mouseState.mouseClicked1)
+				if (!didAct && _inputCapture.mouseClicked1)
 				{
 					// Check if this is a villager and then switch into the trading UI mode.
 					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
 					{
 						// This is a villager with a profession so switch to our trading UI mode.
 						_modeContainer.setActive(_modeContainer.trading.becomeActive(_modeContainer.play.currentGameSession));
-						_mouseState.captureState.shouldCaptureMouse(false);
+						_inputCapture.captureState.shouldCaptureMouse(false);
 						_currentTradingPartnerIdBinding.set(entity.id());
 					}
 					else
@@ -1233,11 +1229,11 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			
 			// If we still didn't do anything, try clicks on the block or self.
-			if (!didAct && _mouseState.mouseClicked1 && (null != stopBlock))
+			if (!didAct && _inputCapture.mouseClicked1 && (null != stopBlock))
 			{
 				didAct = _modeContainer.play.currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
 			}
-			if (!didAct && _mouseState.mouseClicked1)
+			if (!didAct && _inputCapture.mouseClicked1)
 			{
 				didAct = _modeContainer.play.currentGameSession.client.runRightClickOnSelf();
 			}
@@ -1251,31 +1247,31 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		}
-		else if (_waitingForMouseRelease1)
+		else if (_inputCapture.waitingForMouseRelease1)
 		{
 			didAct = _modeContainer.play.currentGameSession.client.releasedRightClickOnSelf();
 			if (didAct)
 			{
 				// If we failed to send the release, just wait for our next frame (usually means that there is still a "charge" in the current accumulation).
-				_waitingForMouseRelease1 = false;
+				_inputCapture.waitingForMouseRelease1 = false;
 			}
 		}
 		
 		// If we were in the normal play mode, we still want to be able to drop from the hotbar.
 		if (!didAct)
 		{
-			if (_qPressed || _ctrlQPressed)
+			if (_inputCapture.qPressed || _inputCapture.ctrlQPressed)
 			{
 				// If we are holding ctrl, drop the entire stack.
 				Entity thisEntity = _entityBinding.get();
 				int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 				if (Entity.NO_SELECTION != selectedKey)
 				{
-					_modeContainer.play.currentGameSession.client.dropItemSlot(selectedKey, _ctrlQPressed);
+					_modeContainer.play.currentGameSession.client.dropItemSlot(selectedKey, _inputCapture.ctrlQPressed);
 					didAct = true;
 				}
-				_qPressed = false;
-				_ctrlQPressed = false;
+				_inputCapture.qPressed = false;
+				_inputCapture.ctrlQPressed = false;
 			}
 		}
 		
@@ -1320,7 +1316,7 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// Complete any of the idle operations and account for time passing.
 		// If we took no action, just tell the client to pass time.
-		if (!_didAccountForTimeInFrame)
+		if (!_inputCapture.didAccountForTimeInFrame)
 		{
 			Craft rescheduleInInventory = null;
 			AbsoluteLocation openStationLocation = null;
@@ -1354,7 +1350,7 @@ public class UiStateManager implements GameSession.ICallouts
 			currentGameSession.client.passTimeWhileRunning(rescheduleInInventory, openStationLocation, rescheduleInBlock);
 		}
 		
-		_didAccountForTimeInFrame = false;
+		_inputCapture.didAccountForTimeInFrame = false;
 		_audibleMotionInFrame = null;
 	}
 
