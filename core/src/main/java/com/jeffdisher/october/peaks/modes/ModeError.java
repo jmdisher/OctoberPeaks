@@ -1,7 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
 import com.badlogic.gdx.Gdx;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -19,7 +19,7 @@ import com.jeffdisher.october.peaks.ui.ViewTextLabel;
 public class ModeError implements IGameMode
 {
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final FixedWindow _errorStateWindow;
 
@@ -27,12 +27,12 @@ public class ModeError implements IGameMode
 
 	public ModeError(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 	)
 	{
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		
 		_errorStateWindow = _buildErrorStateWindow(_ui, _uiData);
@@ -72,7 +72,7 @@ public class ModeError implements IGameMode
 		}
 		
 		// Now, just draw the rest of the fixed window to get the buttons we want.
-		return _errorStateWindow.render(_mouseState.cursor);
+		return _errorStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -111,7 +111,7 @@ public class ModeError implements IGameMode
 
 	private void _action_clickCopyToClipboardButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// Just copy the payload to the clipboard.
 			StringBuilder builder = new StringBuilder();
@@ -126,7 +126,7 @@ public class ModeError implements IGameMode
 
 	private void _action_clickQuitButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// From here, we quit directly, as this is top-level.
 			// (in the error state, we won't wait for the app to quit).

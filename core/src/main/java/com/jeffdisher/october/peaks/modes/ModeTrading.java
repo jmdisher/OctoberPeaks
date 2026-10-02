@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import com.jeffdisher.october.peaks.GameSession;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.Rect;
@@ -33,7 +33,7 @@ public class ModeTrading implements IGameMode
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 
 	private final ModeContainer _modeContainer;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
 	private final Binding<Inventory> _thisEntityInventoryBinding;
@@ -44,24 +44,24 @@ public class ModeTrading implements IGameMode
 
 	public ModeTrading(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, Binding<Integer> currentTradingPartnerIdBinding
 		, Binding<Entity> entityBinding
 		, IntConsumer mouseOverTopRightKeyConsumer
 	)
 	{
 		_modeContainer = modeContainer;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_currentTradingPartnerIdBinding = currentTradingPartnerIdBinding;
 		
-		BooleanSupplier isLeftClick = () -> mouseState.leftClick;
+		BooleanSupplier isLeftClick = () -> inputCapture.leftClick;
 		_thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
 		this.thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
 		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
 			Assert.assertTrue(_modeContainer.trading == _modeContainer.currentMode);
-			if (mouseState.leftClick)
+			if (inputCapture.leftClick)
 			{
 				MinimalEntity villager = MinimalEntity.fromPartialEntity(_modeContainer.trading.currentGameSession.getEntityForId(_currentTradingPartnerIdBinding.get()));
 				boolean didSend = _modeContainer.trading.currentGameSession.client.sendTrade(villager, tradeItem);
@@ -100,6 +100,6 @@ public class ModeTrading implements IGameMode
 		// Whenever we exit trading mode, we always go back into play mode.
 		_currentTradingPartnerIdBinding.set(0);
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_mouseState.captureState.shouldCaptureMouse(true);
+		_inputCapture.captureState.shouldCaptureMouse(true);
 	}
 }

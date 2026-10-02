@@ -4,7 +4,7 @@ import java.util.function.BooleanSupplier;
 
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.LocalStorageManager;
-import com.jeffdisher.october.peaks.MouseState;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.FixedWindow;
@@ -28,25 +28,25 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
-	private final MouseState _mouseState;
+	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final ISessionStarter _sessionStarter;
 	private final FixedWindow _listSinglePlayerStateWindow;
 
 	public ModeListSinglePlayer(ModeContainer modeContainer
 		, GlUi ui
-		, MouseState mouseState
+		, InputCapture inputCapture
 		, UiData uiData
 		, ISessionStarter sessionStarter
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
-		_mouseState = mouseState;
+		_inputCapture = inputCapture;
 		_uiData = uiData;
 		_sessionStarter = sessionStarter;
 		
-		BooleanSupplier isLeftClick = () -> _mouseState.leftClick;
+		BooleanSupplier isLeftClick = () -> _inputCapture.leftClick;
 		_listSinglePlayerStateWindow = _buildListSinglePlayerStateWindow(_ui
 			, uiData
 			, isLeftClick
@@ -74,7 +74,7 @@ public class ModeListSinglePlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listSinglePlayerStateWindow.render(_mouseState.cursor);
+		return _listSinglePlayerStateWindow.render(_inputCapture.cursor);
 	}
 
 
@@ -146,7 +146,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickEnterSingleWorldButton(String directoryName)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// Load the session and enter the connecting state.
 			GameSession session = _sessionStarter.loadExistingWorld(directoryName);
@@ -156,7 +156,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickDeleteSingleWorldButton(String directoryName)
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// We want to enter the confirmation state.
 			_modeContainer.setActive(_modeContainer.confirmDeleteSinglePlayer);
@@ -168,7 +168,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickCreateSingleWorldButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			// Enter the single-player creation window.
 			_modeContainer.setActive(_modeContainer.newSinglePlayer.becomeActive());
@@ -180,7 +180,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_mouseState.leftClick)
+		if (_inputCapture.leftClick)
 		{
 			_goBack();
 		}
