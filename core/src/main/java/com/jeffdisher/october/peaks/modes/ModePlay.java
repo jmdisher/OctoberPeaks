@@ -50,6 +50,9 @@ public class ModePlay implements IGameMode
 	public FacingDirection selectedBlockOrientation;
 	public AbsoluteLocation preSelectedBlock;
 
+	// User input state specific to this mode.
+	public boolean isWaitingForRightClickRelease;
+
 	public ModePlay(ModeContainer modeContainer
 		, GlUi ui
 		, InputCapture inputCapture
@@ -159,7 +162,7 @@ public class ModePlay implements IGameMode
 		}
 		
 		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _modeContainer.play.selectionWindow.doRender(_inputCapture.cursor);
+		IAction noAction = _modeContainer.play.selectionWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
@@ -202,9 +205,9 @@ public class ModePlay implements IGameMode
 
 	private void _drawPassiveOverlayWindows()
 	{
-		IAction noAction = _hotbarWindow.doRender(_inputCapture.cursor);
+		IAction noAction = _hotbarWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
-		noAction = _metaDataWindow.doRender(_inputCapture.cursor);
+		noAction = _metaDataWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
 	}
 }
