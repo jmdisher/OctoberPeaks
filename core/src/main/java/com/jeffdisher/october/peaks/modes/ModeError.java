@@ -72,7 +72,7 @@ public class ModeError implements IGameMode
 		}
 		
 		// Now, just draw the rest of the fixed window to get the buttons we want.
-		return _errorStateWindow.render(_inputCapture.cursor);
+		return _errorStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -111,7 +111,7 @@ public class ModeError implements IGameMode
 
 	private void _action_clickCopyToClipboardButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// Just copy the payload to the clipboard.
 			StringBuilder builder = new StringBuilder();
@@ -126,7 +126,7 @@ public class ModeError implements IGameMode
 
 	private void _action_clickQuitButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// From here, we quit directly, as this is top-level.
 			// (in the error state, we won't wait for the app to quit).

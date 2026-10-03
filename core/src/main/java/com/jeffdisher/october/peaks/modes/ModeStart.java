@@ -63,7 +63,7 @@ public class ModeStart implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _startWindow.render(_inputCapture.cursor);
+		return _startWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -154,7 +154,7 @@ public class ModeStart implements IGameMode
 
 	private void _action_clickSinglePlayerButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// Enter the single-player list.
 			_modeContainer.setActive(_modeContainer.listSinglePlayer.becomeActive());
@@ -166,7 +166,7 @@ public class ModeStart implements IGameMode
 
 	private void _action_clickMultiPlayerButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// Enter the single-player list.
 			_modeContainer.setActive(_modeContainer.listMultiPlayer.becomeActive());
@@ -178,7 +178,7 @@ public class ModeStart implements IGameMode
 
 	private void _action_clickOptionsButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_modeContainer.setActive(_modeContainer.options.becomeActive(null));
 		}
@@ -186,7 +186,7 @@ public class ModeStart implements IGameMode
 
 	private void _action_clickKeyBindingsButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_modeContainer.setActive(_modeContainer.keyBindings.becomeActive(null));
 			_uiData.currentlyChangingControl.set(null);
@@ -195,7 +195,7 @@ public class ModeStart implements IGameMode
 
 	private void _action_clickQuitButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// From here, we quit directly, as this is top-level.
 			Gdx.app.exit();
@@ -204,7 +204,7 @@ public class ModeStart implements IGameMode
 
 	private void _action_clickProfileRunsButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// This just changes state.
 			_modeContainer.setActive(_modeContainer.listForProfile.becomeActive());
