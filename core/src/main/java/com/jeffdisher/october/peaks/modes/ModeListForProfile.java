@@ -63,7 +63,7 @@ public class ModeListForProfile implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listProfileRunsStateWindow.render(_inputCapture.cursor);
+		return _listProfileRunsStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -104,7 +104,7 @@ public class ModeListForProfile implements IGameMode
 
 	private void _action_clickProfileRunButton(ProfilingModes mode)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// This just changes state.
 			ProfilingSession session = _sessionStarter.startSession(mode);
@@ -114,7 +114,7 @@ public class ModeListForProfile implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 		}

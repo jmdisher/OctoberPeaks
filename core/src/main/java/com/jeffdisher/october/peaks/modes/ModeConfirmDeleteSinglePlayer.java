@@ -63,7 +63,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _confirmDeleteSinglePlayerStateWindow.render(_inputCapture.cursor);
+		return _confirmDeleteSinglePlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -105,7 +105,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	private void _action_clickConfirmDeleteButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 			
@@ -118,7 +118,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 		}

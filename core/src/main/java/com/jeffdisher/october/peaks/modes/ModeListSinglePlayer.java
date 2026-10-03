@@ -46,7 +46,7 @@ public class ModeListSinglePlayer implements IGameMode
 		_uiData = uiData;
 		_sessionStarter = sessionStarter;
 		
-		BooleanSupplier isLeftClick = () -> _inputCapture.leftClick;
+		BooleanSupplier isLeftClick = () -> _inputCapture.mouseReleased0;
 		_listSinglePlayerStateWindow = _buildListSinglePlayerStateWindow(_ui
 			, uiData
 			, isLeftClick
@@ -74,7 +74,7 @@ public class ModeListSinglePlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _listSinglePlayerStateWindow.render(_inputCapture.cursor);
+		return _listSinglePlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -146,7 +146,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickEnterSingleWorldButton(String directoryName)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// Load the session and enter the connecting state.
 			GameSession session = _sessionStarter.loadExistingWorld(directoryName);
@@ -156,7 +156,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickDeleteSingleWorldButton(String directoryName)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// We want to enter the confirmation state.
 			_modeContainer.setActive(_modeContainer.confirmDeleteSinglePlayer);
@@ -168,7 +168,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickCreateSingleWorldButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// Enter the single-player creation window.
 			_modeContainer.setActive(_modeContainer.newSinglePlayer.becomeActive());
@@ -180,7 +180,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 		}

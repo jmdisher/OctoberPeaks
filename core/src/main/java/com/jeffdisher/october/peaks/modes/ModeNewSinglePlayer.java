@@ -65,7 +65,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _newSinglePlayerStateWindow.render(_inputCapture.cursor);
+		return _newSinglePlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -190,7 +190,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickPlayerModeRadioButton(WorldConfig.DefaultPlayerMode selected)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.defaultPlayerModeBinding.set(selected);
 		}
@@ -198,7 +198,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickWorldGeneratorRadioButton(WorldConfig.WorldGeneratorName selected)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.worldGeneratorNameBinding.set(selected);
 		}
@@ -206,7 +206,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickDifficultyRadioButton(Difficulty selected)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.difficultyBinding.set(selected);
 		}
@@ -215,7 +215,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	private void _action_clickSeedTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.typingCapture = _uiData.newSeedBinding;
 		}
@@ -224,7 +224,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	private void _action_clickNewWorldNameTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.typingCapture = _uiData.newWorldNameBinding;
 		}
@@ -232,7 +232,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickConfirmCreateSingleWorldButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// Make sure that the name is non-empty and not already used.
 			String worldName = _uiData.newWorldNameBinding.get();
@@ -275,7 +275,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 		}

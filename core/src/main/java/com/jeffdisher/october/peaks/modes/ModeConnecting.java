@@ -62,7 +62,7 @@ public class ModeConnecting implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _connectingStateWindow.render(_inputCapture.cursor);
+		return _connectingStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -89,7 +89,7 @@ public class ModeConnecting implements IGameMode
 
 	private void _action_clickCancelConnectButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 		}

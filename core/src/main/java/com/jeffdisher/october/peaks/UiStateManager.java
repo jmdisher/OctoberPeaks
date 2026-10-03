@@ -143,17 +143,17 @@ public class UiStateManager implements GameSession.ICallouts
 		};
 		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
 			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			if (_modeContainer.inventory.isManualCraftingStation && (_inputCapture.leftClick || _inputCapture.leftShiftClick))
+			if (_modeContainer.inventory.isManualCraftingStation && (_inputCapture.mouseReleased0))
 			{
 				Craft craft = desc.craft();
 				if (null != _modeContainer.inventory.openStationLocation)
 				{
-					_modeContainer.inventory.continuousInBlock = _inputCapture.leftShiftClick ? craft : null;
+					_modeContainer.inventory.continuousInBlock = _inputCapture.leftShiftHeld ? craft : null;
 					_modeContainer.inventory.currentGameSession.client.beginCraftInBlock(_modeContainer.inventory.openStationLocation, craft);
 				}
 				else
 				{
-					_modeContainer.inventory.continuousInInventory = _inputCapture.leftShiftClick ? craft : null;
+					_modeContainer.inventory.continuousInInventory = _inputCapture.leftShiftHeld ? craft : null;
 					_modeContainer.inventory.currentGameSession.client.beginCraftInInventory(craft);
 				}
 				_inputCapture.didAccountForTimeInFrame = true;
@@ -370,157 +370,6 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	private void _capturedMouseMoved(int deltaX, int deltaY)
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		// Something has to change for us to get this call.
-		Assert.assertTrue((0 != deltaX) || (0 != deltaY));
-		_yawRadians = _modeContainer.play.currentGameSession.movement.rotateYaw(deltaX);
-		_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
-		_orientationNeedsFlush = true;
-	}
-
-	private void _walk(RelativeDirection relative)
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		boolean runningSpeed = false;
-		_modeContainer.play.currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
-		_inputCapture.didAccountForTimeInFrame = true;
-		_audibleMotionInFrame = _AudibleMotion.WALK;
-	}
-
-	private void _run(RelativeDirection relative)
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		boolean runningSpeed = true;
-		_modeContainer.play.currentGameSession.client.accelerateHorizontal(relative, runningSpeed);
-		_inputCapture.didAccountForTimeInFrame = true;
-		_audibleMotionInFrame = _AudibleMotion.RUN;
-	}
-
-	private void _sneak(RelativeDirection relative)
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		_modeContainer.play.currentGameSession.client.sneak(relative);
-		_inputCapture.didAccountForTimeInFrame = true;
-		
-		// We will say that sneaking is silent.
-		_audibleMotionInFrame = null;
-	}
-
-	private void _ascendOrJumpOrSwim()
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		_modeContainer.play.currentGameSession.client.ascendOrJumpOrSwim();
-	}
-
-	private void _tryDescend()
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		_modeContainer.play.currentGameSession.client.tryDescend();
-	}
-
-	private void _handleKeyEsc()
-	{
-		_modeContainer.currentMode.handleEscape();
-		
-		// Any meaning of "back" should stop text input.
-		_uiData.typingCapture = null;
-	}
-
-	private void _handleHotbarIndex(int hotbarIndex)
-	{
-		// We need an active session and not paused but logically this means play or inventory.
-		if (_modeContainer.play == _modeContainer.currentMode)
-		{
-			_modeContainer.play.currentGameSession.client.changeHotbarIndex(hotbarIndex);
-		}
-		else if (_modeContainer.inventory == _modeContainer.currentMode)
-		{
-			_modeContainer.inventory.currentGameSession.client.changeHotbarIndex(hotbarIndex);
-		}
-		else if (_modeContainer.trading == _modeContainer.currentMode)
-		{
-			_modeContainer.trading.currentGameSession.client.changeHotbarIndex(hotbarIndex);
-		}
-	}
-
-	private void _handleKeyI()
-	{
-		// This only matters if we are playing or in the inventory screen.
-		if (_modeContainer.inventory == _modeContainer.currentMode)
-		{
-			_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
-			_inputCapture.captureState.shouldCaptureMouse(true);
-		}
-		else if (_modeContainer.play == _modeContainer.currentMode)
-		{
-			_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, null));
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_inputCapture.captureState.shouldCaptureMouse(false);
-		}
-	}
-
-	private void _handleKeyF()
-	{
-		if (_modeContainer.inventory == _modeContainer.currentMode)
-		{
-			_modeContainer.inventory.viewingFuelInventory = !_modeContainer.inventory.viewingFuelInventory;
-			if (_modeContainer.inventory.viewingFuelInventory)
-			{
-				// Make sure that this actually has a fuel slot.
-				if (null == _modeContainer.inventory.openStationLocation)
-				{
-					_modeContainer.inventory.viewingFuelInventory = false;
-				}
-				else
-				{
-					BlockProxy stationBlock = _modeContainer.inventory.currentGameSession.blockLookup.readBlock(_modeContainer.inventory.openStationLocation);
-					_modeContainer.inventory.viewingFuelInventory = (null != stationBlock.getFuel());
-				}
-			}
-			_modeContainer.inventory.continuousInInventory = null;
-			_modeContainer.inventory.continuousInBlock = null;
-		}
-	}
-
-	private void _handleKeyQ(boolean isCtrlPressed)
-	{
-		if (isCtrlPressed)
-		{
-			_inputCapture.ctrlQPressed = true;
-		}
-		else
-		{
-			_inputCapture.qPressed = true;
-		}
-	}
-
-	private void _toggleCreativeFlight()
-	{
-		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-		
-		_modeContainer.play.currentGameSession.client.toggleCreativeFlight();
-	}
-
-	private void _keyCodeUp(int lastKeyUp)
-	{
-		if ((_modeContainer.keyBindings == _modeContainer.currentMode) && (null != _uiData.currentlyChangingControl.get()))
-		{
-			boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), lastKeyUp);
-			if (didSet)
-			{
-				_uiData.currentlyChangingControl.set(null);
-			}
-		}
-	}
-
 	/**
 	 * Called after clearing the framebuffer in order to render the frame with whatever is required for in the current
 	 * UI state.
@@ -546,6 +395,7 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
+		_inputCapture.clearReleaseState();
 	}
 
 
@@ -666,47 +516,6 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	private void _keyTyped(char typedCharacter)
-	{
-		// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
-		if (null != _uiData.typingCapture)
-		{
-			String string = _uiData.typingCapture.get();
-			int nameLength = string.length();
-			if (('\b' == typedCharacter) && (nameLength > 0))
-			{
-				// Backspace is a special case.
-				_uiData.typingCapture.set(string.substring(0, string.length() - 1));
-			}
-			else if (nameLength < MAX_WORLD_NAME)
-			{
-				int type = Character.getType(typedCharacter);
-				switch (type)
-				{
-				case Character.LOWERCASE_LETTER:
-				case Character.UPPERCASE_LETTER:
-				case Character.DECIMAL_DIGIT_NUMBER:
-					_uiData.typingCapture.set(string + typedCharacter);
-					break;
-					default:
-						// Special-case whitelist.
-						switch (typedCharacter)
-						{
-						case '.':
-						case ':':
-						case '-':
-						case '_':
-						case ' ':
-							_uiData.typingCapture.set(string + typedCharacter);
-							break;
-						default:
-							// Ignored.
-						}
-				}
-			}
-		}
-	}
-
 	public void enterErrorState(String[] payload)
 	{
 		_modeContainer.setActive(_modeContainer.error.becomeActive(payload));
@@ -766,25 +575,24 @@ public class UiStateManager implements GameSession.ICallouts
 		boolean viewingFuelInventory = (_modeContainer.inventory == _modeContainer.currentMode) && _modeContainer.inventory.viewingFuelInventory;
 		
 		// This is the helper called when looking at the player's own inventory.
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0 && !_inputCapture.leftShiftHeld)
 		{
 			// Select this in the hotbar (this will clear if already set).
 			currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
 		}
-		else if ((null != targetBlock) && _inputCapture.rightClick)
+		else if ((null != targetBlock) && _inputCapture.mouseReleased1)
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, viewingFuelInventory);
 		}
-		else if ((null != targetBlock) && _inputCapture.leftShiftClick)
+		else if ((null != targetBlock) && (_inputCapture.mouseReleased0 && _inputCapture.leftShiftHeld))
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, viewingFuelInventory);
 		}
-		else if (_inputCapture.qPressed || _inputCapture.ctrlQPressed)
+		else if (_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()])
 		{
 			// If we are holding ctrl, drop the entire stack.
-			currentGameSession.client.dropItemSlot(entityInventoryKey, _inputCapture.ctrlQPressed);
-			_inputCapture.qPressed = false;
-			_inputCapture.ctrlQPressed = false;
+			currentGameSession.client.dropItemSlot(entityInventoryKey, _inputCapture.leftCtrlHeld);
+			_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()] = false;
 		}
 	}
 
@@ -793,11 +601,11 @@ public class UiStateManager implements GameSession.ICallouts
 		Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
 		
 		// Note that we ignore the result since this will be reflected in the UI, if valid.
-		if (_inputCapture.rightClick)
+		if (_inputCapture.mouseReleased1)
 		{
 			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _modeContainer.inventory.viewingFuelInventory);
 		}
-		else if (_inputCapture.leftShiftClick)
+		else if (_inputCapture.leftShiftHeld && _inputCapture.mouseReleased0)
 		{
 			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _modeContainer.inventory.viewingFuelInventory);
 		}
@@ -958,23 +766,23 @@ public class UiStateManager implements GameSession.ICallouts
 		
 		// This is a window mode so draw the usual.
 		_modeContainer.play.drawPassiveOverlayWindows();
-		IAction action = _modeContainer.inventory.armourWindow.doRender(_inputCapture.cursor);
+		IAction action = _modeContainer.inventory.armourWindow.doRender(_inputCapture.glCursorLocation);
 		
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
 		{
-			IAction hover = _modeContainer.inventory.craftingWindow.doRender(_inputCapture.cursor);
+			IAction hover = _modeContainer.inventory.craftingWindow.doRender(_inputCapture.glCursorLocation);
 			if (null != hover)
 			{
 				action = hover;
 			}
 		}
-		IAction hover = _modeContainer.inventory.thisEntityInventoryWindow.doRender(_inputCapture.cursor);
+		IAction hover = _modeContainer.inventory.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action = hover;
 		}
-		hover = _modeContainer.inventory.bottomInventoryWindow.doRender(_inputCapture.cursor);
+		hover = _modeContainer.inventory.bottomInventoryWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action = hover;
@@ -983,7 +791,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
-			action.renderHover(_inputCapture.cursor);
+			action.renderHover(_inputCapture.glCursorLocation);
 		}
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
@@ -1001,13 +809,13 @@ public class UiStateManager implements GameSession.ICallouts
 		IAction action = null;
 		
 		// The trading window is the interesting part of this view.
-		IAction hover = _modeContainer.trading.leftTradingWindow.doRender(_inputCapture.cursor);
+		IAction hover = _modeContainer.trading.leftTradingWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action = hover;
 		}
 		
-		hover = _modeContainer.trading.thisEntityInventoryWindow.doRender(_inputCapture.cursor);
+		hover = _modeContainer.trading.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action = hover;
@@ -1016,7 +824,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// If we should be rendering a hover, do it here.
 		if (null != action)
 		{
-			action.renderHover(_inputCapture.cursor);
+			action.renderHover(_inputCapture.glCursorLocation);
 		}
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
@@ -1185,7 +993,7 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			else if (null != entity)
 			{
-				if (_inputCapture.mouseClicked0)
+				if (_inputCapture.mousePressed0)
 				{
 					_modeContainer.play.currentGameSession.client.hitEntity(entity);
 					didAct = true;
@@ -1199,20 +1007,20 @@ public class UiStateManager implements GameSession.ICallouts
 			didAct = _modeContainer.play.currentGameSession.client.holdRightClickOnSelf();
 			if (didAct)
 			{
-				_inputCapture.waitingForMouseRelease1 = true;
+				_modeContainer.play.isWaitingForRightClickRelease = true;
 			}
 			
 			if (null != stopBlock)
 			{
 				// First, see if we need to change the UI state if this is a station we just clicked on.
-				if (!didAct && _inputCapture.mouseClicked1)
+				if (!didAct && _inputCapture.mousePressed1)
 				{
 					didAct = _didOpenStationInventory(stopBlock);
 				}
 			}
 			else if (null != entity)
 			{
-				if (!didAct && _inputCapture.mouseClicked1)
+				if (!didAct && _inputCapture.mousePressed1)
 				{
 					// Check if this is a villager and then switch into the trading UI mode.
 					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
@@ -1233,11 +1041,11 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			
 			// If we still didn't do anything, try clicks on the block or self.
-			if (!didAct && _inputCapture.mouseClicked1 && (null != stopBlock))
+			if (!didAct && _inputCapture.mousePressed1 && (null != stopBlock))
 			{
 				didAct = _modeContainer.play.currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
 			}
-			if (!didAct && _inputCapture.mouseClicked1)
+			if (!didAct && _inputCapture.mousePressed1)
 			{
 				didAct = _modeContainer.play.currentGameSession.client.runRightClickOnSelf();
 			}
@@ -1251,31 +1059,30 @@ public class UiStateManager implements GameSession.ICallouts
 				}
 			}
 		}
-		else if (_inputCapture.waitingForMouseRelease1)
+		else if (_modeContainer.play.isWaitingForRightClickRelease)
 		{
 			didAct = _modeContainer.play.currentGameSession.client.releasedRightClickOnSelf();
 			if (didAct)
 			{
 				// If we failed to send the release, just wait for our next frame (usually means that there is still a "charge" in the current accumulation).
-				_inputCapture.waitingForMouseRelease1 = false;
+				_modeContainer.play.isWaitingForRightClickRelease = false;
 			}
 		}
 		
 		// If we were in the normal play mode, we still want to be able to drop from the hotbar.
 		if (!didAct)
 		{
-			if (_inputCapture.qPressed || _inputCapture.ctrlQPressed)
+			if (_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()])
 			{
 				// If we are holding ctrl, drop the entire stack.
 				Entity thisEntity = _entityBinding.get();
 				int selectedKey = thisEntity.hotbarItems()[thisEntity.hotbarIndex()];
 				if (Entity.NO_SELECTION != selectedKey)
 				{
-					_modeContainer.play.currentGameSession.client.dropItemSlot(selectedKey, _inputCapture.ctrlQPressed);
+					_modeContainer.play.currentGameSession.client.dropItemSlot(selectedKey, _inputCapture.leftCtrlHeld);
 					didAct = true;
 				}
-				_inputCapture.qPressed = false;
-				_inputCapture.ctrlQPressed = false;
+				_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()] = false;
 			}
 		}
 		
@@ -1396,14 +1203,13 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private void _flushInputEvents()
 	{
-		// Clear the existing mouse state.
-		_inputCapture.resetState();
-		
 		// We want to go down the list of things we might need to report and tell the UI Manager.
 		
 		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
 		if (_inputCapture.shouldCaptureMouseMovements)
 		{
+			Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
+			
 			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
 			if ((_inputCapture.mouseX != _inputCapture.lastReportedMouseX) || (_inputCapture.mouseY != _inputCapture.lastReportedMouseY))
 			{
@@ -1411,105 +1217,183 @@ public class UiStateManager implements GameSession.ICallouts
 				int deltaY = _inputCapture.mouseY - _inputCapture.lastReportedMouseY;
 				_inputCapture.lastReportedMouseX = _inputCapture.mouseX;
 				_inputCapture.lastReportedMouseY = _inputCapture.mouseY;
-				_capturedMouseMoved(deltaX, deltaY);
-			}
-			if (_inputCapture.buttonDown0)
-			{
-				_inputCapture.captureMouse0Down(!_inputCapture.didHandleButton0);
-				_inputCapture.didHandleButton0 = true;
-			}
-			if (_inputCapture.buttonDown1)
-			{
-				_inputCapture.captureMouse1Down(!_inputCapture.didHandleButton1, _inputCapture.leftShiftDown);
-				_inputCapture.didHandleButton1 = true;
+				Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
+				
+				// Something has to change for us to get this call.
+				Assert.assertTrue((0 != deltaX) || (0 != deltaY));
+				_yawRadians = _modeContainer.play.currentGameSession.movement.rotateYaw(deltaX);
+				_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
+				_orientationNeedsFlush = true;
 			}
 			
 			// Check out movement controls.
 			RelativeDirection relativeMove = _getCurrentMove();
 			if (null != relativeMove)
 			{
-				if (_inputCapture.activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
+				if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SNEAK.ordinal()])
 				{
-					_sneak(relativeMove);
+					_modeContainer.play.currentGameSession.client.sneak(relativeMove);
+					_inputCapture.didAccountForTimeInFrame = true;
+					
+					// We will say that sneaking is silent.
+					_audibleMotionInFrame = null;
 				}
-				else if (_inputCapture.activeControls[MutableControls.Control.MOVE_SPRINT.ordinal()])
+				else if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SPRINT.ordinal()])
 				{
-					_run(relativeMove);
+					boolean runningSpeed = true;
+					_modeContainer.play.currentGameSession.client.accelerateHorizontal(relativeMove, runningSpeed);
+					_inputCapture.didAccountForTimeInFrame = true;
+					_audibleMotionInFrame = _AudibleMotion.RUN;
 				}
 				else
 				{
-					_walk(relativeMove);
+					boolean runningSpeed = false;
+					_modeContainer.play.currentGameSession.client.accelerateHorizontal(relativeMove, runningSpeed);
+					_inputCapture.didAccountForTimeInFrame = true;
+					_audibleMotionInFrame = _AudibleMotion.WALK;
 				}
 			}
 			
 			// See if we want to jump or try descending a ladder.
-			if (_inputCapture.activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])
+			if (_inputCapture.controlHeld[MutableControls.Control.MOVE_JUMP.ordinal()])
 			{
-				_ascendOrJumpOrSwim();
+				_modeContainer.play.currentGameSession.client.ascendOrJumpOrSwim();
 			}
-			else if (_inputCapture.activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
+			else if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SNEAK.ordinal()])
 			{
-				_tryDescend();
+				_modeContainer.play.currentGameSession.client.tryDescend();
 			}
-			if (_inputCapture.activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
+			if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
 			{
-				_toggleCreativeFlight();
-				_inputCapture.activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
+				_modeContainer.play.currentGameSession.client.toggleCreativeFlight();
+				_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
 			}
 		}
 		else
 		{
-			_inputCapture.normalMouseMoved(_inputCapture.glCursorLocation);
-			if (!_inputCapture.didHandleButton0)
-			{
-				_inputCapture.normalMouse0Clicked(_inputCapture.leftShiftDown);
-				_inputCapture.didHandleButton0 = true;
-			}
-			if (!_inputCapture.didHandleButton1)
-			{
-				_inputCapture.normalMouse1Clicked(_inputCapture.leftShiftDown);
-				_inputCapture.didHandleButton1 = true;
-			}
-			
 			// We also only capture the raw text input when not capturing movements since this would just be noise.
 			if ('\0' != _inputCapture.typedCharacter)
 			{
-				_keyTyped(_inputCapture.typedCharacter);
+				char typedCharacter = _inputCapture.typedCharacter;
+				// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
+				if (null != _uiData.typingCapture)
+				{
+					String string = _uiData.typingCapture.get();
+					int nameLength = string.length();
+					if (('\b' == typedCharacter) && (nameLength > 0))
+					{
+						// Backspace is a special case.
+						_uiData.typingCapture.set(string.substring(0, string.length() - 1));
+					}
+					else if (nameLength < MAX_WORLD_NAME)
+					{
+						int type = Character.getType(typedCharacter);
+						switch (type)
+						{
+						case Character.LOWERCASE_LETTER:
+						case Character.UPPERCASE_LETTER:
+						case Character.DECIMAL_DIGIT_NUMBER:
+							_uiData.typingCapture.set(string + typedCharacter);
+							break;
+							default:
+								// Special-case whitelist.
+								switch (typedCharacter)
+								{
+								case '.':
+								case ':':
+								case '-':
+								case '_':
+								case ' ':
+									_uiData.typingCapture.set(string + typedCharacter);
+									break;
+								default:
+									// Ignored.
+								}
+						}
+					}
+				}
 				_inputCapture.typedCharacter = '\0';
 			}
 		}
 		
 		// Now, we handle the special events related to specific keys which generally change UI state.
-		if (!_inputCapture.didHandleKeyEsc)
+		if (_inputCapture.didReleaseEsc)
 		{
-			_handleKeyEsc();
-			_inputCapture.didHandleKeyEsc = true;
+			_modeContainer.currentMode.handleEscape();
+			
+			// Any meaning of "back" should stop text input.
+			_uiData.typingCapture = null;
+			_inputCapture.didReleaseEsc = false;
 		}
-		if (!_inputCapture.didHandlePressedNumber)
+		if (-1 != _inputCapture.lastPressedNumber)
 		{
-			_handleHotbarIndex(_inputCapture.lastPressedNumber - 1);
-			_inputCapture.didHandlePressedNumber = true;
+			int hotbarIndex = _inputCapture.lastPressedNumber - 1;
+			// We need an active session and not paused but logically this means play or inventory.
+			if (_modeContainer.play == _modeContainer.currentMode)
+			{
+				_modeContainer.play.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			}
+			else if (_modeContainer.inventory == _modeContainer.currentMode)
+			{
+				_modeContainer.inventory.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			}
+			else if (_modeContainer.trading == _modeContainer.currentMode)
+			{
+				_modeContainer.trading.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			}
+			_inputCapture.lastPressedNumber = -1;
 		}
-		if (_inputCapture.activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
+		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
 		{
-			_handleKeyI();
-			_inputCapture.activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
+			// This only matters if we are playing or in the inventory screen.
+			if (_modeContainer.inventory == _modeContainer.currentMode)
+			{
+				_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
+				_inputCapture.captureState.shouldCaptureMouse(true);
+			}
+			else if (_modeContainer.play == _modeContainer.currentMode)
+			{
+				_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, null));
+				// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
+				_inputCapture.captureState.shouldCaptureMouse(false);
+			}
+			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
 		}
-		if (_inputCapture.activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()])
+		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()])
 		{
-			_handleKeyF();
-			_inputCapture.activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
-		}
-		if (_inputCapture.activeControls[MutableControls.Control.DROP_ITEM.ordinal()])
-		{
-			_handleKeyQ(_inputCapture.leftCtrlDown);
-			_inputCapture.activeControls[MutableControls.Control.DROP_ITEM.ordinal()] = false;
+			if (_modeContainer.inventory == _modeContainer.currentMode)
+			{
+				_modeContainer.inventory.viewingFuelInventory = !_modeContainer.inventory.viewingFuelInventory;
+				if (_modeContainer.inventory.viewingFuelInventory)
+				{
+					// Make sure that this actually has a fuel slot.
+					if (null == _modeContainer.inventory.openStationLocation)
+					{
+						_modeContainer.inventory.viewingFuelInventory = false;
+					}
+					else
+					{
+						BlockProxy stationBlock = _modeContainer.inventory.currentGameSession.blockLookup.readBlock(_modeContainer.inventory.openStationLocation);
+						_modeContainer.inventory.viewingFuelInventory = (null != stationBlock.getFuel());
+					}
+				}
+				_modeContainer.inventory.continuousInInventory = null;
+				_modeContainer.inventory.continuousInBlock = null;
+			}
+			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
 		}
 		
-		if (Keys.UNKNOWN != _inputCapture.lastKeyUp)
+		if (Keys.UNKNOWN != _inputCapture.lastKeyCodeReleased)
 		{
-			_keyCodeUp(_inputCapture.lastKeyUp);
-			_inputCapture.lastKeyUp = Keys.UNKNOWN;
+			if ((_modeContainer.keyBindings == _modeContainer.currentMode) && (null != _uiData.currentlyChangingControl.get()))
+			{
+				boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), _inputCapture.lastKeyCodeReleased);
+				if (didSet)
+				{
+					_uiData.currentlyChangingControl.set(null);
+				}
+			}
+			_inputCapture.lastKeyCodeReleased = Keys.UNKNOWN;
 		}
 	}
 
@@ -1517,20 +1401,20 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		// Given that we can mix directions (forward + right, for example), this function handles that combination logic.
 		int forward = 0;
-		if (_inputCapture.activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
+		if (_inputCapture.controlHeld[MutableControls.Control.MOVE_FORWARD.ordinal()])
 		{
 			forward += 1;
 		}
-		if (_inputCapture.activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
+		if (_inputCapture.controlHeld[MutableControls.Control.MOVE_BACKWARD.ordinal()])
 		{
 			forward -= 1;
 		}
 		int right = 0;
-		if (_inputCapture.activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
+		if (_inputCapture.controlHeld[MutableControls.Control.MOVE_RIGHT.ordinal()])
 		{
 			right += 1;
 		}
-		if (_inputCapture.activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
+		if (_inputCapture.controlHeld[MutableControls.Control.MOVE_LEFT.ordinal()])
 		{
 			right -= 1;
 		}

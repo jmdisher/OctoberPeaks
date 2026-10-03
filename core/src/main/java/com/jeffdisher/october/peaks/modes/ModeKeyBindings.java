@@ -72,7 +72,7 @@ public class ModeKeyBindings implements IGameMode
 			_commonPauseRender.accept(this.currentGameSession);
 		}
 		
-		return _keyBindingsStateWindow.render(_inputCapture.cursor);
+		return _keyBindingsStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -113,7 +113,7 @@ public class ModeKeyBindings implements IGameMode
 
 	private void _action_clickKeyBindingSelector(MutableControls.Control selectedControl)
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.currentlyChangingControl.set(selectedControl);
 		}
@@ -121,7 +121,7 @@ public class ModeKeyBindings implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_escapeOrBack();
 		}

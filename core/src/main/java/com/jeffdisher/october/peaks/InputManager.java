@@ -48,10 +48,10 @@ public class InputManager
 				switch(keycode)
 				{
 				case Keys.SHIFT_LEFT:
-					_inputCapture.leftShiftDown = true;
+					_inputCapture.leftShiftHeld = true;
 					break;
 				case Keys.CONTROL_LEFT:
-					_inputCapture.leftCtrlDown = true;
+					_inputCapture.leftCtrlHeld = true;
 					break;
 				}
 				
@@ -59,11 +59,7 @@ public class InputManager
 				MutableControls.Control control = _controls.getCodeForKey(keycode);
 				if (null != control)
 				{
-					// We can actually do something here.
-					if (!control.isClickOnly)
-					{
-						_inputCapture.activeControls[control.ordinal()] = true;
-					}
+					_inputCapture.controlHeld[control.ordinal()] = true;
 				}
 				return true;
 			}
@@ -74,49 +70,40 @@ public class InputManager
 				{
 				case Keys.ESCAPE:
 					// We just capture the click.
-					_inputCapture.didHandleKeyEsc = false;
+					_inputCapture.didReleaseEsc = true;
 					break;
 				case Keys.NUM_1:
 					_inputCapture.lastPressedNumber = 1;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_2:
 					_inputCapture.lastPressedNumber = 2;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_3:
 					_inputCapture.lastPressedNumber = 3;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_4:
 					_inputCapture.lastPressedNumber = 4;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_5:
 					_inputCapture.lastPressedNumber = 5;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_6:
 					_inputCapture.lastPressedNumber = 6;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_7:
 					_inputCapture.lastPressedNumber = 7;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_8:
 					_inputCapture.lastPressedNumber = 8;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_9:
 					_inputCapture.lastPressedNumber = 9;
-					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.SHIFT_LEFT:
-					_inputCapture.leftShiftDown = false;
+					_inputCapture.leftShiftHeld = false;
 					break;
 				case Keys.CONTROL_LEFT:
-					_inputCapture.leftCtrlDown = false;
+					_inputCapture.leftCtrlHeld = false;
 					break;
 				}
 				
@@ -124,10 +111,10 @@ public class InputManager
 				MutableControls.Control control = _controls.getCodeForKey(keycode);
 				if (null != control)
 				{
-					// Click only is only triggered on key up while hold are only set on key down and always cleared on up.
-					_inputCapture.activeControls[control.ordinal()] = control.isClickOnly;
+					_inputCapture.controlHeld[control.ordinal()] = false;
+					_inputCapture.controlReleased[control.ordinal()] = true;
 				}
-				_inputCapture.lastKeyUp = keycode;
+				_inputCapture.lastKeyCodeReleased = keycode;
 				return true;
 			}
 			@Override
@@ -136,12 +123,14 @@ public class InputManager
 				switch(button)
 				{
 				case 0:
-					_inputCapture.buttonDown0 = true;
-					_inputCapture.didHandleButton0 = false;
+					_inputCapture.mouseHeld0 = true;
+					_inputCapture.mousePressed0 = true;
+					_inputCapture.mouseReleased0 = false;
 					break;
 				case 1:
-					_inputCapture.buttonDown1 = true;
-					_inputCapture.didHandleButton1 = false;
+					_inputCapture.mouseHeld1 = true;
+					_inputCapture.mousePressed1 = true;
+					_inputCapture.mouseReleased1 = false;
 					break;
 				}
 				return true;
@@ -152,10 +141,14 @@ public class InputManager
 				switch(button)
 				{
 				case 0:
-					_inputCapture.buttonDown0 = false;
+					_inputCapture.mouseHeld0 = false;
+					_inputCapture.mousePressed0 = false;
+					_inputCapture.mouseReleased0 = true;
 					break;
 				case 1:
-					_inputCapture.buttonDown1 = false;
+					_inputCapture.mouseHeld1 = false;
+					_inputCapture.mousePressed1 = false;
+					_inputCapture.mouseReleased1 = true;
 					break;
 				}
 				return true;
@@ -189,11 +182,6 @@ public class InputManager
 				}
 			}
 		});
-		
-		_inputCapture.didHandlePressedNumber = true;
-		_inputCapture.didHandleButton0 = true;
-		_inputCapture.didHandleButton1 = true;
-		_inputCapture.didHandleKeyEsc = true;
 	}
 
 	public void enterCaptureState(boolean state)

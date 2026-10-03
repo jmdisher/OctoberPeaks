@@ -14,46 +14,39 @@ import com.jeffdisher.october.peaks.ui.Point;
 public class InputCapture
 {
 	public final ICallouts captureState;
-	public Point cursor;
+	// (note that the mouse "held" is if the button is currently down while "pressed" means it was pressed in this frame
+	// and "released" means it was released in this frame)
 	public boolean mouseHeld0;
 	public boolean mouseHeld1;
-	public boolean mouseClicked0;
-	public boolean mouseClicked1;
-	public boolean leftClick;
-	public boolean leftShiftClick;
-	public boolean rightClick;
+	public boolean mousePressed0;
+	public boolean mousePressed1;
+	public boolean mouseReleased0;
+	public boolean mouseReleased1;
 
-	// Some more complex input state.
-	public boolean waitingForMouseRelease1;
-	public boolean ctrlQPressed;
-	public boolean qPressed;
+	// Since shift and ctrl are meta-keys, we just record if they are currently held.
+	public boolean leftShiftHeld;
+	public boolean leftCtrlHeld;
 
-	// Raw components extracted from InputManager.
-	public final boolean[] activeControls;
-	public int lastKeyUp;
+	// This is an array for each MutableControls by ordinal for "held" currently or "released" in this frame.
+	public final boolean[] controlHeld;
+	public final boolean[] controlReleased;
+	// (Keys.UNKNOWN means "no lastKeyCodeReleased")
+	public int lastKeyCodeReleased;
+	public boolean didReleaseEsc;
 
 	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
 	public boolean shouldCaptureMouseMovements;
 	public boolean didInitializeMouse;
-
-	// State we need to capture from the input processor.
 	public int mouseX;
 	public int mouseY;
 	public Point glCursorLocation;
-	public boolean buttonDown0;
-	public boolean buttonDown1;
-	public char typedCharacter;
-	public boolean leftShiftDown;
-	public boolean leftCtrlDown;
-	public int lastPressedNumber;
-	public boolean didHandlePressedNumber;
-
-	// These are records of whether we have handled single-action events based on keys or buttons.
 	public int lastReportedMouseX;
 	public int lastReportedMouseY;
-	public boolean didHandleButton0;
-	public boolean didHandleButton1;
-	public boolean didHandleKeyEsc;
+
+	// State related to more open-ended uses (number keys or general typing).
+	// '\0' means "no typedCharacter" and -1 means "no lastPressedNumber"
+	public char typedCharacter;
+	public int lastPressedNumber;
 
 	// NOTE:  This shouldn't really be here (it is a decision, not input) but it is an simple place to put it with the
 	// correct sharing and lifecycle (since it does move around like input).
@@ -63,63 +56,35 @@ public class InputCapture
 	{
 		this.captureState = captureState;
 		
-		this.activeControls = new boolean[MutableControls.Control.values().length];
-		this.lastKeyUp = Keys.UNKNOWN;
-	}
-
-	public void normalMouseMoved(Point cursor)
-	{
-		this.cursor = cursor;
-	}
-
-	public void captureMouse0Down(boolean justClicked)
-	{
-		this.mouseHeld0 = true;
-		this.mouseClicked0 = justClicked;
-	}
-
-	public void captureMouse1Down(boolean justClicked, boolean leftShiftHeld)
-	{
-		this.mouseHeld1 = true;
-		// We use the shift to allow us to set the "held" without "clicked".
-		// In the future, this will likely be expanded but it isn't obvious where the interpretation of this key should
-		// go (InputManager, where it can associated with key settings, or here where it is associated with the UI state).
-		if (!leftShiftHeld)
-		{
-			this.mouseClicked1 = justClicked;
-		}
-	}
-
-	public void normalMouse0Clicked(boolean leftShiftDown)
-	{
-		if (leftShiftDown)
-		{
-			this.leftShiftClick = true;
-		}
-		else
-		{
-			this.leftClick = true;
-		}
-	}
-
-	public void normalMouse1Clicked(boolean leftShiftDown)
-	{
-		this.rightClick = true;
-	}
-
-	public void resetState()
-	{
-		this.mouseHeld0 = false;
-		this.mouseHeld1 = false;
-		this.mouseClicked0 = false;
-		this.mouseClicked1 = false;
-		this.leftClick = false;
-		this.leftShiftClick = false;
-		this.rightClick = false;
+		this.controlHeld = new boolean[MutableControls.Control.values().length];
+		this.controlReleased = new boolean[MutableControls.Control.values().length];
+		this.lastKeyCodeReleased = Keys.UNKNOWN;
 		
-		// We keep waitingForMouseRelease1 since it crosses frames.
-		this.ctrlQPressed = false;
-		this.qPressed = false;
+		this.typedCharacter = '\0';
+		this.lastPressedNumber = -1;
+	}
+
+	/**
+	 * Most users of the receiver must directly clear the relevant flags but this is the general case to reset misc
+	 * "release" states which can be used by a component which wants to begin reading the receiver but doesn't know
+	 * any residual state ignored by a previous user.
+	 */
+	public void clearReleaseState()
+	{
+		this.mousePressed0 = false;
+		this.mousePressed1 = false;
+		this.mouseReleased0 = false;
+		this.mouseReleased1 = false;
+		
+		for (int i = 0; i < this.controlReleased.length; ++i)
+		{
+			this.controlReleased[i] = false;
+		}
+		this.lastKeyCodeReleased = Keys.UNKNOWN;
+		this.didReleaseEsc = false;
+		
+		this.typedCharacter = '\0';
+		this.lastPressedNumber = -1;
 		
 		this.didAccountForTimeInFrame = false;
 	}

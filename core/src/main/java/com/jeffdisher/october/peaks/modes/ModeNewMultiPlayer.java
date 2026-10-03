@@ -63,7 +63,7 @@ public class ModeNewMultiPlayer implements IGameMode
 	{
 		_ui.enterUiRenderMode();
 		
-		return _newMultiPlayerStateWindow.render(_inputCapture.cursor);
+		return _newMultiPlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
 
@@ -145,7 +145,7 @@ public class ModeNewMultiPlayer implements IGameMode
 	private void _action_clickServerAddressTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_uiData.typingCapture = _uiData.newServerAddressBinding;
 		}
@@ -153,7 +153,7 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	private void _action_clickTestServerButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// We want to do the test for version, etc, and add this to our list on success.
 			// We will need to parse this address from the binding.
@@ -176,7 +176,7 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	private void _action_clickSaveServerButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			// If there is a binding, and it is good, add it to the server list and back out of this.
 			MutableServerList.ServerRecord record = _uiData.currentlyTestingServerBinding.get();
@@ -193,7 +193,7 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.leftClick)
+		if (_inputCapture.mouseReleased0)
 		{
 			_goBack();
 		}
