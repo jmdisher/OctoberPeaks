@@ -1,5 +1,7 @@
 package com.jeffdisher.october.peaks;
 
+import com.badlogic.gdx.Input.Keys;
+import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Point;
 
 
@@ -26,6 +28,33 @@ public class InputCapture
 	public boolean ctrlQPressed;
 	public boolean qPressed;
 
+	// Raw components extracted from InputManager.
+	public final boolean[] activeControls;
+	public int lastKeyUp;
+
+	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
+	public boolean shouldCaptureMouseMovements;
+	public boolean didInitializeMouse;
+
+	// State we need to capture from the input processor.
+	public int mouseX;
+	public int mouseY;
+	public Point glCursorLocation;
+	public boolean buttonDown0;
+	public boolean buttonDown1;
+	public char typedCharacter;
+	public boolean leftShiftDown;
+	public boolean leftCtrlDown;
+	public int lastPressedNumber;
+	public boolean didHandlePressedNumber;
+
+	// These are records of whether we have handled single-action events based on keys or buttons.
+	public int lastReportedMouseX;
+	public int lastReportedMouseY;
+	public boolean didHandleButton0;
+	public boolean didHandleButton1;
+	public boolean didHandleKeyEsc;
+
 	// NOTE:  This shouldn't really be here (it is a decision, not input) but it is an simple place to put it with the
 	// correct sharing and lifecycle (since it does move around like input).
 	public boolean didAccountForTimeInFrame;
@@ -33,6 +62,9 @@ public class InputCapture
 	public InputCapture(ICallouts captureState)
 	{
 		this.captureState = captureState;
+		
+		this.activeControls = new boolean[MutableControls.Control.values().length];
+		this.lastKeyUp = Keys.UNKNOWN;
 	}
 
 	public void normalMouseMoved(Point cursor)

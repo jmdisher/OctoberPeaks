@@ -2,7 +2,6 @@ package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
-import com.jeffdisher.october.client.RelativeDirection;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Point;
 import com.badlogic.gdx.Input.Keys;
@@ -17,38 +16,11 @@ public class InputManager
 	// The mapping we use to check key codes.
 	private final MutableControls _controls;
 	private final InputCapture _inputCapture;
-	private final boolean[] _activeControls;
-	private int _lastKeyUp;
-
-	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
-	private boolean _shouldCaptureMouseMovements;
-	private boolean _didInitializeMouse;
-
-	// State we need to capture from the input processor.
-	private int _mouseX;
-	private int _mouseY;
-	private Point _glCursorLocation;
-	private boolean _buttonDown0;
-	private boolean _buttonDown1;
-	private char _typedCharacter;
-	private boolean _leftShiftDown;
-	private boolean _leftCtrlDown;
-	private int _lastPressedNumber;
-	private boolean _didHandlePressedNumber;
-
-	// These are records of whether we have handled single-action events based on keys or buttons.
-	private int _lastReportedMouseX;
-	private int _lastReportedMouseY;
-	private boolean _didHandleButton0;
-	private boolean _didHandleButton1;
-	private boolean _didHandleKeyEsc;
 
 	public InputManager(MutableControls mutableControls, InputCapture inputCapture)
 	{
 		_controls = mutableControls;
 		_inputCapture = inputCapture;
-		_activeControls = new boolean[MutableControls.Control.values().length];
-		_lastKeyUp = Keys.UNKNOWN;
 		
 		Gdx.input.setInputProcessor(new InputAdapter() {
 			@Override
@@ -67,7 +39,7 @@ public class InputManager
 			public boolean keyTyped(char character)
 			{
 				// Note that this technique might mean that we drop characters when typing too quickly (more than one char per frame).
-				_typedCharacter = character;
+				_inputCapture.typedCharacter = character;
 				return true;
 			}
 			@Override
@@ -76,10 +48,10 @@ public class InputManager
 				switch(keycode)
 				{
 				case Keys.SHIFT_LEFT:
-					_leftShiftDown = true;
+					_inputCapture.leftShiftDown = true;
 					break;
 				case Keys.CONTROL_LEFT:
-					_leftCtrlDown = true;
+					_inputCapture.leftCtrlDown = true;
 					break;
 				}
 				
@@ -90,7 +62,7 @@ public class InputManager
 					// We can actually do something here.
 					if (!control.isClickOnly)
 					{
-						_activeControls[control.ordinal()] = true;
+						_inputCapture.activeControls[control.ordinal()] = true;
 					}
 				}
 				return true;
@@ -102,49 +74,49 @@ public class InputManager
 				{
 				case Keys.ESCAPE:
 					// We just capture the click.
-					_didHandleKeyEsc = false;
+					_inputCapture.didHandleKeyEsc = false;
 					break;
 				case Keys.NUM_1:
-					_lastPressedNumber = 1;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 1;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_2:
-					_lastPressedNumber = 2;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 2;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_3:
-					_lastPressedNumber = 3;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 3;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_4:
-					_lastPressedNumber = 4;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 4;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_5:
-					_lastPressedNumber = 5;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 5;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_6:
-					_lastPressedNumber = 6;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 6;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_7:
-					_lastPressedNumber = 7;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 7;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_8:
-					_lastPressedNumber = 8;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 8;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.NUM_9:
-					_lastPressedNumber = 9;
-					_didHandlePressedNumber = false;
+					_inputCapture.lastPressedNumber = 9;
+					_inputCapture.didHandlePressedNumber = false;
 					break;
 				case Keys.SHIFT_LEFT:
-					_leftShiftDown = false;
+					_inputCapture.leftShiftDown = false;
 					break;
 				case Keys.CONTROL_LEFT:
-					_leftCtrlDown = false;
+					_inputCapture.leftCtrlDown = false;
 					break;
 				}
 				
@@ -153,9 +125,9 @@ public class InputManager
 				if (null != control)
 				{
 					// Click only is only triggered on key up while hold are only set on key down and always cleared on up.
-					_activeControls[control.ordinal()] = control.isClickOnly;
+					_inputCapture.activeControls[control.ordinal()] = control.isClickOnly;
 				}
-				_lastKeyUp = keycode;
+				_inputCapture.lastKeyUp = keycode;
 				return true;
 			}
 			@Override
@@ -164,12 +136,12 @@ public class InputManager
 				switch(button)
 				{
 				case 0:
-					_buttonDown0 = true;
-					_didHandleButton0 = false;
+					_inputCapture.buttonDown0 = true;
+					_inputCapture.didHandleButton0 = false;
 					break;
 				case 1:
-					_buttonDown1 = true;
-					_didHandleButton1 = false;
+					_inputCapture.buttonDown1 = true;
+					_inputCapture.didHandleButton1 = false;
 					break;
 				}
 				return true;
@@ -180,10 +152,10 @@ public class InputManager
 				switch(button)
 				{
 				case 0:
-					_buttonDown0 = false;
+					_inputCapture.buttonDown0 = false;
 					break;
 				case 1:
-					_buttonDown1 = false;
+					_inputCapture.buttonDown1 = false;
 					break;
 				}
 				return true;
@@ -191,17 +163,17 @@ public class InputManager
 			private void _commonMouse(int screenX, int screenY)
 			{
 				// We only want to handle the mouse movements if capturing them.
-				if (_shouldCaptureMouseMovements)
+				if (_inputCapture.shouldCaptureMouseMovements)
 				{
 					// If we just enabled the mouse movements, the first event tends to snap us jarringly.
-					if (!_didInitializeMouse)
+					if (!_inputCapture.didInitializeMouse)
 					{
-						_didInitializeMouse = true;
-						_lastReportedMouseX = screenX;
-						_lastReportedMouseY = screenY;
+						_inputCapture.didInitializeMouse = true;
+						_inputCapture.lastReportedMouseX = screenX;
+						_inputCapture.lastReportedMouseY = screenY;
 					}
-					_mouseX = screenX;
-					_mouseY = screenY;
+					_inputCapture.mouseX = screenX;
+					_inputCapture.mouseY = screenY;
 				}
 				else
 				{
@@ -213,134 +185,15 @@ public class InputManager
 					float screenHeight = Gdx.graphics.getHeight();
 					// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
 					float y = (2.0f * (screenHeight - screenY) / screenHeight) - 1.0f;
-					_glCursorLocation = new Point(x, y);
+					_inputCapture.glCursorLocation = new Point(x, y);
 				}
 			}
 		});
 		
-		_didHandlePressedNumber = true;
-		_didHandleButton0 = true;
-		_didHandleButton1 = true;
-		_didHandleKeyEsc = true;
-	}
-
-	public void flushEventsToStateManager(UiStateManager uiManager)
-	{
-		// Clear the existing mouse state.
-		_inputCapture.resetState();
-		
-		// We want to go down the list of things we might need to report and tell the UI Manager.
-		
-		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
-		if (_shouldCaptureMouseMovements)
-		{
-			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
-			if ((_mouseX != _lastReportedMouseX) || (_mouseY != _lastReportedMouseY))
-			{
-				int deltaX = _mouseX - _lastReportedMouseX;
-				int deltaY = _mouseY - _lastReportedMouseY;
-				_lastReportedMouseX = _mouseX;
-				_lastReportedMouseY = _mouseY;
-				uiManager.capturedMouseMoved(deltaX, deltaY);
-			}
-			if (_buttonDown0)
-			{
-				_inputCapture.captureMouse0Down(!_didHandleButton0);
-				_didHandleButton0 = true;
-			}
-			if (_buttonDown1)
-			{
-				_inputCapture.captureMouse1Down(!_didHandleButton1, _leftShiftDown);
-				_didHandleButton1 = true;
-			}
-			
-			// Check out movement controls.
-			RelativeDirection relativeMove = _getCurrentMove();
-			if (null != relativeMove)
-			{
-				if (_activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
-				{
-					uiManager.sneak(relativeMove);
-				}
-				else if (_activeControls[MutableControls.Control.MOVE_SPRINT.ordinal()])
-				{
-					uiManager.run(relativeMove);
-				}
-				else
-				{
-					uiManager.walk(relativeMove);
-				}
-			}
-			
-			// See if we want to jump or try descending a ladder.
-			if (_activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])
-			{
-				uiManager.ascendOrJumpOrSwim();
-			}
-			else if (_activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
-			{
-				uiManager.tryDescend();
-			}
-			if (_activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
-			{
-				uiManager.toggleCreativeFlight();
-				_activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
-			}
-		}
-		else
-		{
-			_inputCapture.normalMouseMoved(_glCursorLocation);
-			if (!_didHandleButton0)
-			{
-				_inputCapture.normalMouse0Clicked(_leftShiftDown);
-				_didHandleButton0 = true;
-			}
-			if (!_didHandleButton1)
-			{
-				_inputCapture.normalMouse1Clicked(_leftShiftDown);
-				_didHandleButton1 = true;
-			}
-			
-			// We also only capture the raw text input when not capturing movements since this would just be noise.
-			if ('\0' != _typedCharacter)
-			{
-				uiManager.keyTyped(_typedCharacter);
-				_typedCharacter = '\0';
-			}
-		}
-		
-		// Now, we handle the special events related to specific keys which generally change UI state.
-		if (!_didHandleKeyEsc)
-		{
-			uiManager.handleKeyEsc();
-			_didHandleKeyEsc = true;
-		}
-		if (!_didHandlePressedNumber)
-		{
-			uiManager.handleHotbarIndex(_lastPressedNumber - 1);
-			_didHandlePressedNumber = true;
-		}
-		if (_activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
-		{
-			uiManager.handleKeyI();
-			_activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
-		}
-		if (_activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()])
-		{
-			uiManager.handleKeyF();
-			_activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
-		}
-		if (_activeControls[MutableControls.Control.DROP_ITEM.ordinal()])
-		{
-			uiManager.handleKeyQ(_leftCtrlDown);
-			_activeControls[MutableControls.Control.DROP_ITEM.ordinal()] = false;
-		}
-		
-		if (Keys.UNKNOWN != _lastKeyUp)
-		{
-			uiManager.keyCodeUp(_lastKeyUp);
-			_lastKeyUp = Keys.UNKNOWN;
-		}
+		_inputCapture.didHandlePressedNumber = true;
+		_inputCapture.didHandleButton0 = true;
+		_inputCapture.didHandleButton1 = true;
+		_inputCapture.didHandleKeyEsc = true;
 	}
 
 	public void enterCaptureState(boolean state)
@@ -351,79 +204,8 @@ public class InputManager
 
 	private void _enterCaptureState(boolean state)
 	{
-		_shouldCaptureMouseMovements = state;
-		_didInitializeMouse = false;
+		_inputCapture.shouldCaptureMouseMovements = state;
+		_inputCapture.didInitializeMouse = false;
 		Gdx.input.setCursorCatched(state);
-	}
-
-	private RelativeDirection _getCurrentMove()
-	{
-		// Given that we can mix directions (forward + right, for example), this function handles that combination logic.
-		int forward = 0;
-		if (_activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
-		{
-			forward += 1;
-		}
-		if (_activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
-		{
-			forward -= 1;
-		}
-		int right = 0;
-		if (_activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
-		{
-			right += 1;
-		}
-		if (_activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
-		{
-			right -= 1;
-		}
-		
-		RelativeDirection relative;
-		if (forward > 0)
-		{
-			if (right > 0)
-			{
-				relative = RelativeDirection.FORWARD_RIGHT;
-			}
-			else if (right < 0)
-			{
-				relative = RelativeDirection.FORWARD_LEFT;
-			}
-			else
-			{
-				relative = RelativeDirection.FORWARD;
-			}
-		}
-		else if (forward < 0)
-		{
-			if (right > 0)
-			{
-				relative = RelativeDirection.BACKWARD_RIGHT;
-			}
-			else if (right < 0)
-			{
-				relative = RelativeDirection.BACKWARD_LEFT;
-			}
-			else
-			{
-				relative = RelativeDirection.BACKWARD;
-			}
-		}
-		else
-		{
-			if (right > 0)
-			{
-				relative = RelativeDirection.RIGHT;
-			}
-			else if (right < 0)
-			{
-				relative = RelativeDirection.LEFT;
-			}
-			else
-			{
-				relative = null;
-			}
-		}
-		return relative;
 	}
 }

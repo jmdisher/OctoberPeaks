@@ -57,9 +57,6 @@ public class OctoberPeaks extends ApplicationAdapter
 	@Override
 	public void render()
 	{
-		// Flush any captured input events.
-		_input.flushEventsToStateManager(_uiState);
-		
 		// Reset the screen so we can draw this frame.
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
