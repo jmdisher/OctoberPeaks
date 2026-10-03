@@ -8,6 +8,7 @@ import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
+import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
@@ -33,6 +34,7 @@ public class ModeTrading implements IGameMode
 	public static final Rect WINDOW_TOP_RIGHT = new Rect(0.05f, 0.05f, ViewArmour.ARMOUR_SLOT_RIGHT_EDGE - ViewArmour.ARMOUR_SLOT_SCALE - ViewArmour.ARMOUR_SLOT_SPACING, 0.95f);
 
 	private final ModeContainer _modeContainer;
+	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
@@ -51,6 +53,7 @@ public class ModeTrading implements IGameMode
 	)
 	{
 		_modeContainer = modeContainer;
+		_ui = ui;
 		_inputCapture = inputCapture;
 		_currentTradingPartnerIdBinding = currentTradingPartnerIdBinding;
 		
@@ -101,5 +104,40 @@ public class ModeTrading implements IGameMode
 		_currentTradingPartnerIdBinding.set(0);
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
 		_inputCapture.captureState.shouldCaptureMouse(true);
+	}
+
+	@Override
+	public IAction drawRelevantWindows()
+	{
+		this.currentGameSession.scene.renderCommon();
+		this.currentGameSession.eyeEffect.drawEyeEffect();
+		
+		_ui.enterUiRenderMode();
+		
+		// This is a window mode so draw the usual.
+		_modeContainer.play.drawPassiveOverlayWindows(this.currentGameSession);
+		IAction action = null;
+		
+		// The trading window is the interesting part of this view.
+		IAction hover = this.leftTradingWindow.doRender(_inputCapture.glCursorLocation);
+		if (null != hover)
+		{
+			action = hover;
+		}
+		
+		hover = this.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
+		if (null != hover)
+		{
+			action = hover;
+		}
+		
+		// If we should be rendering a hover, do it here.
+		if (null != action)
+		{
+			action.renderHover(_inputCapture.glCursorLocation);
+		}
+		
+		// Return any action so that the caller can run the action now that rendering is finished.
+		return action;
 	}
 }

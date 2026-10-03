@@ -1,15 +1,21 @@
 package com.jeffdisher.october.peaks.modes;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
+import com.jeffdisher.october.aspects.CraftAspect;
+import com.jeffdisher.october.aspects.Environment;
+import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
+import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.Rect;
 import com.jeffdisher.october.peaks.ui.SubBinding;
 import com.jeffdisher.october.peaks.ui.ViewArmour;
@@ -19,10 +25,15 @@ import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
 import com.jeffdisher.october.peaks.ui.Window;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
+import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.BodyPart;
 import com.jeffdisher.october.types.Craft;
+import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Entity;
+import com.jeffdisher.october.types.FuelState;
 import com.jeffdisher.october.types.Inventory;
+import com.jeffdisher.october.types.Item;
+import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.NonStackableItem;
 import com.jeffdisher.october.utils.Assert;
 
@@ -40,6 +51,7 @@ public class ModeInventory implements IGameMode
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 
+	public final Binding<Entity> _entityBinding;
 	public final Binding<Inventory> thisEntityInventoryBinding;
 	public final Binding<Inventory> bottomWindowInventoryBinding;
 	public final Binding<String> bottomWindowTitleBinding;
@@ -71,6 +83,7 @@ public class ModeInventory implements IGameMode
 		_ui = ui;
 		_inputCapture = inputCapture;
 		
+		_entityBinding = entityBinding;
 		this.bottomWindowInventoryBinding = new Binding<>(null);
 		this.bottomWindowTitleBinding = new Binding<>(null);
 		this.bottomWindowFuelBinding = new Binding<>(null);
@@ -88,11 +101,11 @@ public class ModeInventory implements IGameMode
 		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, this.craftingPanelTitleBinding, this.craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
 		this.craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
-			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
+			Assert.assertTrue(this == _modeContainer.currentMode);
 			if (inputCapture.mouseReleased0)
 			{
 				// Note that we ignore the result since this will be reflected in the UI, if valid.
-				GameSession currentGameSession = _modeContainer.inventory.currentGameSession;
+				GameSession currentGameSession = this.currentGameSession;
 				currentGameSession.client.swapArmour(hoverPart);
 			}
 		};
@@ -127,5 +140,171 @@ public class ModeInventory implements IGameMode
 	{
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
 		_inputCapture.captureState.shouldCaptureMouse(true);
+	}
+
+	@Override
+	public IAction drawRelevantWindows()
+	{
+		this.currentGameSession.scene.renderCommon();
+		this.currentGameSession.eyeEffect.drawEyeEffect();
+		
+		// We are in inventory mode but we will need to handle station/floor cases differently.
+		Environment env = Environment.getShared();
+		Inventory relevantInventory = null;
+		Inventory inventoryToCraftFrom = null;
+		List<Craft> validCrafts = null;
+		CraftOperation currentOperation = null;
+		String stationName = "Floor";
+		ViewFuelSlot.FuelTuple fuelSlot = null;
+		boolean isAutomaticCrafting = false;
+		if (null != this.openStationLocation)
+		{
+			// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
+			BlockProxy stationBlock = this.currentGameSession.blockLookup.readBlock(this.openStationLocation);
+			Block stationType = stationBlock.getBlock();
+			
+			if (env.stations.getNormalInventorySize(stationType) > 0)
+			{
+				Inventory stationInventory = stationBlock.getInventory();
+				inventoryToCraftFrom = stationInventory;
+				// If we are viewing the fuel inventory, we want to use that, instead.
+				FuelState fuel = stationBlock.getFuel();
+				if (null != fuel)
+				{
+					if (this.viewingFuelInventory)
+					{
+						stationInventory = fuel.fuelInventory();
+					}
+					Item currentFuel = fuel.currentFuel();
+					if (null != currentFuel)
+					{
+						long totalFuel = env.fuel.millisOfFuel(currentFuel);
+						long remainingFuel = fuel.millisFuelled();
+						float fuelRemaining = (float)remainingFuel / (float) totalFuel;
+						fuelSlot = new ViewFuelSlot.FuelTuple(currentFuel, fuelRemaining);
+					}
+				}
+				else
+				{
+					// This is invalid so just clear it.
+					this.viewingFuelInventory = false;
+				}
+				
+				// Find the crafts for this station type.
+				Set<String> classifications = env.stations.getCraftingClasses(stationType);
+				
+				relevantInventory = stationInventory;
+				validCrafts = env.crafting.craftsForClassifications(classifications);
+				// We will convert these into CraftOperation instances so we can splice in the current craft.
+				currentOperation = stationBlock.getCrafting();
+				if (0 == env.stations.getManualMultiplier(stationType))
+				{
+					isAutomaticCrafting = true;
+				}
+				stationName = stationType.item().name();
+				if (this.viewingFuelInventory)
+				{
+					stationName += " Fuel";
+				}
+			}
+			else
+			{
+				// This is no longer a station.
+				this.openStationLocation = null;
+				this.continuousInInventory = null;
+				this.continuousInBlock = null;
+			}
+		}
+		
+		Inventory entityInventory = this.thisEntityInventoryBinding.get();
+		if (null == this.openStationLocation)
+		{
+			// We are just looking at the floor at our feet.
+			Entity thisEntity = _entityBinding.get();
+			
+			inventoryToCraftFrom = entityInventory;
+			// We are just looking at the entity inventory so find the built-in crafting recipes.
+			validCrafts = env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
+			// We will convert these into CraftOperation instances so we can splice in the current craft.
+			currentOperation = thisEntity.ephemeralShared().localCraftOperation();
+		}
+		
+		Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
+		final CraftOperation finalCraftOperation = currentOperation;
+		Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
+		boolean canBeManuallySelected = !isAutomaticCrafting;
+		List<CraftDescription> convertedCrafts = validCrafts.stream()
+			.map((Craft craft) -> {
+				long progressMillis = 0L;
+				if (craft == currentCraft)
+				{
+					progressMillis = finalCraftOperation.completedMillis();
+				}
+				float progress = (float)progressMillis / (float)craft.millisPerCraft;
+				CraftDescription.ItemRequirement[] requirements = Arrays.stream(craft.input)
+					.map((Items input) -> {
+						Item type = input.type();
+						int available = finalInventoryToCraftFrom.getCount(type);
+						return new CraftDescription.ItemRequirement(type, input.count(), available);
+					})
+					.toArray((int size) -> new CraftDescription.ItemRequirement[size])
+				;
+				// Note that we are assuming that there is only one output type.
+				return new CraftDescription(craft
+					, new Items(craft.output[0], craft.output.length)
+					, requirements
+					, progress
+					, canBeManuallySelected
+				);
+			})
+			.toList()
+		;
+		
+		String craftingType = isAutomaticCrafting
+			? "Automatic Crafting"
+			: "Manual Crafting"
+		;
+		
+		// We need to update our bindings BEFORE rendering anything.
+		this.bottomWindowInventoryBinding.set(relevantInventory);
+		this.bottomWindowTitleBinding.set(stationName);
+		this.bottomWindowFuelBinding.set(fuelSlot);
+		this.craftingPanelTitleBinding.set(craftingType);
+		this.craftingPanelBinding.set(convertedCrafts);
+		this.isManualCraftingStation = canBeManuallySelected;
+		
+		// Now, do the actual drawing.
+		_ui.enterUiRenderMode();
+		
+		// This is a window mode so draw the usual.
+		_modeContainer.play.drawPassiveOverlayWindows(this.currentGameSession);
+		IAction action1 = this.armourWindow.doRender(_inputCapture.glCursorLocation);
+		
+		// We will show the crafting panel as long as there are any valid crafts.
+		if (!convertedCrafts.isEmpty())
+		{
+			IAction hover = this.craftingWindow.doRender(_inputCapture.glCursorLocation);
+			if (null != hover)
+			{
+				action1 = hover;
+			}
+		}
+		IAction hover = this.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
+		if (null != hover)
+		{
+			action1 = hover;
+		}
+		hover = this.bottomInventoryWindow.doRender(_inputCapture.glCursorLocation);
+		if (null != hover)
+		{
+			action1 = hover;
+		}
+		
+		// If we should be rendering a hover, do it here.
+		if (null != action1)
+		{
+			action1.renderHover(_inputCapture.glCursorLocation);
+		}
+		return action1;
 	}
 }

@@ -53,18 +53,24 @@ public class ModePlay implements IGameMode
 	// User input state specific to this mode.
 	public boolean isWaitingForRightClickRelease;
 
+	// Data related to the liquid overlay.
+	private final Block _waterBlock;
+	private final Block _lavaBlock;
+
 	public ModePlay(ModeContainer modeContainer
 		, GlUi ui
 		, InputCapture inputCapture
 		, Binding<Entity> entityBinding
 	)
 	{
+		Environment env = Environment.getShared();
+		
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_inputCapture = inputCapture;
 		_selectionBinding = new Binding<>(null);
 		_entityBinding = entityBinding;
-		this.selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(ui, Environment.getShared(), _selectionBinding, (AbsoluteLocation location) -> {
+		this.selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(ui, env, _selectionBinding, (AbsoluteLocation location) -> {
 			return _modeContainer.play.currentGameSession.blockLookup.readBlock(location);
 		}, (Integer id) -> {
 			String name = null;
@@ -76,6 +82,10 @@ public class ModePlay implements IGameMode
 		}));
 		_metaDataWindow = new Window(ViewMetaData.LOCATION, new ViewMetaData(_ui, _entityBinding));
 		_hotbarWindow = new Window(ViewHotbar.LOCATION, new ViewHotbar(_ui, _entityBinding));
+		
+		// Look up the liquid overlay types.
+		_waterBlock = env.blocks.fromItem(env.items.getItemById("op.water_source"));
+		_lavaBlock = env.blocks.fromItem(env.items.getItemById("op.lava_source"));
 	}
 
 	public ModePlay becomeActive(GameSession currentGameSession)
@@ -104,6 +114,23 @@ public class ModePlay implements IGameMode
 		_inputCapture.captureState.shouldCaptureMouse(false);
 	}
 
+	@Override
+	public IAction drawRelevantWindows()
+	{
+		this.currentGameSession.scene.renderCommon();
+		PartialEntity selectedEntity = this.selectedEntity;
+		AbsoluteLocation selectedBlock = this.selectedBlock;
+		Block stopBlockType = this.selectedBlockType;
+		FacingDirection stopBlockOrientation = this.selectedBlockOrientation;
+		this.currentGameSession.scene.renderSelection(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
+		this.currentGameSession.eyeEffect.drawEyeEffect();
+		
+		// Now, draw the overlays.
+		_ui.enterUiRenderMode();
+		this.drawCommonPlayOverlay(this.currentGameSession, _waterBlock, _lavaBlock);
+		return null;
+	}
+
 	public void updateSelection()
 	{
 		// Capture whatever is selected.
@@ -114,13 +141,13 @@ public class ModePlay implements IGameMode
 		this.selectedBlockOrientation = null;
 		this.preSelectedBlock = null;
 		
-		WorldSelection selection = _modeContainer.play.currentGameSession.selectionManager.findSelection();
+		WorldSelection selection = this.currentGameSession.selectionManager.findSelection();
 		if (null != selection)
 		{
 			this.selectedEntity = selection.entity();
 			this.selectedBlock = selection.stopBlock();
 			BlockProxy proxy = (null != this.selectedBlock)
-				? _modeContainer.play.currentGameSession.blockLookup.readBlock(this.selectedBlock)
+				? this.currentGameSession.blockLookup.readBlock(this.selectedBlock)
 				: null
 			;
 			if (null != proxy)
@@ -162,7 +189,7 @@ public class ModePlay implements IGameMode
 		}
 		
 		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _modeContainer.play.selectionWindow.doRender(_inputCapture.glCursorLocation);
+		IAction noAction = this.selectionWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
@@ -193,11 +220,12 @@ public class ModePlay implements IGameMode
 		}
 	}
 
-	public void drawPassiveOverlayWindows()
+	public void drawPassiveOverlayWindows(GameSession currentGameSession)
 	{
 		Entity entity = _entityBinding.get();
 		if (null != entity)
 		{
+			_handleEyeFilter(currentGameSession);
 			_drawPassiveOverlayWindows();
 		}
 	}
@@ -209,5 +237,28 @@ public class ModePlay implements IGameMode
 		Assert.assertTrue(null == noAction);
 		noAction = _metaDataWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
+	}
+
+	private void _handleEyeFilter(GameSession currentGameSession)
+	{
+		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
+		Vector eye = currentGameSession.movement.computeEye();
+		if (null != eye)
+		{
+			AbsoluteLocation eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
+			BlockProxy eyeProxy = currentGameSession.blockLookup.readBlock(eyeBlockLocation);
+			if (null != eyeProxy)
+			{
+				Block blockType = eyeProxy.getBlock();
+				if (_waterBlock == blockType)
+				{
+					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+				}
+				else if (_lavaBlock == blockType)
+				{
+					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
+				}
+			}
+		}
 	}
 }
