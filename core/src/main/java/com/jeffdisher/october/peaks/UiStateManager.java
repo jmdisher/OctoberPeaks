@@ -373,12 +373,11 @@ public class UiStateManager implements GameSession.ICallouts
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
-		if ((0 != deltaX) || (0 != deltaY))
-		{
-			_yawRadians = _modeContainer.play.currentGameSession.movement.rotateYaw(deltaX);
-			_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
-			_orientationNeedsFlush = true;
-		}
+		// Something has to change for us to get this call.
+		Assert.assertTrue((0 != deltaX) || (0 != deltaY));
+		_yawRadians = _modeContainer.play.currentGameSession.movement.rotateYaw(deltaX);
+		_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
+		_orientationNeedsFlush = true;
 	}
 
 	public void walk(RelativeDirection relative)

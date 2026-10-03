@@ -27,6 +27,7 @@ public class InputManager
 	// State we need to capture from the input processor.
 	private int _mouseX;
 	private int _mouseY;
+	private Point _glCursorLocation;
 	private boolean _buttonDown0;
 	private boolean _buttonDown1;
 	private char _typedCharacter;
@@ -202,6 +203,18 @@ public class InputManager
 					_mouseX = screenX;
 					_mouseY = screenY;
 				}
+				else
+				{
+					// We want to return the 2D location of the cursor, in GL coordinates.
+					// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
+					float screenWidth = Gdx.graphics.getWidth();
+					float x = (2.0f * screenX / screenWidth) - 1.0f;
+					
+					float screenHeight = Gdx.graphics.getHeight();
+					// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
+					float y = (2.0f * (screenHeight - screenY) / screenHeight) - 1.0f;
+					_glCursorLocation = new Point(x, y);
+				}
 			}
 		});
 		
@@ -222,11 +235,14 @@ public class InputManager
 		if (_shouldCaptureMouseMovements)
 		{
 			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
-			int deltaX = _mouseX - _lastReportedMouseX;
-			int deltaY = _mouseY - _lastReportedMouseY;
-			_lastReportedMouseX = _mouseX;
-			_lastReportedMouseY = _mouseY;
-			uiManager.capturedMouseMoved(deltaX, deltaY);
+			if ((_mouseX != _lastReportedMouseX) || (_mouseY != _lastReportedMouseY))
+			{
+				int deltaX = _mouseX - _lastReportedMouseX;
+				int deltaY = _mouseY - _lastReportedMouseY;
+				_lastReportedMouseX = _mouseX;
+				_lastReportedMouseY = _mouseY;
+				uiManager.capturedMouseMoved(deltaX, deltaY);
+			}
 			if (_buttonDown0)
 			{
 				_inputCapture.captureMouse0Down(!_didHandleButton0);
@@ -273,9 +289,7 @@ public class InputManager
 		}
 		else
 		{
-			// When we are not capturing, we are just interested in knowing where the mouse is and if there are any clicks.
-			Point cursor = _getGlCursor();
-			_inputCapture.normalMouseMoved(cursor);
+			_inputCapture.normalMouseMoved(_glCursorLocation);
 			if (!_didHandleButton0)
 			{
 				_inputCapture.normalMouse0Clicked(_leftShiftDown);
@@ -340,21 +354,6 @@ public class InputManager
 		_shouldCaptureMouseMovements = state;
 		_didInitializeMouse = false;
 		Gdx.input.setCursorCatched(state);
-	}
-
-	private static Point _getGlCursor()
-	{
-		// We want to return the 2D location of the cursor, in GL coordinates.
-		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
-		float screenWidth = Gdx.graphics.getWidth();
-		float mouseX = (float)Gdx.input.getX();
-		float x = (2.0f * mouseX / screenWidth) - 1.0f;
-		
-		float screenHeight = Gdx.graphics.getHeight();
-		float mouseY = (float)Gdx.input.getY();
-		// (screen coordinates are from the top-left and from 0-count whereas the scene is from bottom left and from -1.0 to 1.0).
-		float y = (2.0f * (screenHeight - mouseY) / screenHeight) - 1.0f;
-		return new Point(x, y);
 	}
 
 	private RelativeDirection _getCurrentMove()
