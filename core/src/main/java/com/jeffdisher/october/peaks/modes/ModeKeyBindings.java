@@ -1,7 +1,5 @@
 package com.jeffdisher.october.peaks.modes;
 
-import java.util.function.Consumer;
-
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
@@ -26,7 +24,6 @@ public class ModeKeyBindings implements IGameMode
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 	private final UiData _uiData;
-	private final Consumer<GameSession> _commonPauseRender;
 	private final FixedWindow _keyBindingsStateWindow;
 
 	public GameSession currentGameSession;
@@ -35,14 +32,12 @@ public class ModeKeyBindings implements IGameMode
 		, GlUi ui
 		, InputCapture inputCapture
 		, UiData uiData
-		, Consumer<GameSession> commonPauseRender
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_inputCapture = inputCapture;
 		_uiData = uiData;
-		_commonPauseRender = commonPauseRender;
 		
 		_keyBindingsStateWindow = _buildKeyBindingsStateWindow(_ui, _uiData);
 	}
@@ -65,11 +60,12 @@ public class ModeKeyBindings implements IGameMode
 		_escapeOrBack();
 	}
 
+	@Override
 	public IAction drawRelevantWindows()
 	{
 		if (null != this.currentGameSession)
 		{
-			_commonPauseRender.accept(this.currentGameSession);
+			_modeContainer.pause.drawCommonPauseBackground(this.currentGameSession);
 		}
 		
 		return _keyBindingsStateWindow.render(_inputCapture.glCursorLocation);

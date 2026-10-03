@@ -58,6 +58,7 @@ public class ModeConnecting implements IGameMode
 		_goBack();
 	}
 
+	@Override
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();

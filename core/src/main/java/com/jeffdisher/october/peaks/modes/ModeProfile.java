@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks.modes;
 
 import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
+import com.jeffdisher.october.peaks.ui.IAction;
 
 
 /**
@@ -32,5 +33,13 @@ public class ModeProfile implements IGameMode
 		System.out.println("Ending Profile Run");
 		this.profilingSession.shutdown();
 		Gdx.app.exit();
+	}
+
+	@Override
+	public IAction drawRelevantWindows()
+	{
+		this.profilingSession.scene.renderCommon();
+		this.profilingSession.eyeEffect.drawEyeEffect();
+		return null;
 	}
 }
