@@ -3,15 +3,11 @@ package com.jeffdisher.october.peaks;
 import java.io.File;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.GL20;
-import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.client.RelativeDirection;
@@ -40,27 +36,18 @@ import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.profiling.ProfilingModes;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
-import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.peaks.ui.ViewFuelSlot;
-import com.jeffdisher.october.peaks.utils.GeometryHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
 import com.jeffdisher.october.types.Craft;
-import com.jeffdisher.october.types.CraftOperation;
 import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
 import com.jeffdisher.october.types.EntityType;
 import com.jeffdisher.october.types.EntityVolume;
-import com.jeffdisher.october.types.FacingDirection;
-import com.jeffdisher.october.types.FuelState;
-import com.jeffdisher.october.types.Inventory;
-import com.jeffdisher.october.types.Item;
-import com.jeffdisher.october.types.Items;
 import com.jeffdisher.october.types.PartialEntity;
 import com.jeffdisher.october.types.WorldConfig;
 import com.jeffdisher.october.utils.Assert;
@@ -97,10 +84,6 @@ public class UiStateManager implements GameSession.ICallouts
 	// Bindings related to the game UI during a PLAY state (the in-game UI - not just menus, etc).
 	private final Binding<Entity> _entityBinding;
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
-	
-	// Data related to the liquid overlay.
-	private final Block _waterBlock;
-	private final Block _lavaBlock;
 
 	public UiStateManager(Environment environment
 		, GL20 gl
@@ -159,10 +142,6 @@ public class UiStateManager implements GameSession.ICallouts
 				_inputCapture.didAccountForTimeInFrame = true;
 			}
 		};
-		
-		// Look up the liquid overlay types.
-		_waterBlock = _env.blocks.fromItem(_env.items.getItemById("op.water_source"));
-		_lavaBlock = _env.blocks.fromItem(_env.items.getItemById("op.lava_source"));
 		
 		// Build the modes (we add these late since they should be allowed to depend on arbitrary things here).
 		_modeContainer.start = new ModeStart(_modeContainer
@@ -263,17 +242,11 @@ public class UiStateManager implements GameSession.ICallouts
 			, _ui
 			, _inputCapture
 			, _uiData
-			, (GameSession session) -> {
-				_drawCommonPauseBackground(session);
-			}
 		);
 		_modeContainer.keyBindings = new ModeKeyBindings(_modeContainer
 			, _ui
 			, _inputCapture
 			, _uiData
-			, (GameSession session) -> {
-				_drawCommonPauseBackground(session);
-			}
 		);
 		_modeContainer.connecting = new ModeConnecting(_modeContainer
 			, _ui
@@ -297,9 +270,6 @@ public class UiStateManager implements GameSession.ICallouts
 			, _ui
 			, _inputCapture
 			, _uiData
-			, (GameSession session) -> {
-				_drawCommonPauseBackground(session);
-			}
 		);
 		_modeContainer.profile = new ModeProfile();
 		_modeContainer.trading = new ModeTrading(_modeContainer
@@ -631,336 +601,10 @@ public class UiStateManager implements GameSession.ICallouts
 		return didOpen;
 	}
 
-	private IAction _drawInventoryStateWindows()
-	{
-		Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-		
-		// We are in inventory mode but we will need to handle station/floor cases differently.
-		Inventory relevantInventory = null;
-		Inventory inventoryToCraftFrom = null;
-		List<Craft> validCrafts = null;
-		CraftOperation currentOperation = null;
-		String stationName = "Floor";
-		ViewFuelSlot.FuelTuple fuelSlot = null;
-		boolean isAutomaticCrafting = false;
-		if (null != _modeContainer.inventory.openStationLocation)
-		{
-			// We are in station mode so check this block's inventory and crafting (potentially clearing it if it is no longer a station).
-			BlockProxy stationBlock = _modeContainer.inventory.currentGameSession.blockLookup.readBlock(_modeContainer.inventory.openStationLocation);
-			Block stationType = stationBlock.getBlock();
-			
-			if (_env.stations.getNormalInventorySize(stationType) > 0)
-			{
-				Inventory stationInventory = stationBlock.getInventory();
-				inventoryToCraftFrom = stationInventory;
-				// If we are viewing the fuel inventory, we want to use that, instead.
-				FuelState fuel = stationBlock.getFuel();
-				if (null != fuel)
-				{
-					if (_modeContainer.inventory.viewingFuelInventory)
-					{
-						stationInventory = fuel.fuelInventory();
-					}
-					Item currentFuel = fuel.currentFuel();
-					if (null != currentFuel)
-					{
-						long totalFuel = _env.fuel.millisOfFuel(currentFuel);
-						long remainingFuel = fuel.millisFuelled();
-						float fuelRemaining = (float)remainingFuel / (float) totalFuel;
-						fuelSlot = new ViewFuelSlot.FuelTuple(currentFuel, fuelRemaining);
-					}
-				}
-				else
-				{
-					// This is invalid so just clear it.
-					_modeContainer.inventory.viewingFuelInventory = false;
-				}
-				
-				// Find the crafts for this station type.
-				Set<String> classifications = _env.stations.getCraftingClasses(stationType);
-				
-				relevantInventory = stationInventory;
-				validCrafts = _env.crafting.craftsForClassifications(classifications);
-				// We will convert these into CraftOperation instances so we can splice in the current craft.
-				currentOperation = stationBlock.getCrafting();
-				if (0 == _env.stations.getManualMultiplier(stationType))
-				{
-					isAutomaticCrafting = true;
-				}
-				stationName = stationType.item().name();
-				if (_modeContainer.inventory.viewingFuelInventory)
-				{
-					stationName += " Fuel";
-				}
-			}
-			else
-			{
-				// This is no longer a station.
-				_modeContainer.inventory.openStationLocation = null;
-				_modeContainer.inventory.continuousInInventory = null;
-				_modeContainer.inventory.continuousInBlock = null;
-			}
-		}
-		
-		Inventory entityInventory = _modeContainer.inventory.thisEntityInventoryBinding.get();
-		if (null == _modeContainer.inventory.openStationLocation)
-		{
-			// We are just looking at the floor at our feet.
-			Entity thisEntity = _entityBinding.get();
-			
-			inventoryToCraftFrom = entityInventory;
-			// We are just looking at the entity inventory so find the built-in crafting recipes.
-			validCrafts = _env.crafting.craftsForClassifications(Set.of(CraftAspect.BUILT_IN));
-			// We will convert these into CraftOperation instances so we can splice in the current craft.
-			currentOperation = thisEntity.ephemeralShared().localCraftOperation();
-		}
-		
-		Inventory finalInventoryToCraftFrom = inventoryToCraftFrom;
-		final CraftOperation finalCraftOperation = currentOperation;
-		Craft currentCraft = (null != currentOperation) ? currentOperation.selectedCraft() : null;
-		boolean canBeManuallySelected = !isAutomaticCrafting;
-		List<CraftDescription> convertedCrafts = validCrafts.stream()
-				.map((Craft craft) -> {
-					long progressMillis = 0L;
-					if (craft == currentCraft)
-					{
-						progressMillis = finalCraftOperation.completedMillis();
-					}
-					float progress = (float)progressMillis / (float)craft.millisPerCraft;
-					CraftDescription.ItemRequirement[] requirements = Arrays.stream(craft.input)
-							.map((Items input) -> {
-								Item type = input.type();
-								int available = finalInventoryToCraftFrom.getCount(type);
-								return new CraftDescription.ItemRequirement(type, input.count(), available);
-							})
-							.toArray((int size) -> new CraftDescription.ItemRequirement[size])
-					;
-					// Note that we are assuming that there is only one output type.
-					return new CraftDescription(craft
-							, new Items(craft.output[0], craft.output.length)
-							, requirements
-							, progress
-							, canBeManuallySelected
-					);
-				})
-				.toList()
-		;
-		
-		String craftingType = isAutomaticCrafting
-				? "Automatic Crafting"
-				: "Manual Crafting"
-		;
-		
-		// We need to update our bindings BEFORE rendering anything.
-		_modeContainer.inventory.bottomWindowInventoryBinding.set(relevantInventory);
-		_modeContainer.inventory.bottomWindowTitleBinding.set(stationName);
-		_modeContainer.inventory.bottomWindowFuelBinding.set(fuelSlot);
-		_modeContainer.inventory.craftingPanelTitleBinding.set(craftingType);
-		_modeContainer.inventory.craftingPanelBinding.set(convertedCrafts);
-		_modeContainer.inventory.isManualCraftingStation = canBeManuallySelected;
-		
-		// Now, do the actual drawing.
-		_ui.enterUiRenderMode();
-		
-		_handleEyeFilter(_modeContainer.inventory.currentGameSession);
-		
-		// This is a window mode so draw the usual.
-		_modeContainer.play.drawPassiveOverlayWindows();
-		IAction action = _modeContainer.inventory.armourWindow.doRender(_inputCapture.glCursorLocation);
-		
-		// We will show the crafting panel as long as there are any valid crafts.
-		if (!convertedCrafts.isEmpty())
-		{
-			IAction hover = _modeContainer.inventory.craftingWindow.doRender(_inputCapture.glCursorLocation);
-			if (null != hover)
-			{
-				action = hover;
-			}
-		}
-		IAction hover = _modeContainer.inventory.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
-		if (null != hover)
-		{
-			action = hover;
-		}
-		hover = _modeContainer.inventory.bottomInventoryWindow.doRender(_inputCapture.glCursorLocation);
-		if (null != hover)
-		{
-			action = hover;
-		}
-		
-		// If we should be rendering a hover, do it here.
-		if (null != action)
-		{
-			action.renderHover(_inputCapture.glCursorLocation);
-		}
-		
-		// Return any action so that the caller can run the action now that rendering is finished.
-		return action;
-	}
-
-	private IAction _drawTradingStateWindows()
-	{
-		_ui.enterUiRenderMode();
-		
-		_handleEyeFilter(_modeContainer.trading.currentGameSession);
-		
-		// This is a window mode so draw the usual.
-		_modeContainer.play.drawPassiveOverlayWindows();
-		IAction action = null;
-		
-		// The trading window is the interesting part of this view.
-		IAction hover = _modeContainer.trading.leftTradingWindow.doRender(_inputCapture.glCursorLocation);
-		if (null != hover)
-		{
-			action = hover;
-		}
-		
-		hover = _modeContainer.trading.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
-		if (null != hover)
-		{
-			action = hover;
-		}
-		
-		// If we should be rendering a hover, do it here.
-		if (null != action)
-		{
-			action.renderHover(_inputCapture.glCursorLocation);
-		}
-		
-		// Return any action so that the caller can run the action now that rendering is finished.
-		return action;
-	}
-
-	private void _drawCommonPauseBackground(GameSession currentGameSession)
-	{
-		if (null != currentGameSession)
-		{
-			currentGameSession.scene.renderCommon();
-			currentGameSession.eyeEffect.drawEyeEffect();
-		}
-		
-		// Draw whatever is common to states where we draw interactive buttons on top.
-		_ui.enterUiRenderMode();
-		
-		_handleEyeFilter(currentGameSession);
-		
-		_modeContainer.play.drawPassiveOverlayWindows();
-		
-		// Draw the overlay to dim the window.
-		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-	}
-
-	private void _handleEyeFilter(GameSession currentGameSession)
-	{
-		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
-		Vector eye = currentGameSession.movement.computeEye();
-		if (null != eye)
-		{
-			AbsoluteLocation eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
-			BlockProxy eyeProxy = currentGameSession.blockLookup.readBlock(eyeBlockLocation);
-			if (null != eyeProxy)
-			{
-				Block blockType = eyeProxy.getBlock();
-				if (_waterBlock == blockType)
-				{
-					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-				else if (_lavaBlock == blockType)
-				{
-					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-			}
-		}
-	}
-
 	private void _drawRelevantWindows()
 	{
 		// Perform state-specific drawing.
-		IAction action = null;
-		if (_modeContainer.currentMode == _modeContainer.start)
-		{
-			action = _modeContainer.start.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.listSinglePlayer)
-		{
-			action = _modeContainer.listSinglePlayer.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.confirmDeleteSinglePlayer)
-		{
-			action = _modeContainer.confirmDeleteSinglePlayer.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.newSinglePlayer)
-		{
-			action = _modeContainer.newSinglePlayer.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.listMultiPlayer)
-		{
-			action = _modeContainer.listMultiPlayer.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.newMultiPlayer)
-		{
-			action = _modeContainer.newMultiPlayer.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.listForProfile)
-		{
-			action = _modeContainer.listForProfile.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.options)
-		{
-			action = _modeContainer.options.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.keyBindings)
-		{
-			action = _modeContainer.keyBindings.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.connecting)
-		{
-			action = _modeContainer.connecting.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.play)
-		{
-			_modeContainer.play.currentGameSession.scene.renderCommon();
-			PartialEntity selectedEntity = _modeContainer.play.selectedEntity;
-			AbsoluteLocation selectedBlock = _modeContainer.play.selectedBlock;
-			Block stopBlockType = _modeContainer.play.selectedBlockType;
-			FacingDirection stopBlockOrientation = _modeContainer.play.selectedBlockOrientation;
-			_modeContainer.play.currentGameSession.scene.renderSelection(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
-			_modeContainer.play.currentGameSession.eyeEffect.drawEyeEffect();
-			
-			// Now, draw the overlays.
-			_ui.enterUiRenderMode();
-			_modeContainer.play.drawCommonPlayOverlay(_modeContainer.play.currentGameSession, _waterBlock, _lavaBlock);
-		}
-		else if (_modeContainer.currentMode == _modeContainer.inventory)
-		{
-			_modeContainer.inventory.currentGameSession.scene.renderCommon();
-			_modeContainer.inventory.currentGameSession.eyeEffect.drawEyeEffect();
-			action = _drawInventoryStateWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.pause)
-		{
-			action = _modeContainer.pause.drawRelevantWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.profile)
-		{
-			_modeContainer.profile.profilingSession.scene.renderCommon();
-			_modeContainer.profile.profilingSession.eyeEffect.drawEyeEffect();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.trading)
-		{
-			_modeContainer.trading.currentGameSession.scene.renderCommon();
-			_modeContainer.trading.currentGameSession.eyeEffect.drawEyeEffect();
-			action = _drawTradingStateWindows();
-		}
-		else if (_modeContainer.currentMode == _modeContainer.error)
-		{
-			action = _modeContainer.error.drawRelevantWindows();
-		}
-		else
-		{
-			// Every state needs drawing support.
-			throw Assert.unreachable();
-		}
+		IAction action = _modeContainer.currentMode.drawRelevantWindows();
 		
 		// Run any actions based on clicking on the UI.
 		if (null != action)

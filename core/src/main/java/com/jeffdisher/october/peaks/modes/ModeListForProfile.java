@@ -59,6 +59,7 @@ public class ModeListForProfile implements IGameMode
 		_goBack();
 	}
 
+	@Override
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();

@@ -59,6 +59,7 @@ public class ModeStart implements IGameMode
 	{
 	}
 
+	@Override
 	public IAction drawRelevantWindows()
 	{
 		_ui.enterUiRenderMode();

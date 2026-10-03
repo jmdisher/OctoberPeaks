@@ -1,7 +1,5 @@
 package com.jeffdisher.october.peaks.modes;
 
-import java.util.function.Consumer;
-
 import com.badlogic.gdx.Gdx;
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
@@ -27,7 +25,6 @@ public class ModeOptions implements IGameMode
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 	private final UiData _uiData;
-	private final Consumer<GameSession> _commonPauseRender;
 	private final FixedWindow _optionsStateWindow;
 
 	public GameSession currentGameSession;
@@ -36,14 +33,12 @@ public class ModeOptions implements IGameMode
 		, GlUi ui
 		, InputCapture inputCapture
 		, UiData uiData
-		, Consumer<GameSession> commonPauseRender
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_inputCapture = inputCapture;
 		_uiData = uiData;
-		_commonPauseRender = commonPauseRender;
 		
 		_optionsStateWindow = _buildOptionsStateWindow(_ui, _uiData);
 	}
@@ -66,11 +61,12 @@ public class ModeOptions implements IGameMode
 		_goBack();
 	}
 
+	@Override
 	public IAction drawRelevantWindows()
 	{
 		if (null != this.currentGameSession)
 		{
-			_commonPauseRender.accept(this.currentGameSession);
+			_modeContainer.pause.drawCommonPauseBackground(this.currentGameSession);
 		}
 		
 		return _optionsStateWindow.render(_inputCapture.glCursorLocation);

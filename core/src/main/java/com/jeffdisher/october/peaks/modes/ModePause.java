@@ -1,6 +1,5 @@
 package com.jeffdisher.october.peaks.modes;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.jeffdisher.october.peaks.GameSession;
@@ -27,7 +26,6 @@ public class ModePause implements IGameMode
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 	private final UiData _uiData;
-	private final Consumer<GameSession> _commonPauseRender;
 	private final FixedWindow _pauseStateWindow;
 
 	public GameSession currentGameSession;
@@ -36,14 +34,12 @@ public class ModePause implements IGameMode
 		, GlUi ui
 		, InputCapture inputCapture
 		, UiData uiData
-		, Consumer<GameSession> commonPauseRender
 	)
 	{
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_inputCapture = inputCapture;
 		_uiData = uiData;
-		_commonPauseRender = commonPauseRender;
 		
 		_pauseStateWindow = _buildPauseStateWindow(_ui, _uiData);
 	}
@@ -66,11 +62,29 @@ public class ModePause implements IGameMode
 		_returnToGame();
 	}
 
+	@Override
 	public IAction drawRelevantWindows()
 	{
-		_commonPauseRender.accept(this.currentGameSession);
+		_modeContainer.pause.drawCommonPauseBackground(this.currentGameSession);
 		
 		return _pauseStateWindow.render(_inputCapture.glCursorLocation);
+	}
+
+	public void drawCommonPauseBackground(GameSession currentGameSession)
+	{
+		if (null != currentGameSession)
+		{
+			currentGameSession.scene.renderCommon();
+			currentGameSession.eyeEffect.drawEyeEffect();
+		}
+		
+		// Draw whatever is common to states where we draw interactive buttons on top.
+		_ui.enterUiRenderMode();
+		
+		_modeContainer.play.drawPassiveOverlayWindows(currentGameSession);
+		
+		// Draw the overlay to dim the window.
+		_ui.drawWholeTextureRect(_ui.pixelDarkGreyAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
 	}
 
 
