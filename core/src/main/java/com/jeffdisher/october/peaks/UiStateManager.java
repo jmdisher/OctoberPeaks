@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
+import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
@@ -369,7 +370,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void capturedMouseMoved(int deltaX, int deltaY)
+	private void _capturedMouseMoved(int deltaX, int deltaY)
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
@@ -380,7 +381,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_orientationNeedsFlush = true;
 	}
 
-	public void walk(RelativeDirection relative)
+	private void _walk(RelativeDirection relative)
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
@@ -390,7 +391,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_audibleMotionInFrame = _AudibleMotion.WALK;
 	}
 
-	public void run(RelativeDirection relative)
+	private void _run(RelativeDirection relative)
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
@@ -400,7 +401,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_audibleMotionInFrame = _AudibleMotion.RUN;
 	}
 
-	public void sneak(RelativeDirection relative)
+	private void _sneak(RelativeDirection relative)
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
@@ -411,21 +412,21 @@ public class UiStateManager implements GameSession.ICallouts
 		_audibleMotionInFrame = null;
 	}
 
-	public void ascendOrJumpOrSwim()
+	private void _ascendOrJumpOrSwim()
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
 		_modeContainer.play.currentGameSession.client.ascendOrJumpOrSwim();
 	}
 
-	public void tryDescend()
+	private void _tryDescend()
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
 		_modeContainer.play.currentGameSession.client.tryDescend();
 	}
 
-	public void handleKeyEsc()
+	private void _handleKeyEsc()
 	{
 		_modeContainer.currentMode.handleEscape();
 		
@@ -433,7 +434,7 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData.typingCapture = null;
 	}
 
-	public void handleHotbarIndex(int hotbarIndex)
+	private void _handleHotbarIndex(int hotbarIndex)
 	{
 		// We need an active session and not paused but logically this means play or inventory.
 		if (_modeContainer.play == _modeContainer.currentMode)
@@ -450,7 +451,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void handleKeyI()
+	private void _handleKeyI()
 	{
 		// This only matters if we are playing or in the inventory screen.
 		if (_modeContainer.inventory == _modeContainer.currentMode)
@@ -466,7 +467,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void handleKeyF()
+	private void _handleKeyF()
 	{
 		if (_modeContainer.inventory == _modeContainer.currentMode)
 		{
@@ -489,7 +490,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void handleKeyQ(boolean isCtrlPressed)
+	private void _handleKeyQ(boolean isCtrlPressed)
 	{
 		if (isCtrlPressed)
 		{
@@ -501,14 +502,14 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void toggleCreativeFlight()
+	private void _toggleCreativeFlight()
 	{
 		Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
 		
 		_modeContainer.play.currentGameSession.client.toggleCreativeFlight();
 	}
 
-	public void keyCodeUp(int lastKeyUp)
+	private void _keyCodeUp(int lastKeyUp)
 	{
 		if ((_modeContainer.keyBindings == _modeContainer.currentMode) && (null != _uiData.currentlyChangingControl.get()))
 		{
@@ -528,6 +529,9 @@ public class UiStateManager implements GameSession.ICallouts
 	 */
 	public void renderFrame()
 	{
+		// Flush any captured input events.
+		_flushInputEvents();
+		
 		// Find the selection, if the mode supports this.
 		if (_modeContainer.play == _modeContainer.currentMode)
 		{
@@ -543,6 +547,7 @@ public class UiStateManager implements GameSession.ICallouts
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
 	}
+
 
 	private void _handleEndOfFrameEvents()
 	{
@@ -661,7 +666,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
-	public void keyTyped(char typedCharacter)
+	private void _keyTyped(char typedCharacter)
 	{
 		// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
 		if (null != _uiData.typingCapture)
@@ -1387,6 +1392,196 @@ public class UiStateManager implements GameSession.ICallouts
 			throw Assert.unexpected(e);
 		}
 		return pendingGameSession;
+	}
+
+	private void _flushInputEvents()
+	{
+		// Clear the existing mouse state.
+		_inputCapture.resetState();
+		
+		// We want to go down the list of things we might need to report and tell the UI Manager.
+		
+		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
+		if (_inputCapture.shouldCaptureMouseMovements)
+		{
+			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
+			if ((_inputCapture.mouseX != _inputCapture.lastReportedMouseX) || (_inputCapture.mouseY != _inputCapture.lastReportedMouseY))
+			{
+				int deltaX = _inputCapture.mouseX - _inputCapture.lastReportedMouseX;
+				int deltaY = _inputCapture.mouseY - _inputCapture.lastReportedMouseY;
+				_inputCapture.lastReportedMouseX = _inputCapture.mouseX;
+				_inputCapture.lastReportedMouseY = _inputCapture.mouseY;
+				_capturedMouseMoved(deltaX, deltaY);
+			}
+			if (_inputCapture.buttonDown0)
+			{
+				_inputCapture.captureMouse0Down(!_inputCapture.didHandleButton0);
+				_inputCapture.didHandleButton0 = true;
+			}
+			if (_inputCapture.buttonDown1)
+			{
+				_inputCapture.captureMouse1Down(!_inputCapture.didHandleButton1, _inputCapture.leftShiftDown);
+				_inputCapture.didHandleButton1 = true;
+			}
+			
+			// Check out movement controls.
+			RelativeDirection relativeMove = _getCurrentMove();
+			if (null != relativeMove)
+			{
+				if (_inputCapture.activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
+				{
+					_sneak(relativeMove);
+				}
+				else if (_inputCapture.activeControls[MutableControls.Control.MOVE_SPRINT.ordinal()])
+				{
+					_run(relativeMove);
+				}
+				else
+				{
+					_walk(relativeMove);
+				}
+			}
+			
+			// See if we want to jump or try descending a ladder.
+			if (_inputCapture.activeControls[MutableControls.Control.MOVE_JUMP.ordinal()])
+			{
+				_ascendOrJumpOrSwim();
+			}
+			else if (_inputCapture.activeControls[MutableControls.Control.MOVE_SNEAK.ordinal()])
+			{
+				_tryDescend();
+			}
+			if (_inputCapture.activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
+			{
+				_toggleCreativeFlight();
+				_inputCapture.activeControls[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
+			}
+		}
+		else
+		{
+			_inputCapture.normalMouseMoved(_inputCapture.glCursorLocation);
+			if (!_inputCapture.didHandleButton0)
+			{
+				_inputCapture.normalMouse0Clicked(_inputCapture.leftShiftDown);
+				_inputCapture.didHandleButton0 = true;
+			}
+			if (!_inputCapture.didHandleButton1)
+			{
+				_inputCapture.normalMouse1Clicked(_inputCapture.leftShiftDown);
+				_inputCapture.didHandleButton1 = true;
+			}
+			
+			// We also only capture the raw text input when not capturing movements since this would just be noise.
+			if ('\0' != _inputCapture.typedCharacter)
+			{
+				_keyTyped(_inputCapture.typedCharacter);
+				_inputCapture.typedCharacter = '\0';
+			}
+		}
+		
+		// Now, we handle the special events related to specific keys which generally change UI state.
+		if (!_inputCapture.didHandleKeyEsc)
+		{
+			_handleKeyEsc();
+			_inputCapture.didHandleKeyEsc = true;
+		}
+		if (!_inputCapture.didHandlePressedNumber)
+		{
+			_handleHotbarIndex(_inputCapture.lastPressedNumber - 1);
+			_inputCapture.didHandlePressedNumber = true;
+		}
+		if (_inputCapture.activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
+		{
+			_handleKeyI();
+			_inputCapture.activeControls[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
+		}
+		if (_inputCapture.activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()])
+		{
+			_handleKeyF();
+			_inputCapture.activeControls[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
+		}
+		if (_inputCapture.activeControls[MutableControls.Control.DROP_ITEM.ordinal()])
+		{
+			_handleKeyQ(_inputCapture.leftCtrlDown);
+			_inputCapture.activeControls[MutableControls.Control.DROP_ITEM.ordinal()] = false;
+		}
+		
+		if (Keys.UNKNOWN != _inputCapture.lastKeyUp)
+		{
+			_keyCodeUp(_inputCapture.lastKeyUp);
+			_inputCapture.lastKeyUp = Keys.UNKNOWN;
+		}
+	}
+
+	private RelativeDirection _getCurrentMove()
+	{
+		// Given that we can mix directions (forward + right, for example), this function handles that combination logic.
+		int forward = 0;
+		if (_inputCapture.activeControls[MutableControls.Control.MOVE_FORWARD.ordinal()])
+		{
+			forward += 1;
+		}
+		if (_inputCapture.activeControls[MutableControls.Control.MOVE_BACKWARD.ordinal()])
+		{
+			forward -= 1;
+		}
+		int right = 0;
+		if (_inputCapture.activeControls[MutableControls.Control.MOVE_RIGHT.ordinal()])
+		{
+			right += 1;
+		}
+		if (_inputCapture.activeControls[MutableControls.Control.MOVE_LEFT.ordinal()])
+		{
+			right -= 1;
+		}
+		
+		RelativeDirection relative;
+		if (forward > 0)
+		{
+			if (right > 0)
+			{
+				relative = RelativeDirection.FORWARD_RIGHT;
+			}
+			else if (right < 0)
+			{
+				relative = RelativeDirection.FORWARD_LEFT;
+			}
+			else
+			{
+				relative = RelativeDirection.FORWARD;
+			}
+		}
+		else if (forward < 0)
+		{
+			if (right > 0)
+			{
+				relative = RelativeDirection.BACKWARD_RIGHT;
+			}
+			else if (right < 0)
+			{
+				relative = RelativeDirection.BACKWARD_LEFT;
+			}
+			else
+			{
+				relative = RelativeDirection.BACKWARD;
+			}
+		}
+		else
+		{
+			if (right > 0)
+			{
+				relative = RelativeDirection.RIGHT;
+			}
+			else if (right < 0)
+			{
+				relative = RelativeDirection.LEFT;
+			}
+			else
+			{
+				relative = null;
+			}
+		}
+		return relative;
 	}
 
 
