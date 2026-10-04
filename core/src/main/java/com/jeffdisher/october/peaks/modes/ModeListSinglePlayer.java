@@ -173,9 +173,6 @@ public class ModeListSinglePlayer implements IGameMode
 		{
 			// Enter the single-player creation window.
 			_modeContainer.setActive(_modeContainer.newSinglePlayer.becomeActive());
-			
-			// Select the default text field.
-			_uiData.typingCapture = _uiData.newWorldNameBinding;
 		}
 	}
 

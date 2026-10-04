@@ -170,11 +170,8 @@ public class ModeListMultiPlayer implements IGameMode
 	{
 		if (_inputCapture.mouseReleased0)
 		{
-			// Enter the single-player creation window.
+			// Enter the multi-player creation window.
 			_modeContainer.setActive(_modeContainer.newMultiPlayer.becomeActive());
-			
-			// Select the default text field.
-			_uiData.typingCapture = _uiData.newServerAddressBinding;
 			
 			// Clear any stale state from last time.
 			_uiData.currentlyTestingServerBinding.set(null);

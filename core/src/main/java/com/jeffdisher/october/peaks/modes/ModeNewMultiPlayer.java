@@ -23,6 +23,8 @@ import com.jeffdisher.october.peaks.ui.ViewTextLabel;
  */
 public class ModeNewMultiPlayer implements IGameMode
 {
+	public static final int MAX_MULTIPLAYER_LENGTH = 32;
+
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
@@ -45,6 +47,10 @@ public class ModeNewMultiPlayer implements IGameMode
 
 	public ModeNewMultiPlayer becomeActive()
 	{
+		// Select the default text field.
+		_inputCapture.textCapture = _uiData.newServerAddressBinding;
+		_inputCapture.textLengthLimit = MAX_MULTIPLAYER_LENGTH;
+		
 		return this;
 	}
 
@@ -105,8 +111,8 @@ public class ModeNewMultiPlayer implements IGameMode
 	private ViewTextField<String> _buildNewServerAddressTextField(GlUi ui, UiData uiData)
 	{
 		return new ViewTextField<>(ui, uiData.newServerAddressBinding
-			, (String value) -> (uiData.typingCapture == uiData.newServerAddressBinding) ? (value + "_") : value
-			, () -> (uiData.typingCapture == uiData.newServerAddressBinding) ? ui.pixelGreen : ui.pixelLightGrey
+			, (String value) -> (_inputCapture.textCapture == uiData.newServerAddressBinding) ? (value + "_") : value
+			, () -> (_inputCapture.textCapture == uiData.newServerAddressBinding) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				_action_clickServerAddressTextField();
 			}
@@ -148,7 +154,8 @@ public class ModeNewMultiPlayer implements IGameMode
 		// We want to enable text capture for this binding.
 		if (_inputCapture.mouseReleased0)
 		{
-			_uiData.typingCapture = _uiData.newServerAddressBinding;
+			_inputCapture.textCapture = _uiData.newServerAddressBinding;
+			_inputCapture.textLengthLimit = MAX_MULTIPLAYER_LENGTH;
 		}
 	}
 
@@ -170,7 +177,7 @@ public class ModeNewMultiPlayer implements IGameMode
 				MutableServerList.ServerRecord record = _uiData.serverList.beginSpecialPollRequest(address);
 				_uiData.currentlyTestingServerBinding.set(record);
 				_uiData.newServerAddressBinding.set("");
-				_uiData.typingCapture = null;
+				_inputCapture.textCapture = null;
 			}
 		}
 	}

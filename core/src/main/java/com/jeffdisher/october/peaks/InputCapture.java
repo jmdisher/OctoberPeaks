@@ -2,6 +2,7 @@ package com.jeffdisher.october.peaks;
 
 import com.badlogic.gdx.Input.Keys;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
+import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.Point;
 
 
@@ -43,9 +44,12 @@ public class InputCapture
 	public int lastReportedMouseX;
 	public int lastReportedMouseY;
 
+	// State related to capturing typed input.
+	public Binding<String> textCapture;
+	public int textLengthLimit;
+
 	// State related to more open-ended uses (number keys or general typing).
-	// '\0' means "no typedCharacter" and -1 means "no lastPressedNumber"
-	public char typedCharacter;
+	// -1 means "no lastPressedNumber"
 	public int lastPressedNumber;
 
 	// NOTE:  This shouldn't really be here (it is a decision, not input) but it is an simple place to put it with the
@@ -60,7 +64,6 @@ public class InputCapture
 		this.controlReleased = new boolean[MutableControls.Control.values().length];
 		this.lastKeyCodeReleased = Keys.UNKNOWN;
 		
-		this.typedCharacter = '\0';
 		this.lastPressedNumber = -1;
 	}
 
@@ -83,7 +86,6 @@ public class InputCapture
 		this.lastKeyCodeReleased = Keys.UNKNOWN;
 		this.didReleaseEsc = false;
 		
-		this.typedCharacter = '\0';
 		this.lastPressedNumber = -1;
 		
 		this.didAccountForTimeInFrame = false;
