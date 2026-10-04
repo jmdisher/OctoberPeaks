@@ -21,6 +21,8 @@ import com.jeffdisher.october.peaks.ui.ViewTextLabel;
  */
 public class ModeOptions implements IGameMode
 {
+	public static final int MAX_CLIENT_NAME_LENGTH = 32;
+
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
@@ -134,8 +136,8 @@ public class ModeOptions implements IGameMode
 	private ViewTextField<String> _buildClientNameTextField(GlUi ui, UiData uiData)
 	{
 		return new ViewTextField<>(ui, uiData.mutablePreferences.clientName
-			, (String value) -> (uiData.typingCapture == uiData.mutablePreferences.clientName) ? (value + "_") : value
-			, () -> (uiData.typingCapture == uiData.mutablePreferences.clientName) ? ui.pixelGreen : ui.pixelLightGrey
+			, (String value) -> (_inputCapture.textCapture == uiData.mutablePreferences.clientName) ? (value + "_") : value
+			, () -> (_inputCapture.textCapture == uiData.mutablePreferences.clientName) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				_action_clickClientNameTextField();
 			}
@@ -220,7 +222,8 @@ public class ModeOptions implements IGameMode
 		if (_inputCapture.mouseReleased0)
 		{
 			// We want to enable text capture for this binding.
-			_uiData.typingCapture = _uiData.mutablePreferences.clientName;
+			_inputCapture.textCapture = _uiData.mutablePreferences.clientName;
+			_inputCapture.textLengthLimit = MAX_CLIENT_NAME_LENGTH;
 		}
 	}
 

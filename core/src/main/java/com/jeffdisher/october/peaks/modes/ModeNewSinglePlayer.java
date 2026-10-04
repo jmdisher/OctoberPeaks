@@ -22,6 +22,9 @@ import com.jeffdisher.october.types.WorldConfig;
  */
 public class ModeNewSinglePlayer implements IGameMode
 {
+	public static final int MAX_WORLD_NAME_LENGTH = 32;
+	public static final int MAX_SEED_LENGTH = 32;
+
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
@@ -47,6 +50,10 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	public ModeNewSinglePlayer becomeActive()
 	{
+		// Select the default text field.
+		_inputCapture.textCapture = _uiData.newWorldNameBinding;
+		_inputCapture.textLengthLimit = MAX_WORLD_NAME_LENGTH;
+		
 		return this;
 	}
 
@@ -150,7 +157,7 @@ public class ModeNewSinglePlayer implements IGameMode
 		return new ViewTextField<>(ui
 			, uiData.newSeedBinding
 			, (String text) -> text
-			, () -> (uiData.typingCapture == uiData.newSeedBinding) ? ui.pixelGreen : ui.pixelLightGrey
+			, () -> (_inputCapture.textCapture == uiData.newSeedBinding) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				_action_clickSeedTextField();
 			}
@@ -161,8 +168,8 @@ public class ModeNewSinglePlayer implements IGameMode
 	{
 		return new ViewTextField<>(ui
 			, uiData.newWorldNameBinding
-			, (String value) -> (uiData.typingCapture == uiData.newWorldNameBinding) ? (value + "_") : value
-			, () -> (uiData.typingCapture == uiData.newWorldNameBinding) ? ui.pixelGreen : ui.pixelLightGrey
+			, (String value) -> (_inputCapture.textCapture == uiData.newWorldNameBinding) ? (value + "_") : value
+			, () -> (_inputCapture.textCapture == uiData.newWorldNameBinding) ? ui.pixelGreen : ui.pixelLightGrey
 			, () -> {
 				_action_clickNewWorldNameTextField();
 			}
@@ -218,7 +225,8 @@ public class ModeNewSinglePlayer implements IGameMode
 		// We want to enable text capture for this binding.
 		if (_inputCapture.mouseReleased0)
 		{
-			_uiData.typingCapture = _uiData.newSeedBinding;
+			_inputCapture.textCapture = _uiData.newSeedBinding;
+			_inputCapture.textLengthLimit = MAX_SEED_LENGTH;
 		}
 	}
 
@@ -227,7 +235,8 @@ public class ModeNewSinglePlayer implements IGameMode
 		// We want to enable text capture for this binding.
 		if (_inputCapture.mouseReleased0)
 		{
-			_uiData.typingCapture = _uiData.newWorldNameBinding;
+			_inputCapture.textCapture = _uiData.newWorldNameBinding;
+			_inputCapture.textLengthLimit = MAX_WORLD_NAME_LENGTH;
 		}
 	}
 
@@ -243,7 +252,7 @@ public class ModeNewSinglePlayer implements IGameMode
 			{
 				// This appears to be ok so reset the name.
 				_uiData.newWorldNameBinding.set("");
-				_uiData.typingCapture = null;
+				_inputCapture.textCapture = null;
 				
 				WorldConfig.WorldGeneratorName worldGeneratorName = _uiData.worldGeneratorNameBinding.get();
 				WorldConfig.DefaultPlayerMode defaultPlayerMode = _uiData.defaultPlayerModeBinding.get();

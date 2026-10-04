@@ -21,8 +21,6 @@ public class UiData
 	public final MutablePreferences mutablePreferences;
 	public final MutableServerList serverList;
 
-	public Binding<String> typingCapture;
-
 	public final Binding<List<String>> worldListBinding;
 	public final Binding<String> newWorldNameBinding;
 	public final Binding<String> newServerAddressBinding;

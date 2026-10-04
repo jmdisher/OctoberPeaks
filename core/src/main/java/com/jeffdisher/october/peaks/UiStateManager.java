@@ -58,8 +58,6 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class UiStateManager implements GameSession.ICallouts
 {
-	public static final int MAX_WORLD_NAME = 16;
-
 	private final Environment _env;
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
@@ -349,7 +347,7 @@ public class UiStateManager implements GameSession.ICallouts
 			_modeContainer.currentMode.handleEscape();
 			
 			// Any meaning of "back" should stop text input.
-			_uiData.typingCapture = null;
+			_inputCapture.textCapture = null;
 			_inputCapture.didReleaseEsc = false;
 		}
 		_handleUserEvents();
@@ -434,52 +432,6 @@ public class UiStateManager implements GameSession.ICallouts
 			{
 				_modeContainer.play.currentGameSession.client.toggleCreativeFlight();
 				_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
-			}
-		}
-		else
-		{
-			// We also only capture the raw text input when not capturing movements since this would just be noise.
-			if ('\0' != _inputCapture.typedCharacter)
-			{
-				char typedCharacter = _inputCapture.typedCharacter;
-				// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
-				if (null != _uiData.typingCapture)
-				{
-					String string = _uiData.typingCapture.get();
-					int nameLength = string.length();
-					if (('\b' == typedCharacter) && (nameLength > 0))
-					{
-						// Backspace is a special case.
-						_uiData.typingCapture.set(string.substring(0, string.length() - 1));
-					}
-					else if (nameLength < MAX_WORLD_NAME)
-					{
-						int type = Character.getType(typedCharacter);
-						switch (type)
-						{
-						case Character.LOWERCASE_LETTER:
-						case Character.UPPERCASE_LETTER:
-						case Character.DECIMAL_DIGIT_NUMBER:
-							_uiData.typingCapture.set(string + typedCharacter);
-							break;
-							default:
-								// Special-case whitelist.
-								switch (typedCharacter)
-								{
-								case '.':
-								case ':':
-								case '-':
-								case '_':
-								case ' ':
-									_uiData.typingCapture.set(string + typedCharacter);
-									break;
-								default:
-									// Ignored.
-								}
-						}
-					}
-				}
-				_inputCapture.typedCharacter = '\0';
 			}
 		}
 		

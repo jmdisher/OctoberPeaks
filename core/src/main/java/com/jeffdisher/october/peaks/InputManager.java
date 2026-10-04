@@ -38,8 +38,43 @@ public class InputManager
 			@Override
 			public boolean keyTyped(char character)
 			{
-				// Note that this technique might mean that we drop characters when typing too quickly (more than one char per frame).
-				_inputCapture.typedCharacter = character;
+				// We also only capture the raw text input when not capturing movements since this would just be noise.
+				if (null != _inputCapture.textCapture)
+				{
+					String string = _inputCapture.textCapture.get();
+					int nameLength = string.length();
+					if (('\b' == character) && (nameLength > 0))
+					{
+						// Backspace is a special case.
+						_inputCapture.textCapture.set(string.substring(0, string.length() - 1));
+					}
+					else if (nameLength < _inputCapture.textLengthLimit)
+					{
+						int type = Character.getType(character);
+						switch (type)
+						{
+						case Character.LOWERCASE_LETTER:
+						case Character.UPPERCASE_LETTER:
+						case Character.DECIMAL_DIGIT_NUMBER:
+							_inputCapture.textCapture.set(string + character);
+							break;
+							default:
+								// Special-case whitelist.
+								switch (character)
+								{
+								case '.':
+								case ':':
+								case '-':
+								case '_':
+								case ' ':
+									_inputCapture.textCapture.set(string + character);
+									break;
+								default:
+									// Ignored.
+								}
+						}
+					}
+				}
 				return true;
 			}
 			@Override
