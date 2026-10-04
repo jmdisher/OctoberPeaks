@@ -342,8 +342,17 @@ public class UiStateManager implements GameSession.ICallouts
 	 */
 	public void renderFrame()
 	{
-		// Flush any captured input events.
-		_flushInputEvents();
+		// Handle the user events at the beginning of the frame.
+		if (_inputCapture.didReleaseEsc)
+		{
+			// The escape is the only common logic we have, so just apply it here.
+			_modeContainer.currentMode.handleEscape();
+			
+			// Any meaning of "back" should stop text input.
+			_uiData.typingCapture = null;
+			_inputCapture.didReleaseEsc = false;
+		}
+		_handleUserEvents();
 		
 		// Find the selection, if the mode supports this.
 		if (_modeContainer.play == _modeContainer.currentMode)
@@ -355,16 +364,196 @@ public class UiStateManager implements GameSession.ICallouts
 		// Draw the relevant windows on top of this scene (passing in any information describing the UI state).
 		_drawRelevantWindows();
 		
-		_handleEndOfFrameEvents();
-		
 		// Allow any periodic cleanup.
 		_ui.textManager.allowTexturePurge();
 		_inputCapture.clearReleaseState();
 	}
 
 
-	private void _handleEndOfFrameEvents()
+	private void _handleUserEvents()
 	{
+		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
+		if (_inputCapture.shouldCaptureMouseMovements)
+		{
+			Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
+			
+			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
+			if ((_inputCapture.mouseX != _inputCapture.lastReportedMouseX) || (_inputCapture.mouseY != _inputCapture.lastReportedMouseY))
+			{
+				int deltaX = _inputCapture.mouseX - _inputCapture.lastReportedMouseX;
+				int deltaY = _inputCapture.mouseY - _inputCapture.lastReportedMouseY;
+				_inputCapture.lastReportedMouseX = _inputCapture.mouseX;
+				_inputCapture.lastReportedMouseY = _inputCapture.mouseY;
+				Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
+				
+				// Something has to change for us to get this call.
+				Assert.assertTrue((0 != deltaX) || (0 != deltaY));
+				_yawRadians = _modeContainer.play.currentGameSession.movement.rotateYaw(deltaX);
+				_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
+				_orientationNeedsFlush = true;
+			}
+			
+			// Check out movement controls.
+			RelativeDirection relativeMove = _getCurrentMove();
+			if (null != relativeMove)
+			{
+				if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SNEAK.ordinal()])
+				{
+					_modeContainer.play.currentGameSession.client.sneak(relativeMove);
+					_inputCapture.didAccountForTimeInFrame = true;
+					
+					// We will say that sneaking is silent.
+					_audibleMotionInFrame = null;
+				}
+				else if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SPRINT.ordinal()])
+				{
+					boolean runningSpeed = true;
+					_modeContainer.play.currentGameSession.client.accelerateHorizontal(relativeMove, runningSpeed);
+					_inputCapture.didAccountForTimeInFrame = true;
+					_audibleMotionInFrame = _AudibleMotion.RUN;
+				}
+				else
+				{
+					boolean runningSpeed = false;
+					_modeContainer.play.currentGameSession.client.accelerateHorizontal(relativeMove, runningSpeed);
+					_inputCapture.didAccountForTimeInFrame = true;
+					_audibleMotionInFrame = _AudibleMotion.WALK;
+				}
+			}
+			
+			// See if we want to jump or try descending a ladder.
+			if (_inputCapture.controlHeld[MutableControls.Control.MOVE_JUMP.ordinal()])
+			{
+				_modeContainer.play.currentGameSession.client.ascendOrJumpOrSwim();
+			}
+			else if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SNEAK.ordinal()])
+			{
+				_modeContainer.play.currentGameSession.client.tryDescend();
+			}
+			if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
+			{
+				_modeContainer.play.currentGameSession.client.toggleCreativeFlight();
+				_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
+			}
+		}
+		else
+		{
+			// We also only capture the raw text input when not capturing movements since this would just be noise.
+			if ('\0' != _inputCapture.typedCharacter)
+			{
+				char typedCharacter = _inputCapture.typedCharacter;
+				// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
+				if (null != _uiData.typingCapture)
+				{
+					String string = _uiData.typingCapture.get();
+					int nameLength = string.length();
+					if (('\b' == typedCharacter) && (nameLength > 0))
+					{
+						// Backspace is a special case.
+						_uiData.typingCapture.set(string.substring(0, string.length() - 1));
+					}
+					else if (nameLength < MAX_WORLD_NAME)
+					{
+						int type = Character.getType(typedCharacter);
+						switch (type)
+						{
+						case Character.LOWERCASE_LETTER:
+						case Character.UPPERCASE_LETTER:
+						case Character.DECIMAL_DIGIT_NUMBER:
+							_uiData.typingCapture.set(string + typedCharacter);
+							break;
+							default:
+								// Special-case whitelist.
+								switch (typedCharacter)
+								{
+								case '.':
+								case ':':
+								case '-':
+								case '_':
+								case ' ':
+									_uiData.typingCapture.set(string + typedCharacter);
+									break;
+								default:
+									// Ignored.
+								}
+						}
+					}
+				}
+				_inputCapture.typedCharacter = '\0';
+			}
+		}
+		
+		// Now, we handle the special events related to specific keys which generally change UI state.
+		if (-1 != _inputCapture.lastPressedNumber)
+		{
+			int hotbarIndex = _inputCapture.lastPressedNumber - 1;
+			// We need an active session and not paused but logically this means play or inventory.
+			if (_modeContainer.play == _modeContainer.currentMode)
+			{
+				_modeContainer.play.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			}
+			else if (_modeContainer.inventory == _modeContainer.currentMode)
+			{
+				_modeContainer.inventory.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			}
+			else if (_modeContainer.trading == _modeContainer.currentMode)
+			{
+				_modeContainer.trading.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			}
+			_inputCapture.lastPressedNumber = -1;
+		}
+		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
+		{
+			// This only matters if we are playing or in the inventory screen.
+			if (_modeContainer.inventory == _modeContainer.currentMode)
+			{
+				_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
+				_inputCapture.captureState.shouldCaptureMouse(true);
+			}
+			else if (_modeContainer.play == _modeContainer.currentMode)
+			{
+				_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, null));
+				// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
+				_inputCapture.captureState.shouldCaptureMouse(false);
+			}
+			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
+		}
+		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()])
+		{
+			if (_modeContainer.inventory == _modeContainer.currentMode)
+			{
+				_modeContainer.inventory.viewingFuelInventory = !_modeContainer.inventory.viewingFuelInventory;
+				if (_modeContainer.inventory.viewingFuelInventory)
+				{
+					// Make sure that this actually has a fuel slot.
+					if (null == _modeContainer.inventory.openStationLocation)
+					{
+						_modeContainer.inventory.viewingFuelInventory = false;
+					}
+					else
+					{
+						BlockProxy stationBlock = _modeContainer.inventory.currentGameSession.blockLookup.readBlock(_modeContainer.inventory.openStationLocation);
+						_modeContainer.inventory.viewingFuelInventory = (null != stationBlock.getFuel());
+					}
+				}
+				_modeContainer.inventory.continuousInInventory = null;
+				_modeContainer.inventory.continuousInBlock = null;
+			}
+			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
+		}
+		
+		if (Keys.UNKNOWN != _inputCapture.lastKeyCodeReleased)
+		{
+			if ((_modeContainer.keyBindings == _modeContainer.currentMode) && (null != _uiData.currentlyChangingControl.get()))
+			{
+				boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), _inputCapture.lastKeyCodeReleased);
+				if (didSet)
+				{
+					_uiData.currentlyChangingControl.set(null);
+				}
+			}
+			_inputCapture.lastKeyCodeReleased = Keys.UNKNOWN;
+		}
 		if (_modeContainer.currentMode == _modeContainer.options)
 		{
 			// We can be in this state while running or while at the main menu.
@@ -837,202 +1026,6 @@ public class UiStateManager implements GameSession.ICallouts
 			throw Assert.unexpected(e);
 		}
 		return pendingGameSession;
-	}
-
-	private void _flushInputEvents()
-	{
-		// We want to go down the list of things we might need to report and tell the UI Manager.
-		
-		// Firstly, we operate in a different mode, whether we are in capturing mode or not.
-		if (_inputCapture.shouldCaptureMouseMovements)
-		{
-			Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-			
-			// When we are capturing, the cursor is invisible and this is essentially a "yoke".
-			if ((_inputCapture.mouseX != _inputCapture.lastReportedMouseX) || (_inputCapture.mouseY != _inputCapture.lastReportedMouseY))
-			{
-				int deltaX = _inputCapture.mouseX - _inputCapture.lastReportedMouseX;
-				int deltaY = _inputCapture.mouseY - _inputCapture.lastReportedMouseY;
-				_inputCapture.lastReportedMouseX = _inputCapture.mouseX;
-				_inputCapture.lastReportedMouseY = _inputCapture.mouseY;
-				Assert.assertTrue(_modeContainer.play == _modeContainer.currentMode);
-				
-				// Something has to change for us to get this call.
-				Assert.assertTrue((0 != deltaX) || (0 != deltaY));
-				_yawRadians = _modeContainer.play.currentGameSession.movement.rotateYaw(deltaX);
-				_pitchRadians = _modeContainer.play.currentGameSession.movement.rotatePitch(deltaY);
-				_orientationNeedsFlush = true;
-			}
-			
-			// Check out movement controls.
-			RelativeDirection relativeMove = _getCurrentMove();
-			if (null != relativeMove)
-			{
-				if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SNEAK.ordinal()])
-				{
-					_modeContainer.play.currentGameSession.client.sneak(relativeMove);
-					_inputCapture.didAccountForTimeInFrame = true;
-					
-					// We will say that sneaking is silent.
-					_audibleMotionInFrame = null;
-				}
-				else if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SPRINT.ordinal()])
-				{
-					boolean runningSpeed = true;
-					_modeContainer.play.currentGameSession.client.accelerateHorizontal(relativeMove, runningSpeed);
-					_inputCapture.didAccountForTimeInFrame = true;
-					_audibleMotionInFrame = _AudibleMotion.RUN;
-				}
-				else
-				{
-					boolean runningSpeed = false;
-					_modeContainer.play.currentGameSession.client.accelerateHorizontal(relativeMove, runningSpeed);
-					_inputCapture.didAccountForTimeInFrame = true;
-					_audibleMotionInFrame = _AudibleMotion.WALK;
-				}
-			}
-			
-			// See if we want to jump or try descending a ladder.
-			if (_inputCapture.controlHeld[MutableControls.Control.MOVE_JUMP.ordinal()])
-			{
-				_modeContainer.play.currentGameSession.client.ascendOrJumpOrSwim();
-			}
-			else if (_inputCapture.controlHeld[MutableControls.Control.MOVE_SNEAK.ordinal()])
-			{
-				_modeContainer.play.currentGameSession.client.tryDescend();
-			}
-			if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()])
-			{
-				_modeContainer.play.currentGameSession.client.toggleCreativeFlight();
-				_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FLIGHT.ordinal()] = false;
-			}
-		}
-		else
-		{
-			// We also only capture the raw text input when not capturing movements since this would just be noise.
-			if ('\0' != _inputCapture.typedCharacter)
-			{
-				char typedCharacter = _inputCapture.typedCharacter;
-				// If we have a binding capturing keys, make sure that this is one of our whitelist character types and then append it.
-				if (null != _uiData.typingCapture)
-				{
-					String string = _uiData.typingCapture.get();
-					int nameLength = string.length();
-					if (('\b' == typedCharacter) && (nameLength > 0))
-					{
-						// Backspace is a special case.
-						_uiData.typingCapture.set(string.substring(0, string.length() - 1));
-					}
-					else if (nameLength < MAX_WORLD_NAME)
-					{
-						int type = Character.getType(typedCharacter);
-						switch (type)
-						{
-						case Character.LOWERCASE_LETTER:
-						case Character.UPPERCASE_LETTER:
-						case Character.DECIMAL_DIGIT_NUMBER:
-							_uiData.typingCapture.set(string + typedCharacter);
-							break;
-							default:
-								// Special-case whitelist.
-								switch (typedCharacter)
-								{
-								case '.':
-								case ':':
-								case '-':
-								case '_':
-								case ' ':
-									_uiData.typingCapture.set(string + typedCharacter);
-									break;
-								default:
-									// Ignored.
-								}
-						}
-					}
-				}
-				_inputCapture.typedCharacter = '\0';
-			}
-		}
-		
-		// Now, we handle the special events related to specific keys which generally change UI state.
-		if (_inputCapture.didReleaseEsc)
-		{
-			_modeContainer.currentMode.handleEscape();
-			
-			// Any meaning of "back" should stop text input.
-			_uiData.typingCapture = null;
-			_inputCapture.didReleaseEsc = false;
-		}
-		if (-1 != _inputCapture.lastPressedNumber)
-		{
-			int hotbarIndex = _inputCapture.lastPressedNumber - 1;
-			// We need an active session and not paused but logically this means play or inventory.
-			if (_modeContainer.play == _modeContainer.currentMode)
-			{
-				_modeContainer.play.currentGameSession.client.changeHotbarIndex(hotbarIndex);
-			}
-			else if (_modeContainer.inventory == _modeContainer.currentMode)
-			{
-				_modeContainer.inventory.currentGameSession.client.changeHotbarIndex(hotbarIndex);
-			}
-			else if (_modeContainer.trading == _modeContainer.currentMode)
-			{
-				_modeContainer.trading.currentGameSession.client.changeHotbarIndex(hotbarIndex);
-			}
-			_inputCapture.lastPressedNumber = -1;
-		}
-		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
-		{
-			// This only matters if we are playing or in the inventory screen.
-			if (_modeContainer.inventory == _modeContainer.currentMode)
-			{
-				_modeContainer.setActive(_modeContainer.play.becomeActive(_modeContainer.inventory.currentGameSession));
-				_inputCapture.captureState.shouldCaptureMouse(true);
-			}
-			else if (_modeContainer.play == _modeContainer.currentMode)
-			{
-				_modeContainer.setActive(_modeContainer.inventory.becomeActive(_modeContainer.play.currentGameSession, null));
-				// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-				_inputCapture.captureState.shouldCaptureMouse(false);
-			}
-			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
-		}
-		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()])
-		{
-			if (_modeContainer.inventory == _modeContainer.currentMode)
-			{
-				_modeContainer.inventory.viewingFuelInventory = !_modeContainer.inventory.viewingFuelInventory;
-				if (_modeContainer.inventory.viewingFuelInventory)
-				{
-					// Make sure that this actually has a fuel slot.
-					if (null == _modeContainer.inventory.openStationLocation)
-					{
-						_modeContainer.inventory.viewingFuelInventory = false;
-					}
-					else
-					{
-						BlockProxy stationBlock = _modeContainer.inventory.currentGameSession.blockLookup.readBlock(_modeContainer.inventory.openStationLocation);
-						_modeContainer.inventory.viewingFuelInventory = (null != stationBlock.getFuel());
-					}
-				}
-				_modeContainer.inventory.continuousInInventory = null;
-				_modeContainer.inventory.continuousInBlock = null;
-			}
-			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
-		}
-		
-		if (Keys.UNKNOWN != _inputCapture.lastKeyCodeReleased)
-		{
-			if ((_modeContainer.keyBindings == _modeContainer.currentMode) && (null != _uiData.currentlyChangingControl.get()))
-			{
-				boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), _inputCapture.lastKeyCodeReleased);
-				if (didSet)
-				{
-					_uiData.currentlyChangingControl.set(null);
-				}
-			}
-			_inputCapture.lastKeyCodeReleased = Keys.UNKNOWN;
-		}
 	}
 
 	private RelativeDirection _getCurrentMove()
