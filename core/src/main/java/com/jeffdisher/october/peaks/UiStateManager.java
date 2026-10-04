@@ -73,9 +73,6 @@ public class UiStateManager implements GameSession.ICallouts
 
 	private _AudibleMotion _audibleMotionInFrame;
 
-	// Data specifically related to high-level UI state.
-	private boolean _isRunningOnServer;
-
 	// Tracking related to orientation change updates.
 	private boolean _orientationNeedsFlush;
 	private float _yawRadians;
@@ -157,8 +154,7 @@ public class UiStateManager implements GameSession.ICallouts
 			, (String directoryName) -> {
 				// We just pass nulls for our new game options.
 				GameSession session = _createSinglePlayerSession(_gl, _resources, directoryName, null, null, null, 0);
-				_isRunningOnServer = false;
-				_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+				_uiData.isRunningOnServerBinding.set(session.isOnServer);
 				return session;
 			}
 		);
@@ -179,8 +175,7 @@ public class UiStateManager implements GameSession.ICallouts
 				, Integer basicWorldGeneratorSeed
 			) -> {
 				GameSession session = _createSinglePlayerSession(_gl, _resources, directoryName, worldGeneratorName, defaultPlayerMode, difficulty, basicWorldGeneratorSeed);
-				_isRunningOnServer = false;
-				_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+				_uiData.isRunningOnServerBinding.set(session.isOnServer);
 				return session;
 			}
 		);
@@ -217,8 +212,7 @@ public class UiStateManager implements GameSession.ICallouts
 				if (null != session)
 				{
 					// This was a success, so change state.
-					_isRunningOnServer = true;
-					_uiData.isRunningOnServerBinding.set(_isRunningOnServer);
+					_uiData.isRunningOnServerBinding.set(session.isOnServer);
 				}
 				return session;
 			}
@@ -377,7 +371,7 @@ public class UiStateManager implements GameSession.ICallouts
 			if (null != _modeContainer.options.currentGameSession)
 			{
 				// This mode is also accessible from the pause menu so check if we are on a server.
-				if (_isRunningOnServer)
+				if (_modeContainer.options.currentGameSession.isOnServer)
 				{
 					_passTimeWhileRunning(_modeContainer.options.currentGameSession);
 				}
@@ -393,7 +387,7 @@ public class UiStateManager implements GameSession.ICallouts
 			if (null != _modeContainer.keyBindings.currentGameSession)
 			{
 				// This mode is also accessible from the pause menu so check if we are on a server.
-				if (_isRunningOnServer)
+				if (_modeContainer.keyBindings.currentGameSession.isOnServer)
 				{
 					_passTimeWhileRunning(_modeContainer.keyBindings.currentGameSession);
 				}
@@ -431,7 +425,7 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 		else if (_modeContainer.currentMode == _modeContainer.pause)
 		{
-			if (_isRunningOnServer)
+			if (_modeContainer.pause.currentGameSession.isOnServer)
 			{
 				_passTimeWhileRunning(_modeContainer.pause.currentGameSession);
 			}
