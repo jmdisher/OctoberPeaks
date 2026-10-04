@@ -52,6 +52,7 @@ public class GameSession
 	public final GhostManager ghostManager;
 	public final TickProcessingContext.IBlockFetcher blockLookup;
 	public final Map<Integer, String> otherPlayerNamesById;
+	public final boolean isOnServer;
 
 	public GameSession(Environment environment
 			, GL20 gl
@@ -121,6 +122,9 @@ public class GameSession
 		
 		// Load the audio.
 		this.audioManager = new AudioManager(environment, resources, _worldCache);
+		
+		// The flag for whether or not this is on a server is just something we hold here for external users to query.
+		this.isOnServer = (null != serverSocketAddress);
 	}
 
 	public void finishStartup()
