@@ -112,7 +112,7 @@ public class ModeError implements IGameMode
 
 	private void _action_clickCopyToClipboardButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// Just copy the payload to the clipboard.
 			StringBuilder builder = new StringBuilder();
@@ -127,7 +127,7 @@ public class ModeError implements IGameMode
 
 	private void _action_clickQuitButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// From here, we quit directly, as this is top-level.
 			// (in the error state, we won't wait for the app to quit).

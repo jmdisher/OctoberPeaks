@@ -15,14 +15,11 @@ import com.jeffdisher.october.peaks.ui.Point;
 public class InputCapture
 {
 	public final ICallouts captureState;
-	// (note that the mouse "held" is if the button is currently down while "pressed" means it was pressed in this frame
-	// and "released" means it was released in this frame)
+	// (note that the mouse "held" is if the button is currently down while "clicked" means it was pressed in this frame).
 	public boolean mouseHeld0;
 	public boolean mouseHeld1;
-	public boolean mousePressed0;
-	public boolean mousePressed1;
-	public boolean mouseReleased0;
-	public boolean mouseReleased1;
+	public boolean mouseClicked0;
+	public boolean mouseClicked1;
 
 	// Since shift and ctrl are meta-keys, we just record if they are currently held.
 	public boolean leftShiftHeld;
@@ -74,10 +71,8 @@ public class InputCapture
 	 */
 	public void clearReleaseState()
 	{
-		this.mousePressed0 = false;
-		this.mousePressed1 = false;
-		this.mouseReleased0 = false;
-		this.mouseReleased1 = false;
+		this.mouseClicked0 = false;
+		this.mouseClicked1 = false;
 		
 		for (int i = 0; i < this.controlReleased.length; ++i)
 		{

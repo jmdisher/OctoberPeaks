@@ -90,7 +90,7 @@ public class ModeInventory implements IGameMode
 		this.craftingPanelTitleBinding = new Binding<>(null);
 		this.craftingPanelBinding = new Binding<>(null);
 		
-		BooleanSupplier isLeftClick = () -> inputCapture.mouseReleased0;
+		BooleanSupplier isLeftClick = () -> inputCapture.mouseClicked0;
 		this.thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, this.thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
@@ -102,7 +102,7 @@ public class ModeInventory implements IGameMode
 		this.craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
 			Assert.assertTrue(this == _modeContainer.currentMode);
-			if (inputCapture.mouseReleased0)
+			if (inputCapture.mouseClicked0)
 			{
 				// Note that we ignore the result since this will be reflected in the UI, if valid.
 				GameSession currentGameSession = this.currentGameSession;

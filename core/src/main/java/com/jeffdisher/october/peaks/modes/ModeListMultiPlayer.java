@@ -49,7 +49,7 @@ public class ModeListMultiPlayer implements IGameMode
 		_uiData = uiData;
 		_sessionStarter = sessionStarter;
 		
-		BooleanSupplier isLeftClick = () -> _inputCapture.mouseReleased0;
+		BooleanSupplier isLeftClick = () -> _inputCapture.mouseClicked0;
 		_listMultiPlayerStateWindow = _buildListMultiPlayerStateWindow(_ui, _uiData, isLeftClick);
 	}
 
@@ -144,7 +144,7 @@ public class ModeListMultiPlayer implements IGameMode
 
 	private void _action_clickJoinMultiWorldButton(MutableServerList.ServerRecord server)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// Note that "_connectToServer" will try to connect to server and change state, but only if successful.
 			String clientName = _uiData.mutablePreferences.clientName.get();
@@ -160,7 +160,7 @@ public class ModeListMultiPlayer implements IGameMode
 
 	private void _action_clickDeleteMultiWorldButton(MutableServerList.ServerRecord server)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_uiData.serverList.removeServerFromList(server);
 		}
@@ -168,7 +168,7 @@ public class ModeListMultiPlayer implements IGameMode
 
 	private void _action_clickAddNewServerButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// Enter the multi-player creation window.
 			_modeContainer.setActive(_modeContainer.newMultiPlayer.becomeActive());
@@ -180,7 +180,7 @@ public class ModeListMultiPlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 		}
