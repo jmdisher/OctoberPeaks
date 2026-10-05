@@ -47,6 +47,7 @@ public class ModeOptions implements IGameMode
 
 	public ModeOptions becomeActive(GameSession currentGameSession)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		this.currentGameSession = currentGameSession;
 		return this;
 	}

@@ -110,6 +110,7 @@ public class ModePlay implements IGameMode
 
 	public ModePlay becomeActive(GameSession currentGameSession)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(true);
 		this.currentGameSession = currentGameSession;
 		return this;
 	}
@@ -131,7 +132,6 @@ public class ModePlay implements IGameMode
 	{
 		this.currentGameSession.client.pauseGame();
 		_modeContainer.setActive(_modeContainer.pause.becomeActive(this.currentGameSession));
-		_inputCapture.captureState.shouldCaptureMouse(false);
 	}
 
 	@Override
@@ -497,7 +497,6 @@ public class ModePlay implements IGameMode
 					{
 						// This is a villager with a profession so switch to our trading UI mode.
 						_modeContainer.setActive(_modeContainer.trading.becomeActive(this.currentGameSession));
-						_inputCapture.captureState.shouldCaptureMouse(false);
 						_currentTradingPartnerIdBinding.set(entity.id());
 					}
 					else
@@ -555,8 +554,6 @@ public class ModePlay implements IGameMode
 		if (!didAct && _inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
 		{
 			_modeContainer.setActive(_modeContainer.inventory.becomeActive(this.currentGameSession, null));
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_inputCapture.captureState.shouldCaptureMouse(false);
 			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
 			didAct = true;
 		}
@@ -611,8 +608,6 @@ public class ModePlay implements IGameMode
 		{
 			// We are at least some kind of station with an inventory.
 			_modeContainer.setActive(_modeContainer.inventory.becomeActive(this.currentGameSession, blockLocation));
-			// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
-			_inputCapture.captureState.shouldCaptureMouse(false);
 			didOpen = true;
 		}
 		return didOpen;

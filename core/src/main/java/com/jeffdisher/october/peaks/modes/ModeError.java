@@ -40,6 +40,7 @@ public class ModeError implements IGameMode
 
 	public ModeError becomeActive(String[] errorPayload)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		this.errorPayload = errorPayload;
 		return this;
 	}
