@@ -31,6 +31,7 @@ public class InputCapture
 	// (Keys.UNKNOWN means "no lastKeyCodeReleased")
 	public int lastKeyCodeReleased;
 	public boolean didReleaseEsc;
+	public boolean didReleaseEnter;
 
 	// Variables related to the higher-order state of the manager (enabling/disabling event filtering, etc).
 	public boolean shouldCaptureMouseMovements;
@@ -80,6 +81,7 @@ public class InputCapture
 		}
 		this.lastKeyCodeReleased = Keys.UNKNOWN;
 		this.didReleaseEsc = false;
+		this.didReleaseEnter = false;
 		
 		this.lastPressedNumber = -1;
 		

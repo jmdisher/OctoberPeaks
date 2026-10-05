@@ -23,6 +23,7 @@ public class ModeContainer
 	public ModeProfile profile;
 	public ModeTrading trading;
 	public ModeError error;
+	public ModeChat chat;
 
 	public void setActive(IGameMode active)
 	{

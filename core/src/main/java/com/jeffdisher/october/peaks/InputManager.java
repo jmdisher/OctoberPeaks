@@ -140,6 +140,9 @@ public class InputManager
 				case Keys.CONTROL_LEFT:
 					_inputCapture.leftCtrlHeld = false;
 					break;
+				case Keys.ENTER:
+					_inputCapture.didReleaseEnter = true;
+					break;
 				}
 				
 				// See if one of our dynamic controls matches this.
