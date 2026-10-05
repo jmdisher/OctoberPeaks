@@ -46,6 +46,7 @@ public class ModePause implements IGameMode
 
 	public ModePause becomeActive(GameSession currentGameSession)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		this.currentGameSession = currentGameSession;
 		return this;
 	}
@@ -197,6 +198,5 @@ public class ModePause implements IGameMode
 	{
 		this.currentGameSession.client.resumeGame();
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_inputCapture.captureState.shouldCaptureMouse(true);
 	}
 }

@@ -51,6 +51,7 @@ public class ModeNewMultiPlayer implements IGameMode
 		_inputCapture.textCapture = _uiData.newServerAddressBinding;
 		_inputCapture.textLengthLimit = MAX_MULTIPLAYER_LENGTH;
 		
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 

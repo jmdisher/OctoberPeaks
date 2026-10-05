@@ -54,6 +54,7 @@ public class ModeNewSinglePlayer implements IGameMode
 		_inputCapture.textCapture = _uiData.newWorldNameBinding;
 		_inputCapture.textLengthLimit = MAX_WORLD_NAME_LENGTH;
 		
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 

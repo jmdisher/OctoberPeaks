@@ -46,6 +46,7 @@ public class ModeStart implements IGameMode
 
 	public ModeStart becomeActive()
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 
