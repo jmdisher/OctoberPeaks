@@ -45,6 +45,7 @@ public class ModeKeyBindings implements IGameMode
 
 	public ModeKeyBindings becomeActive(GameSession currentGameSession)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		this.currentGameSession = currentGameSession;
 		return this;
 	}

@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks.modes;
 
 import com.badlogic.gdx.Gdx;
+import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
 import com.jeffdisher.october.peaks.ui.IAction;
 
@@ -12,10 +13,20 @@ import com.jeffdisher.october.peaks.ui.IAction;
  */
 public class ModeProfile implements IGameMode
 {
+	private final InputCapture _inputCapture;
+
 	public ProfilingSession profilingSession;
+
+	public ModeProfile(ModeContainer modeContainer
+		, InputCapture inputCapture
+	)
+	{
+		_inputCapture = inputCapture;
+	}
 
 	public ModeProfile becomeActive(ProfilingSession profilingSession)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		this.profilingSession = profilingSession;
 		return this;
 	}

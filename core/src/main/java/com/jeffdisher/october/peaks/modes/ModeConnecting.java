@@ -42,6 +42,7 @@ public class ModeConnecting implements IGameMode
 
 	public ModeConnecting becomeActive(GameSession pendingGameSession)
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		this.pendingGameSession = pendingGameSession;
 		return this;
 	}
@@ -74,7 +75,6 @@ public class ModeConnecting implements IGameMode
 		if (this.pendingGameSession.isConnectionReady())
 		{
 			_modeContainer.setActive(_modeContainer.play.becomeActive(this.pendingGameSession));
-			_inputCapture.captureState.shouldCaptureMouse(true);
 		}
 	}
 

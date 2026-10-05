@@ -243,7 +243,9 @@ public class UiStateManager implements GameSession.ICallouts
 			, _inputCapture
 			, _uiData
 		);
-		_modeContainer.profile = new ModeProfile();
+		_modeContainer.profile = new ModeProfile(_modeContainer
+			, _inputCapture
+		);
 		_modeContainer.trading = new ModeTrading(_modeContainer
 			, _ui
 			, _inputCapture
@@ -286,11 +288,6 @@ public class UiStateManager implements GameSession.ICallouts
 			throw Assert.unreachable();
 		}
 		
-		// If we were in the active play state, release the mouse capture (this check just makes the transition more explicit).
-		if (_modeContainer.play == _modeContainer.currentMode)
-		{
-			_inputCapture.captureState.shouldCaptureMouse(false);
-		}
 		_modeContainer.setActive(_modeContainer.start.becomeActive());
 	}
 
@@ -382,7 +379,6 @@ public class UiStateManager implements GameSession.ICallouts
 	public void enterErrorState(String[] payload)
 	{
 		_modeContainer.setActive(_modeContainer.error.becomeActive(payload));
-		_inputCapture.captureState.shouldCaptureMouse(false);
 	}
 
 	public void shutdown()

@@ -122,6 +122,9 @@ public class ModeInventory implements IGameMode
 		this.continuousInInventory = null;
 		this.continuousInBlock = null;
 		this.isManualCraftingStation = false;
+		
+		// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 
@@ -140,7 +143,6 @@ public class ModeInventory implements IGameMode
 	public void handleEscape()
 	{
 		_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-		_inputCapture.captureState.shouldCaptureMouse(true);
 	}
 
 	@Override
@@ -321,7 +323,6 @@ public class ModeInventory implements IGameMode
 		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
 		{
 			_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
-			_inputCapture.captureState.shouldCaptureMouse(true);
 			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
 		}
 		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()])

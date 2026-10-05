@@ -56,6 +56,7 @@ public class ModeListSinglePlayer implements IGameMode
 
 	public ModeListSinglePlayer becomeActive()
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 

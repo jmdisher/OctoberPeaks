@@ -55,6 +55,7 @@ public class ModeListMultiPlayer implements IGameMode
 
 	public ModeListMultiPlayer becomeActive()
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 

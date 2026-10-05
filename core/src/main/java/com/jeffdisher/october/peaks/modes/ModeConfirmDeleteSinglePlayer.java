@@ -45,6 +45,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	public ModeConfirmDeleteSinglePlayer becomeActive()
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 

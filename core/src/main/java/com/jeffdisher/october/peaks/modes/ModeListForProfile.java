@@ -45,6 +45,7 @@ public class ModeListForProfile implements IGameMode
 
 	public ModeListForProfile becomeActive()
 	{
+		_inputCapture.captureState.shouldCaptureMouse(false);
 		return this;
 	}
 
