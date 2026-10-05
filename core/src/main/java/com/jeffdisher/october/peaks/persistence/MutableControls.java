@@ -29,28 +29,25 @@ public class MutableControls
 
 	public static enum Control
 	{
-		MOVE_FORWARD(Keys.W, false, "Move Forward"),
-		MOVE_RIGHT(Keys.D, false, "Move Right"),
-		MOVE_LEFT(Keys.A, false, "Move Left"),
-		MOVE_BACKWARD(Keys.S, false, "Move Backward"),
-		MOVE_JUMP(Keys.SPACE, false, "Jump/Swim"),
-		TOGGLE_INVENTORY(Keys.I, true, "Open/Close Inventory"),
-		TOGGLE_FUEL(Keys.F, true, "Toggle Fuel Inventory"),
-		MOVE_SPRINT(Keys.CONTROL_LEFT, false, "Sprint"),
-		MOVE_SNEAK(Keys.SHIFT_LEFT, false, "Sneak"),
-		DROP_ITEM(Keys.Q, true, "Drop Item"),
-		TOGGLE_FLIGHT(Keys.GRAVE, true, "Toggle Flight (Creative)"),
+		MOVE_FORWARD(Keys.W, "Move Forward"),
+		MOVE_RIGHT(Keys.D, "Move Right"),
+		MOVE_LEFT(Keys.A, "Move Left"),
+		MOVE_BACKWARD(Keys.S, "Move Backward"),
+		MOVE_JUMP(Keys.SPACE, "Jump/Swim"),
+		TOGGLE_INVENTORY(Keys.I, "Open/Close Inventory"),
+		TOGGLE_FUEL(Keys.F, "Toggle Fuel Inventory"),
+		MOVE_SPRINT(Keys.CONTROL_LEFT, "Sprint"),
+		MOVE_SNEAK(Keys.SHIFT_LEFT, "Sneak"),
+		DROP_ITEM(Keys.Q, "Drop Item"),
+		TOGGLE_FLIGHT(Keys.GRAVE, "Toggle Flight (Creative)"),
 		;
 		
 		private int keyCode;
-		// "Click only" means that the event is only sent on the key up, not continuously sent while key is down.
-		public final boolean isClickOnly;
 		public final String description;
-		private Control(int defaultCode, boolean isClickOnly, String description)
+		private Control(int defaultCode, String description)
 		{
 			// The key code will be modified as we run but starts as default.
 			this.keyCode = defaultCode;
-			this.isClickOnly = isClickOnly;
 			this.description = description;
 		}
 	}
