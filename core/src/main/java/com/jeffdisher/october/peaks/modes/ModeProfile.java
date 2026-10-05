@@ -42,4 +42,10 @@ public class ModeProfile implements IGameMode
 		this.profilingSession.eyeEffect.drawEyeEffect();
 		return null;
 	}
+
+	@Override
+	public void handleUserEvents()
+	{
+		// We have no events.
+	}
 }

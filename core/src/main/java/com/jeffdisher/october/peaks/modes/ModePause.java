@@ -65,9 +65,22 @@ public class ModePause implements IGameMode
 	@Override
 	public IAction drawRelevantWindows()
 	{
-		_modeContainer.pause.drawCommonPauseBackground(this.currentGameSession);
+		this.drawCommonPauseBackground(this.currentGameSession);
 		
 		return _pauseStateWindow.render(_inputCapture.glCursorLocation);
+	}
+
+	@Override
+	public void handleUserEvents()
+	{
+		if (this.currentGameSession.isOnServer)
+		{
+			_modeContainer.play.commonIdleWhileRunning(this.currentGameSession);
+		}
+		else
+		{
+			this.currentGameSession.client.passTimeWhilePaused();
+		}
 	}
 
 	public void drawCommonPauseBackground(GameSession currentGameSession)

@@ -74,6 +74,24 @@ public class ModeOptions implements IGameMode
 		return _optionsStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// We can be in this state while running or while at the main menu.
+		if (null != this.currentGameSession)
+		{
+			// This mode is also accessible from the pause menu so check if we are on a server.
+			if (this.currentGameSession.isOnServer)
+			{
+				_modeContainer.play.commonIdleWhileRunning(this.currentGameSession);
+			}
+			else
+			{
+				this.currentGameSession.client.passTimeWhilePaused();
+			}
+		}
+	}
+
 
 	private FixedWindow _buildOptionsStateWindow(GlUi ui, UiData uiData)
 	{
