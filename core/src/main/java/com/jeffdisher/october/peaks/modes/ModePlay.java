@@ -110,7 +110,12 @@ public class ModePlay implements IGameMode
 
 	public ModePlay becomeActive(GameSession currentGameSession)
 	{
+		// We always capture mouse movements in play mode.
 		_inputCapture.captureState.shouldCaptureMouse(true);
+		
+		// We always want to clear any capture state in play mode.
+		_inputCapture.textCapture = null;
+		
 		this.currentGameSession = currentGameSession;
 		return this;
 	}
@@ -557,6 +562,12 @@ public class ModePlay implements IGameMode
 			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
 			didAct = true;
 		}
+		if (!didAct && _inputCapture.controlReleased[MutableControls.Control.OPEN_CHAT.ordinal()])
+		{
+			_modeContainer.setActive(_modeContainer.chat.becomeActive(this.currentGameSession));
+			_inputCapture.controlReleased[MutableControls.Control.OPEN_CHAT.ordinal()] = false;
+			didAct = true;
+		}
 		
 		// We may have changed mode above so check that.
 		GameSession currentGameSession = this.currentGameSession;
@@ -569,6 +580,10 @@ public class ModePlay implements IGameMode
 			else if (_modeContainer.trading == _modeContainer.currentMode)
 			{
 				currentGameSession = _modeContainer.trading.currentGameSession;
+			}
+			else if (_modeContainer.chat == _modeContainer.currentMode)
+			{
+				currentGameSession = _modeContainer.chat.currentGameSession;
 			}
 		}
 		

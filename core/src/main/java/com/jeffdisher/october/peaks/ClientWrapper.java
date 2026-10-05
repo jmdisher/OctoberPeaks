@@ -1088,6 +1088,13 @@ public class ClientWrapper
 		return _currentViewDistance;
 	}
 
+	public void sendChatMessage(String message)
+	{
+		// Currently, we always send to "all" (id 0).
+		int targetId = 0;
+		_client.sentChatMessage(targetId, message);
+	}
+
 	public void disconnect()
 	{
 		// The server needs to be running in order for this shutdown to work.
