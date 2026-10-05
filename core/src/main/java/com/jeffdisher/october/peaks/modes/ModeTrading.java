@@ -47,8 +47,8 @@ public class ModeTrading implements IGameMode
 	public ModeTrading(ModeContainer modeContainer
 		, GlUi ui
 		, InputCapture inputCapture
-		, Binding<Integer> currentTradingPartnerIdBinding
 		, Binding<Entity> entityBinding
+		, Binding<Integer> currentTradingPartnerIdBinding
 		, IntConsumer mouseOverTopRightKeyConsumer
 	)
 	{
@@ -139,5 +139,19 @@ public class ModeTrading implements IGameMode
 		
 		// Return any action so that the caller can run the action now that rendering is finished.
 		return action;
+	}
+
+	@Override
+	public void handleUserEvents()
+	{
+		if (-1 != _inputCapture.lastPressedNumber)
+		{
+			int hotbarIndex = _inputCapture.lastPressedNumber - 1;
+			this.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			_inputCapture.lastPressedNumber = -1;
+		}
+		
+		// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
+		_modeContainer.play.commonIdleWhileRunning(this.currentGameSession);
 	}
 }

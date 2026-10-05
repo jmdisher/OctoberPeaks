@@ -1,5 +1,6 @@
 package com.jeffdisher.october.peaks.modes;
 
+import com.badlogic.gdx.Input.Keys;
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.UiData;
@@ -69,6 +70,37 @@ public class ModeKeyBindings implements IGameMode
 		}
 		
 		return _keyBindingsStateWindow.render(_inputCapture.glCursorLocation);
+	}
+
+	@Override
+	public void handleUserEvents()
+	{
+		if (Keys.UNKNOWN != _inputCapture.lastKeyCodeReleased)
+		{
+			if (null != _uiData.currentlyChangingControl.get())
+			{
+				boolean didSet = _uiData.mutableControls.setKeyForControl(_uiData.currentlyChangingControl.get(), _inputCapture.lastKeyCodeReleased);
+				if (didSet)
+				{
+					_uiData.currentlyChangingControl.set(null);
+				}
+			}
+			_inputCapture.lastKeyCodeReleased = Keys.UNKNOWN;
+		}
+		
+		// We can be in this state while running or while at the main menu.
+		if (null != this.currentGameSession)
+		{
+			// This mode is also accessible from the pause menu so check if we are on a server.
+			if (this.currentGameSession.isOnServer)
+			{
+				_modeContainer.play.commonIdleWhileRunning(this.currentGameSession);
+			}
+			else
+			{
+				this.currentGameSession.client.passTimeWhilePaused();
+			}
+		}
 	}
 
 

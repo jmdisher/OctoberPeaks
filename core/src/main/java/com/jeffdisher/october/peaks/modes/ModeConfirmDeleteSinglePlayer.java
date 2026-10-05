@@ -67,6 +67,12 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 		return _confirmDeleteSinglePlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// No special events related to user input.
+	}
+
 
 	private FixedWindow _buildConfirmDeleteSinglePlayerStateWindow(GlUi ui
 		, UiData uiData
