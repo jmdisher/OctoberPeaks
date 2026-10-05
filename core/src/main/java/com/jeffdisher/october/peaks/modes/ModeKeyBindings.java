@@ -109,7 +109,7 @@ public class ModeKeyBindings implements IGameMode
 
 	private void _action_clickKeyBindingSelector(MutableControls.Control selectedControl)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_uiData.currentlyChangingControl.set(selectedControl);
 		}
@@ -117,7 +117,7 @@ public class ModeKeyBindings implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_escapeOrBack();
 		}

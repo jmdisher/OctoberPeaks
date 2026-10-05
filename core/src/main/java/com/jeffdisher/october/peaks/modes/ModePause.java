@@ -148,7 +148,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickReturnToGameButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_returnToGame();
 		}
@@ -156,7 +156,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickOptionsButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_modeContainer.setActive(_modeContainer.options.becomeActive(this.currentGameSession));
 		}
@@ -164,7 +164,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickKeyBindingsButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_modeContainer.setActive(_modeContainer.keyBindings.becomeActive(this.currentGameSession));
 			_uiData.currentlyChangingControl.set(null);
@@ -173,7 +173,7 @@ public class ModePause implements IGameMode
 
 	private void _action_clickExitGameButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			this.currentGameSession.shutdown();
 			_modeContainer.setActive(_modeContainer.start.becomeActive());

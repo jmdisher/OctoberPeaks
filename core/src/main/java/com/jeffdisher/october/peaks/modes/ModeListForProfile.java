@@ -105,7 +105,7 @@ public class ModeListForProfile implements IGameMode
 
 	private void _action_clickProfileRunButton(ProfilingModes mode)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// This just changes state.
 			ProfilingSession session = _sessionStarter.startSession(mode);
@@ -115,7 +115,7 @@ public class ModeListForProfile implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 		}

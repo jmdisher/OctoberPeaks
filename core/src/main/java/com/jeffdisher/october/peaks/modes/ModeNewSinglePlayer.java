@@ -198,7 +198,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickPlayerModeRadioButton(WorldConfig.DefaultPlayerMode selected)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_uiData.defaultPlayerModeBinding.set(selected);
 		}
@@ -206,7 +206,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickWorldGeneratorRadioButton(WorldConfig.WorldGeneratorName selected)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_uiData.worldGeneratorNameBinding.set(selected);
 		}
@@ -214,7 +214,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickDifficultyRadioButton(Difficulty selected)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_uiData.difficultyBinding.set(selected);
 		}
@@ -223,7 +223,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	private void _action_clickSeedTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_inputCapture.textCapture = _uiData.newSeedBinding;
 			_inputCapture.textLengthLimit = MAX_SEED_LENGTH;
@@ -233,7 +233,7 @@ public class ModeNewSinglePlayer implements IGameMode
 	private void _action_clickNewWorldNameTextField()
 	{
 		// We want to enable text capture for this binding.
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_inputCapture.textCapture = _uiData.newWorldNameBinding;
 			_inputCapture.textLengthLimit = MAX_WORLD_NAME_LENGTH;
@@ -242,7 +242,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickConfirmCreateSingleWorldButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// Make sure that the name is non-empty and not already used.
 			String worldName = _uiData.newWorldNameBinding.get();
@@ -285,7 +285,7 @@ public class ModeNewSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 		}

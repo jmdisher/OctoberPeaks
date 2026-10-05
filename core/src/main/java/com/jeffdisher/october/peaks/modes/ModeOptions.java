@@ -156,7 +156,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickFullScreenToggle(boolean isFullScreen)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// We will toggle the full screen and update the binding data.
 			boolean newFullScreen = !isFullScreen;
@@ -176,7 +176,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickViewDistanceSlider(boolean shouldIncrease)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// TODO:  When we persist preferences, put this there whether or not in game.
 			if (null != this.currentGameSession)
@@ -199,7 +199,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickBrightnessSlider(boolean shouldIncrease)
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// We just want to increment this by 0.1 increments between 1.0 and 2.0.
 			int current = (int)(10.0f * _uiData.mutablePreferences.screenBrightness.get());
@@ -219,7 +219,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickClientNameTextField()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			// We want to enable text capture for this binding.
 			_inputCapture.textCapture = _uiData.mutablePreferences.clientName;
@@ -229,7 +229,7 @@ public class ModeOptions implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 		}
