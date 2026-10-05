@@ -121,7 +121,7 @@ public class UiStateManager implements GameSession.ICallouts
 		};
 		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
 			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			if (_modeContainer.inventory.isManualCraftingStation && (_inputCapture.mouseReleased0))
+			if (_modeContainer.inventory.isManualCraftingStation && (_inputCapture.mouseClicked0))
 			{
 				Craft craft = desc.craft();
 				if (null != _modeContainer.inventory.openStationLocation)
@@ -680,16 +680,16 @@ public class UiStateManager implements GameSession.ICallouts
 		boolean viewingFuelInventory = (_modeContainer.inventory == _modeContainer.currentMode) && _modeContainer.inventory.viewingFuelInventory;
 		
 		// This is the helper called when looking at the player's own inventory.
-		if (_inputCapture.mouseReleased0 && !_inputCapture.leftShiftHeld)
+		if (_inputCapture.mouseClicked0 && !_inputCapture.leftShiftHeld)
 		{
 			// Select this in the hotbar (this will clear if already set).
 			currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
 		}
-		else if ((null != targetBlock) && _inputCapture.mouseReleased1)
+		else if ((null != targetBlock) && _inputCapture.mouseClicked1)
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, viewingFuelInventory);
 		}
-		else if ((null != targetBlock) && (_inputCapture.mouseReleased0 && _inputCapture.leftShiftHeld))
+		else if ((null != targetBlock) && (_inputCapture.mouseClicked0 && _inputCapture.leftShiftHeld))
 		{
 			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, viewingFuelInventory);
 		}
@@ -706,11 +706,11 @@ public class UiStateManager implements GameSession.ICallouts
 		Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
 		
 		// Note that we ignore the result since this will be reflected in the UI, if valid.
-		if (_inputCapture.mouseReleased1)
+		if (_inputCapture.mouseClicked1)
 		{
 			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _modeContainer.inventory.viewingFuelInventory);
 		}
-		else if (_inputCapture.leftShiftHeld && _inputCapture.mouseReleased0)
+		else if (_inputCapture.leftShiftHeld && _inputCapture.mouseClicked0)
 		{
 			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _modeContainer.inventory.viewingFuelInventory);
 		}
@@ -772,7 +772,7 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			else if (null != entity)
 			{
-				if (_inputCapture.mousePressed0)
+				if (_inputCapture.mouseClicked0)
 				{
 					_modeContainer.play.currentGameSession.client.hitEntity(entity);
 					didAct = true;
@@ -792,14 +792,14 @@ public class UiStateManager implements GameSession.ICallouts
 			if (null != stopBlock)
 			{
 				// First, see if we need to change the UI state if this is a station we just clicked on.
-				if (!didAct && _inputCapture.mousePressed1)
+				if (!didAct && _inputCapture.mouseClicked1)
 				{
 					didAct = _didOpenStationInventory(stopBlock);
 				}
 			}
 			else if (null != entity)
 			{
-				if (!didAct && _inputCapture.mousePressed1)
+				if (!didAct && _inputCapture.mouseClicked1)
 				{
 					// Check if this is a villager and then switch into the trading UI mode.
 					if ((entity.type() == _villagerEntityType) && (null != ((ExtensionVillager.Data)entity.extendedData()).profession()))
@@ -820,11 +820,11 @@ public class UiStateManager implements GameSession.ICallouts
 			}
 			
 			// If we still didn't do anything, try clicks on the block or self.
-			if (!didAct && _inputCapture.mousePressed1 && (null != stopBlock))
+			if (!didAct && _inputCapture.mouseClicked1 && (null != stopBlock))
 			{
 				didAct = _modeContainer.play.currentGameSession.client.runRightClickOnBlock(stopBlock, preStopBlock);
 			}
-			if (!didAct && _inputCapture.mousePressed1)
+			if (!didAct && _inputCapture.mouseClicked1)
 			{
 				didAct = _modeContainer.play.currentGameSession.client.runRightClickOnSelf();
 			}
@@ -895,6 +895,12 @@ public class UiStateManager implements GameSession.ICallouts
 		else
 		{
 			currentGameSession.audioManager.setStanding();
+		}
+		
+		// If we took any action, clear the input capture since we don't want the event to redundantly apply to UI elements.
+		if (didAct)
+		{
+			_inputCapture.clearReleaseState();
 		}
 	}
 

@@ -90,7 +90,7 @@ public class ModeConnecting implements IGameMode
 
 	private void _action_clickCancelConnectButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 		}

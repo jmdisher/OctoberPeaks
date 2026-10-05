@@ -57,14 +57,14 @@ public class ModeTrading implements IGameMode
 		_inputCapture = inputCapture;
 		_currentTradingPartnerIdBinding = currentTradingPartnerIdBinding;
 		
-		BooleanSupplier isLeftClick = () -> inputCapture.mouseReleased0;
+		BooleanSupplier isLeftClick = () -> inputCapture.mouseClicked0;
 		_thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
 		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
 		this.thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
 		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
 			Assert.assertTrue(_modeContainer.trading == _modeContainer.currentMode);
-			if (inputCapture.mouseReleased0)
+			if (inputCapture.mouseClicked0)
 			{
 				MinimalEntity villager = MinimalEntity.fromPartialEntity(_modeContainer.trading.currentGameSession.getEntityForId(_currentTradingPartnerIdBinding.get()));
 				boolean didSend = _modeContainer.trading.currentGameSession.client.sendTrade(villager, tradeItem);

@@ -106,7 +106,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	private void _action_clickConfirmDeleteButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 			
@@ -119,7 +119,7 @@ public class ModeConfirmDeleteSinglePlayer implements IGameMode
 
 	private void _action_clickBackButton()
 	{
-		if (_inputCapture.mouseReleased0)
+		if (_inputCapture.mouseClicked0)
 		{
 			_goBack();
 		}

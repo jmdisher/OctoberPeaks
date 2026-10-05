@@ -159,13 +159,11 @@ public class InputManager
 				{
 				case 0:
 					_inputCapture.mouseHeld0 = true;
-					_inputCapture.mousePressed0 = true;
-					_inputCapture.mouseReleased0 = false;
+					_inputCapture.mouseClicked0 = true;
 					break;
 				case 1:
 					_inputCapture.mouseHeld1 = true;
-					_inputCapture.mousePressed1 = true;
-					_inputCapture.mouseReleased1 = false;
+					_inputCapture.mouseClicked1 = true;
 					break;
 				}
 				return true;
@@ -177,13 +175,9 @@ public class InputManager
 				{
 				case 0:
 					_inputCapture.mouseHeld0 = false;
-					_inputCapture.mousePressed0 = false;
-					_inputCapture.mouseReleased0 = true;
 					break;
 				case 1:
 					_inputCapture.mouseHeld1 = false;
-					_inputCapture.mousePressed1 = false;
-					_inputCapture.mouseReleased1 = true;
 					break;
 				}
 				return true;
