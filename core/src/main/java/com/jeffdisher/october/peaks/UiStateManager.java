@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.aspects.MiscConstants;
 import com.jeffdisher.october.logic.SpatialHelpers;
+import com.jeffdisher.october.peaks.modes.ModeChat;
 import com.jeffdisher.october.peaks.modes.ModeConfirmDeleteSinglePlayer;
 import com.jeffdisher.october.peaks.modes.ModeConnecting;
 import com.jeffdisher.october.peaks.modes.ModeContainer;
@@ -257,6 +258,10 @@ public class UiStateManager implements GameSession.ICallouts
 			, _ui
 			, _inputCapture
 			, _uiData
+		);
+		_modeContainer.chat = new ModeChat(_modeContainer
+			, _ui
+			, _inputCapture
 		);
 		_modeContainer.currentMode = _modeContainer.start.becomeActive();
 	}

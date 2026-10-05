@@ -40,6 +40,7 @@ public class MutableControls
 		MOVE_SNEAK(Keys.SHIFT_LEFT, "Sneak"),
 		DROP_ITEM(Keys.Q, "Drop Item"),
 		TOGGLE_FLIGHT(Keys.GRAVE, "Toggle Flight (Creative)"),
+		OPEN_CHAT(Keys.T, "Open Chat"),
 		;
 		
 		private int keyCode;
