@@ -12,6 +12,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
+import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
@@ -306,5 +307,82 @@ public class ModeInventory implements IGameMode
 			action1.renderHover(_inputCapture.glCursorLocation);
 		}
 		return action1;
+	}
+
+	@Override
+	public void handleUserEvents()
+	{
+		if (-1 != _inputCapture.lastPressedNumber)
+		{
+			int hotbarIndex = _inputCapture.lastPressedNumber - 1;
+			this.currentGameSession.client.changeHotbarIndex(hotbarIndex);
+			_inputCapture.lastPressedNumber = -1;
+		}
+		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()])
+		{
+			_modeContainer.setActive(_modeContainer.play.becomeActive(this.currentGameSession));
+			_inputCapture.captureState.shouldCaptureMouse(true);
+			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_INVENTORY.ordinal()] = false;
+		}
+		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()])
+		{
+			this.viewingFuelInventory = !this.viewingFuelInventory;
+			if (this.viewingFuelInventory)
+			{
+				// Make sure that this actually has a fuel slot.
+				if (null == this.openStationLocation)
+				{
+					this.viewingFuelInventory = false;
+				}
+				else
+				{
+					BlockProxy stationBlock = this.currentGameSession.blockLookup.readBlock(this.openStationLocation);
+					this.viewingFuelInventory = (null != stationBlock.getFuel());
+				}
+			}
+			this.continuousInInventory = null;
+			this.continuousInBlock = null;
+			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
+		}
+		
+		// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
+		_passTimeWhileRunning(this.currentGameSession);
+	}
+
+	/**
+	 * Continues any active operations and completes accounting for time in a frame where the game is active and not
+	 * paused.
+	 */
+	private void _passTimeWhileRunning(GameSession currentGameSession)
+	{
+		// Complete any of the idle operations and account for time passing.
+		// If we took no action, just tell the client to pass time.
+		if (!_inputCapture.didAccountForTimeInFrame)
+		{
+			// Check to see if our continuous crafting operations are still valid.
+			if (null != this.continuousInInventory)
+			{
+				boolean isValid = currentGameSession.client.isCraftInInventoryValid(this.continuousInInventory);
+				if (!isValid)
+				{
+					// We can't continue this so drop it.
+					this.continuousInInventory = null;
+				}
+			}
+			if (null != this.continuousInBlock)
+			{
+				boolean isValid = currentGameSession.client.isCraftInBlockValid(this.openStationLocation, this.continuousInBlock);
+				if (!isValid)
+				{
+					// We can't continue this so drop it.
+					this.continuousInBlock = null;
+				}
+			}
+			Craft rescheduleInInventory = this.continuousInInventory;
+			AbsoluteLocation openStationLocation = this.openStationLocation;
+			Craft rescheduleInBlock = this.continuousInBlock;
+			currentGameSession.client.passTimeWhileRunning(rescheduleInInventory, openStationLocation, rescheduleInBlock);
+			_inputCapture.didAccountForTimeInFrame = true;
+		}
 	}
 }

@@ -67,6 +67,12 @@ public class ModeStart implements IGameMode
 		return _startWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// No special events related to user input.
+	}
+
 
 	private FixedWindow _buildStartWindow(GlUi ui, UiData uiData)
 	{

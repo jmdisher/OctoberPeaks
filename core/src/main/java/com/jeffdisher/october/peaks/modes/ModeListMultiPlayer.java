@@ -77,6 +77,12 @@ public class ModeListMultiPlayer implements IGameMode
 		return _listMultiPlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// No special events related to user input.
+	}
+
 
 	private FixedWindow _buildListMultiPlayerStateWindow(GlUi ui
 		, UiData uiData

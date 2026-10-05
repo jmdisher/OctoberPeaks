@@ -22,4 +22,9 @@ public interface IGameMode
 	 * @return The action under the cursor (usually null).
 	 */
 	IAction drawRelevantWindows();
+
+	/**
+	 * Called at the beginning of a frame in order to apply user interface events against this mode before rendering.
+	 */
+	void handleUserEvents();
 }

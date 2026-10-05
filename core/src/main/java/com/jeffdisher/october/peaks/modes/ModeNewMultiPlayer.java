@@ -73,6 +73,12 @@ public class ModeNewMultiPlayer implements IGameMode
 		return _newMultiPlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// No special events related to user input.
+	}
+
 
 	private FixedWindow _buildNewMultiPlayerStateWindow(GlUi ui, UiData uiData)
 	{

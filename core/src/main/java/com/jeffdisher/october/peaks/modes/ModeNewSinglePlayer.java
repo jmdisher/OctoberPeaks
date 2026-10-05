@@ -76,6 +76,12 @@ public class ModeNewSinglePlayer implements IGameMode
 		return _newSinglePlayerStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// No special events related to user input.
+	}
+
 
 	private FixedWindow _buildNewSinglePlayerStateWindow(GlUi ui, UiData uiData)
 	{

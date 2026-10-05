@@ -66,6 +66,18 @@ public class ModeConnecting implements IGameMode
 		return _connectingStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// This is a bit of a hack but we can easily poll for state change here instead of coming up with a cross-
+		// thread callback mechanism (some kind of message queue)just for this.
+		if (this.pendingGameSession.isConnectionReady())
+		{
+			_modeContainer.setActive(_modeContainer.play.becomeActive(this.pendingGameSession));
+			_inputCapture.captureState.shouldCaptureMouse(true);
+		}
+	}
+
 
 	private FixedWindow _buildConnectingStateWindow(GlUi ui, UiData uiData)
 	{

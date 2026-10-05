@@ -76,6 +76,12 @@ public class ModeError implements IGameMode
 		return _errorStateWindow.render(_inputCapture.glCursorLocation);
 	}
 
+	@Override
+	public void handleUserEvents()
+	{
+		// No special events related to user input.
+	}
+
 
 	private FixedWindow _buildErrorStateWindow(GlUi ui, UiData uiData)
 	{
