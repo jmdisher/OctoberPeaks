@@ -159,8 +159,7 @@ public class ModePlay implements IGameMode
 	@Override
 	public void handleUserEvents()
 	{
-		// We area always capturing mouse movement in this mode.
-		Assert.assertTrue(_inputCapture.shouldCaptureMouseMovements);
+		// Note that _inputCapture.shouldCaptureMouseMovements is usually true here but not if we lose focus.
 		
 		// When we are capturing, the cursor is invisible and this is essentially a "yoke".
 		if ((_inputCapture.mouseX != _inputCapture.lastReportedMouseX) || (_inputCapture.mouseY != _inputCapture.lastReportedMouseY))
