@@ -75,6 +75,26 @@ public class TestTextManager
 		}
 	}
 
+	@Test
+	public void wrap() throws Throwable
+	{
+		_Gpu gpu = new _Gpu(2);
+		TextManager manager = new TextManager(gpu);
+		TextManager.Element oneLine = manager.lazilyLoadWrappedStringTexture("testing", 2.0f);
+		TextManager.Element twoLine = manager.lazilyLoadWrappedStringTexture("testing is long", 2.0f);
+		
+		Assert.assertEquals(1, oneLine.textureObject());
+		Assert.assertEquals(2.0f, oneLine.aspectRatio(), 0.01f);
+		Assert.assertEquals(348, gpu.knownTextures[oneLine.textureObject()].width);
+		Assert.assertEquals(87, gpu.knownTextures[oneLine.textureObject()].height);
+		Assert.assertEquals(2, twoLine.textureObject());
+		Assert.assertEquals(1.0f, twoLine.aspectRatio(), 0.01f);
+		Assert.assertEquals(348, gpu.knownTextures[twoLine.textureObject()].width);
+		Assert.assertEquals(174, gpu.knownTextures[twoLine.textureObject()].height);
+		
+		manager.shutdown();
+	}
+
 
 	private static class _Gpu implements TextManager.IGpu
 	{
