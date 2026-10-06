@@ -55,19 +55,19 @@ public class ModePlay implements IGameMode
 	private final Binding<WorldSelection> _selectionBinding;
 	private final Binding<Entity> _entityBinding;
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
-	public final Window selectionWindow;
+	private final Window _selectionWindow;
 	private final Window _metaDataWindow;
 	private final Window _hotbarWindow;
 
 	public GameSession currentGameSession;
-	public PartialEntity selectedEntity;
-	public AbsoluteLocation selectedBlock;
-	public Block selectedBlockType;
-	public FacingDirection selectedBlockOrientation;
-	public AbsoluteLocation preSelectedBlock;
+	private PartialEntity _selectedEntity;
+	private AbsoluteLocation _selectedBlock;
+	private Block _selectedBlockType;
+	private FacingDirection _selectedBlockOrientation;
+	private AbsoluteLocation _preSelectedBlock;
 
 	// User input state specific to this mode.
-	public boolean isWaitingForRightClickRelease;
+	private boolean _isWaitingForRightClickRelease;
 
 	// Information related to world data.
 	private final Block _waterBlock;
@@ -99,7 +99,7 @@ public class ModePlay implements IGameMode
 		_selectionBinding = new Binding<>(null);
 		_entityBinding = entityBinding;
 		_currentTradingPartnerIdBinding = currentTradingPartnerIdBinding;
-		this.selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(ui, env, _selectionBinding, (AbsoluteLocation location) -> {
+		_selectionWindow = new Window(ViewSelection.LOCATION, new ViewSelection(ui, env, _selectionBinding, (AbsoluteLocation location) -> {
 			return _modeContainer.play.currentGameSession.blockLookup.readBlock(location);
 		}, (Integer id) -> {
 			String name = null;
@@ -138,11 +138,11 @@ public class ModePlay implements IGameMode
 	{
 		_selectionBinding.set(null);
 		this.currentGameSession = null;
-		this.selectedEntity = null;
-		this.selectedBlock = null;
-		this.selectedBlockType = null;
-		this.selectedBlockOrientation = null;
-		this.preSelectedBlock = null;
+		_selectedEntity = null;
+		_selectedBlock = null;
+		_selectedBlockType = null;
+		_selectedBlockOrientation = null;
+		_preSelectedBlock = null;
 	}
 
 	@Override
@@ -156,10 +156,10 @@ public class ModePlay implements IGameMode
 	public IAction drawRelevantWindows()
 	{
 		this.currentGameSession.scene.renderCommon();
-		PartialEntity selectedEntity = this.selectedEntity;
-		AbsoluteLocation selectedBlock = this.selectedBlock;
-		Block stopBlockType = this.selectedBlockType;
-		FacingDirection stopBlockOrientation = this.selectedBlockOrientation;
+		PartialEntity selectedEntity = _selectedEntity;
+		AbsoluteLocation selectedBlock = _selectedBlock;
+		Block stopBlockType = _selectedBlockType;
+		FacingDirection stopBlockOrientation = _selectedBlockOrientation;
 		this.currentGameSession.scene.renderSelection(selectedEntity, selectedBlock, stopBlockType, stopBlockOrientation);
 		this.currentGameSession.eyeEffect.drawEyeEffect();
 		
@@ -235,32 +235,32 @@ public class ModePlay implements IGameMode
 		// We also update the selection in event handling (as this is a "scene-specific event", of sorts).
 		// Capture whatever is selected.
 		// Note that these are currently stored as public variables since external consumers still need to reference them.
-		this.selectedEntity = null;
-		this.selectedBlock = null;
-		this.selectedBlockType = null;
-		this.selectedBlockOrientation = null;
-		this.preSelectedBlock = null;
+		_selectedEntity = null;
+		_selectedBlock = null;
+		_selectedBlockType = null;
+		_selectedBlockOrientation = null;
+		_preSelectedBlock = null;
 		
 		WorldSelection selection = this.currentGameSession.selectionManager.findSelection();
 		if (null != selection)
 		{
-			this.selectedEntity = selection.entity();
-			this.selectedBlock = selection.stopBlock();
-			BlockProxy proxy = (null != this.selectedBlock)
-				? this.currentGameSession.blockLookup.readBlock(this.selectedBlock)
+			_selectedEntity = selection.entity();
+			_selectedBlock = selection.stopBlock();
+			BlockProxy proxy = (null != _selectedBlock)
+				? this.currentGameSession.blockLookup.readBlock(_selectedBlock)
 				: null
 			;
 			if (null != proxy)
 			{
-				this.selectedBlockType = proxy.getBlock();
-				this.selectedBlockOrientation = proxy.getOrientation();
+				_selectedBlockType = proxy.getBlock();
+				_selectedBlockOrientation = proxy.getOrientation();
 			}
 			else
 			{
 				// Note that the stopBlock can also point at the first not loaded block (since it is a "stop point"), but there is no point in drawing that.
-				this.selectedBlock = null;
+				_selectedBlock = null;
 			}
-			this.preSelectedBlock = selection.preStopBlock();
+			_preSelectedBlock = selection.preStopBlock();
 		}
 		_selectionBinding.set(selection);
 		
@@ -305,7 +305,7 @@ public class ModePlay implements IGameMode
 		}
 		
 		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = this.selectionWindow.doRender(_inputCapture.glCursorLocation);
+		IAction noAction = _selectionWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
 		
 		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
@@ -494,9 +494,9 @@ public class ModePlay implements IGameMode
 
 	private void _finalizeFrameEvents()
 	{
-		PartialEntity entity = this.selectedEntity;
-		AbsoluteLocation stopBlock = this.selectedBlock;
-		AbsoluteLocation preStopBlock = this.preSelectedBlock;
+		PartialEntity entity = _selectedEntity;
+		AbsoluteLocation stopBlock = _selectedBlock;
+		AbsoluteLocation preStopBlock = _preSelectedBlock;
 		
 		// See if we need to update our orientation.
 		if (_orientationNeedsFlush)
@@ -529,7 +529,7 @@ public class ModePlay implements IGameMode
 			didAct = this.currentGameSession.client.holdRightClickOnSelf();
 			if (didAct)
 			{
-				this.isWaitingForRightClickRelease = true;
+				_isWaitingForRightClickRelease = true;
 			}
 			
 			if (null != stopBlock)
@@ -580,13 +580,13 @@ public class ModePlay implements IGameMode
 				}
 			}
 		}
-		else if (this.isWaitingForRightClickRelease)
+		else if (_isWaitingForRightClickRelease)
 		{
 			didAct = this.currentGameSession.client.releasedRightClickOnSelf();
 			if (didAct)
 			{
 				// If we failed to send the release, just wait for our next frame (usually means that there is still a "charge" in the current accumulation).
-				this.isWaitingForRightClickRelease = false;
+				_isWaitingForRightClickRelease = false;
 			}
 		}
 		

@@ -23,7 +23,6 @@ public class ModeListForProfile implements IGameMode
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
-	private final UiData _uiData;
 	private final ISessionStarter _sessionStarter;
 	private final FixedWindow _listProfileRunsStateWindow;
 
@@ -37,10 +36,9 @@ public class ModeListForProfile implements IGameMode
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_inputCapture = inputCapture;
-		_uiData = uiData;
 		_sessionStarter = sessionStarter;
 		
-		_listProfileRunsStateWindow = _buildListProfileRunsStateWindow(_ui, _uiData, ProfilingModes.ALL_MODES);
+		_listProfileRunsStateWindow = _buildListProfileRunsStateWindow(_ui, uiData, ProfilingModes.ALL_MODES);
 	}
 
 	public ModeListForProfile becomeActive()

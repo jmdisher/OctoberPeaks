@@ -21,7 +21,6 @@ public class ModeConnecting implements IGameMode
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
-	private final UiData _uiData;
 	private final FixedWindow _connectingStateWindow;
 
 	public GameSession pendingGameSession;
@@ -35,9 +34,8 @@ public class ModeConnecting implements IGameMode
 		_modeContainer = modeContainer;
 		_ui = ui;
 		_inputCapture = inputCapture;
-		_uiData = uiData;
 		
-		_connectingStateWindow = _buildConnectingStateWindow(_ui, _uiData);
+		_connectingStateWindow = _buildConnectingStateWindow(_ui, uiData);
 	}
 
 	public ModeConnecting becomeActive(GameSession pendingGameSession)

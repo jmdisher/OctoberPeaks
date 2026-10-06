@@ -24,7 +24,6 @@ public class ModeOptions implements IGameMode
 	public static final int MAX_CLIENT_NAME_LENGTH = 32;
 
 	private final ModeContainer _modeContainer;
-	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final FixedWindow _optionsStateWindow;
@@ -38,11 +37,10 @@ public class ModeOptions implements IGameMode
 	)
 	{
 		_modeContainer = modeContainer;
-		_ui = ui;
 		_inputCapture = inputCapture;
 		_uiData = uiData;
 		
-		_optionsStateWindow = _buildOptionsStateWindow(_ui, _uiData);
+		_optionsStateWindow = _buildOptionsStateWindow(ui, _uiData);
 	}
 
 	public ModeOptions becomeActive(GameSession currentGameSession)
