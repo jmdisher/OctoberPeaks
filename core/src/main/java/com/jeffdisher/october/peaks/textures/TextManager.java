@@ -15,7 +15,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.utils.Assert;
 
 
@@ -36,7 +35,7 @@ public class TextManager
 	 */
 	public static final int TEXT_CACHE_MAX_PURGE_PER_ATTEMPT = 64;
 
-	private final GL20 _gl;
+	private final IGpu _gpu;
 	private final Map<String, Element> _textTextures;
 	private final Graphics2D _graphics;
 	private final Font _font;
@@ -46,15 +45,12 @@ public class TextManager
 	private Set<String> _recentlyUsed;
 	private final IntBuffer _purgeBuffer;
 
-	public TextManager(GL20 gl)
+	public TextManager(IGpu gpu)
 	{
-		_gl = gl;
+		_gpu = gpu;
 		_textTextures = new HashMap<>();
 		_purgeBuffer = ByteBuffer.allocateDirect(Integer.BYTES * TEXT_CACHE_MAX_PURGE_PER_ATTEMPT).asIntBuffer();
 		
-		// Our textures are 1-byte aligned so reduce the alignment.
-		_gl.glPixelStorei(GL20.GL_UNPACK_ALIGNMENT, 1);
-	
 		// We want to get a shared graphics context which we will use for measuring the text size.
 		BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
 		_graphics = image.createGraphics();
@@ -70,11 +66,9 @@ public class TextManager
 		if (!_textTextures.containsKey(string))
 		{
 			// Lazily generate the texture and store it in the map.
-			int labelTexture = _gl.glGenTexture();
-			_gl.glBindTexture(GL20.GL_TEXTURE_2D, labelTexture);
-			float aspectRatio = _renderTextToImage(labelTexture, string);
+			Element element = _renderTextToImage(string);
 			// The text is always too wide so we will lie and say it is half this width (it just looks better).
-			_textTextures.put(string, new Element(labelTexture, aspectRatio / 2.0f));
+			_textTextures.put(string, element);
 		}
 		if (null != _recentlyUsed)
 		{
@@ -118,7 +112,7 @@ public class TextManager
 						break;
 					}
 				}
-				_gl.glDeleteTextures(purgeCount, _purgeBuffer);
+				_gpu.deleteTextureBatch(_purgeBuffer);
 			}
 			
 			_recentlyUsed = null;
@@ -134,13 +128,14 @@ public class TextManager
 	{
 		for (Element elt : _textTextures.values())
 		{
-			_gl.glDeleteTexture(elt.textureObject);
+			_gpu.deleteTexture(elt.textureObject);
 		}
 		_textTextures.clear();
+		_graphics.dispose();
 	}
 
 
-	private float _renderTextToImage(int texture, String text)
+	private Element _renderTextToImage(String text)
 	{
 		BufferedImage image = _writtenImage(text);
 		int width = image.getWidth();
@@ -165,10 +160,11 @@ public class TextManager
 		}
 		((java.nio.Buffer) textureBufferData).flip();
 		
-		_gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
-		_gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_LUMINANCE_ALPHA, width, height, 0, GL20.GL_LUMINANCE_ALPHA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
-		_gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
-		return ((float)width / (float)height);
+		int texture = _gpu.uploadLuminanceAlpha(width, height, textureBufferData);
+		
+		// The text is always too wide so we will lie and say it is half this width (it just looks better).
+		float aspectRatio = ((float)width / (float)height);
+		return new Element(texture, aspectRatio / 2.0f);
 	}
 
 	private BufferedImage _writtenImage(String text)
@@ -186,10 +182,18 @@ public class TextManager
 		graphics.setFont(_font);
 		graphics.setColor(Color.WHITE);
 		graphics.drawString(text, 0, (int)(height - descent));
+		graphics.dispose();
 		return image;
 	}
 
 
 	public static record Element(int textureObject, float aspectRatio)
 	{}
+
+	public interface IGpu
+	{
+		int uploadLuminanceAlpha(int width, int height, ByteBuffer textureBufferData);
+		void deleteTexture(int texture);
+		void deleteTextureBatch(IntBuffer purgeBuffer);
+	}
 }
