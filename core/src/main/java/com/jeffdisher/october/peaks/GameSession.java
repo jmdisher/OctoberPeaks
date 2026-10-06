@@ -53,6 +53,8 @@ public class GameSession
 	public final TickProcessingContext.IBlockFetcher blockLookup;
 	public final Map<Integer, String> otherPlayerNamesById;
 	public final boolean isOnServer;
+	public final String clientName;
+	public int assignedId;
 
 	public GameSession(Environment environment
 			, GL20 gl
@@ -125,6 +127,7 @@ public class GameSession
 		
 		// The flag for whether or not this is on a server is just something we hold here for external users to query.
 		this.isOnServer = (null != serverSocketAddress);
+		this.clientName = clientName;
 	}
 
 	public void finishStartup()
@@ -165,14 +168,16 @@ public class GameSession
 		void didDisconnect();
 		
 		void thisEntityUpdated(Entity projectedEntity);
+		void appendChatLog(String chatLogString);
 	}
 
 
 	private class _UpdateConsumer implements ClientWrapper.IUpdateConsumer
 	{
 		@Override
-		public void didConnect(int currentViewDistance)
+		public void didConnect(int assignedEntityId, int currentViewDistance)
 		{
+			GameSession.this.assignedId = assignedEntityId;
 			_callouts.didConnect(currentViewDistance);
 		}
 		@Override
@@ -321,6 +326,25 @@ public class GameSession
 		public void tradeReceived(int entityId)
 		{
 			GameSession.this.animationManager.tradeReceived(entityId);
+		}
+		@Override
+		public void receivedChatMessage(int senderId, String message)
+		{
+			// We will resolve this name now, then send this on to the callouts.
+			String name = GameSession.this.otherPlayerNamesById.get(senderId);
+			if (null == name)
+			{
+				if (senderId == GameSession.this.assignedId)
+				{
+					name = GameSession.this.clientName;
+				}
+				else
+				{
+					name = "Unknown";
+				}
+			}
+			String chatLogString = String.format("%s: %s", name, message);
+			_callouts.appendChatLog(chatLogString);
 		}
 	}
 }

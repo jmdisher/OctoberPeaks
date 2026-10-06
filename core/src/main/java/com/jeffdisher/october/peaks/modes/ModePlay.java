@@ -1,5 +1,9 @@
 package com.jeffdisher.october.peaks.modes;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.client.RelativeDirection;
 import com.jeffdisher.october.creatures.ExtensionVillager;
@@ -14,6 +18,8 @@ import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
+import com.jeffdisher.october.peaks.ui.Rect;
+import com.jeffdisher.october.peaks.ui.UiIdioms;
 import com.jeffdisher.october.peaks.ui.ViewHotbar;
 import com.jeffdisher.october.peaks.ui.ViewMetaData;
 import com.jeffdisher.october.peaks.ui.ViewSelection;
@@ -40,6 +46,8 @@ public class ModePlay implements IGameMode
 	public static final float CHARGE_BAR_LEFT = -0.2f;
 	public static final float CHARGE_BAR_BOTTOM = -0.25f;
 	public static final float CHARGE_BAR_TOP = -0.2f;
+	public static final int LOG_COUNT_LIMIT = 10;
+	public static final long LOG_TIME_LIMIT_MILLIS = 20_000L;
 
 	private final ModeContainer _modeContainer;
 	private final GlUi _ui;
@@ -72,6 +80,9 @@ public class ModePlay implements IGameMode
 	private float _yawRadians;
 	private float _pitchRadians;
 	private _AudibleMotion _audibleMotionInFrame;
+
+	// Variables related to the chat overlay.
+	private final List<_LogEntry> _chatLog;
 
 	public ModePlay(ModeContainer modeContainer
 		, GlUi ui
@@ -106,6 +117,8 @@ public class ModePlay implements IGameMode
 		_lavaBlock = env.blocks.fromItem(env.items.getItemById("op.lava_source"));
 		_playerVolume = env.creatures.PLAYER.volume();
 		_villagerEntityType = env.creatures.getTypeById("op.villager");
+		
+		_chatLog = new ArrayList<>();
 	}
 
 	public ModePlay becomeActive(GameSession currentGameSession)
@@ -341,9 +354,44 @@ public class ModePlay implements IGameMode
 		_passTimeWhileRunning(currentGameSession);
 	}
 
+	public void appendChatLog(String chatLogString)
+	{
+		long currentTime = System.currentTimeMillis();
+		_LogEntry entry = new _LogEntry(currentTime + LOG_TIME_LIMIT_MILLIS, chatLogString);
+		_chatLog.add(0, entry);
+		if (_chatLog.size() > LOG_COUNT_LIMIT)
+		{
+			_chatLog.remove(_chatLog.size() - 1);
+		}
+	}
+
 
 	private void _drawPassiveOverlayWindows()
 	{
+		// Draw the chat log.
+		long currentTime = System.currentTimeMillis();
+		Iterator<_LogEntry> iter = _chatLog.iterator();
+		float left = -0.8f;
+		float right = 0.8f;
+		float bottom = -0.8f;
+		while (iter.hasNext())
+		{
+			_LogEntry entry = iter.next();
+			if (entry.expiryTimeMillis > currentTime)
+			{
+				// Draw these from bottom to top.
+				Rect location = new Rect(left, bottom, right, bottom);
+				float top = UiIdioms.drawWrappedTextOnBackground(_ui, location, entry.content);
+				bottom = top;
+			}
+			else
+			{
+				// This is expired.
+				iter.remove();
+			}
+		}
+		
+		// Draw the windows for the other UI elements.
 		IAction noAction = _hotbarWindow.doRender(_inputCapture.glCursorLocation);
 		Assert.assertTrue(null == noAction);
 		noAction = _metaDataWindow.doRender(_inputCapture.glCursorLocation);
@@ -645,4 +693,6 @@ public class ModePlay implements IGameMode
 		WALK,
 		RUN,
 	}
+
+	private static record _LogEntry(long expiryTimeMillis, String content) {}
 }
