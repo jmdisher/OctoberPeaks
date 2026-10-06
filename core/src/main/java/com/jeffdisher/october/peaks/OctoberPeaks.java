@@ -8,6 +8,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.peaks.animation.ParticleEngine;
+import com.jeffdisher.october.peaks.modes.ModeStart;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
@@ -31,6 +32,11 @@ public class OctoberPeaks extends ApplicationAdapter
 	private LoadedResources _resources;
 	private InputManager _input;
 	private UiStateManager _uiState;
+
+	// Profile-related data.
+	private boolean _logFps;
+	private long _currentSecond;
+	private int _fpsCount;
 
 	public OctoberPeaks(WindowListener windowListener)
 	{
@@ -56,6 +62,22 @@ public class OctoberPeaks extends ApplicationAdapter
 	@Override
 	public void render()
 	{
+		// Do any profiling.
+		if (_logFps)
+		{
+			long currentSecond = System.currentTimeMillis() / 1000L;
+			if (_currentSecond != currentSecond)
+			{
+				System.out.printf("FPS: %d\n", _fpsCount);
+				_currentSecond = currentSecond;
+				_fpsCount = 1;
+			}
+			else
+			{
+				_fpsCount += 1;
+			}
+		}
+		
 		// Reset the screen so we can draw this frame.
 		_gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		_gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -82,6 +104,14 @@ public class OctoberPeaks extends ApplicationAdapter
 	{
 		// This is called during "create()" to establish all the resources which are common for both normal runs and testing no-UI runs.
 		_gl = Gdx.graphics.getGL20();
+		
+		// We will enable the profiling support at this point, too.
+		if (null != System.getenv(ModeStart.OCTOBER_PEAKS_PROFILE))
+		{
+			_logFps = true;
+			_currentSecond = System.currentTimeMillis() / 1000L;
+			System.out.printf("Profiling enabled on vendor: \"%s\"\n", _gl.glGetString(GL20.GL_VENDOR));
+		}
 		
 		// Set common GL functionality for the view.
 		_gl.glEnable(GL20.GL_BLEND);
