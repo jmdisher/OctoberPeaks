@@ -163,6 +163,28 @@ public class UiIdioms
 		return _drawTextInColouredFrameWithHoverCheck(ui, outlineTexture, left, bottom, text, cursor);
 	}
 
+	/**
+	 * Draws the given text left-justified and wrapped.  The text is always GENERAL_TEXT_HEIGHT in height and the entire
+	 * text box is drawn on a semi-transparent background.
+	 * 
+	 * @param gl The UI helpers.
+	 * @param bounds The bounds of the text (top is ignored).
+	 * @param text The text.
+	 * @return The height of box rendered.
+	 */
+	public static float drawWrappedTextOnBackground(GlUi ui, Rect location, String text)
+	{
+		float left = location.leftX();
+		float bottom = location.bottomY();
+		float right = location.rightX();
+		float aspectRatio = (right - left) / GENERAL_TEXT_HEIGHT;
+		TextManager.Element element = ui.textManager.lazilyLoadWrappedStringTexture(text, aspectRatio);
+		float top = bottom + (aspectRatio / element.aspectRatio() * GENERAL_TEXT_HEIGHT);
+		ui.drawWholeTextureRect(ui.pixelDarkGreyAlpha, left, bottom, right, top);
+		ui.drawWholeTextureRect(element.textureObject(), left, bottom, right, top);
+		return top;
+	}
+
 
 	private static void _drawOverlayFrame(GlUi gl, int backgroundTexture, int outlineTexture, float left, float bottom, float right, float top)
 	{

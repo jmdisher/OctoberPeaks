@@ -7,7 +7,7 @@ import com.jeffdisher.october.peaks.ui.FixedWindow;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
 import com.jeffdisher.october.peaks.ui.Rect;
-import com.jeffdisher.october.peaks.ui.ViewTextField;
+import com.jeffdisher.october.peaks.ui.ViewTextBox;
 import com.jeffdisher.october.peaks.ui.ViewTextLabel;
 
 
@@ -102,23 +102,13 @@ public class ModeChat implements IGameMode
 
 	private FixedWindow _buildChatWindow(GlUi ui)
 	{
-		ViewTextField<String> messageTextField = _buildMessageTextField(ui);
+		ViewTextBox messageTextField = new ViewTextBox(ui, _messageBinding);
 		
 		return new FixedWindow.Builder()
 			.add(new ViewTextLabel(ui, new Binding<>("Chat")), new Rect(-1.0f, -0.95f, -0.9f, -0.85f))
 			.add(messageTextField, new Rect(-0.85f, -0.95f, 0.95f, -0.85f))
 			.finish()
 		;
-	}
-
-	private ViewTextField<String> _buildMessageTextField(GlUi ui)
-	{
-		return new ViewTextField<>(ui
-			, _messageBinding
-			, (String text) -> text
-			, () -> ui.pixelGreen
-			, () -> {}
-		);
 	}
 
 	private void _returnToGame()
