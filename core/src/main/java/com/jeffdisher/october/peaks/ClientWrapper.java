@@ -1379,7 +1379,7 @@ public class ClientWrapper
 		public void connectionEstablished(int assignedEntityId, int currentViewDistance)
 		{
 			_assignedLocalEntityId = assignedEntityId;
-			_updateConsumer.didConnect(currentViewDistance);
+			_updateConsumer.didConnect(assignedEntityId, currentViewDistance);
 		}
 		@Override
 		public void cuboidDidChange(IReadOnlyCuboidData cuboid
@@ -1543,13 +1543,13 @@ public class ClientWrapper
 		@Override
 		public void receivedChatMessage(int senderId, String message)
 		{
-			System.out.println("* " + senderId + "> " + message);
+			_updateConsumer.receivedChatMessage(senderId, message);
 		}
 	}
 
 	public static interface IUpdateConsumer
 	{
-		void didConnect(int currentViewDistance);
+		void didConnect(int assignedEntityId, int currentViewDistance);
 		void didDisconnect();
 		
 		void loadNew(IReadOnlyCuboidData cuboid, ColumnHeightMap heightMap);
@@ -1576,6 +1576,7 @@ public class ClientWrapper
 		void tradeReceived(int entityId);
 		
 		void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression);
+		void receivedChatMessage(int senderId, String message);
 	}
 
 	/**

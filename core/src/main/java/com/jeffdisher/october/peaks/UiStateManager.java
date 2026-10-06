@@ -314,6 +314,15 @@ public class UiStateManager implements GameSession.ICallouts
 		}
 	}
 
+	@Override
+	public void appendChatLog(String chatLogString)
+	{
+		// Pass this off to the play game mode (the chat log is a "passive window").
+		// Using "conduit methods" like this isn't ideal (it should be some kind of notification the ModePlay could
+		// listen for) but this is a relatively simple and special case.
+		_modeContainer.play.appendChatLog(chatLogString);
+	}
+
 	/**
 	 * Called after clearing the framebuffer in order to render the frame with whatever is required for in the current
 	 * UI state.
