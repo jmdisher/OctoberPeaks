@@ -4,14 +4,17 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.font.LineMetrics;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -66,8 +69,27 @@ public class TextManager
 		if (!_textTextures.containsKey(string))
 		{
 			// Lazily generate the texture and store it in the map.
-			Element element = _renderTextToImage(string);
-			// The text is always too wide so we will lie and say it is half this width (it just looks better).
+			BufferedImage image = _writtenImage(string);
+			Element element = _convertImageToTexture(image);
+			_textTextures.put(string, element);
+		}
+		if (null != _recentlyUsed)
+		{
+			// If we are sampling active textures, add this one.
+			_recentlyUsed.add(string);
+		}
+		return _textTextures.get(string);
+	}
+
+	public Element lazilyLoadWrappedStringTexture(String string, float aspectRatioLimit)
+	{
+		if (!_textTextures.containsKey(string))
+		{
+			// Lazily generate the texture and store it in the map.
+			// WARNING:  We are sharing the map with the normal textures, which could cause an issue (not in our use case).
+			// Note that we internally divide our output aspect ratio by 2 so multiply by 2 so they sync up.
+			BufferedImage image = _writtenWrappedImage(string, aspectRatioLimit * 2.0f);
+			Element element = _convertImageToTexture(image);
 			_textTextures.put(string, element);
 		}
 		if (null != _recentlyUsed)
@@ -135,9 +157,8 @@ public class TextManager
 	}
 
 
-	private Element _renderTextToImage(String text)
+	private Element _convertImageToTexture(BufferedImage image)
 	{
-		BufferedImage image = _writtenImage(text);
 		int width = image.getWidth();
 		int height = image.getHeight();
 		
@@ -182,6 +203,90 @@ public class TextManager
 		graphics.setFont(_font);
 		graphics.setColor(Color.WHITE);
 		graphics.drawString(text, 0, (int)(height - descent));
+		graphics.dispose();
+		return image;
+	}
+
+	private BufferedImage _writtenWrappedImage(String text, float aspectRatioLimit)
+	{
+		// Note that we want to wrap this based on the aspect ratio limit so we will loop here (this approach isn't very efficient).
+		List<String> lines = new ArrayList<>();
+		String checkingText = text;
+		String splitRemainder = "";
+		boolean didWrapWord = false;
+		
+		while (null != checkingText)
+		{
+			Rectangle2D rect = _fontMetrics.getStringBounds(checkingText, _graphics);
+			float width = (float)rect.getWidth();
+			if (width < 1.0f)
+			{
+				width = 1.0f;
+			}
+			float height = (float)rect.getHeight();
+			float aspectRatio = width / height;
+			if (aspectRatio <= aspectRatioLimit)
+			{
+				// This line fits.
+				lines.add(checkingText);
+				if (splitRemainder.isEmpty())
+				{
+					// We are done.
+					checkingText = null;
+				}
+				else
+				{
+					checkingText = splitRemainder;
+					splitRemainder = "";
+				}
+			}
+			else
+			{
+				// This line doesn't fit so split the last word or character off.
+				int space = checkingText.lastIndexOf(' ');
+				String extract;
+				if (space >= 0)
+				{
+					// There is a space so use that.
+					extract = checkingText.substring(space + 1);
+					checkingText = checkingText.substring(0, space);
+				}
+				else
+				{
+					// Just split the last char.
+					extract = checkingText.substring(checkingText.length() - 1);
+					checkingText = checkingText.substring(0, checkingText.length() - 1);
+				}
+				if (didWrapWord)
+				{
+					splitRemainder = extract + ' ' + splitRemainder;
+				}
+				else
+				{
+					splitRemainder = extract + splitRemainder;
+				}
+				didWrapWord = (space >= 0);
+			}
+		}
+		
+		// Determine the bounds of the total texture.
+		LineMetrics metrics = _fontMetrics.getLineMetrics(text, _graphics);
+		float descent = metrics.getDescent();
+		float lineHeight = metrics.getHeight();
+		int intWidth = (int)(aspectRatioLimit * lineHeight);
+		int oneLineHeight = (int)lineHeight;
+		int intHeight = lines.size() * oneLineHeight;
+		
+		BufferedImage image = new BufferedImage(intWidth, intHeight, BufferedImage.TYPE_INT_ARGB);
+		Graphics graphics = image.getGraphics();
+		graphics.setFont(_font);
+		graphics.setColor(Color.WHITE);
+		float startY = lineHeight - descent;
+		for (String line : lines)
+		{
+			graphics.drawString(line, 0, (int)startY);
+			startY += lineHeight;
+		}
 		graphics.dispose();
 		return image;
 	}
