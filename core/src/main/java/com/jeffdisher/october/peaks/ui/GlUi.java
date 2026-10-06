@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -89,7 +90,31 @@ public class GlUi
 			_verticesReticleLines = _defineReticleVertices(gl, _program, meshBuffer);
 			
 			// The text manager is still public since some callers need to issue specific queries to it to mouse-over handling.
-			this.textManager = new TextManager(gl);
+			// Our textures are 1-byte aligned so reduce the alignment.
+			gl.glPixelStorei(GL20.GL_UNPACK_ALIGNMENT, 1);
+			this.textManager = new TextManager(new TextManager.IGpu() {
+				@Override
+				public int uploadLuminanceAlpha(int width, int height, ByteBuffer textureBufferData)
+				{
+					int texture = gl.glGenTexture();
+					gl.glBindTexture(GL20.GL_TEXTURE_2D, texture);
+					gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_LUMINANCE_ALPHA, width, height, 0, GL20.GL_LUMINANCE_ALPHA, GL20.GL_UNSIGNED_BYTE, textureBufferData);
+					gl.glGenerateMipmap(GL20.GL_TEXTURE_2D);
+					return texture;
+				}
+				@Override
+				public void deleteTexture(int texture)
+				{
+					gl.glDeleteTexture(texture);
+				}
+				@Override
+				public void deleteTextureBatch(IntBuffer purgeBuffer)
+				{
+					// The IntBuffer.position() will return the number of ints written, since these are always packed.
+					int count = purgeBuffer.position();
+					gl.glDeleteTextures(count, purgeBuffer);
+				}
+			});
 			
 			// Build the initial pixel textures.
 			ByteBuffer textureBufferData = ByteBuffer.allocateDirect(4);
