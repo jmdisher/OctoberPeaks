@@ -22,7 +22,6 @@ import com.jeffdisher.october.peaks.ui.ViewTextLabel;
 public class ModeKeyBindings implements IGameMode
 {
 	private final ModeContainer _modeContainer;
-	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 	private final UiData _uiData;
 	private final FixedWindow _keyBindingsStateWindow;
@@ -36,11 +35,10 @@ public class ModeKeyBindings implements IGameMode
 	)
 	{
 		_modeContainer = modeContainer;
-		_ui = ui;
 		_inputCapture = inputCapture;
 		_uiData = uiData;
 		
-		_keyBindingsStateWindow = _buildKeyBindingsStateWindow(_ui, _uiData);
+		_keyBindingsStateWindow = _buildKeyBindingsStateWindow(ui, _uiData);
 	}
 
 	public ModeKeyBindings becomeActive(GameSession currentGameSession)
