@@ -10,6 +10,7 @@ import java.util.function.IntConsumer;
 import com.jeffdisher.october.aspects.CraftAspect;
 import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.data.BlockProxy;
+import com.jeffdisher.october.peaks.ClientWrapper;
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
@@ -52,32 +53,29 @@ public class ModeInventory implements IGameMode
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 
-	public final Binding<Entity> _entityBinding;
-	public final Binding<Inventory> thisEntityInventoryBinding;
-	public final Binding<Inventory> bottomWindowInventoryBinding;
-	public final Binding<String> bottomWindowTitleBinding;
-	public final Binding<ViewFuelSlot.FuelTuple> bottomWindowFuelBinding;
-	public final Binding<String> craftingPanelTitleBinding;
-	public final Binding<List<CraftDescription>> craftingPanelBinding;
-	public final Window thisEntityInventoryWindow;
-	public final Window bottomInventoryWindow;
-	public final Window craftingWindow;
-	public final Window armourWindow;
+	private final Binding<Entity> _entityBinding;
+	private final Binding<Inventory> _thisEntityInventoryBinding;
+	private final Binding<Inventory> _bottomWindowInventoryBinding;
+	private final Binding<String> _bottomWindowTitleBinding;
+	private final Binding<ViewFuelSlot.FuelTuple> _bottomWindowFuelBinding;
+	private final Binding<String> _craftingPanelTitleBinding;
+	private final Binding<List<CraftDescription>> _craftingPanelBinding;
+	private final Window _thisEntityInventoryWindow;
+	private final Window _bottomInventoryWindow;
+	private final Window _craftingWindow;
+	private final Window _armourWindow;
 
 	public GameSession currentGameSession;
 	public AbsoluteLocation openStationLocation;
-	public boolean viewingFuelInventory;
-	public Craft continuousInInventory;
-	public Craft continuousInBlock;
-	public boolean isManualCraftingStation;
+	private boolean _viewingFuelInventory;
+	private Craft _continuousInInventory;
+	private Craft _continuousInBlock;
+	private boolean _isManualCraftingStation;
 
 	public ModeInventory(ModeContainer modeContainer
 		, GlUi ui
 		, InputCapture inputCapture
 		, Binding<Entity> entityBinding
-		, IntConsumer mouseOverTopRightKeyConsumer
-		, IntConsumer mouseOverBottomKeyConsumer
-		, Consumer<CraftDescription> craftHoverOverConsumer
 	)
 	{
 		_modeContainer = modeContainer;
@@ -85,22 +83,47 @@ public class ModeInventory implements IGameMode
 		_inputCapture = inputCapture;
 		
 		_entityBinding = entityBinding;
-		this.bottomWindowInventoryBinding = new Binding<>(null);
-		this.bottomWindowTitleBinding = new Binding<>(null);
-		this.bottomWindowFuelBinding = new Binding<>(null);
-		this.craftingPanelTitleBinding = new Binding<>(null);
-		this.craftingPanelBinding = new Binding<>(null);
+		_bottomWindowInventoryBinding = new Binding<>(null);
+		_bottomWindowTitleBinding = new Binding<>(null);
+		_bottomWindowFuelBinding = new Binding<>(null);
+		_craftingPanelTitleBinding = new Binding<>(null);
+		_craftingPanelBinding = new Binding<>(null);
+		
+		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
+			_handleHoverOverEntityInventoryItem(_modeContainer.inventory.openStationLocation, key);
+		};
+		IntConsumer mouseOverBottomKeyConsumer = (int key) -> {
+			AbsoluteLocation relevantBlock = _modeContainer.inventory.openStationLocation;
+			_pullFromBlockToEntityInventory(relevantBlock, key);
+		};
+		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
+			if (_isManualCraftingStation && (_inputCapture.mouseClicked0))
+			{
+				Craft craft = desc.craft();
+				if (null != _modeContainer.inventory.openStationLocation)
+				{
+					_continuousInBlock = _inputCapture.leftShiftHeld ? craft : null;
+					_modeContainer.inventory.currentGameSession.client.beginCraftInBlock(_modeContainer.inventory.openStationLocation, craft);
+				}
+				else
+				{
+					_continuousInInventory = _inputCapture.leftShiftHeld ? craft : null;
+					_modeContainer.inventory.currentGameSession.client.beginCraftInInventory(craft);
+				}
+				_inputCapture.didAccountForTimeInFrame = true;
+			}
+		};
 		
 		BooleanSupplier isLeftClick = () -> inputCapture.mouseClicked0;
-		this.thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
+		_thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
-		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, this.thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
-		this.thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
-		ViewFuelSlot fuelProgress = new ViewFuelSlot(_ui, this.bottomWindowFuelBinding);
-		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, this.bottomWindowTitleBinding, this.bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, isLeftClick);
-		this.bottomInventoryWindow = new Window(WINDOW_BOTTOM, bottomInventoryView);
-		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, this.craftingPanelTitleBinding, this.craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
-		this.craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
+		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
+		_thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
+		ViewFuelSlot fuelProgress = new ViewFuelSlot(_ui, _bottomWindowFuelBinding);
+		ViewEntityInventory bottomInventoryView = new ViewEntityInventory(_ui, _bottomWindowTitleBinding, _bottomWindowInventoryBinding, fuelProgress, mouseOverBottomKeyConsumer, isLeftClick);
+		_bottomInventoryWindow = new Window(WINDOW_BOTTOM, bottomInventoryView);
+		ViewCraftingPanel craftingPanelView = new ViewCraftingPanel(_ui, _craftingPanelTitleBinding, _craftingPanelBinding, craftHoverOverConsumer, isLeftClick);
+		_craftingWindow = new Window(WINDOW_TOP_LEFT, craftingPanelView);
 		Consumer<BodyPart> eventHoverArmourBodyPart = (BodyPart hoverPart) -> {
 			Assert.assertTrue(this == _modeContainer.currentMode);
 			if (inputCapture.mouseClicked0)
@@ -111,17 +134,17 @@ public class ModeInventory implements IGameMode
 			}
 		};
 		Binding<NonStackableItem[]> armourBinding = new SubBinding<>(entityBinding, (Entity entity) -> entity.armourSlots());
-		this.armourWindow = new Window(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
+		_armourWindow = new Window(ViewArmour.LOCATION, new ViewArmour(_ui, armourBinding, eventHoverArmourBodyPart));
 	}
 
 	public ModeInventory becomeActive(GameSession currentGameSession, AbsoluteLocation openStationLocation)
 	{
 		this.currentGameSession = currentGameSession;
 		this.openStationLocation = openStationLocation;
-		this.viewingFuelInventory = false;
-		this.continuousInInventory = null;
-		this.continuousInBlock = null;
-		this.isManualCraftingStation = false;
+		_viewingFuelInventory = false;
+		_continuousInInventory = null;
+		_continuousInBlock = null;
+		_isManualCraftingStation = false;
 		
 		// TODO:  Should we find a way to reset the page in _thisEntityInventoryView, _bottomInventoryView, and _craftingPanelView?
 		_inputCapture.captureState.shouldCaptureMouse(false);
@@ -133,10 +156,10 @@ public class ModeInventory implements IGameMode
 	{
 		this.currentGameSession = null;
 		this.openStationLocation = null;
-		this.viewingFuelInventory = false;
-		this.continuousInInventory = null;
-		this.continuousInBlock = null;
-		this.isManualCraftingStation = false;
+		_viewingFuelInventory = false;
+		_continuousInInventory = null;
+		_continuousInBlock = null;
+		_isManualCraftingStation = false;
 	}
 
 	@Override
@@ -174,7 +197,7 @@ public class ModeInventory implements IGameMode
 				FuelState fuel = stationBlock.getFuel();
 				if (null != fuel)
 				{
-					if (this.viewingFuelInventory)
+					if (_viewingFuelInventory)
 					{
 						stationInventory = fuel.fuelInventory();
 					}
@@ -190,7 +213,7 @@ public class ModeInventory implements IGameMode
 				else
 				{
 					// This is invalid so just clear it.
-					this.viewingFuelInventory = false;
+					_viewingFuelInventory = false;
 				}
 				
 				// Find the crafts for this station type.
@@ -205,7 +228,7 @@ public class ModeInventory implements IGameMode
 					isAutomaticCrafting = true;
 				}
 				stationName = stationType.item().name();
-				if (this.viewingFuelInventory)
+				if (_viewingFuelInventory)
 				{
 					stationName += " Fuel";
 				}
@@ -214,12 +237,12 @@ public class ModeInventory implements IGameMode
 			{
 				// This is no longer a station.
 				this.openStationLocation = null;
-				this.continuousInInventory = null;
-				this.continuousInBlock = null;
+				_continuousInInventory = null;
+				_continuousInBlock = null;
 			}
 		}
 		
-		Inventory entityInventory = this.thisEntityInventoryBinding.get();
+		Inventory entityInventory = _thisEntityInventoryBinding.get();
 		if (null == this.openStationLocation)
 		{
 			// We are just looking at the floor at our feet.
@@ -269,35 +292,35 @@ public class ModeInventory implements IGameMode
 		;
 		
 		// We need to update our bindings BEFORE rendering anything.
-		this.bottomWindowInventoryBinding.set(relevantInventory);
-		this.bottomWindowTitleBinding.set(stationName);
-		this.bottomWindowFuelBinding.set(fuelSlot);
-		this.craftingPanelTitleBinding.set(craftingType);
-		this.craftingPanelBinding.set(convertedCrafts);
-		this.isManualCraftingStation = canBeManuallySelected;
+		_bottomWindowInventoryBinding.set(relevantInventory);
+		_bottomWindowTitleBinding.set(stationName);
+		_bottomWindowFuelBinding.set(fuelSlot);
+		_craftingPanelTitleBinding.set(craftingType);
+		_craftingPanelBinding.set(convertedCrafts);
+		_isManualCraftingStation = canBeManuallySelected;
 		
 		// Now, do the actual drawing.
 		_ui.enterUiRenderMode();
 		
 		// This is a window mode so draw the usual.
 		_modeContainer.play.drawPassiveOverlayWindows(this.currentGameSession);
-		IAction action1 = this.armourWindow.doRender(_inputCapture.glCursorLocation);
+		IAction action1 = _armourWindow.doRender(_inputCapture.glCursorLocation);
 		
 		// We will show the crafting panel as long as there are any valid crafts.
 		if (!convertedCrafts.isEmpty())
 		{
-			IAction hover = this.craftingWindow.doRender(_inputCapture.glCursorLocation);
+			IAction hover = _craftingWindow.doRender(_inputCapture.glCursorLocation);
 			if (null != hover)
 			{
 				action1 = hover;
 			}
 		}
-		IAction hover = this.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
+		IAction hover = _thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action1 = hover;
 		}
-		hover = this.bottomInventoryWindow.doRender(_inputCapture.glCursorLocation);
+		hover = _bottomInventoryWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action1 = hover;
@@ -327,22 +350,22 @@ public class ModeInventory implements IGameMode
 		}
 		if (_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()])
 		{
-			this.viewingFuelInventory = !this.viewingFuelInventory;
-			if (this.viewingFuelInventory)
+			_viewingFuelInventory = !_viewingFuelInventory;
+			if (_viewingFuelInventory)
 			{
 				// Make sure that this actually has a fuel slot.
 				if (null == this.openStationLocation)
 				{
-					this.viewingFuelInventory = false;
+					_viewingFuelInventory = false;
 				}
 				else
 				{
 					BlockProxy stationBlock = this.currentGameSession.blockLookup.readBlock(this.openStationLocation);
-					this.viewingFuelInventory = (null != stationBlock.getFuel());
+					_viewingFuelInventory = (null != stationBlock.getFuel());
 				}
 			}
-			this.continuousInInventory = null;
-			this.continuousInBlock = null;
+			_continuousInInventory = null;
+			_continuousInBlock = null;
 			_inputCapture.controlReleased[MutableControls.Control.TOGGLE_FUEL.ordinal()] = false;
 		}
 		
@@ -361,29 +384,66 @@ public class ModeInventory implements IGameMode
 		if (!_inputCapture.didAccountForTimeInFrame)
 		{
 			// Check to see if our continuous crafting operations are still valid.
-			if (null != this.continuousInInventory)
+			if (null != _continuousInInventory)
 			{
-				boolean isValid = currentGameSession.client.isCraftInInventoryValid(this.continuousInInventory);
+				boolean isValid = currentGameSession.client.isCraftInInventoryValid(_continuousInInventory);
 				if (!isValid)
 				{
 					// We can't continue this so drop it.
-					this.continuousInInventory = null;
+					_continuousInInventory = null;
 				}
 			}
-			if (null != this.continuousInBlock)
+			if (null != _continuousInBlock)
 			{
-				boolean isValid = currentGameSession.client.isCraftInBlockValid(this.openStationLocation, this.continuousInBlock);
+				boolean isValid = currentGameSession.client.isCraftInBlockValid(this.openStationLocation, _continuousInBlock);
 				if (!isValid)
 				{
 					// We can't continue this so drop it.
-					this.continuousInBlock = null;
+					_continuousInBlock = null;
 				}
 			}
-			Craft rescheduleInInventory = this.continuousInInventory;
+			Craft rescheduleInInventory = _continuousInInventory;
 			AbsoluteLocation openStationLocation = this.openStationLocation;
-			Craft rescheduleInBlock = this.continuousInBlock;
+			Craft rescheduleInBlock = _continuousInBlock;
 			currentGameSession.client.passTimeWhileRunning(rescheduleInInventory, openStationLocation, rescheduleInBlock);
 			_inputCapture.didAccountForTimeInFrame = true;
+		}
+	}
+
+	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
+	{
+		// This is the helper called when looking at the player's own inventory.
+		if (_inputCapture.mouseClicked0 && !_inputCapture.leftShiftHeld)
+		{
+			// Select this in the hotbar (this will clear if already set).
+			this.currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
+		}
+		else if ((null != targetBlock) && _inputCapture.mouseClicked1)
+		{
+			this.currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
+		}
+		else if ((null != targetBlock) && (_inputCapture.mouseClicked0 && _inputCapture.leftShiftHeld))
+		{
+			this.currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
+		}
+		else if (_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()])
+		{
+			// If we are holding ctrl, drop the entire stack.
+			this.currentGameSession.client.dropItemSlot(entityInventoryKey, _inputCapture.leftCtrlHeld);
+			_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()] = false;
+		}
+	}
+
+	private void _pullFromBlockToEntityInventory(AbsoluteLocation targetBlock, int entityInventoryKey)
+	{
+		// Note that we ignore the result since this will be reflected in the UI, if valid.
+		if (_inputCapture.mouseClicked1)
+		{
+			this.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _viewingFuelInventory);
+		}
+		else if (_inputCapture.leftShiftHeld && _inputCapture.mouseClicked0)
+		{
+			this.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _viewingFuelInventory);
 		}
 	}
 }

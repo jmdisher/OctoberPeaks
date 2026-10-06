@@ -6,6 +6,7 @@ import java.util.function.IntConsumer;
 
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
+import com.jeffdisher.october.peaks.persistence.MutableControls;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
@@ -38,9 +39,8 @@ public class ModeTrading implements IGameMode
 	private final InputCapture _inputCapture;
 
 	private final Binding<Integer> _currentTradingPartnerIdBinding;
-	private final Binding<Inventory> _thisEntityInventoryBinding;
-	public final Window thisEntityInventoryWindow;
-	public final Window leftTradingWindow;
+	private final Window _thisEntityInventoryWindow;
+	private final Window _leftTradingWindow;
 
 	public GameSession currentGameSession;
 
@@ -49,7 +49,6 @@ public class ModeTrading implements IGameMode
 		, InputCapture inputCapture
 		, Binding<Entity> entityBinding
 		, Binding<Integer> currentTradingPartnerIdBinding
-		, IntConsumer mouseOverTopRightKeyConsumer
 	)
 	{
 		_modeContainer = modeContainer;
@@ -57,11 +56,15 @@ public class ModeTrading implements IGameMode
 		_inputCapture = inputCapture;
 		_currentTradingPartnerIdBinding = currentTradingPartnerIdBinding;
 		
+		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
+			_handleHoverOverEntityInventoryItem(key);
+		};
+		
 		BooleanSupplier isLeftClick = () -> inputCapture.mouseClicked0;
-		_thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
+		Binding<Inventory> thisEntityInventoryBinding = new SubBinding<>(entityBinding, (Entity entity) -> MiscPeaksHelpers.getInventory(entity));
 		Binding<String> inventoryTitleBinding = new Binding<>("Inventory");
-		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, _thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
-		this.thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
+		ViewEntityInventory thisEntityInventoryView = new ViewEntityInventory(ui, inventoryTitleBinding, thisEntityInventoryBinding, null, mouseOverTopRightKeyConsumer, isLeftClick);
+		_thisEntityInventoryWindow = new Window(WINDOW_TOP_RIGHT, thisEntityInventoryView);
 		Consumer<Item> tradeButtonConsumer = (Item tradeItem) -> {
 			Assert.assertTrue(_modeContainer.trading == _modeContainer.currentMode);
 			if (inputCapture.mouseClicked0)
@@ -82,7 +85,7 @@ public class ModeTrading implements IGameMode
 				PartialEntity partial = _modeContainer.trading.currentGameSession.getEntityForId(villagerId);
 				return MinimalEntity.fromPartialEntity(partial);
 			}, tradeButtonConsumer);
-		this.leftTradingWindow = new Window(WINDOW_LEFT, bottomTradingView);
+		_leftTradingWindow = new Window(WINDOW_LEFT, bottomTradingView);
 	}
 
 	public ModeTrading becomeActive(GameSession currentGameSession)
@@ -119,13 +122,13 @@ public class ModeTrading implements IGameMode
 		IAction action = null;
 		
 		// The trading window is the interesting part of this view.
-		IAction hover = this.leftTradingWindow.doRender(_inputCapture.glCursorLocation);
+		IAction hover = _leftTradingWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action = hover;
 		}
 		
-		hover = this.thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
+		hover = _thisEntityInventoryWindow.doRender(_inputCapture.glCursorLocation);
 		if (null != hover)
 		{
 			action = hover;
@@ -153,5 +156,22 @@ public class ModeTrading implements IGameMode
 		
 		// This is similar to PLAY but only passive events are relevant here since any active events come from actions in the UI.
 		_modeContainer.play.commonIdleWhileRunning(this.currentGameSession);
+	}
+
+
+	private void _handleHoverOverEntityInventoryItem(int entityInventoryKey)
+	{
+		// This is the helper called when looking at the player's own inventory.
+		if (_inputCapture.mouseClicked0 && !_inputCapture.leftShiftHeld)
+		{
+			// Select this in the hotbar (this will clear if already set).
+			this.currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
+		}
+		else if (_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()])
+		{
+			// If we are holding ctrl, drop the entire stack.
+			this.currentGameSession.client.dropItemSlot(entityInventoryKey, _inputCapture.leftCtrlHeld);
+			_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()] = false;
+		}
 	}
 }

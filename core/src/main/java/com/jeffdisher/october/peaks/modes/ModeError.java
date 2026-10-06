@@ -20,10 +20,9 @@ public class ModeError implements IGameMode
 {
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
-	private final UiData _uiData;
 	private final FixedWindow _errorStateWindow;
 
-	public String[] errorPayload;
+	private String[] _errorPayload;
 
 	public ModeError(ModeContainer modeContainer
 		, GlUi ui
@@ -33,22 +32,21 @@ public class ModeError implements IGameMode
 	{
 		_ui = ui;
 		_inputCapture = inputCapture;
-		_uiData = uiData;
 		
-		_errorStateWindow = _buildErrorStateWindow(_ui, _uiData);
+		_errorStateWindow = _buildErrorStateWindow(_ui, uiData);
 	}
 
 	public ModeError becomeActive(String[] errorPayload)
 	{
 		_inputCapture.captureState.shouldCaptureMouse(false);
-		this.errorPayload = errorPayload;
+		_errorPayload = errorPayload;
 		return this;
 	}
 
 	@Override
 	public void didBecomeInactive()
 	{
-		this.errorPayload = null;
+		_errorPayload = null;
 	}
 
 	@Override
@@ -62,7 +60,7 @@ public class ModeError implements IGameMode
 	{
 		// We will treat dumping the payload as a special case and just write it to the screen instead of making a binding to stitch it into the rest of the error window.
 		float topY = 0.6f;
-		for (String elt : this.errorPayload)
+		for (String elt : _errorPayload)
 		{
 			float bottomY = topY - UiIdioms.GENERAL_TEXT_HEIGHT;
 			UiIdioms.drawTextLeft(_ui, new Rect(-0.8f, bottomY, 0.8f, topY), elt);
@@ -123,7 +121,7 @@ public class ModeError implements IGameMode
 		{
 			// Just copy the payload to the clipboard.
 			StringBuilder builder = new StringBuilder();
-			for (String elt : this.errorPayload)
+			for (String elt : _errorPayload)
 			{
 				builder.append(elt);
 				builder.append('\n');

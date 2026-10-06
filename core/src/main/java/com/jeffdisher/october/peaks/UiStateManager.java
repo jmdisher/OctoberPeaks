@@ -3,8 +3,6 @@ package com.jeffdisher.october.peaks;
 import java.io.File;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.aspects.Environment;
@@ -33,11 +31,8 @@ import com.jeffdisher.october.peaks.persistence.MutablePreferences;
 import com.jeffdisher.october.peaks.profiling.ProfilingModes;
 import com.jeffdisher.october.peaks.profiling.ProfilingSession;
 import com.jeffdisher.october.peaks.ui.Binding;
-import com.jeffdisher.october.peaks.ui.CraftDescription;
 import com.jeffdisher.october.peaks.ui.GlUi;
 import com.jeffdisher.october.peaks.ui.IAction;
-import com.jeffdisher.october.types.AbsoluteLocation;
-import com.jeffdisher.october.types.Craft;
 import com.jeffdisher.october.types.Difficulty;
 import com.jeffdisher.october.types.Entity;
 import com.jeffdisher.october.types.EntityLocation;
@@ -54,9 +49,7 @@ public class UiStateManager implements GameSession.ICallouts
 	private final GlUi _ui;
 	private final InputCapture _inputCapture;
 	private final UiData _uiData;
-	private final GL20 _gl;
 	private final LocalStorageManager _localStorageManager;
-	private final LoadedResources _resources;
 	private final ModeContainer _modeContainer;
 
 	// Bindings related to the game UI during a PLAY state (the in-game UI - not just menus, etc).
@@ -75,49 +68,13 @@ public class UiStateManager implements GameSession.ICallouts
 		_ui = new GlUi(gl, resources);
 		_inputCapture = inputCapture;
 		_uiData = new UiData(localStorageDirectory, mutableControls, mutablePreferences);
-		_gl = gl;
 		_localStorageManager = new LocalStorageManager(_uiData.worldListBinding, localStorageDirectory);
-		_resources = resources;
 		_modeContainer = new ModeContainer();
 		
 		// Define all of our bindings.
 		_entityBinding = new Binding<>(null);
 		Binding<Integer> currentTradingPartnerIdBinding = new Binding<>(0);
 	
-		// Create our views.
-		IntConsumer mouseOverTopRightKeyConsumer = (int key) -> {
-			Assert.assertTrue((_modeContainer.inventory == _modeContainer.currentMode) || (_modeContainer.trading == _modeContainer.currentMode));
-			
-			AbsoluteLocation openStation = (_modeContainer.inventory == _modeContainer.currentMode)
-				? _modeContainer.inventory.openStationLocation
-				: null
-			;
-			_handleHoverOverEntityInventoryItem(openStation, key);
-		};
-		IntConsumer mouseOverBottomKeyConsumer = (int key) -> {
-			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			AbsoluteLocation relevantBlock = _modeContainer.inventory.openStationLocation;
-			_pullFromBlockToEntityInventory(relevantBlock, key);
-		};
-		Consumer<CraftDescription> craftHoverOverConsumer = (CraftDescription desc) -> {
-			Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-			if (_modeContainer.inventory.isManualCraftingStation && (_inputCapture.mouseClicked0))
-			{
-				Craft craft = desc.craft();
-				if (null != _modeContainer.inventory.openStationLocation)
-				{
-					_modeContainer.inventory.continuousInBlock = _inputCapture.leftShiftHeld ? craft : null;
-					_modeContainer.inventory.currentGameSession.client.beginCraftInBlock(_modeContainer.inventory.openStationLocation, craft);
-				}
-				else
-				{
-					_modeContainer.inventory.continuousInInventory = _inputCapture.leftShiftHeld ? craft : null;
-					_modeContainer.inventory.currentGameSession.client.beginCraftInInventory(craft);
-				}
-				_inputCapture.didAccountForTimeInFrame = true;
-			}
-		};
-		
 		// Build the modes (we add these late since they should be allowed to depend on arbitrary things here).
 		_modeContainer.start = new ModeStart(_modeContainer
 			, _localStorageManager
@@ -131,7 +88,7 @@ public class UiStateManager implements GameSession.ICallouts
 			, _uiData
 			, (String directoryName) -> {
 				// We just pass nulls for our new game options.
-				GameSession session = _createSinglePlayerSession(_gl, _resources, directoryName, null, null, null, 0);
+				GameSession session = _createSinglePlayerSession(gl, resources, directoryName, null, null, null, 0);
 				_uiData.isRunningOnServerBinding.set(session.isOnServer);
 				return session;
 			}
@@ -152,7 +109,7 @@ public class UiStateManager implements GameSession.ICallouts
 				, Difficulty difficulty
 				, Integer basicWorldGeneratorSeed
 			) -> {
-				GameSession session = _createSinglePlayerSession(_gl, _resources, directoryName, worldGeneratorName, defaultPlayerMode, difficulty, basicWorldGeneratorSeed);
+				GameSession session = _createSinglePlayerSession(gl, resources, directoryName, worldGeneratorName, defaultPlayerMode, difficulty, basicWorldGeneratorSeed);
 				_uiData.isRunningOnServerBinding.set(session.isOnServer);
 				return session;
 			}
@@ -205,7 +162,7 @@ public class UiStateManager implements GameSession.ICallouts
 			, _inputCapture
 			, _uiData
 			, (ProfilingModes mode) -> {
-				ProfilingSession session = new ProfilingSession(_env, _gl, _uiData.mutablePreferences.screenBrightness, _resources);
+				ProfilingSession session = new ProfilingSession(_env, gl, _uiData.mutablePreferences.screenBrightness, resources);
 				mode.populate.accept(_env, session);
 				return session;
 			}
@@ -235,9 +192,6 @@ public class UiStateManager implements GameSession.ICallouts
 			, _ui
 			, _inputCapture
 			, _entityBinding
-			, mouseOverTopRightKeyConsumer
-			, mouseOverBottomKeyConsumer
-			, craftHoverOverConsumer
 		);
 		_modeContainer.pause = new ModePause(_modeContainer
 			, _ui
@@ -252,7 +206,6 @@ public class UiStateManager implements GameSession.ICallouts
 			, _inputCapture
 			, _entityBinding
 			, currentTradingPartnerIdBinding
-			, mouseOverTopRightKeyConsumer
 		);
 		_modeContainer.error = new ModeError(_modeContainer
 			, _ui
@@ -435,54 +388,6 @@ public class UiStateManager implements GameSession.ICallouts
 		_uiData.serverList.shutdown();
 	}
 
-
-	private void _handleHoverOverEntityInventoryItem(AbsoluteLocation targetBlock, int entityInventoryKey)
-	{
-		Assert.assertTrue((_modeContainer.inventory == _modeContainer.currentMode)
-			|| (_modeContainer.trading == _modeContainer.currentMode)
-		);
-		GameSession currentGameSession = (_modeContainer.inventory == _modeContainer.currentMode)
-			? _modeContainer.inventory.currentGameSession
-			: _modeContainer.trading.currentGameSession
-		;
-		boolean viewingFuelInventory = (_modeContainer.inventory == _modeContainer.currentMode) && _modeContainer.inventory.viewingFuelInventory;
-		
-		// This is the helper called when looking at the player's own inventory.
-		if (_inputCapture.mouseClicked0 && !_inputCapture.leftShiftHeld)
-		{
-			// Select this in the hotbar (this will clear if already set).
-			currentGameSession.client.setSelectedItemKeyOrClear(entityInventoryKey);
-		}
-		else if ((null != targetBlock) && _inputCapture.mouseClicked1)
-		{
-			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, viewingFuelInventory);
-		}
-		else if ((null != targetBlock) && (_inputCapture.mouseClicked0 && _inputCapture.leftShiftHeld))
-		{
-			currentGameSession.client.pushItemsToBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, viewingFuelInventory);
-		}
-		else if (_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()])
-		{
-			// If we are holding ctrl, drop the entire stack.
-			currentGameSession.client.dropItemSlot(entityInventoryKey, _inputCapture.leftCtrlHeld);
-			_inputCapture.controlReleased[MutableControls.Control.DROP_ITEM.ordinal()] = false;
-		}
-	}
-
-	private void _pullFromBlockToEntityInventory(AbsoluteLocation targetBlock, int entityInventoryKey)
-	{
-		Assert.assertTrue(_modeContainer.inventory == _modeContainer.currentMode);
-		
-		// Note that we ignore the result since this will be reflected in the UI, if valid.
-		if (_inputCapture.mouseClicked1)
-		{
-			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ONE, _modeContainer.inventory.viewingFuelInventory);
-		}
-		else if (_inputCapture.leftShiftHeld && _inputCapture.mouseClicked0)
-		{
-			_modeContainer.inventory.currentGameSession.client.pullItemsFromBlockInventory(targetBlock, entityInventoryKey, ClientWrapper.TransferQuantity.ALL, _modeContainer.inventory.viewingFuelInventory);
-		}
-	}
 
 	private void _drawRelevantWindows()
 	{
