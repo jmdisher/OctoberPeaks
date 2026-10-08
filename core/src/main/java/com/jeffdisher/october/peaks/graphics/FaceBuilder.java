@@ -151,7 +151,7 @@ public class FaceBuilder
 								if (null != edgeWriter)
 								{
 									byte blockDefinedByte = cuboid.getData7(AspectRegistry.BLOCK_DEFINED_BYTE, base.getRelative((byte)0, y, z));
-									edgeWriter.writeEdgeValue(highNeighbour, thisY, thisZ, value, blockDefinedByte);
+									edgeWriter.writeEdgeValue(lowNeighbour, thisY, thisZ, value, blockDefinedByte);
 								}
 							}
 						}

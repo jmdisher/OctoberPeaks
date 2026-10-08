@@ -1,5 +1,9 @@
 package com.jeffdisher.october.peaks.scene;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -153,6 +157,43 @@ public class TestWaterSurfaceBuilder
 		Assert.assertEquals(4, counters[5]);
 	}
 
+	@Test
+	public void edgeSource() throws Throwable
+	{
+		short water = 3;
+		WaterSurfaceBuilder surface = new WaterSurfaceBuilder(water);
+		surface.setEdgeValue((byte)-1, (byte)13, (byte)9, water, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		surface.setEdgeValue((byte)-1, (byte)14, (byte)9, water, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.setEdgeValue((byte)-1, (byte)15, (byte)9, water, WaterSurfaceBuilder.FLOW_BYTE_SOURCE);
+		surface.setEdgeValue((byte)-1, (byte)16, (byte)9, water, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.setEdgeValue((byte)-1, (byte)17, (byte)9, water, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		surface.writeXYPlane((byte)0, (byte)14, (byte)9, true, water, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		surface.writeXYPlane((byte)0, (byte)15, (byte)9, true, water, WaterSurfaceBuilder.FLOW_BYTE_STRONG);
+		surface.writeXYPlane((byte)0, (byte)16, (byte)9, true, water, WaterSurfaceBuilder.FLOW_BYTE_WEAK);
+		
+		_VertexCapture capture = new _VertexCapture();
+		surface.writeVertices(capture);
+		Assert.assertEquals(3, capture.vertices.size());
+		Assert.assertTrue(capture.check(0
+			, new float[] {0.0f, 15.0f, 9.9f}
+			, new float[] {0.0f, 14.0f, 9.5f}
+			, new float[] {1.0f, 14.0f, 9.1f}
+			, new float[] {1.0f, 15.0f, 9.5f}
+		));
+		Assert.assertTrue(capture.check(1
+			, new float[] {0.0f, 16.0f, 9.9f}
+			, new float[] {0.0f, 15.0f, 9.9f}
+			, new float[] {1.0f, 15.0f, 9.5f}
+			, new float[] {1.0f, 16.0f, 9.5f}
+		));
+		Assert.assertTrue(capture.check(2
+			, new float[] {0.0f, 17.0f, 9.5f}
+			, new float[] {0.0f, 16.0f, 9.9f}
+			, new float[] {1.0f, 16.0f, 9.5f}
+			, new float[] {1.0f, 17.0f, 9.1f}
+		));
+	}
+
 
 	private static class _NormalCounter implements WaterSurfaceBuilder.IQuadWriter
 	{
@@ -194,6 +235,26 @@ public class TestWaterSurfaceBuilder
 			{
 				throw new AssertionError("Unknown normal");
 			}
+		}
+	}
+
+	private static class _VertexCapture implements WaterSurfaceBuilder.IQuadWriter
+	{
+		public List<float[][]> vertices = new ArrayList<>();
+		
+		@Override
+		public void writeQuad(BlockAddress address, BlockAddress externalBlock, float[][] counterClockWiseVertices, float[] normal)
+		{
+			this.vertices.add(counterClockWiseVertices);
+		}
+		public boolean check(int face, float[] zero, float[] one, float[] two, float[] three)
+		{
+			float[][] toCheck = this.vertices.get(face);
+			return Arrays.equals(zero, toCheck[0])
+				&& Arrays.equals(one, toCheck[1])
+				&& Arrays.equals(two, toCheck[2])
+				&& Arrays.equals(three, toCheck[3])
+			;
 		}
 	}
 }
