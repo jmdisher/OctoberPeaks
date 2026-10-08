@@ -327,7 +327,7 @@ public class WaterSurfaceBuilder implements FaceBuilder.IWriter
 
 	private static int _getIndex(byte x, byte y)
 	{
-		return (y + 1) * Encoding.CUBOID_EDGE_SIZE + (x + 1);
+		return (y + 1) * EDGE_SIZE + (x + 1);
 	}
 
 
