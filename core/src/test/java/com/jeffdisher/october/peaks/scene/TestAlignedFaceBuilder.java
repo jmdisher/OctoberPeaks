@@ -79,8 +79,7 @@ public class TestAlignedFaceBuilder
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
-		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 0.0f, 1.0f}, new float[] {1.0f, 1.0f, 1.0f});
+		builder.generateQuad(bufferBuilder, new float[] {0.0f, 0.0f, 1.0f}, new float[] {1.0f, 1.0f, 1.0f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
 		float[] outFloats = new float[buffer.position() / 6];
@@ -178,8 +177,7 @@ public class TestAlignedFaceBuilder
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
-		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 0.0f, 0.0f}, new float[] {0.0f, 1.0f, 1.0f});
+		builder.generateQuad(bufferBuilder, new float[] {0.0f, 0.0f, 0.0f}, new float[] {0.0f, 1.0f, 1.0f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
 		float[] outFloats = new float[buffer.position() / 6];
@@ -277,8 +275,7 @@ public class TestAlignedFaceBuilder
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
-		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 1.0f, 0.0f}, new float[] {1.0f, 1.0f, 0.5f});
+		builder.generateQuad(bufferBuilder, new float[] {0.0f, 1.0f, 0.0f}, new float[] {1.0f, 1.0f, 0.5f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
 		float[] outFloats = new float[buffer.position() / 6];
@@ -374,8 +371,7 @@ public class TestAlignedFaceBuilder
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
-		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 0.0f, 1.0f}, new float[] {1.0f, 1.0f, 1.0f});
+		builder.generateQuad(bufferBuilder, new float[] {0.0f, 0.0f, 1.0f}, new float[] {1.0f, 1.0f, 1.0f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
 		float[] outFloats = new float[buffer.position() / 6];
