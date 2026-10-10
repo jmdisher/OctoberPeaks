@@ -69,6 +69,8 @@ public class GlUi
 							"aTexture",
 					}
 			);
+			Attribute aPosition = _program.attributes[0];
+			Attribute aTexture = _program.attributes[1];
 			_uOffset = _program.getUniformLocation("uOffset");
 			_uScale = _program.getUniformLocation("uScale");
 			_uTexture = _program.getUniformLocation("uTexture");
@@ -84,10 +86,10 @@ public class GlUi
 			buffer.order(ByteOrder.nativeOrder());
 			FloatBuffer meshBuffer = buffer.asFloatBuffer();
 			// Create the unit square we will use for common vertices.
-			_verticesUnitSquare = _defineCommonVertices(gl, _program, meshBuffer, 1.0f);
+			_verticesUnitSquare = _defineCommonVertices(gl, aPosition, aTexture, meshBuffer, 1.0f);
 			// Create the unit square we can configure for item drawing
-			_verticesItemSquare = _defineCommonVertices(gl, _program, meshBuffer, _itemAtlas.coordinateSize);
-			_verticesReticleLines = _defineReticleVertices(gl, _program, meshBuffer);
+			_verticesItemSquare = _defineCommonVertices(gl, aPosition, aTexture, meshBuffer, _itemAtlas.coordinateSize);
+			_verticesReticleLines = _defineReticleVertices(gl, aPosition, aTexture, meshBuffer);
 			
 			// The text manager is still public since some callers need to issue specific queries to it to mouse-over handling.
 			// Our textures are 1-byte aligned so reduce the alignment.
@@ -262,35 +264,42 @@ public class GlUi
 	}
 
 
-	private static VertexArray _defineCommonVertices(GL20 gl, Program program, FloatBuffer meshBuffer, float textureSize)
+	private static VertexArray _defineCommonVertices(GL20 gl, Attribute aPosition, Attribute aTexture, FloatBuffer meshBuffer, float textureSize)
 	{
 		float height = 1.0f;
 		float width = 1.0f;
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-		builder.appendVertex(new float[] {0.0f, 0.0f}
-				, new float[] {textureBaseU, textureBaseV}
+		BufferBuilder builder = new BufferBuilder(meshBuffer
+			, aPosition
+			, null
+			, aTexture
+			, null
+			, null
+			, null
 		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {0.0f, height}
-				, new float[] {textureBaseU, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {0.0f, 0.0f}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, 0.0f}
-				, new float[] {textureBaseU + textureSize, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
+		builder.position(new float[] {0.0f, 0.0f});
+		builder.texture0(new float[] {textureBaseU, textureBaseV});
+		
+		builder.position(new float[] {width, height});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV + textureSize});
+		
+		builder.position(new float[] {0.0f, height});
+		builder.texture0(new float[] {textureBaseU, textureBaseV + textureSize});
+		
+		builder.position(new float[] {0.0f, 0.0f});
+		builder.texture0(new float[] {textureBaseU, textureBaseV});
+		
+		builder.position(new float[] {width, 0.0f});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV});
+		
+		builder.position(new float[] {width, height});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV + textureSize});
+		
 		return builder.finishOne().flush(gl);
 	}
 
-	private static VertexArray _defineReticleVertices(GL20 gl, Program program, FloatBuffer meshBuffer)
+	private static VertexArray _defineReticleVertices(GL20 gl, Attribute aPosition, Attribute aTexture, FloatBuffer meshBuffer)
 	{
 		// We always draw the reticle at the full size of the screen and scale it in the shader.
 		float origin = 0.0f;
@@ -298,19 +307,26 @@ public class GlUi
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
 		float textureSize = 1.0f;
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-		builder.appendVertex(new float[] {origin, -sizeFromOrigin}
-				, new float[] {textureBaseU, textureBaseV}
+		BufferBuilder builder = new BufferBuilder(meshBuffer
+			, aPosition
+			, null
+			, aTexture
+			, null
+			, null
+			, null
 		);
-		builder.appendVertex(new float[] {origin, sizeFromOrigin}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {-sizeFromOrigin, origin}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {sizeFromOrigin, origin}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
+		builder.position(new float[] {origin, -sizeFromOrigin});
+		builder.texture0(new float[] {textureBaseU, textureBaseV});
+		
+		builder.position(new float[] {origin, sizeFromOrigin});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV + textureSize});
+		
+		builder.position(new float[] {-sizeFromOrigin, origin});
+		builder.texture0(new float[] {textureBaseU, textureBaseV});
+		
+		builder.position(new float[] {sizeFromOrigin, origin});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV + textureSize});
+		
 		return builder.finishOne().flush(gl);
 	}
 

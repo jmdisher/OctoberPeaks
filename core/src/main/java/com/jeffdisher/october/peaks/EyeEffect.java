@@ -43,6 +43,8 @@ public class EyeEffect
 							"aTexture",
 					}
 			);
+			Attribute aPosition = _program.attributes[0];
+			Attribute aTexture = _program.attributes[1];
 			
 			// Create the scratch buffer we will use for out graphics data (short-lived).
 			int floatsPerVertex = Arrays.stream(_program.attributes)
@@ -54,7 +56,7 @@ public class EyeEffect
 			buffer.order(ByteOrder.nativeOrder());
 			FloatBuffer meshBuffer = buffer.asFloatBuffer();
 			
-			_screenSquare = _defineEyeEffectVertices(gl, _program, meshBuffer);
+			_screenSquare = _defineEyeEffectVertices(gl, aPosition, aTexture, meshBuffer);
 			try
 			{
 				_effectTexture = TextureHelpers.loadInternalRGBA(gl, "eye_effect.jpeg");
@@ -138,32 +140,39 @@ public class EyeEffect
 	}
 
 
-	private static VertexArray _defineEyeEffectVertices(GL20 gl, Program program, FloatBuffer meshBuffer)
+	private static VertexArray _defineEyeEffectVertices(GL20 gl, Attribute aPosition, Attribute aTexture, FloatBuffer meshBuffer)
 	{
 		float height = 1.0f;
 		float width = 1.0f;
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
 		float textureSize = 1.0f;
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
-		builder.appendVertex(new float[] {-width, -height}
-				, new float[] {textureBaseU, textureBaseV}
+		BufferBuilder builder = new BufferBuilder(meshBuffer
+			, aPosition
+			, null
+			, aTexture
+			, null
+			, null
+			, null
 		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {-width, height}
-				, new float[] {textureBaseU, textureBaseV + textureSize}
-		);
-		builder.appendVertex(new float[] {-width, -height}
-				, new float[] {textureBaseU, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, -height}
-				, new float[] {textureBaseU + textureSize, textureBaseV}
-		);
-		builder.appendVertex(new float[] {width, height}
-				, new float[] {textureBaseU + textureSize, textureBaseV + textureSize}
-		);
+		builder.position(new float[] {-width, -height});
+		builder.texture0(new float[] {textureBaseU, textureBaseV});
+		
+		builder.position(new float[] {width, height});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV + textureSize});
+		
+		builder.position(new float[] {-width, height});
+		builder.texture0(new float[] {textureBaseU, textureBaseV + textureSize});
+		
+		builder.position(new float[] {-width, -height});
+		builder.texture0(new float[] {textureBaseU, textureBaseV});
+		
+		builder.position(new float[] {width, -height});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV});
+		
+		builder.position(new float[] {width, height});
+		builder.texture0(new float[] {textureBaseU + textureSize, textureBaseV + textureSize});
+		
 		return builder.finishOne().flush(gl);
 	}
 }

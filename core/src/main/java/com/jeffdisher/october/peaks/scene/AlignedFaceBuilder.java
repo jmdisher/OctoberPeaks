@@ -216,13 +216,12 @@ public class AlignedFaceBuilder
 			float blockLight = coord[3];
 			float skyLight = coord[4];
 			
-			builder.appendVertex(positions
-				, _normal.normal
-				, textures
-				, otherTextures
-				, new float[] { blockLight }
-				, new float[] { skyLight }
-			);
+			builder.position(positions);
+			builder.normal(_normal.normal);
+			builder.texture0(textures);
+			builder.texture1(otherTextures);
+			builder.blockLight(blockLight);
+			builder.skyLight(skyLight);
 		}
 	}
 

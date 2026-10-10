@@ -409,8 +409,17 @@ public class CuboidMeshManager
 		IReadOnlyCuboidData cuboid = request.inputs().cuboid();
 		AuxVariantMap variantMap = new AuxVariantMap(_env, cuboid);
 		
-		BufferBuilder builder = new BufferBuilder(request.meshBuffer, _programAttributes);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		// We assume that we have the full slate of attributes.
+		Assert.assertTrue(6 == _programAttributes.length);
+		BufferBuilder builder = new BufferBuilder(request.meshBuffer
+			, _programAttributes[0]
+			, _programAttributes[1]
+			, _programAttributes[2]
+			, _programAttributes[3]
+			, _programAttributes[4]
+			, _programAttributes[5]
+		);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		
 		// We need to track which visible faces are on fire, for animation reasons.
 		FireFaceBuilder fireTracker = new FireFaceBuilder();

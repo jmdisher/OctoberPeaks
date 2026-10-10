@@ -71,8 +71,15 @@ public class TestAlignedFaceBuilder
 		);
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder bufferBuilder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder bufferBuilder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
 		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 0.0f, 1.0f}, new float[] {1.0f, 1.0f, 1.0f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
@@ -163,8 +170,15 @@ public class TestAlignedFaceBuilder
 		);
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder bufferBuilder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder bufferBuilder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
 		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 0.0f, 0.0f}, new float[] {0.0f, 1.0f, 1.0f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
@@ -255,8 +269,15 @@ public class TestAlignedFaceBuilder
 		);
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder bufferBuilder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder bufferBuilder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
 		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 1.0f, 0.0f}, new float[] {1.0f, 1.0f, 0.5f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());
@@ -345,8 +366,15 @@ public class TestAlignedFaceBuilder
 		);
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder bufferBuilder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder bufferBuilder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder meshBufferBuilder = new MeshHelperBufferBuilder(bufferBuilder, true);
 		builder.generateQuad(meshBufferBuilder, new float[] {0.0f, 0.0f, 1.0f}, new float[] {1.0f, 1.0f, 1.0f});
 		
 		Assert.assertEquals(6 * 12, buffer.position());

@@ -12,16 +12,90 @@ import com.jeffdisher.october.utils.Assert;
  */
 public class BufferBuilder
 {
+	// We always have position, normal, and texture0.
+	public static final int INDEX_POSITION = 0;
+
 	private final FloatBuffer _sharedBackingStore;
-	private final Attribute[] _attributes;
+	private final Attribute _position;
+	private final Attribute _normal;
+	private final Attribute _texture0;
+	private final Attribute _texture1;
+	private final Attribute _blockLight;
+	private final Attribute _skyLight;
+	private final Attribute[] _attributesIncluded;
 	private int _nextAttribute;
 	private int _lastStartPosition;
 	private int _verticesWritten;
 
-	public BufferBuilder(FloatBuffer sharedBackingStore, Attribute[] attributes)
+	public BufferBuilder(FloatBuffer sharedBackingStore
+		, Attribute position
+		, Attribute normal
+		, Attribute texture0
+		, Attribute texture1
+		, Attribute blockLight
+		, Attribute skyLight
+	)
 	{
+		Assert.assertTrue(null != position);
+		
 		_sharedBackingStore = sharedBackingStore;
-		_attributes = attributes;
+		_position = position;
+		_normal = normal;
+		_texture0 = texture0;
+		_texture1 = texture1;
+		_blockLight = blockLight;
+		_skyLight = skyLight;
+		int attributeCount = 1;
+		if (null != _normal)
+		{
+			attributeCount += 1;
+		}
+		if (null != _texture0)
+		{
+			attributeCount += 1;
+		}
+		if (null != _texture1)
+		{
+			attributeCount += 1;
+		}
+		if (null != _blockLight)
+		{
+			attributeCount += 1;
+		}
+		if (null != _skyLight)
+		{
+			attributeCount += 1;
+		}
+		Attribute[] attributesIncluded = new Attribute[attributeCount];
+		attributesIncluded[INDEX_POSITION] = _position;
+		int index = 1;
+		if (null != _normal)
+		{
+			attributesIncluded[index] = _normal;
+			index += 1;
+		}
+		if (null != _texture0)
+		{
+			attributesIncluded[index] = _texture0;
+			index += 1;
+		}
+		if (null != _texture1)
+		{
+			attributesIncluded[index] = _texture1;
+			index += 1;
+		}
+		if (null != _blockLight)
+		{
+			attributesIncluded[index] = _blockLight;
+			index += 1;
+		}
+		if (null != _skyLight)
+		{
+			attributesIncluded[index] = _skyLight;
+			index += 1;
+		}
+		_attributesIncluded = attributesIncluded;
+		
 		_nextAttribute = 0;
 		_lastStartPosition = 0;
 		_verticesWritten = 0;
@@ -29,18 +103,50 @@ public class BufferBuilder
 		_sharedBackingStore.clear();
 	}
 
-	public void append(int attribute, float[] data)
+	public void position(float[] data)
 	{
-		_append(attribute, data);
+		_append(INDEX_POSITION, data);
 	}
 
-	public void appendVertex(float[]... data)
+	public void normal(float[] data)
 	{
-		int attribute = 0;
-		for (float[] elt : data)
+		if (null != _normal)
 		{
-			_append(attribute, elt);
-			attribute += 1;
+			_append(_nextAttribute, data);
+		}
+	}
+
+	public void texture0(float[] data)
+	{
+		if (null != _texture0)
+		{
+			_append(_nextAttribute, data);
+		}
+	}
+
+	public void texture1(float[] data)
+	{
+		if (null != _texture1)
+		{
+			_append(_nextAttribute, data);
+		}
+	}
+
+	public void blockLight(float f)
+	{
+		if (null != _blockLight)
+		{
+			float[] data = new float[] { f };
+			_append(_nextAttribute, data);
+		}
+	}
+
+	public void skyLight(float f)
+	{
+		if (null != _skyLight)
+		{
+			float[] data = new float[] { f };
+			_append(_nextAttribute, data);
 		}
 	}
 
@@ -62,7 +168,7 @@ public class BufferBuilder
 			copy.flip();
 			copy.position(_lastStartPosition);
 			copy.limit(nextStartPosition);
-			buffer = new Buffer(copy, _verticesWritten, _attributes);
+			buffer = new Buffer(copy, _verticesWritten, _attributesIncluded);
 			_lastStartPosition = nextStartPosition;
 			_verticesWritten = 0;
 		}
@@ -73,12 +179,12 @@ public class BufferBuilder
 	private void _append(int attribute, float[] data)
 	{
 		Assert.assertTrue(_nextAttribute == attribute);
-		Assert.assertTrue(_attributes[attribute].floats() == data.length);
+		Assert.assertTrue(_attributesIncluded[attribute].floats() == data.length);
 		
 		_sharedBackingStore.put(data);
 		
 		_nextAttribute = attribute + 1;
-		if (_nextAttribute == _attributes.length)
+		if (_nextAttribute == _attributesIncluded.length)
 		{
 			_nextAttribute = 0;
 			_verticesWritten += 1;

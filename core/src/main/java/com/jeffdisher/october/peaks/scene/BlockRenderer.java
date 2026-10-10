@@ -255,9 +255,15 @@ public class BlockRenderer
 			
 			float itemEdge = PassiveType.ITEM_SLOT.volume().width();
 			float textureSize = itemAtlas.coordinateSize;
-			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(_program.attributes);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, attributesToUse);
+			BufferBuilder builder = new BufferBuilder(meshBuffer
+				, _program.attributes[0]
+				, _program.attributes[1]
+				, _program.attributes[2]
+				, null
+				, null
+				, null
+			);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, false);
 			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
 				, itemEdge
 				, textureSize
@@ -672,8 +678,17 @@ public class BlockRenderer
 		, AuxilliaryTextureAtlas auxAtlas
 	)
 	{
-		BufferBuilder builder = new BufferBuilder(meshBuffer, attributes);
-		MeshHelperBufferBuilder meshBuilder = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		// We assume that we have the full slate of attributes.
+		Assert.assertTrue(6 == attributes.length);
+		BufferBuilder builder = new BufferBuilder(meshBuffer
+			, attributes[0]
+			, attributes[1]
+			, attributes[2]
+			, attributes[3]
+			, attributes[4]
+			, attributes[5]
+		);
+		MeshHelperBufferBuilder meshBuilder = new MeshHelperBufferBuilder(builder, true);
 		SceneMeshHelpers.populateOutlinePrism(gl, meshBuilder, prism, auxAtlas);
 		return builder.finishOne().flush(gl);
 	}
