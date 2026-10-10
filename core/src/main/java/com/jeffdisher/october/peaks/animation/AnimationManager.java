@@ -13,7 +13,6 @@ import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.scene.BlockRenderer;
 import com.jeffdisher.october.peaks.scene.FireFaceBuilder;
-import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.utils.WorldCache;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.Block;
@@ -302,14 +301,14 @@ public class AnimationManager
 		}
 	}
 
-	public void handleFireAnimation(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, BlockRenderer blockRenderer, long currentTimeMillis)
+	public void handleFireAnimation(Matrix viewMatrix, Matrix projectionMatrix, BlockRenderer blockRenderer, long currentTimeMillis)
 	{
 		// Determine the fire frame based on time.
 		long cycleMillis = FIRE_FRAME_COUNT * FIRE_FRAME_PERIOD_MILLIS;
 		long timeIntoCycle = currentTimeMillis % cycleMillis;
 		int frameNumber = (int)(timeIntoCycle / FIRE_FRAME_PERIOD_MILLIS);
 		
-		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces(viewMatrix, projectionMatrix, eye, frameNumber);
+		Map<CuboidAddress, SparseByteCube> fireFaces = blockRenderer.renderFireBlocksAndReturnValidFaces(viewMatrix, projectionMatrix, frameNumber);
 		
 		if ((currentTimeMillis - _lastFireParticleMillis) >= FIRE_PARTICLE_PERIOD_MILLIS)
 		{

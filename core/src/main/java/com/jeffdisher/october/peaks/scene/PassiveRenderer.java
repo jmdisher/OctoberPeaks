@@ -70,7 +70,6 @@ public class PassiveRenderer
 		private final Program _program;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uBrightness;
 		private final int _uUvBase;
@@ -99,7 +98,6 @@ public class PassiveRenderer
 			Attribute aTexture0 = _program.attributes[2];
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			_uUvBase = _program.getUniformLocation("uUvBase");
@@ -139,7 +137,6 @@ public class PassiveRenderer
 		private final int _uModelMatrix;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uBrightness;
 		private final int _uUvBase;
@@ -167,7 +164,6 @@ public class PassiveRenderer
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			_uUvBase = _program.getUniformLocation("uUvBase");
@@ -201,7 +197,6 @@ public class PassiveRenderer
 		private final int _uModelMatrix;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uBrightness;
 		// TODO:  We will need to generalize this for other passive types.
@@ -226,7 +221,6 @@ public class PassiveRenderer
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			
@@ -295,7 +289,7 @@ public class PassiveRenderer
 		_halfHeight = PassiveType.ITEM_SLOT.volume().height() / 2.0f;
 	}
 
-	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
@@ -306,19 +300,19 @@ public class PassiveRenderer
 		Collection<GhostManager.GhostSnapshot<PartialPassive>> itemSlotGhosts = _ghostManager.pruneAndSnapshotItemSlotPassives(currentMillis);
 		if (!itemSlotPassives.isEmpty() || !itemSlotGhosts.isEmpty())
 		{
-			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, itemSlotGhosts, viewMatrix, projectionMatrix, eye);
+			_renderItemSlots(_resources._itemSlotResources, itemSlotPassives, itemSlotGhosts, viewMatrix, projectionMatrix);
 		}
 		
 		Collection<PartialPassive> fallingBlockPassives = _animationManager.getTweenedFallingBlockPassives(currentMillis);
 		if (fallingBlockPassives.size() > 0)
 		{
-			_renderFallingBlocks(_resources._fallingBlockResources, fallingBlockPassives, viewMatrix, projectionMatrix, eye);
+			_renderFallingBlocks(_resources._fallingBlockResources, fallingBlockPassives, viewMatrix, projectionMatrix);
 		}
 		
 		Collection<PartialPassive> arrowPassives = _animationManager.getTweenedArrowPassives(currentMillis);
 		if (arrowPassives.size() > 0)
 		{
-			_renderArrows(_resources._arrowResources, arrowPassives, viewMatrix, projectionMatrix, eye);
+			_renderArrows(_resources._arrowResources, arrowPassives, viewMatrix, projectionMatrix);
 		}
 	}
 
@@ -328,11 +322,9 @@ public class PassiveRenderer
 		, Collection<GhostManager.GhostSnapshot<PartialPassive>> itemSlotGhosts
 		, Matrix viewMatrix
 		, Matrix projectionMatrix
-		, Vector eye
 	)
 	{
 		resources._program.useProgram();
-		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, resources._uProjectionMatrix);
 		_gl.glUniform1f(resources._uBrightness, _screenBrightness.get());
@@ -383,10 +375,9 @@ public class PassiveRenderer
 		resources._itemSlotVertices.drawAllTriangles(_gl);
 	}
 
-	private void _renderFallingBlocks(FallingBlockResources resources, Collection<PartialPassive> fallingBlockPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderFallingBlocks(FallingBlockResources resources, Collection<PartialPassive> fallingBlockPassives, Matrix viewMatrix, Matrix projectionMatrix)
 	{
 		resources._program.useProgram();
-		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, resources._uProjectionMatrix);
 		_gl.glUniform1f(resources._uBrightness, _screenBrightness.get());
@@ -416,10 +407,9 @@ public class PassiveRenderer
 		}
 	}
 
-	private void _renderArrows(ArrowResources resources, Collection<PartialPassive> arrowPassives, Matrix viewMatrix, Matrix projectionMatrix, Vector eye)
+	private void _renderArrows(ArrowResources resources, Collection<PartialPassive> arrowPassives, Matrix viewMatrix, Matrix projectionMatrix)
 	{
 		resources._program.useProgram();
-		_gl.glUniform3f(resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, resources._uProjectionMatrix);
 		_gl.glUniform1f(resources._uBrightness, _screenBrightness.get());

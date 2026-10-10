@@ -26,7 +26,6 @@ import com.jeffdisher.october.peaks.graphics.Program;
 import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
-import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.peaks.utils.WorldCache;
@@ -50,7 +49,6 @@ public class EntityRenderer
 		private final int _uModelMatrix;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uDamage;
 		private final int _uBrightness;
@@ -73,7 +71,6 @@ public class EntityRenderer
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uDamage = _program.getUniformLocation("uDamage");
 			_uBrightness = _program.getUniformLocation("uBrightness");
@@ -135,13 +132,12 @@ public class EntityRenderer
 		_ghostManager = ghostManager;
 	}
 
-	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
+	public void renderEntities(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
@@ -180,13 +176,12 @@ public class EntityRenderer
 		_gl.glDisable(GL20.GL_BLEND);
 	}
 
-	public void renderSelectedEntity(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier, PartialEntity selectedEntity)
+	public void renderSelectedEntity(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier, PartialEntity selectedEntity)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uBrightness, _screenBrightness.get());
