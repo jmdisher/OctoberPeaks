@@ -23,6 +23,7 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
@@ -61,13 +62,13 @@ public class EntityRenderer
 		{
 			// Create the shader program.
 			_program = Program.fullyLinkedProgram(gl
-					, MiscPeaksHelpers.readUtf8Asset("entity.vert")
-					, MiscPeaksHelpers.readUtf8Asset("entity.frag")
-					, new String[] {
-							"aPosition",
-							"aNormal",
-							"aTexture0",
-					}
+				, MiscPeaksHelpers.readUtf8Asset("entity.vert")
+				, MiscPeaksHelpers.readUtf8Asset("entity.frag")
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
+				}
 			);
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");

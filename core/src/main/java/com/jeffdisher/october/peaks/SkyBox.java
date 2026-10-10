@@ -10,6 +10,7 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Vector;
@@ -42,11 +43,11 @@ public class SkyBox
 		public Resources(GL20 gl)
 		{
 			_program = Program.fullyLinkedProgram(gl
-					, MiscPeaksHelpers.readUtf8Asset("sky.vert")
-					, MiscPeaksHelpers.readUtf8Asset("sky.frag")
-					, new String[] {
-							"aPosition",
-					}
+				, MiscPeaksHelpers.readUtf8Asset("sky.vert")
+				, MiscPeaksHelpers.readUtf8Asset("sky.frag")
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+				}
 			);
 			Attribute aPosition = _program.attributes[0];
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");

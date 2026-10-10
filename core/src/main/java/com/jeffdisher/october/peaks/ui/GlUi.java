@@ -13,6 +13,7 @@ import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextManager;
@@ -62,12 +63,12 @@ public class GlUi
 			// In order to simplify the usage, we will assume that all colour data originates in textures (but some of the
 			// textures may just be single-pixel colour data).
 			_program = Program.fullyLinkedProgram(gl
-					, MiscPeaksHelpers.readUtf8Asset("windows.vert")
-					, MiscPeaksHelpers.readUtf8Asset("windows.frag")
-					, new String[] {
-							"aPosition",
-							"aTexture",
-					}
+				, MiscPeaksHelpers.readUtf8Asset("windows.vert")
+				, MiscPeaksHelpers.readUtf8Asset("windows.frag")
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 2),
+					new SourceAttribute("aTexture", 2),
+				}
 			);
 			Attribute aPosition = _program.attributes[0];
 			Attribute aTexture = _program.attributes[1];

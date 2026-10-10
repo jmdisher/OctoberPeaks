@@ -10,6 +10,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
@@ -54,11 +55,11 @@ public class ParticleEngine
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("particles.vert")
 				, MiscPeaksHelpers.readUtf8Asset("particles.frag")
-				, new String[] {
-					"aAnimationOffset",
-					"aStartPosition",
-					"aEndPosition",
-					"aColour",
+				, new SourceAttribute[] {
+					new SourceAttribute("aAnimationOffset", 1),
+					new SourceAttribute("aStartPosition", 3),
+					new SourceAttribute("aEndPosition", 3),
+					new SourceAttribute("aColour", 3),
 				}
 			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");

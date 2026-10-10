@@ -31,12 +31,12 @@ public class TestAlignedFaceBuilder
 		ENV = Environment.createSharedInstance();
 		STONE = ENV.items.getItemById("op.stone");
 		ATTRIBUTES = new Attribute[] {
-			new Attribute("aPosition", 3),
-			new Attribute("aNormal", 3),
-			new Attribute("aTexture0", 2),
-			new Attribute("aTexture1", 2),
-			new Attribute("aBlockLightMultiplier", 1),
-			new Attribute("aSkyLightMultiplier", 1),
+			new Attribute("aPosition", 0, 3),
+			new Attribute("aNormal", 1, 3),
+			new Attribute("aTexture0", 2, 2),
+			new Attribute("aTexture1", 3, 2),
+			new Attribute("aBlockLightMultiplier", 4, 1),
+			new Attribute("aSkyLightMultiplier", 5, 1),
 		};
 	}
 	@AfterClass
