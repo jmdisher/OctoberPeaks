@@ -20,6 +20,7 @@ import com.jeffdisher.october.data.IReadOnlyCuboidData;
 import com.jeffdisher.october.logic.SparseByteCube;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.graphics.Attribute;
@@ -99,13 +100,13 @@ public class BlockRenderer
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("scene.vert")
 				, MiscPeaksHelpers.readUtf8Asset("scene.frag")
-				, new String[] {
-					"aPosition",
-					"aNormal",
-					"aTexture0",
-					"aTexture1",
-					"aBlockLightMultiplier",
-					"aSkyLightMultiplier",
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
+					new SourceAttribute("aTexture1", 2),
+					new SourceAttribute("aBlockLightMultiplier", 1),
+					new SourceAttribute("aSkyLightMultiplier", 1),
 				}
 			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
@@ -178,13 +179,13 @@ public class BlockRenderer
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("scene_selection.vert")
 				, MiscPeaksHelpers.readUtf8Asset("scene_selection.frag")
-				, new String[] {
-					"aPosition",
-					"aNormal",
-					"aTexture0",
-					"aTexture1",
-					"aBlockLightMultiplier",
-					"aSkyLightMultiplier",
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
+					new SourceAttribute("aTexture1", 2),
+					new SourceAttribute("aBlockLightMultiplier", 1),
+					new SourceAttribute("aSkyLightMultiplier", 1),
 				}
 			);
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
@@ -246,14 +247,14 @@ public class BlockRenderer
 		{
 			// Create the shader program.
 			_program = Program.fullyLinkedProgram(gl
-					, MiscPeaksHelpers.readUtf8Asset("scene_itemSlot.vert")
-					, MiscPeaksHelpers.readUtf8Asset("scene_itemSlot.frag")
-					, new String[] {
-						"aPosition",
-						"aNormal",
-						"aTexture0",
-					}
-				);
+				, MiscPeaksHelpers.readUtf8Asset("scene_itemSlot.vert")
+				, MiscPeaksHelpers.readUtf8Asset("scene_itemSlot.frag")
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
+				}
+			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
 			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");

@@ -51,8 +51,8 @@ public class VertexArray
 		for (int i = 0; i < _attributes.length; ++i)
 		{
 			Attribute attribute = _attributes[i];
-			gl.glEnableVertexAttribArray(i);
-			gl.glVertexAttribPointer(i, attribute.floats(), GL20.GL_FLOAT, false, _totalFloats * Float.BYTES, floatOffset * Float.BYTES);
+			gl.glEnableVertexAttribArray(attribute.location());
+			gl.glVertexAttribPointer(attribute.location(), attribute.floats(), GL20.GL_FLOAT, false, _totalFloats * Float.BYTES, floatOffset * Float.BYTES);
 			floatOffset += attribute.floats();
 		}
 	}

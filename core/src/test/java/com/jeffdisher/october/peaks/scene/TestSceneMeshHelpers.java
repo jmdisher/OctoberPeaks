@@ -54,12 +54,12 @@ public class TestSceneMeshHelpers
 		WATER_SOURCE = ENV.items.getItemById("op.water_source");
 		LAVA_SOURCE = ENV.items.getItemById("op.lava_source");
 		ATTRIBUTES = new Attribute[] {
-				new Attribute("aPosition", 3),
-				new Attribute("aNormal", 3),
-				new Attribute("aTexture0", 2),
-				new Attribute("aTexture1", 2),
-				new Attribute("aBlockLightMultiplier", 1),
-				new Attribute("aSkyLightMultiplier", 1),
+				new Attribute("aPosition", 0, 3),
+				new Attribute("aNormal", 1, 3),
+				new Attribute("aTexture0", 2, 2),
+				new Attribute("aTexture1", 3, 2),
+				new Attribute("aBlockLightMultiplier", 4, 1),
+				new Attribute("aSkyLightMultiplier", 5, 1),
 		};
 	}
 	@AfterClass

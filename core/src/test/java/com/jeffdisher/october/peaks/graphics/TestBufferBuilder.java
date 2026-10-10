@@ -14,7 +14,7 @@ public class TestBufferBuilder
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(64);
 		BufferBuilder builder = new BufferBuilder(buffer
-			, new Attribute("Position", 3)
+			, new Attribute("Position", 0, 3)
 			, null
 			, null
 			, null
@@ -32,7 +32,7 @@ public class TestBufferBuilder
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(64);
 		BufferBuilder builder = new BufferBuilder(buffer
-			, new Attribute("Position", 3)
+			, new Attribute("Position", 0, 3)
 			, null
 			, null
 			, null
@@ -82,5 +82,31 @@ public class TestBufferBuilder
 		{
 			// Expected.
 		}
+	}
+
+	@Test
+	public void removedAttribute() throws Throwable
+	{
+		FloatBuffer buffer = FloatBuffer.allocate(64);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, new Attribute("Position", 0, 3)
+			, new Attribute("removed", -1, 3)
+			, null
+			, null
+			, null
+			, null
+		);
+		builder.position(new float[] { 1.0f, 2.0f, 3.0f });
+		builder.normal(new float[] { 0.0f, -1.0f, 0.0f });
+		builder.position(new float[] { 1.0f, 2.0f, 3.0f });
+		builder.normal(new float[] { 0.0f, -1.0f, 0.0f });
+		
+		BufferBuilder.Buffer frozen = builder.finishOne();
+		Assert.assertEquals(2, frozen.vertexCount);
+		float[] raw = new float[6];
+		frozen.testGetFloats(raw);
+		Assert.assertArrayEquals(new float[] { 1.0f, 2.0f, 3.0f
+			, 1.0f, 2.0f, 3.0f
+		}, raw, 0.01f);
 	}
 }

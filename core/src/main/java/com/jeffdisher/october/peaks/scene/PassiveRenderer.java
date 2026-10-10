@@ -17,6 +17,7 @@ import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
+import com.jeffdisher.october.peaks.graphics.SourceAttribute;
 import com.jeffdisher.october.peaks.graphics.VertexArray;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
@@ -87,10 +88,10 @@ public class PassiveRenderer
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("passive_item.vert")
 				, MiscPeaksHelpers.readUtf8Asset("passive_item.frag")
-				, new String[] {
-					"aPosition",
-					"aNormal",
-					"aTexture0",
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
 				}
 			);
 			Attribute aPosition = _program.attributes[0];
@@ -154,10 +155,10 @@ public class PassiveRenderer
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("passive_block.vert")
 				, MiscPeaksHelpers.readUtf8Asset("passive_block.frag")
-				, new String[] {
-					"aPosition",
-					"aNormal",
-					"aTexture0",
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
 				}
 			);
 			Attribute aPosition = _program.attributes[0];
@@ -213,10 +214,10 @@ public class PassiveRenderer
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("passive_arrow.vert")
 				, MiscPeaksHelpers.readUtf8Asset("passive_arrow.frag")
-				, new String[] {
-					"aPosition",
-					"aNormal",
-					"aTexture0",
+				, new SourceAttribute[] {
+					new SourceAttribute("aPosition", 3),
+					new SourceAttribute("aNormal", 3),
+					new SourceAttribute("aTexture0", 2),
 				}
 			);
 			Attribute aPosition = _program.attributes[0];

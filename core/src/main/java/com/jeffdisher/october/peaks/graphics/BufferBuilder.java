@@ -37,6 +37,29 @@ public class BufferBuilder
 	)
 	{
 		Assert.assertTrue(null != position);
+		Assert.assertTrue(position.location() >= 0);
+		
+		// We want to drop any attributes which were eliminated from the shader.
+		if ((null != normal) && (-1 == normal.location()))
+		{
+			normal = null;
+		}
+		if ((null != texture0) && (-1 == texture0.location()))
+		{
+			texture0 = null;
+		}
+		if ((null != texture1) && (-1 == texture1.location()))
+		{
+			texture1 = null;
+		}
+		if ((null != blockLight) && (-1 == blockLight.location()))
+		{
+			blockLight = null;
+		}
+		if ((null != skyLight) && (-1 == skyLight.location()))
+		{
+			skyLight = null;
+		}
 		
 		_sharedBackingStore = sharedBackingStore;
 		_position = position;
