@@ -55,28 +55,50 @@ public class MeshHelperBufferBuilder
 
 
 	private final BufferBuilder _builder;
-	private final boolean[] _attributesToUse;
+	private final boolean _useCompleteSet;
 
-	public MeshHelperBufferBuilder(BufferBuilder builder, boolean[] attributesToUse)
+	public MeshHelperBufferBuilder(BufferBuilder builder, boolean useCompleteSet)
 	{
 		_builder = builder;
-		_attributesToUse = attributesToUse;
+		_useCompleteSet = useCompleteSet;
 	}
 
-	public void appendVertex(float[]... data)
+	public void position(float[] data)
 	{
-		Assert.assertTrue(_attributesToUse.length == data.length);
-		
-		int attribute = 0;
-		int sentIndex = 0;
-		for (float[] elt : data)
+		_builder.position(data);
+	}
+
+	public void normal(float[] data)
+	{
+		_builder.normal(data);
+	}
+
+	public void texture0(float[] data)
+	{
+		_builder.texture0(data);
+	}
+
+	public void texture1(float[] data)
+	{
+		if (_useCompleteSet)
 		{
-			if (_attributesToUse[attribute])
-			{
-				_builder.append(sentIndex, elt);
-				sentIndex += 1;
-			}
-			attribute += 1;
+			_builder.texture1(data);
+		}
+	}
+
+	public void blockLight(float f)
+	{
+		if (_useCompleteSet)
+		{
+			_builder.blockLight(f);
+		}
+	}
+
+	public void skyLight(float f)
+	{
+		if (_useCompleteSet)
+		{
+			_builder.skyLight(f);
 		}
 	}
 }

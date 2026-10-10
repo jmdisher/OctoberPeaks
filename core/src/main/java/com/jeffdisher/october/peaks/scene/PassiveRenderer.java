@@ -13,6 +13,7 @@ import com.jeffdisher.october.aspects.Environment;
 import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.animation.AnimationManager;
 import com.jeffdisher.october.peaks.animation.GhostManager;
+import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -92,6 +93,9 @@ public class PassiveRenderer
 					"aTexture0",
 				}
 			);
+			Attribute aPosition = _program.attributes[0];
+			Attribute aNormal = _program.attributes[1];
+			Attribute aTexture0 = _program.attributes[2];
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
 			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
@@ -106,9 +110,15 @@ public class PassiveRenderer
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
 			
 			float itemEdge = PassiveType.ITEM_SLOT.volume().width();
-			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(_program.attributes);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, attributesToUse);
+			BufferBuilder builder = new BufferBuilder(meshBuffer
+				, aPosition
+				, aNormal
+				, aTexture0
+				, null
+				, null
+				, null
+			);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, false);
 			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
 				, itemEdge
 				, textureSize
@@ -151,6 +161,9 @@ public class PassiveRenderer
 					"aTexture0",
 				}
 			);
+			Attribute aPosition = _program.attributes[0];
+			Attribute aNormal = _program.attributes[1];
+			Attribute aTexture0 = _program.attributes[2];
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
@@ -163,9 +176,15 @@ public class PassiveRenderer
 			direct.order(ByteOrder.nativeOrder());
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
 			
-			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
-			boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(_program.attributes);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, attributesToUse);
+			BufferBuilder builder = new BufferBuilder(meshBuffer
+				, aPosition
+				, aNormal
+				, aTexture0
+				, null
+				, null
+				, null
+			);
+			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, false);
 			SceneMeshHelpers.drawPassiveCube(builderWrapper, textureSize);
 			_fallingBlockVertices = builder.finishOne().flush(gl);
 		}
@@ -202,6 +221,9 @@ public class PassiveRenderer
 					"aTexture0",
 				}
 			);
+			Attribute aPosition = _program.attributes[0];
+			Attribute aNormal = _program.attributes[1];
+			Attribute aTexture0 = _program.attributes[2];
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
@@ -223,12 +245,18 @@ public class PassiveRenderer
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
 			
 			String rawMesh = meshFile.readString();
-			BufferBuilder builder = new BufferBuilder(meshBuffer, _program.attributes);
+			BufferBuilder builder = new BufferBuilder(meshBuffer
+				, aPosition
+				, aNormal
+				, aTexture0
+				, null
+				, null
+				, null
+			);
 			WavefrontReader.readFile((float[] position, float[] texture, float[] normal) -> {
-				builder.appendVertex(position
-					, normal
-					, texture
-				);
+				builder.position(position);
+				builder.normal(normal);
+				builder.texture0(texture);
 			}, rawMesh);
 			_arrowVertices = builder.finishOne().flush(gl);
 			_arrowTexture = TextureHelpers.loadHandleRGBA(gl, textureFile);

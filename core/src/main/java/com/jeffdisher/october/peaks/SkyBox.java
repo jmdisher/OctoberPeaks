@@ -6,6 +6,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import com.badlogic.gdx.graphics.GL20;
+import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -47,6 +48,7 @@ public class SkyBox
 							"aPosition",
 					}
 			);
+			Attribute aPosition = _program.attributes[0];
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
@@ -64,7 +66,7 @@ public class SkyBox
 			// We will just reuse this buffer for the cube upload.
 			textureBufferData.clear();
 			FloatBuffer meshBuffer = textureBufferData.asFloatBuffer();
-			_cubeMesh = _defineCubeVertices(gl, _program, meshBuffer);
+			_cubeMesh = _defineCubeVertices(gl, aPosition, meshBuffer);
 		}
 		
 		public void shutdown(GL20 gl)
@@ -145,56 +147,63 @@ public class SkyBox
 	}
 
 
-	private static VertexArray _defineCubeVertices(GL20 gl, Program program, FloatBuffer meshBuffer)
+	private static VertexArray _defineCubeVertices(GL20 gl, Attribute aPosition, FloatBuffer meshBuffer)
 	{
-		BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+		BufferBuilder builder = new BufferBuilder(meshBuffer
+			, aPosition
+			, null
+			, null
+			, null
+			, null
+			, null
+		);
 		// Positive Z (Sky).
-		builder.appendVertex(new float[] {1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, 1.0f});
 		
 		// Negative Z (Floor).
-		builder.appendVertex(new float[] {1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {1.0f, -1.0f, -1.0f});
 		
 		// Positive X (East).
-		builder.appendVertex(new float[] {1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {1.0f, -1.0f, 1.0f});
 		
 		// Negative X (West).
-		builder.appendVertex(new float[] {-1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, -1.0f});
 		
 		// Positive Y (North).
-		builder.appendVertex(new float[] {1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, 1.0f});
-		builder.appendVertex(new float[] {-1.0f, 1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, 1.0f, -1.0f});
+		builder.position(new float[] {1.0f, 1.0f, -1.0f});
 		
 		// Negative Y (South).
-		builder.appendVertex(new float[] {-1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, 1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, -1.0f, -1.0f});
-		builder.appendVertex(new float[] {-1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {1.0f, -1.0f, 1.0f});
+		builder.position(new float[] {1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, -1.0f});
+		builder.position(new float[] {-1.0f, -1.0f, 1.0f});
 		return builder.finishOne().flush(gl);
 	}
 

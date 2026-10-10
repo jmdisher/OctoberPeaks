@@ -19,6 +19,7 @@ import com.jeffdisher.october.peaks.LoadedResources;
 import com.jeffdisher.october.peaks.animation.AnimationManager;
 import com.jeffdisher.october.peaks.animation.GhostManager;
 import com.jeffdisher.october.peaks.animation.Rigging;
+import com.jeffdisher.october.peaks.graphics.Attribute;
 import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.Matrix;
 import com.jeffdisher.october.peaks.graphics.Program;
@@ -77,6 +78,9 @@ public class EntityRenderer
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			_uOpacity = _program.getUniformLocation("uOpacity");
 			
+			Attribute aPosition = _program.attributes[0];
+			Attribute aNormal = _program.attributes[1];
+			Attribute aTexture0 = _program.attributes[2];
 			ByteBuffer direct = ByteBuffer.allocateDirect(BUFFER_SIZE);
 			direct.order(ByteOrder.nativeOrder());
 			FloatBuffer meshBuffer = direct.asFloatBuffer();
@@ -85,7 +89,7 @@ public class EntityRenderer
 			{
 				if (null != type)
 				{
-					_EntityData data = _loadEntityResources(gl, _program, meshBuffer, type);
+					_EntityData data = _loadEntityResources(gl, aPosition, aNormal, aTexture0, meshBuffer, type);
 					entityData.put(type, data);
 				}
 			}
@@ -199,7 +203,7 @@ public class EntityRenderer
 	}
 
 
-	private static _EntityData _loadEntityResources(GL20 gl, Program program, FloatBuffer meshBuffer, EntityType type) throws IOException
+	private static _EntityData _loadEntityResources(GL20 gl, Attribute aPosition, Attribute aNormal, Attribute aTexture0, FloatBuffer meshBuffer, EntityType type) throws IOException
 	{
 		String name = type.name().toUpperCase();
 		EntityVolume volume = type.volume();
@@ -221,7 +225,14 @@ public class EntityRenderer
 			// There is a rigging definition so load that and then process referenced files.
 			List<Rigging.LimbRig> limbs = Rigging.loadFromTablistFile(riggingFile);
 			
-			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+			BufferBuilder builder = new BufferBuilder(meshBuffer
+				, aPosition
+				, aNormal
+				, aTexture0
+				, null
+				, null
+				, null
+			);
 			bodyBuffer = null;
 			headRig = null;
 			List<_RiggingData> otherRigs = new ArrayList<>();
@@ -266,7 +277,14 @@ public class EntityRenderer
 		{
 			FileHandle meshFile = Gdx.files.internal("entity_" + name + ".obj");
 			String rawMesh = meshFile.readString();
-			BufferBuilder builder = new BufferBuilder(meshBuffer, program.attributes);
+			BufferBuilder builder = new BufferBuilder(meshBuffer
+				, aPosition
+				, aNormal
+				, aTexture0
+				, null
+				, null
+				, null
+			);
 			WavefrontReader.readFile(new _AdaptingVertexLoader(builder, null, width, height), rawMesh);
 			bodyBuffer = builder.finishOne().flush(gl);
 			headRig = null;
@@ -442,10 +460,9 @@ public class EntityRenderer
 			
 			float[] temp = _transform.multiplyVectorComponents(x, y, z, w);
 			float[] shiftedPosition = new float[] { temp[0], temp[1], temp[2] };
-			_builder.appendVertex(shiftedPosition
-				, normal
-				, texture
-			);
+			_builder.position(shiftedPosition);
+			_builder.normal(normal);
+			_builder.texture0(texture);
 		}
 	}
 }

@@ -153,9 +153,9 @@ public class SceneMeshHelpers
 									else
 									{
 										// We interpret the max of the adjacent blocks as the light value of a model (since it has interior surfaces on all sides).
-										float[] blockLight = new float[] { _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ)) };
+										float blockLight = _mapBlockLight(_getMaxAreaLight(inputData, baseX, baseY, baseZ));
 										// Sky light never falls in this block but we still want to account for it so check the block above with partial lighting.
-										float[] skyLight = new float[] { LightReadingHelpers.getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), LightReadingHelpers.SKY_LIGHT_PARTIAL) };
+										float skyLight = LightReadingHelpers.getSkyLightMultiplier(inputData, baseX, baseY, (byte)(baseZ + blockHeight), LightReadingHelpers.SKY_LIGHT_PARTIAL);
 										
 										ModelBuffer bufferForType = blockModels.getModelForBlock(includedBlock, isActive, isDown, blockDefinedByte);
 										_renderModel(builder
@@ -573,29 +573,21 @@ public class SceneMeshHelpers
 				base[1] + vertices[0][1],
 				base[2] + vertices[0][2],
 		};
-		float[] bottomLeftBlockLight = new float[] {blockLightMultipliers[0]};
-		float[] bottomLeftSkyLight = new float[] {skyLightMultipliers[0]};
 		float[] bottomRight = new float[] {
 				base[0] + vertices[1][0],
 				base[1] + vertices[1][1],
 				base[2] + vertices[1][2],
 		};
-		float[] bottomRightBlockLight = new float[] {blockLightMultipliers[1]};
-		float[] bottomRightSkyLight = new float[] {skyLightMultipliers[1]};
 		float[] topRight = new float[] {
 				base[0] + vertices[2][0],
 				base[1] + vertices[2][1],
 				base[2] + vertices[2][2],
 		};
-		float[] topRightBlockLight = new float[] {blockLightMultipliers[2]};
-		float[] topRightSkyLight = new float[] {skyLightMultipliers[2]};
 		float[] topLeft = new float[] {
 				base[0] + vertices[3][0],
 				base[1] + vertices[3][1],
 				base[2] + vertices[3][2],
 		};
-		float[] topLeftBlockLight = new float[] {blockLightMultipliers[3]};
-		float[] topLeftSkyLight = new float[] {skyLightMultipliers[3]};
 		float u = flipTexture ? (uvBase[0] + textureSize) : uvBase[0];
 		float v = uvBase[1];
 		float uEdge = flipTexture ? uvBase[0] : (u + textureSize);
@@ -614,53 +606,52 @@ public class SceneMeshHelpers
 		// blockLight
 		
 		// Left Bottom.
-		builder.appendVertex(bottomLeft
-				, normal
-				, new float[] {u, v}
-				, new float[] {otherU, otherV}
-				, bottomLeftBlockLight
-				, bottomLeftSkyLight
-		);
+		builder.position(bottomLeft);
+		builder.normal(normal);
+		builder.texture0(new float[] {u, v});
+		builder.texture1(new float[] {otherU, otherV});
+		builder.blockLight(blockLightMultipliers[0]);
+		builder.skyLight(skyLightMultipliers[0]);
+		
 		// Right Bottom.
-		builder.appendVertex(bottomRight
-				, normal
-				, new float[] {uEdge, v}
-				, new float[] {otherUEdge, otherV}
-				, bottomRightBlockLight
-				, bottomRightSkyLight
-		);
+		builder.position(bottomRight);
+		builder.normal(normal);
+		builder.texture0(new float[] {uEdge, v});
+		builder.texture1(new float[] {otherUEdge, otherV});
+		builder.blockLight(blockLightMultipliers[1]);
+		builder.skyLight(skyLightMultipliers[1]);
+		
 		// Right Top.
-		builder.appendVertex(topRight
-				, normal
-				, new float[] {uEdge, vEdge}
-				, new float[] {otherUEdge, otherVEdge}
-				, topRightBlockLight
-				, topRightSkyLight
-		);
+		builder.position(topRight);
+		builder.normal(normal);
+		builder.texture0(new float[] {uEdge, vEdge});
+		builder.texture1(new float[] {otherUEdge, otherVEdge});
+		builder.blockLight(blockLightMultipliers[2]);
+		builder.skyLight(skyLightMultipliers[2]);
+		
 		// Left Bottom.
-		builder.appendVertex(bottomLeft
-				, normal
-				, new float[] {u, v}
-				, new float[] {otherU, otherV}
-				, bottomLeftBlockLight
-				, bottomLeftSkyLight
-		);
+		builder.position(bottomLeft);
+		builder.normal(normal);
+		builder.texture0(new float[] {u, v});
+		builder.texture1(new float[] {otherU, otherV});
+		builder.blockLight(blockLightMultipliers[0]);
+		builder.skyLight(skyLightMultipliers[0]);
+		
 		// Right Top.
-		builder.appendVertex(topRight
-				, normal
-				, new float[] {uEdge, vEdge}
-				, new float[] {otherUEdge, otherVEdge}
-				, topRightBlockLight
-				, topRightSkyLight
-		);
+		builder.position(topRight);
+		builder.normal(normal);
+		builder.texture0(new float[] {uEdge, vEdge});
+		builder.texture1(new float[] {otherUEdge, otherVEdge});
+		builder.blockLight(blockLightMultipliers[2]);
+		builder.skyLight(skyLightMultipliers[2]);
+		
 		// Left Top.
-		builder.appendVertex(topLeft
-				, normal
-				, new float[] {u, vEdge}
-				, new float[] {otherU, otherVEdge}
-				, topLeftBlockLight
-				, topLeftSkyLight
-		);
+		builder.position(topLeft);
+		builder.normal(normal);
+		builder.texture0(new float[] {u, vEdge});
+		builder.texture1(new float[] {otherU, otherVEdge});
+		builder.blockLight(blockLightMultipliers[3]);
+		builder.skyLight(skyLightMultipliers[3]);
 	}
 
 	private static float _mapBlockLight(byte inputValue)
@@ -996,8 +987,8 @@ public class SceneMeshHelpers
 		, float[] auxUv
 		, ModelBuffer bufferForType
 		, FacingDirection multiBlockDirection
-		, float[] blockLight
-		, float[] skyLight
+		, float blockLight
+		, float skyLight
 	)
 	{
 		// The models are based in the 0-1 unit cube but we want to rotate around the centre so translate by X/Y.
@@ -1042,13 +1033,12 @@ public class SceneMeshHelpers
 					auxUv[1] + (auxCoordinateSize * bufferForType.textureValues[2 * i + 1]),
 			};
 			
-			builder.appendVertex(positions
-					, normals
-					, textures
-					, otherTextures
-					, blockLight
-					, skyLight
-			);
+			builder.position(positions);
+			builder.normal(normals);
+			builder.texture0(textures);
+			builder.texture1(otherTextures);
+			builder.blockLight(blockLight);
+			builder.skyLight(skyLight);
 		}
 	}
 

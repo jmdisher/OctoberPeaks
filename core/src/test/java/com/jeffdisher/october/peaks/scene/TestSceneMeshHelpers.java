@@ -241,8 +241,15 @@ public class TestSceneMeshHelpers
 		BlockModelsAndAtlas modelsAndAtlas = _buildBlockModelsAndAtlas(textureCount, blockToIndex, models);
 		
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
@@ -481,8 +488,15 @@ public class TestSceneMeshHelpers
 		// We want to show that we see different vertices set in the square depending on the attributes we enable.
 		int fullFloatsPerVertex = Arrays.stream(ATTRIBUTES).collect(Collectors.summingInt((Attribute attr) -> attr.floats()));
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder builderWrapper= new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder builderWrapper= new MeshHelperBufferBuilder(builder, true);
 		SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
 			, 1.0f
 			, 0.25f
@@ -506,19 +520,17 @@ public class TestSceneMeshHelpers
 			, 0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.25f, 0.0f, 0.0f, 0.0f, 0.0f
 		}, vertexData, 0.01f);
 		
-		Attribute[] attributeSubset = new Attribute[] {ATTRIBUTES[0], ATTRIBUTES[2]};
-		boolean[] attributesToUse = MeshHelperBufferBuilder.useActiveAttributes(attributeSubset);
-		Assert.assertArrayEquals(new boolean[] { true
-			, false
-			, true
-			, false
-			, false
-			, false
-		}, attributesToUse);
-		int minFloatsPerVertex = Arrays.stream(attributeSubset).collect(Collectors.summingInt((Attribute attr) -> attr.floats()));
+		int minFloatsPerVertex = ATTRIBUTES[0].floats() + ATTRIBUTES[1].floats() + ATTRIBUTES[2].floats();
 		buffer = FloatBuffer.allocate(4096);
-		builder = new BufferBuilder(buffer, attributeSubset);
-		builderWrapper= new MeshHelperBufferBuilder(builder, attributesToUse);
+		builder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, null
+			, null
+			, null
+		);
+		builderWrapper= new MeshHelperBufferBuilder(builder, false);
 		SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
 			, 1.0f
 			, 0.25f
@@ -527,19 +539,19 @@ public class TestSceneMeshHelpers
 		vertexData = new float[minFloatsPerVertex * 12];
 		vertexBuffer.testGetFloats(vertexData);
 		_verifyBufferDrained(vertexBuffer);
-		Assert.assertArrayEquals(new float[] {-0.5f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
-			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
-			, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f
-			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
-			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
+		Assert.assertArrayEquals(new float[] {-0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f
+			,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.0f
+			,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f
+			, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  0.0f, 0.0f
+			,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.25f, 0.25f
+			, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  0.0f, 0.25f
 			
-			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
-			, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f
-			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
-			, 0.5f, 0.0f, 0.0f, 0.25f, 0.0f
-			, -0.5f, 0.0f, 1.0f, 0.0f, 0.25f
-			, 0.5f, 0.0f, 1.0f, 0.25f, 0.25f
+			,  0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.0f
+			, -0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,  0.0f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,  0.0f, 0.25f
+			,  0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.0f
+			, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,  0.0f, 0.25f
+			,  0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.25f, 0.25f
 		}, vertexData, 0.01f);
 	}
 
@@ -586,8 +598,15 @@ public class TestSceneMeshHelpers
 		fireFaces.setBit((byte)1, (byte)2, (byte)3, FireFaceBuilder.FACE_EAST);
 		SparseByteCube fires = fireFaces.extractNonEmptyCollection();
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
-		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(1, new Block[] {ENV.special.AIR}, new boolean[] {true});
 		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, fires, new AbsoluteLocation(0, 0, 0));
 		
@@ -622,7 +641,14 @@ public class TestSceneMeshHelpers
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		
-		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
 		Block[] blocks = new Block[] {
 				ENV.special.AIR,
 				ENV.blocks.fromItem(source),
@@ -678,7 +704,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(ENV
 				, builderWrapper
 				, blockAtlas
@@ -694,7 +720,14 @@ public class TestSceneMeshHelpers
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(4096);
 		
-		BufferBuilder builder = new BufferBuilder(buffer, ATTRIBUTES);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, ATTRIBUTES[0]
+			, ATTRIBUTES[1]
+			, ATTRIBUTES[2]
+			, ATTRIBUTES[3]
+			, ATTRIBUTES[4]
+			, ATTRIBUTES[5]
+		);
 		Block[] blocks = new Block[] {
 				ENV.special.AIR,
 				ENV.blocks.fromItem(block),
@@ -748,7 +781,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, MeshHelperBufferBuilder.USE_ALL_ATTRIBUTES);
+		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builderWrapper, blockAtlas, variantMap, auxAtlas, fireFaces, inputData, true);
 		return builder.finishOne();
 	}

@@ -13,9 +13,16 @@ public class TestBufferBuilder
 	public void singleAttribute() throws Throwable
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(64);
-		BufferBuilder builder = new BufferBuilder(buffer, new Attribute[] { new Attribute("Position", 3) });
-		builder.append(0, new float[] { 1.0f, 2.0f, 3.0f });
-		builder.appendVertex(new float[] { 1.0f, 2.0f, 3.0f });
+		BufferBuilder builder = new BufferBuilder(buffer
+			, new Attribute("Position", 3)
+			, null
+			, null
+			, null
+			, null
+			, null
+		);
+		builder.position(new float[] { 1.0f, 2.0f, 3.0f });
+		builder.position(new float[] { 1.0f, 2.0f, 3.0f });
 		BufferBuilder.Buffer frozen = builder.finishOne();
 		Assert.assertEquals(2, frozen.vertexCount);
 	}
@@ -24,12 +31,19 @@ public class TestBufferBuilder
 	public void streamBuffers() throws Throwable
 	{
 		FloatBuffer buffer = FloatBuffer.allocate(64);
-		BufferBuilder builder = new BufferBuilder(buffer, new Attribute[] { new Attribute("Position", 3) });
-		builder.appendVertex(new float[] { 1.0f, 2.0f, 3.0f });
+		BufferBuilder builder = new BufferBuilder(buffer
+			, new Attribute("Position", 3)
+			, null
+			, null
+			, null
+			, null
+			, null
+		);
+		builder.position(new float[] { 1.0f, 2.0f, 3.0f });
 		BufferBuilder.Buffer one = builder.finishOne();
-		builder.appendVertex(new float[] { 4.0f, 5.0f, 6.0f });
+		builder.position(new float[] { 4.0f, 5.0f, 6.0f });
 		BufferBuilder.Buffer two = builder.finishOne();
-		builder.appendVertex(new float[] { 7.0f, 8.0f, 9.0f });
+		builder.position(new float[] { 7.0f, 8.0f, 9.0f });
 		BufferBuilder.Buffer three = builder.finishOne();
 		
 		Assert.assertEquals(1, one.vertexCount);
