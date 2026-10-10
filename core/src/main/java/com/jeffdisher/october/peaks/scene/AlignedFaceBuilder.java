@@ -1,6 +1,7 @@
 package com.jeffdisher.october.peaks.scene;
 
 import com.jeffdisher.october.aspects.LightAspect;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.types.AbsoluteLocation;
 import com.jeffdisher.october.types.BlockAddress;
 import com.jeffdisher.october.types.EntityLocation;
@@ -129,7 +130,7 @@ public class AlignedFaceBuilder
 	 * @param localBase The 3 coordinates of the base of this quad.
 	 * @param localEdge The 3 coordinates of the edge of this quad.
 	 */
-	public void generateQuad(MeshHelperBufferBuilder builder, float[] localBase, float[] localEdge)
+	public void generateQuad(BufferBuilder builder, float[] localBase, float[] localEdge)
 	{
 		// Find the quad to determine rotation.
 		float minX = Math.min(localBase[0], localEdge[0]);

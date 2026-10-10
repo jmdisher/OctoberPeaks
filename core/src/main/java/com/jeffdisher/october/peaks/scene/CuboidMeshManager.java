@@ -419,53 +419,52 @@ public class CuboidMeshManager
 			, _programAttributes[4]
 			, _programAttributes[5]
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		
 		// We need to track which visible faces are on fire, for animation reasons.
 		FireFaceBuilder fireTracker = new FireFaceBuilder();
 		
 		// Create the opaque cuboid vertices.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
-				, builderWrapper
-				, _blockTextures
-				, variantMap
-				, _auxBlockTextures
-				, fireTracker
-				, request.inputs()
-				, true
+			, builder
+			, _blockTextures
+			, variantMap
+			, _auxBlockTextures
+			, fireTracker
+			, request.inputs()
+			, true
 		);
 		// Lava is also treated as an opaque surface.
 		short lavaSourceNumber = _env.items.getItemById("op.lava_source").number();
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
-				, builderWrapper
-				, _blockTextures
-				, _auxBlockTextures
-				, request.inputs()
-				, lavaSourceNumber
-				, false
+			, builder
+			, _blockTextures
+			, _auxBlockTextures
+			, request.inputs()
+			, lavaSourceNumber
+			, false
 		);
 		BufferBuilder.Buffer opaqueBuffer = builder.finishOne();
 		
 		// We will render the complex models (they need a different texture binding so they can't be part of the opaque buffer).
 		SceneMeshHelpers.populateBufferWithComplexModels(_env
-				, builderWrapper
-				, _blockModels
-				, variantMap
-				, _auxBlockTextures
-				, request.inputs()
+			, builder
+			, _blockModels
+			, variantMap
+			, _auxBlockTextures
+			, request.inputs()
 		);
 		BufferBuilder.Buffer modelBuffer = builder.finishOne();
 		
 		// Create the transparent (non-water) cuboid vertices.
 		// Note that this may be removed in the future if we end up with no transparent block textures after converting associated blocks to models.
 		SceneMeshHelpers.populateMeshBufferForCuboid(_env
-				, builderWrapper
-				, _blockTextures
-				, variantMap
-				, _auxBlockTextures
-				, fireTracker
-				, request.inputs()
-				, false
+			, builder
+			, _blockTextures
+			, variantMap
+			, _auxBlockTextures
+			, fireTracker
+			, request.inputs()
+			, false
 		);
 		BufferBuilder.Buffer transparentBuffer = builder.finishOne();
 		
@@ -476,12 +475,12 @@ public class CuboidMeshManager
 		// Create the water cuboid vertices.
 		short waterSourceNumber = _env.items.getItemById("op.water_source").number();
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(_env
-				, builderWrapper
-				, _blockTextures
-				, _auxBlockTextures
-				, request.inputs()
-				, waterSourceNumber
-				, true
+			, builder
+			, _blockTextures
+			, _auxBlockTextures
+			, request.inputs()
+			, waterSourceNumber
+			, true
 		);
 		BufferBuilder.Buffer waterBuffer = builder.finishOne();
 		
@@ -491,7 +490,7 @@ public class CuboidMeshManager
 		{
 			AbsoluteLocation cuboidBase = cuboid.getCuboidAddress().getBase();
 			SceneMeshHelpers.populateBurningFacesForCuboid(_env
-				, builderWrapper
+				, builder
 				, _blockTextures
 				, fireFaces
 				, cuboidBase

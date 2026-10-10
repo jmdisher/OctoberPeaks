@@ -97,9 +97,16 @@ public class BlockRenderer
 			
 			// Create the shader program.
 			_program = Program.fullyLinkedProgram(gl
-					, MiscPeaksHelpers.readUtf8Asset("scene.vert")
-					, MiscPeaksHelpers.readUtf8Asset("scene.frag")
-					, MeshHelperBufferBuilder.ATTRIBUTE_NAME_SUPERSET
+				, MiscPeaksHelpers.readUtf8Asset("scene.vert")
+				, MiscPeaksHelpers.readUtf8Asset("scene.frag")
+				, new String[] {
+					"aPosition",
+					"aNormal",
+					"aTexture0",
+					"aTexture1",
+					"aBlockLightMultiplier",
+					"aSkyLightMultiplier",
+				}
 			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
@@ -171,7 +178,14 @@ public class BlockRenderer
 			_program = Program.fullyLinkedProgram(gl
 				, MiscPeaksHelpers.readUtf8Asset("scene_selection.vert")
 				, MiscPeaksHelpers.readUtf8Asset("scene_selection.frag")
-				, MeshHelperBufferBuilder.ATTRIBUTE_NAME_SUPERSET
+				, new String[] {
+					"aPosition",
+					"aNormal",
+					"aTexture0",
+					"aTexture1",
+					"aBlockLightMultiplier",
+					"aSkyLightMultiplier",
+				}
 			);
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
@@ -263,8 +277,7 @@ public class BlockRenderer
 				, null
 				, null
 			);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, false);
-			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
+			SceneMeshHelpers.drawPassiveStandingSquare(builder
 				, itemEdge
 				, textureSize
 			);
@@ -688,8 +701,7 @@ public class BlockRenderer
 			, attributes[4]
 			, attributes[5]
 		);
-		MeshHelperBufferBuilder meshBuilder = new MeshHelperBufferBuilder(builder, true);
-		SceneMeshHelpers.populateOutlinePrism(gl, meshBuilder, prism, auxAtlas);
+		SceneMeshHelpers.populateOutlinePrism(gl, builder, prism, auxAtlas);
 		return builder.finishOne().flush(gl);
 	}
 

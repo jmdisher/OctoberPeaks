@@ -118,8 +118,7 @@ public class PassiveRenderer
 				, null
 				, null
 			);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, false);
-			SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
+			SceneMeshHelpers.drawPassiveStandingSquare(builder
 				, itemEdge
 				, textureSize
 			);
@@ -184,8 +183,7 @@ public class PassiveRenderer
 				, null
 				, null
 			);
-			MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, false);
-			SceneMeshHelpers.drawPassiveCube(builderWrapper, textureSize);
+			SceneMeshHelpers.drawPassiveCube(builder, textureSize);
 			_fallingBlockVertices = builder.finishOne().flush(gl);
 		}
 		

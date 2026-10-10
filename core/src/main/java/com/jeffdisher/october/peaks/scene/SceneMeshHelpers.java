@@ -13,6 +13,7 @@ import com.jeffdisher.october.aspects.LightAspect;
 import com.jeffdisher.october.data.BlockProxy;
 import com.jeffdisher.october.data.IOctree;
 import com.jeffdisher.october.logic.SparseByteCube;
+import com.jeffdisher.october.peaks.graphics.BufferBuilder;
 import com.jeffdisher.october.peaks.graphics.FaceBuilder;
 import com.jeffdisher.october.peaks.graphics.SubBlockMesh;
 import com.jeffdisher.october.peaks.textures.AuxilliaryTextureAtlas;
@@ -30,13 +31,13 @@ import com.jeffdisher.october.utils.Encoding;
 public class SceneMeshHelpers
 {
 	public static void populateMeshBufferForCuboid(Environment env
-			, MeshHelperBufferBuilder builder
-			, BasicBlockAtlas blockAtlas
-			, AuxVariantMap variantMap
-			, AuxilliaryTextureAtlas auxAtlas
-			, FireFaceBuilder fireTracker
-			, MeshInputData inputData
-			, boolean opaqueVertices
+		, BufferBuilder builder
+		, BasicBlockAtlas blockAtlas
+		, AuxVariantMap variantMap
+		, AuxilliaryTextureAtlas auxAtlas
+		, FireFaceBuilder fireTracker
+		, MeshInputData inputData
+		, boolean opaqueVertices
 	)
 	{
 		Predicate<Short> shouldInclude;
@@ -79,7 +80,7 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateBufferWithComplexModels(Environment env
-		, MeshHelperBufferBuilder builder
+		, BufferBuilder builder
 		, BlockModelsAndAtlas blockModels
 		, AuxVariantMap variantMap
 		, AuxilliaryTextureAtlas auxAtlas
@@ -180,12 +181,12 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateWaterMeshBufferForCuboid(Environment env
-			, MeshHelperBufferBuilder builder
-			, BasicBlockAtlas blockAtlas
-			, AuxilliaryTextureAtlas auxAtlas
-			, MeshInputData inputData
-			, short sourceNumber
-			, boolean drawInternalSurfaces
+		, BufferBuilder builder
+		, BasicBlockAtlas blockAtlas
+		, AuxilliaryTextureAtlas auxAtlas
+		, MeshInputData inputData
+		, short sourceNumber
+		, boolean drawInternalSurfaces
 	)
 	{
 		Predicate<Short> shouldInclude = (Short value) -> {
@@ -285,7 +286,7 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateOutlinePrism(GL20 gl
-		, MeshHelperBufferBuilder builder
+		, BufferBuilder builder
 		, Prism prism
 		, AuxilliaryTextureAtlas auxAtlas
 	)
@@ -313,7 +314,7 @@ public class SceneMeshHelpers
 		_buildCube(builder, uvBase, textureSize, auxUv, auxTextureSize, outline, blockLightMultiplier);
 	}
 
-	public static void drawPassiveStandingSquare(MeshHelperBufferBuilder builder
+	public static void drawPassiveStandingSquare(BufferBuilder builder
 		, float itemEdge
 		, float textureSize
 	)
@@ -376,7 +377,7 @@ public class SceneMeshHelpers
 		);
 	}
 
-	public static void drawPassiveCube(MeshHelperBufferBuilder builder
+	public static void drawPassiveCube(BufferBuilder builder
 		, float textureSize
 	)
 	{
@@ -403,7 +404,7 @@ public class SceneMeshHelpers
 	}
 
 	public static void populateBurningFacesForCuboid(Environment env
-		, MeshHelperBufferBuilder builder
+		, BufferBuilder builder
 		, BasicBlockAtlas blockAtlas
 		, SparseByteCube fireFaces
 		, AbsoluteLocation cuboidBase
@@ -555,17 +556,17 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _populateQuad(MeshHelperBufferBuilder builder
-			, float[] base
-			, float[][] vertices
-			, float[] normal
-			, float[] uvBase
-			, float textureSize
-			, float[] otherUvBase
-			, float otherTextureSize
-			, float[] blockLightMultipliers
-			, float[] skyLightMultipliers
-			, boolean flipTexture
+	private static void _populateQuad(BufferBuilder builder
+		, float[] base
+		, float[][] vertices
+		, float[] normal
+		, float[] uvBase
+		, float textureSize
+		, float[] otherUvBase
+		, float otherTextureSize
+		, float[] blockLightMultipliers
+		, float[] skyLightMultipliers
+		, boolean flipTexture
 	)
 	{
 		float[] bottomLeft = new float[] {
@@ -688,7 +689,7 @@ public class SceneMeshHelpers
 	private static class _CommonVertexWriter implements FaceBuilder.IWriter
 	{
 		private final Environment _env;
-		private final MeshHelperBufferBuilder _builder;
+		private final BufferBuilder _builder;
 		private final AuxVariantMap _variantMap;
 		private final BasicBlockAtlas _blockAtlas;
 		private final AuxilliaryTextureAtlas _auxAtlas;
@@ -698,7 +699,7 @@ public class SceneMeshHelpers
 		private final MeshInputData _inputData;
 		
 		public _CommonVertexWriter(Environment env
-			, MeshHelperBufferBuilder builder
+			, BufferBuilder builder
 			, AuxVariantMap variantMap
 			, BasicBlockAtlas blockAtlas
 			, AuxilliaryTextureAtlas auxAtlas
@@ -979,7 +980,7 @@ public class SceneMeshHelpers
 		;
 	}
 
-	private static void _renderModel(MeshHelperBufferBuilder builder
+	private static void _renderModel(BufferBuilder builder
 		, EntityLocation absoluteBase
 		, float uvCoordinateSize
 		, float auxCoordinateSize
@@ -1043,7 +1044,7 @@ public class SceneMeshHelpers
 	}
 
 	private static void _renderSubBlock(MeshInputData inputData
-		, MeshHelperBufferBuilder builder
+		, BufferBuilder builder
 		, AbsoluteLocation absoluteBase
 		, float uvCoordinateSize
 		, float auxCoordinateSize
@@ -1074,7 +1075,7 @@ public class SceneMeshHelpers
 		}
 	}
 
-	private static void _buildCube(MeshHelperBufferBuilder builder
+	private static void _buildCube(BufferBuilder builder
 		, float[] uvBase
 		, float textureSize
 		, float[] auxUv

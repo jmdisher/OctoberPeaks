@@ -249,7 +249,6 @@ public class TestSceneMeshHelpers
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		AuxVariantMap variantMap = new AuxVariantMap(ENV, cuboid);
 		AuxilliaryTextureAtlas auxAtlas = _buildAuxAtlas();
 		ColumnHeightMap heightMap = ColumnHeightMap.build().freeze();
@@ -295,7 +294,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builderWrapper, modelsAndAtlas, variantMap, auxAtlas, inputData);
+		SceneMeshHelpers.populateBufferWithComplexModels(ENV, builder, modelsAndAtlas, variantMap, auxAtlas, inputData);
 		BufferBuilder.Buffer finished = builder.finishOne();
 		Set<_Vertex> vertices = _collectVerticesInBuffer(finished);
 		Assert.assertEquals(3, vertices.size());
@@ -496,8 +495,7 @@ public class TestSceneMeshHelpers
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder builderWrapper= new MeshHelperBufferBuilder(builder, true);
-		SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
+		SceneMeshHelpers.drawPassiveStandingSquare(builder
 			, 1.0f
 			, 0.25f
 		);
@@ -530,8 +528,7 @@ public class TestSceneMeshHelpers
 			, null
 			, null
 		);
-		builderWrapper= new MeshHelperBufferBuilder(builder, false);
-		SceneMeshHelpers.drawPassiveStandingSquare(builderWrapper
+		SceneMeshHelpers.drawPassiveStandingSquare(builder
 			, 1.0f
 			, 0.25f
 		);
@@ -606,9 +603,8 @@ public class TestSceneMeshHelpers
 			, ATTRIBUTES[4]
 			, ATTRIBUTES[5]
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		BasicBlockAtlas blockAtlas = _buildBlockAtlas(1, new Block[] {ENV.special.AIR}, new boolean[] {true});
-		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builderWrapper, blockAtlas, fires, new AbsoluteLocation(0, 0, 0));
+		SceneMeshHelpers.populateBurningFacesForCuboid(ENV, builder, blockAtlas, fires, new AbsoluteLocation(0, 0, 0));
 		
 		BufferBuilder.Buffer outVertices = builder.finishOne();
 		int floatsWritten = buffer.position();
@@ -704,14 +700,13 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
 		SceneMeshHelpers.populateWaterMeshBufferForCuboid(ENV
-				, builderWrapper
-				, blockAtlas
-				, auxAtlas
-				, inputData
-				, source.number()
-				, true
+			, builder
+			, blockAtlas
+			, auxAtlas
+			, inputData
+			, source.number()
+			, true
 		);
 		return builder.finishOne();
 	}
@@ -781,8 +776,7 @@ public class TestSceneMeshHelpers
 					},
 				}
 		);
-		MeshHelperBufferBuilder builderWrapper = new MeshHelperBufferBuilder(builder, true);
-		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builderWrapper, blockAtlas, variantMap, auxAtlas, fireFaces, inputData, true);
+		SceneMeshHelpers.populateMeshBufferForCuboid(ENV, builder, blockAtlas, variantMap, auxAtlas, fireFaces, inputData, true);
 		return builder.finishOne();
 	}
 
