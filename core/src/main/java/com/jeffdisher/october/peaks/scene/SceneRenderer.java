@@ -40,7 +40,6 @@ public class SceneRenderer
 
 	private Matrix _viewMatrix;
 	private Matrix _projectionMatrix;
-	private Vector _eye;
 	private float _skyLightMultiplier;
 
 	public SceneRenderer(Environment environment
@@ -62,7 +61,6 @@ public class SceneRenderer
 		_skyBox = new SkyBox(gl, resources);
 		
 		_viewMatrix = Matrix.identity();
-		_eye = new Vector(0.0f, 0.0f, 0.0f);
 	}
 
 	public void rebuildProjection(int width, int height)
@@ -78,7 +76,6 @@ public class SceneRenderer
 
 	public void updatePosition(Vector eye, Vector target, Vector upVector)
 	{
-		_eye = eye;
 		_viewMatrix = Matrix.lookAt(eye, target, upVector);
 		_skyBox.updateView(eye, target, upVector);
 	}
@@ -95,22 +92,22 @@ public class SceneRenderer
 		// Note that we NEVER want to blend against the background when rendering opaque vertices since we don't want to
 		// see the background bleed through when the triangles become small in the distance.
 		_gl.glDisable(GL20.GL_BLEND);
-		_blockRenderer.renderOpaqueBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
-		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
+		_blockRenderer.renderOpaqueBlocks(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
+		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		_gl.glEnable(GL20.GL_BLEND);
 		
 		// Ask the AnimationManager to animate any fire (includes rendering but also particle generation).
 		// This requires the BlockRenderer since fire is logically associated with blocks.
-		_animationManager.handleFireAnimation(_viewMatrix, _projectionMatrix, _eye, _blockRenderer, currentTimeMillis);
+		_animationManager.handleFireAnimation(_viewMatrix, _projectionMatrix, _blockRenderer, currentTimeMillis);
 		
 		// Render the particles, then transparent blocks (since we will make the depth buffer read-only for particles).
 		_gl.glDepthMask(false);
 		_particleEngine.renderAllParticles(_viewMatrix, _projectionMatrix, currentTimeMillis);
 		_gl.glDepthMask(true);
-		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
+		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		
-		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier);
-		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix, _eye);
+		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
+		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix);
 		
 		// Do any other end-of-frame cleanup or processing.
 		_blockRenderer.handleEndOfFrame();
@@ -122,11 +119,11 @@ public class SceneRenderer
 		// Highlight the selected entity or block - prioritize the block since the entity will restrict the block check distance.
 		if (null != selectedBlock)
 		{
-			_blockRenderer.renderSelectedBlock(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedBlock, selectedType, orientation);
+			_blockRenderer.renderSelectedBlock(_viewMatrix, _projectionMatrix, _skyLightMultiplier, selectedBlock, selectedType, orientation);
 		}
 		else if (null != selectedEntity)
 		{
-			_entityRenderer.renderSelectedEntity(_viewMatrix, _projectionMatrix, _eye, _skyLightMultiplier, selectedEntity);
+			_entityRenderer.renderSelectedEntity(_viewMatrix, _projectionMatrix, _skyLightMultiplier, selectedEntity);
 		}
 	}
 

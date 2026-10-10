@@ -30,7 +30,6 @@ import com.jeffdisher.october.peaks.textures.BasicBlockAtlas;
 import com.jeffdisher.october.peaks.textures.ItemTextureAtlas;
 import com.jeffdisher.october.peaks.textures.TextureHelpers;
 import com.jeffdisher.october.peaks.types.Prism;
-import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.utils.MiscPeaksHelpers;
 import com.jeffdisher.october.types.AbsoluteLocation;
@@ -62,7 +61,6 @@ public class BlockRenderer
 		private final Program _program;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uTexture1;
 		private final int _uSkyLight;
@@ -111,7 +109,6 @@ public class BlockRenderer
 			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uTexture1 = _program.getUniformLocation("uTexture1");
 			_uSkyLight = _program.getUniformLocation("uSkyLight");
@@ -144,7 +141,6 @@ public class BlockRenderer
 		private final int _uModelMatrix;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uTexture1;
 		private final int _uSkyLight;
@@ -191,7 +187,6 @@ public class BlockRenderer
 			_uModelMatrix = _program.getUniformLocation("uModelMatrix");
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uTexture1 = _program.getUniformLocation("uTexture1");
 			_uSkyLight = _program.getUniformLocation("uSkyLight");
@@ -235,7 +230,6 @@ public class BlockRenderer
 		private final Program _program;
 		private final int _uViewMatrix;
 		private final int _uProjectionMatrix;
-		private final int _uWorldLightLocation;
 		private final int _uTexture0;
 		private final int _uBrightness;
 		private final int _uUvBase;
@@ -257,7 +251,6 @@ public class BlockRenderer
 			);
 			_uViewMatrix = _program.getUniformLocation("uViewMatrix");
 			_uProjectionMatrix = _program.getUniformLocation("uProjectionMatrix");
-			_uWorldLightLocation = _program.getUniformLocation("uWorldLightLocation");
 			_uTexture0 = _program.getUniformLocation("uTexture0");
 			_uBrightness = _program.getUniformLocation("uBrightness");
 			_uUvBase = _program.getUniformLocation("uUvBase");
@@ -417,13 +410,12 @@ public class BlockRenderer
 		return _selectionResources._blockModelBounds;
 	}
 
-	public void renderOpaqueBlocks(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
+	public void renderOpaqueBlocks(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
@@ -474,13 +466,12 @@ public class BlockRenderer
 		}
 	}
 
-	public void renderTransparentBlocks(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
+	public void renderTransparentBlocks(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uSkyLight, skyLightMultiplier);
@@ -537,10 +528,9 @@ public class BlockRenderer
 		}
 	}
 
-	public void renderItemSlots(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier)
+	public void renderItemSlots(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		_itemSlotResources._program.useProgram();
-		_gl.glUniform3f(_itemSlotResources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _itemSlotResources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _itemSlotResources._uProjectionMatrix);
 		_gl.glUniform1f(_itemSlotResources._uBrightness, _screenBrightness.get());
@@ -584,13 +574,12 @@ public class BlockRenderer
 		}
 	}
 
-	public void renderSelectedBlock(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, float skyLightMultiplier, AbsoluteLocation selectedBlock, Block selectedType, FacingDirection orientation)
+	public void renderSelectedBlock(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier, AbsoluteLocation selectedBlock, Block selectedType, FacingDirection orientation)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LESS);
 		_selectionResources._program.useProgram();
-		_gl.glUniform3f(_selectionResources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _selectionResources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _selectionResources._uProjectionMatrix);
 		_gl.glUniform1f(_selectionResources._uSkyLight, skyLightMultiplier);
@@ -619,14 +608,13 @@ public class BlockRenderer
 		highlighter.drawAllTriangles(_gl);
 	}
 
-	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, Vector eye, int fireAnimationFrame)
+	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, int fireAnimationFrame)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		// NOTE:  We use GL_LEQUAL for the fire since it renders inside an existing block face.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
 		_gl.glDepthFunc(GL20.GL_LEQUAL);
 		_resources._program.useProgram();
-		_gl.glUniform3f(_resources._uWorldLightLocation, eye.x(), eye.y(), eye.z());
 		viewMatrix.uploadAsUniform(_gl, _resources._uViewMatrix);
 		projectionMatrix.uploadAsUniform(_gl, _resources._uProjectionMatrix);
 		_gl.glUniform1f(_resources._uSkyLight, 0.0f);
