@@ -109,4 +109,44 @@ public class TestBufferBuilder
 			, 1.0f, 2.0f, 3.0f
 		}, raw, 0.01f);
 	}
+
+	@Test
+	public void chainedBuilders() throws Throwable
+	{
+		// Show that we can use multiple builders on the same buffer, so long as we stop using the first.
+		FloatBuffer buffer = FloatBuffer.allocate(128);
+		BufferBuilder builder = new BufferBuilder(buffer
+			, new Attribute("Position", 0, 3)
+			, null
+			, new Attribute("texture", 1, 2)
+			, null
+			, null
+			, null
+		);
+		builder.position(new float[] { 1.0f, 2.0f, 3.0f });
+		builder.texture0(new float[] { 1.0f, 0.5f });
+		BufferBuilder.Buffer one = builder.finishOne();
+		
+		BufferBuilder otherBuilder = new BufferBuilder(buffer
+			, new Attribute("Position", 0, 3)
+			, null
+			, new Attribute("colour", 1, 4)
+			, null
+			, null
+			, null
+		);
+		otherBuilder.position(new float[] { 1.0f, 2.0f, 3.0f });
+		otherBuilder.texture0(new float[] { 0.8f, 0.5f, 0.1f, 0.9f });
+		otherBuilder.position(new float[] { 3.0f, 2.1f, 1.1f });
+		otherBuilder.texture0(new float[] { 0.8f, 0.5f, 0.2f, 0.9f });
+		BufferBuilder.Buffer two = otherBuilder.finishOne();
+		
+		Assert.assertEquals(1, one.vertexCount);
+		Assert.assertArrayEquals(new float[] { 1.0f, 2.0f, 3.0f, 1.0f, 0.5f }, one.testGetFloats(new float[5]), 0.01f);
+		
+		Assert.assertEquals(2, two.vertexCount);
+		Assert.assertArrayEquals(new float[] { 1.0f, 2.0f, 3.0f, 0.8f, 0.5f, 0.1f, 0.9f
+			, 3.0f, 2.1f, 1.1f, 0.8f, 0.5f, 0.2f, 0.9f
+		}, two.testGetFloats(new float[14]), 0.01f);
+	}
 }

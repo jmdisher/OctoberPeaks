@@ -682,6 +682,7 @@ public class BlockRenderer
 	{
 		// We assume that we have the full slate of attributes.
 		Assert.assertTrue(6 == attributes.length);
+		meshBuffer.clear();
 		BufferBuilder builder = new BufferBuilder(meshBuffer
 			, attributes[0]
 			, attributes[1]

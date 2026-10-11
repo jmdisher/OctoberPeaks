@@ -271,6 +271,7 @@ public class GlUi
 		float width = 1.0f;
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
+		meshBuffer.clear();
 		BufferBuilder builder = new BufferBuilder(meshBuffer
 			, aPosition
 			, null
@@ -308,6 +309,7 @@ public class GlUi
 		float textureBaseU = 0.0f;
 		float textureBaseV = 0.0f;
 		float textureSize = 1.0f;
+		meshBuffer.clear();
 		BufferBuilder builder = new BufferBuilder(meshBuffer
 			, aPosition
 			, null

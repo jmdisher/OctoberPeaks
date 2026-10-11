@@ -120,10 +120,8 @@ public class BufferBuilder
 		_attributesIncluded = attributesIncluded;
 		
 		_nextAttribute = 0;
-		_lastStartPosition = 0;
+		_lastStartPosition = _sharedBackingStore.position();
 		_verticesWritten = 0;
-		
-		_sharedBackingStore.clear();
 	}
 
 	public void position(float[] data)

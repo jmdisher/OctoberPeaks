@@ -411,6 +411,7 @@ public class CuboidMeshManager
 		
 		// We assume that we have the full slate of attributes.
 		Assert.assertTrue(6 == _programAttributes.length);
+		request.meshBuffer.clear();
 		BufferBuilder builder = new BufferBuilder(request.meshBuffer
 			, _programAttributes[0]
 			, _programAttributes[1]

@@ -221,6 +221,7 @@ public class EntityRenderer
 			// There is a rigging definition so load that and then process referenced files.
 			List<Rigging.LimbRig> limbs = Rigging.loadFromTablistFile(riggingFile);
 			
+			meshBuffer.clear();
 			BufferBuilder builder = new BufferBuilder(meshBuffer
 				, aPosition
 				, aNormal

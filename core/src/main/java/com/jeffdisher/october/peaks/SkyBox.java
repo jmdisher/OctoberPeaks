@@ -150,6 +150,7 @@ public class SkyBox
 
 	private static VertexArray _defineCubeVertices(GL20 gl, Attribute aPosition, FloatBuffer meshBuffer)
 	{
+		meshBuffer.clear();
 		BufferBuilder builder = new BufferBuilder(meshBuffer
 			, aPosition
 			, null
