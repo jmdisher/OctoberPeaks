@@ -410,7 +410,7 @@ public class BlockRenderer
 		return _selectionResources._blockModelBounds;
 	}
 
-	public void renderOpaqueBlocks(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
+	public void renderOpaqueBlocks(FrustumFilter filter, Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
@@ -440,7 +440,10 @@ public class BlockRenderer
 			_CuboidData value = iter.next();
 			if (null != value.opaqueArray)
 			{
-				value.opaqueArray.drawAllTriangles(_gl);
+				if (filter.shouldIncludeCuboid(value.address))
+				{
+					value.opaqueArray.drawAllTriangles(_gl);
+				}
 			}
 			else
 			{
@@ -457,7 +460,10 @@ public class BlockRenderer
 			_CuboidData value = iter.next();
 			if (null != value.modelArray)
 			{
-				value.modelArray.drawAllTriangles(_gl);
+				if (filter.shouldIncludeCuboid(value.address))
+				{
+					value.modelArray.drawAllTriangles(_gl);
+				}
 			}
 			else
 			{
@@ -466,7 +472,7 @@ public class BlockRenderer
 		}
 	}
 
-	public void renderTransparentBlocks(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
+	public void renderTransparentBlocks(FrustumFilter filter, Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		_gl.glEnable(GL20.GL_DEPTH_TEST);
@@ -504,7 +510,10 @@ public class BlockRenderer
 			_CuboidData value = iter.next();
 			if (null != value.waterArray)
 			{
-				value.waterArray.drawAllTriangles(_gl);
+				if (filter.shouldIncludeCuboid(value.address))
+				{
+					value.waterArray.drawAllTriangles(_gl);
+				}
 			}
 			else
 			{
@@ -519,7 +528,10 @@ public class BlockRenderer
 			_CuboidData value = iter.next();
 			if (null != value.transparentArray)
 			{
-				value.transparentArray.drawAllTriangles(_gl);
+				if (filter.shouldIncludeCuboid(value.address))
+				{
+					value.transparentArray.drawAllTriangles(_gl);
+				}
 			}
 			else
 			{
@@ -528,7 +540,7 @@ public class BlockRenderer
 		}
 	}
 
-	public void renderItemSlots(Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
+	public void renderItemSlots(FrustumFilter filter, Matrix viewMatrix, Matrix projectionMatrix, float skyLightMultiplier)
 	{
 		_itemSlotResources._program.useProgram();
 		viewMatrix.uploadAsUniform(_gl, _itemSlotResources._uViewMatrix);
@@ -553,18 +565,21 @@ public class BlockRenderer
 			if (null != value.itemSlotArray)
 			{
 				CuboidAddress key = value.address;
-				EntityLocation base = key.getBase().toEntityLocation();
-				for (CuboidMeshManager.VisibleItemSlot slot : value.itemSlotArray)
+				if (filter.shouldIncludeCuboid(key))
 				{
-					// We precomputed the centre of this when creating it, since it is based on what block it is part of.
-					_gl.glUniform3f(_itemSlotResources._uCentre, base.x() + slot.centreX(), base.y() + slot.centreY(), base.z() + slot.baseZ());
-					
-					// We need to pass in the base texture coordinates of this type.
-					float[] uvBase = _resources._itemAtlas.baseOfTexture(slot.item().number());
-					_gl.glUniform2f(_itemSlotResources._uUvBase, uvBase[0], uvBase[1]);
-					
-					// Just draw the square.
-					_itemSlotResources._itemSlotVertices.drawAllTriangles(_gl);
+					EntityLocation base = key.getBase().toEntityLocation();
+					for (CuboidMeshManager.VisibleItemSlot slot : value.itemSlotArray)
+					{
+						// We precomputed the centre of this when creating it, since it is based on what block it is part of.
+						_gl.glUniform3f(_itemSlotResources._uCentre, base.x() + slot.centreX(), base.y() + slot.centreY(), base.z() + slot.baseZ());
+						
+						// We need to pass in the base texture coordinates of this type.
+						float[] uvBase = _resources._itemAtlas.baseOfTexture(slot.item().number());
+						_gl.glUniform2f(_itemSlotResources._uUvBase, uvBase[0], uvBase[1]);
+						
+						// Just draw the square.
+						_itemSlotResources._itemSlotVertices.drawAllTriangles(_gl);
+					}
 				}
 			}
 			else
@@ -608,7 +623,7 @@ public class BlockRenderer
 		highlighter.drawAllTriangles(_gl);
 	}
 
-	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(Matrix viewMatrix, Matrix projectionMatrix, int fireAnimationFrame)
+	public Map<CuboidAddress, SparseByteCube> renderFireBlocksAndReturnValidFaces(FrustumFilter filter, Matrix viewMatrix, Matrix projectionMatrix, int fireAnimationFrame)
 	{
 		// We want to use the perspective projection and depth buffer for the main scene.
 		// NOTE:  We use GL_LEQUAL for the fire since it renders inside an existing block face.
@@ -638,7 +653,10 @@ public class BlockRenderer
 			_CuboidData value = iter.next();
 			if (null != value.burningFaceArray)
 			{
-				value.burningFaceArray.drawAllTriangles(_gl);
+				if (filter.shouldIncludeCuboid(value.address))
+				{
+					value.burningFaceArray.drawAllTriangles(_gl);
+				}
 			}
 			else
 			{

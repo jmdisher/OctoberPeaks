@@ -40,6 +40,7 @@ public class SceneRenderer
 
 	private Matrix _viewMatrix;
 	private Matrix _projectionMatrix;
+	private FrustumFilter _filter;
 	private float _skyLightMultiplier;
 
 	public SceneRenderer(Environment environment
@@ -67,6 +68,7 @@ public class SceneRenderer
 	{
 		float xMajorAspect = (float)width / (float)height;
 		_projectionMatrix = Matrix.perspective(90.0f, xMajorAspect, 0.1f, 200.0f);
+		_filter = new FrustumFilter(_projectionMatrix, _viewMatrix);
 	}
 
 	public Map<Block, Prism> getModelBoundingBoxes()
@@ -77,6 +79,7 @@ public class SceneRenderer
 	public void updatePosition(Vector eye, Vector target, Vector upVector)
 	{
 		_viewMatrix = Matrix.lookAt(eye, target, upVector);
+		_filter = new FrustumFilter(_projectionMatrix, _viewMatrix);
 		_skyBox.updateView(eye, target, upVector);
 	}
 
@@ -92,21 +95,21 @@ public class SceneRenderer
 		// Note that we NEVER want to blend against the background when rendering opaque vertices since we don't want to
 		// see the background bleed through when the triangles become small in the distance.
 		_gl.glDisable(GL20.GL_BLEND);
-		_blockRenderer.renderOpaqueBlocks(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
+		_blockRenderer.renderOpaqueBlocks(_filter, _viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		_entityRenderer.renderEntities(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		_gl.glEnable(GL20.GL_BLEND);
 		
 		// Ask the AnimationManager to animate any fire (includes rendering but also particle generation).
 		// This requires the BlockRenderer since fire is logically associated with blocks.
-		_animationManager.handleFireAnimation(_viewMatrix, _projectionMatrix, _blockRenderer, currentTimeMillis);
+		_animationManager.handleFireAnimation(_filter, _viewMatrix, _projectionMatrix, _blockRenderer, currentTimeMillis);
 		
 		// Render the particles, then transparent blocks (since we will make the depth buffer read-only for particles).
 		_gl.glDepthMask(false);
 		_particleEngine.renderAllParticles(_viewMatrix, _projectionMatrix, currentTimeMillis);
 		_gl.glDepthMask(true);
-		_blockRenderer.renderTransparentBlocks(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
+		_blockRenderer.renderTransparentBlocks(_filter, _viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		
-		_blockRenderer.renderItemSlots(_viewMatrix, _projectionMatrix, _skyLightMultiplier);
+		_blockRenderer.renderItemSlots(_filter, _viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix);
 		
 		// Do any other end-of-frame cleanup or processing.
