@@ -2,6 +2,8 @@ package com.jeffdisher.october.peaks;
 
 import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.utils.GeometryHelpers;
+import com.jeffdisher.october.types.EntityLocation;
+
 
 /**
  * This helper class is meant to encapsulate the logic for how the first-person perspective is managed and updated.
@@ -15,6 +17,14 @@ public class MovementControl
 	private Vector _eyeLocation;
 	private float _rotateX;
 	private float _rotateY;
+
+	/**
+	 * The last location used to calculate the eye location and target vector for rendering perspective.  This is used
+	 * to filter updates from the ClientWrapper (in case the entity didn't move) but is also cleared here whenever the
+	 * yaw or pitch is updated.  This is because we render a smoother perspective if we use the float yaw and pitch
+	 * directly from the mouse capture as opposed to the byte-precision values from the Entity.
+	 */
+	public EntityLocation lastLocationUpdate;
 
 	public MovementControl()
 	{
@@ -38,6 +48,7 @@ public class MovementControl
 		{
 			_rotateX += pi2;
 		}
+		this.lastLocationUpdate = null;
 		return _rotateX;
 	}
 
@@ -56,6 +67,7 @@ public class MovementControl
 		{
 			_rotateY = -piHalf;
 		}
+		this.lastLocationUpdate = null;
 		return _rotateY;
 	}
 
@@ -64,7 +76,7 @@ public class MovementControl
 		_eyeLocation = eyeLocation;
 	}
 
-	public Vector computeEye()
+	public Vector getEye()
 	{
 		return _eyeLocation;
 	}

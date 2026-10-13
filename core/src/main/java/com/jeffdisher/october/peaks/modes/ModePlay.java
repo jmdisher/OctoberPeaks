@@ -13,7 +13,6 @@ import com.jeffdisher.october.logic.ViscosityReader;
 import com.jeffdisher.october.peaks.GameSession;
 import com.jeffdisher.october.peaks.InputCapture;
 import com.jeffdisher.october.peaks.persistence.MutableControls;
-import com.jeffdisher.october.peaks.types.Vector;
 import com.jeffdisher.october.peaks.types.WorldSelection;
 import com.jeffdisher.october.peaks.ui.Binding;
 import com.jeffdisher.october.peaks.ui.GlUi;
@@ -165,7 +164,40 @@ public class ModePlay implements IGameMode
 		
 		// Now, draw the overlays.
 		_ui.enterUiRenderMode();
-		this.drawCommonPlayOverlay(this.currentGameSession, _waterBlock, _lavaBlock);
+		
+		_handleEyeFilter(this.currentGameSession);
+		
+		// We are not in windowed mode so draw the selection (if any) and crosshairs.
+		IAction noAction = _selectionWindow.doRender(_inputCapture.glCursorLocation);
+		Assert.assertTrue(null == noAction);
+		
+		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
+		
+		// Once we have loaded the entity, we can draw the hotbar and meta-data.
+		Entity entity = _entityBinding.get();
+		if (null != entity)
+		{
+			_drawPassiveOverlayWindows();
+			
+			int chargeMillis = entity.ephemeralShared().chargeMillis();
+			if (chargeMillis > 0)
+			{
+				// We want to show the weapon charge as a horizontal progress bar, from left to right.
+				int key = entity.hotbarItems()[entity.hotbarIndex()];
+				// If we have nothing selected, we should have cleared the charge.
+				Assert.assertTrue(0 != key);
+				int maxCharge = Environment.getShared().tools.getChargeMillis(MiscPeaksHelpers.getInventory(entity).getSlotForKey(key).getType());
+				// If we have a charge, we must be charging something.
+				Assert.assertTrue(maxCharge > 0);
+				float progress = (float)chargeMillis / (float)maxCharge;
+				float left = CHARGE_BAR_LEFT;
+				float bottom = CHARGE_BAR_BOTTOM;
+				float right = progress * CHARGE_BAR_WIDTH_MAX + CHARGE_BAR_LEFT;
+				float top = CHARGE_BAR_TOP;
+				_ui.drawWholeTextureRect(_ui.pixelGreenAlpha, left, bottom, right, top);
+			}
+		}
+		
 		return null;
 	}
 
@@ -281,61 +313,6 @@ public class ModePlay implements IGameMode
 		_passTimeWhileRunning(currentGameSession);
 	}
 
-	public void drawCommonPlayOverlay(GameSession gameSession, Block waterBlock, Block lavaBlock)
-	{
-		// We will assume that we are already in the UI rendering mode.
-		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
-		Vector eye = gameSession.movement.computeEye();
-		if (null != eye)
-		{
-			AbsoluteLocation eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
-			BlockProxy eyeProxy = gameSession.blockLookup.readBlock(eyeBlockLocation);
-			if (null != eyeProxy)
-			{
-				Block blockType = eyeProxy.getBlock();
-				if (waterBlock == blockType)
-				{
-					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-				else if (lavaBlock == blockType)
-				{
-					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-			}
-		}
-		
-		// We are not in windowed mode so draw the selection (if any) and crosshairs.
-		IAction noAction = _selectionWindow.doRender(_inputCapture.glCursorLocation);
-		Assert.assertTrue(null == noAction);
-		
-		_ui.drawReticle(RETICLE_SIZE, RETICLE_SIZE);
-		
-		// Once we have loaded the entity, we can draw the hotbar and meta-data.
-		Entity entity = _entityBinding.get();
-		if (null != entity)
-		{
-			_drawPassiveOverlayWindows();
-			
-			int chargeMillis = entity.ephemeralShared().chargeMillis();
-			if (chargeMillis > 0)
-			{
-				// We want to show the weapon charge as a horizontal progress bar, from left to right.
-				int key = entity.hotbarItems()[entity.hotbarIndex()];
-				// If we have nothing selected, we should have cleared the charge.
-				Assert.assertTrue(0 != key);
-				int maxCharge = Environment.getShared().tools.getChargeMillis(MiscPeaksHelpers.getInventory(entity).getSlotForKey(key).getType());
-				// If we have a charge, we must be charging something.
-				Assert.assertTrue(maxCharge > 0);
-				float progress = (float)chargeMillis / (float)maxCharge;
-				float left = CHARGE_BAR_LEFT;
-				float bottom = CHARGE_BAR_BOTTOM;
-				float right = progress * CHARGE_BAR_WIDTH_MAX + CHARGE_BAR_LEFT;
-				float top = CHARGE_BAR_TOP;
-				_ui.drawWholeTextureRect(_ui.pixelGreenAlpha, left, bottom, right, top);
-			}
-		}
-	}
-
 	public void drawPassiveOverlayWindows(GameSession currentGameSession)
 	{
 		Entity entity = _entityBinding.get();
@@ -401,22 +378,18 @@ public class ModePlay implements IGameMode
 	private void _handleEyeFilter(GameSession currentGameSession)
 	{
 		// If our eye is under a liquid, draw the liquid over the screen (we do this here since it is part of the orthographic plane and not logically part of the scene).
-		Vector eye = currentGameSession.movement.computeEye();
-		if (null != eye)
+		AbsoluteLocation eyeBlockLocation = GeometryHelpers.locationFromVector(currentGameSession.movement.getEye());
+		BlockProxy eyeProxy = currentGameSession.blockLookup.readBlock(eyeBlockLocation);
+		if (null != eyeProxy)
 		{
-			AbsoluteLocation eyeBlockLocation = GeometryHelpers.locationFromVector(eye);
-			BlockProxy eyeProxy = currentGameSession.blockLookup.readBlock(eyeBlockLocation);
-			if (null != eyeProxy)
+			Block blockType = eyeProxy.getBlock();
+			if (_waterBlock == blockType)
 			{
-				Block blockType = eyeProxy.getBlock();
-				if (_waterBlock == blockType)
-				{
-					_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
-				else if (_lavaBlock == blockType)
-				{
-					_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
-				}
+				_ui.drawWholeTextureRect(_ui.pixelBlueAlpha, -1.0f, -1.0f, 1.0f, 1.0f);
+			}
+			else if (_lavaBlock == blockType)
+			{
+				_ui.drawWholeTextureRect(_ui.pixelOrangeLava, -1.0f, -1.0f, 1.0f, 1.0f);
 			}
 		}
 	}

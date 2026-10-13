@@ -95,7 +95,7 @@ public class GameSession
 		
 		this.eyeEffect = new EyeEffect(gl, resources);
 		this.movement = new MovementControl();
-		this.scene.updatePosition(this.movement.computeEye(), this.movement.computeTarget(), this.movement.computeUpVector());
+		this.scene.updatePosition(this.movement.getEye(), this.movement.computeTarget(), this.movement.computeUpVector());
 		
 		Map<Block, Prism> specialBlockBounds = this.scene.getModelBoundingBoxes();
 		this.selectionManager = new SelectionManager(environment, specialBlockBounds, _worldCache);
@@ -229,13 +229,20 @@ public class GameSession
 		@Override
 		public void thisEntityUpdated(Entity projectedEntity)
 		{
-			EntityLocation eyeLocation = SpatialHelpers.getEyeLocation(projectedEntity.location(), _playerType.volume());
-			GameSession.this.movement.setEye(Vector.fromEntityLocation(eyeLocation));
-			Vector eye = GameSession.this.movement.computeEye();
-			Vector target = GameSession.this.movement.computeTarget();
-			Vector upVector = GameSession.this.movement.computeUpVector();
-			GameSession.this.scene.updatePosition(eye, target, upVector);
-			GameSession.this.selectionManager.updatePosition(eye, target);
+			// We get updates for any successful change to the entity, which is normally every frame, but only update the position data if we moved.
+			EntityLocation projectedLocation = projectedEntity.location();
+			if (!projectedLocation.equals(GameSession.this.movement.lastLocationUpdate))
+			{
+				EntityLocation eyeLocation = SpatialHelpers.getEyeLocation(projectedLocation, _playerType.volume());
+				Vector eye = Vector.fromEntityLocation(eyeLocation);
+				GameSession.this.movement.setEye(eye);
+				Vector target = GameSession.this.movement.computeTarget();
+				Vector upVector = GameSession.this.movement.computeUpVector();
+				GameSession.this.scene.updatePosition(eye, target, upVector);
+				GameSession.this.selectionManager.updatePosition(eye, target);
+				
+				GameSession.this.movement.lastLocationUpdate = projectedLocation;
+			}
 			GameSession.this.selectionManager.setThisEntity(projectedEntity);
 			GameSession.this.eyeEffect.setHealth(projectedEntity.health());
 			_callouts.thisEntityUpdated(projectedEntity);
