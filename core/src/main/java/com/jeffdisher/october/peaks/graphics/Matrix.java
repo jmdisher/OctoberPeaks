@@ -341,6 +341,18 @@ public class Matrix
 		return _multiplyVectorComponents(x, y, z, w);
 	}
 
+	/**
+	 * Returns the value at the given matrix coordinates.
+	 * 
+	 * @param col The column (0-indexed).
+	 * @param row The row (0-indexed).
+	 * @return The value in the given (col, row) location in the receiver.
+	 */
+	public float get(int col, int row)
+	{
+		return _rowInner4x4[col * 4 + row];
+	}
+
 	@Override
 	public String toString()
 	{
