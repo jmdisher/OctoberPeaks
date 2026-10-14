@@ -35,6 +35,8 @@ public class AudioManager
 		private final Sound _takeDamage;
 		private final Sound _breakBlock;
 		private final Sound _placeBlock;
+		private final Sound _enchantComplete;
+		private final Sound _breakTool;
 		private final Sound _cowIdle;
 		private final Sound _cowInjury;
 		private final Sound _cowDeath;
@@ -52,6 +54,8 @@ public class AudioManager
 			_takeDamage = Gdx.audio.newSound(Gdx.files.internal("take_damage.ogg"));
 			_breakBlock = Gdx.audio.newSound(Gdx.files.internal("break_block.ogg"));
 			_placeBlock = Gdx.audio.newSound(Gdx.files.internal("place_block.ogg"));
+			_enchantComplete = Gdx.audio.newSound(Gdx.files.internal("enchant_complete.ogg"));
+			_breakTool = Gdx.audio.newSound(Gdx.files.internal("break_tool.ogg"));
 			_cowIdle = Gdx.audio.newSound(Gdx.files.internal("cow_idle.ogg"));
 			_cowInjury = Gdx.audio.newSound(Gdx.files.internal("cow_injury.ogg"));
 			_cowDeath = Gdx.audio.newSound(Gdx.files.internal("cow_death.ogg"));
@@ -236,6 +240,16 @@ public class AudioManager
 		AbsoluteLocation location = pickUp.location().getBlockLocation();
 		// We use the "break block" sound for this since it is a basic "pop".
 		_playSoundIfInRange(location, _resources._breakBlock);
+	}
+
+	public void enchantComplete(AbsoluteLocation location)
+	{
+		_playSoundIfInRange(location, _resources._enchantComplete);
+	}
+
+	public void toolBroke(AbsoluteLocation location, int entityId)
+	{
+		_playSoundIfInRange(location, _resources._breakTool);
 	}
 
 	public void shutdown()

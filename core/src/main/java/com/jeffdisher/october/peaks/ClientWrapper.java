@@ -1513,10 +1513,13 @@ public class ClientWrapper
 				// We only care about the target who received the trade.
 				_updateConsumer.tradeReceived(event.entityTarget());
 				break;
+			case ENTITY_BROKE_TOOL:
+				// We will use the location and entity.
+				_updateConsumer.entityBrokeTool(event.location(), event.entityTarget());
+				break;
 			case LIQUID_PLACED:
 			case LIQUID_REMOVED:
 			case ENTITY_ATE_FOOD:
-			case ENTITY_BROKE_TOOL:
 				// Ignore these.
 				break;
 			default:
@@ -1574,6 +1577,7 @@ public class ClientWrapper
 		void craftInInventoryComplete(int entityId);
 		void passiveWasPickedUp(int passiveId, int pickingUpEntityId);
 		void tradeReceived(int entityId);
+		void entityBrokeTool(AbsoluteLocation location, int entityId);
 		
 		void tickDidComplete(long gameTick, float skyLightMultiplier, float dayProgression);
 		void receivedChatMessage(int senderId, String message);

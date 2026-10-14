@@ -322,6 +322,7 @@ public class GameSession
 		public void enchantComplete(AbsoluteLocation location)
 		{
 			GameSession.this.animationManager.enchantComplete(location);
+			GameSession.this.audioManager.enchantComplete(location);
 		}
 		@Override
 		public void passiveWasPickedUp(int passiveId, int pickingUpEntityId)
@@ -333,6 +334,11 @@ public class GameSession
 		public void tradeReceived(int entityId)
 		{
 			GameSession.this.animationManager.tradeReceived(entityId);
+		}
+		@Override
+		public void entityBrokeTool(AbsoluteLocation location, int entityId)
+		{
+			GameSession.this.audioManager.toolBroke(location, entityId);
 		}
 		@Override
 		public void receivedChatMessage(int senderId, String message)
