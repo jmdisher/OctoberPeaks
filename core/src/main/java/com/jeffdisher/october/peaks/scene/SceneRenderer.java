@@ -107,10 +107,19 @@ public class SceneRenderer
 		_gl.glDepthMask(false);
 		_particleEngine.renderAllParticles(_viewMatrix, _projectionMatrix, currentTimeMillis);
 		_gl.glDepthMask(true);
+		
+		// Note that we may want to consider rendering this with _gl.glDepthMask(false) but there doesn't seem to be an
+		// ideal blending function to make this look right.  Leaving it read-write seems to produce better results, for
+		// now.  In the future, more of the non-opaque blocks will be replaced by complex models.
+		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
+		// this may not work for complex models.
 		_blockRenderer.renderTransparentBlocks(_filter, _viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		
+		// We won't update the depth buffer for item slots or passives.
+		_gl.glDepthMask(false);
 		_blockRenderer.renderItemSlots(_filter, _viewMatrix, _projectionMatrix, _skyLightMultiplier);
 		_passiveRenderer.renderEntities(_viewMatrix, _projectionMatrix);
+		_gl.glDepthMask(true);
 		
 		// Do any other end-of-frame cleanup or processing.
 		_blockRenderer.handleEndOfFrame();

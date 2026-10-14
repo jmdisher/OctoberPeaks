@@ -493,13 +493,6 @@ public class BlockRenderer
 		// We will bind the AUX texture atlas for texture unit 1 in all invocations, but we usually just reference "NONE" where not applicable.
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._auxBlockTextures.texture);
 		
-		// Render the transparent cuboid vertices.
-		// Note that we may want to consider rendering this with _gl.glDepthMask(false) but there doesn't seem to be an
-		// ideal blending function to make this look right.  Leaving it read-write seems to produce better results, for
-		// now.  In the future, more of the non-opaque blocks will be replaced by complex models.
-		// Most likely, we will need to slice every cuboid by which of the 6 faces they include, and sort that way, but
-		// this may not work for complex models.
-		
 		// We want to render the water before other transparent blocks since we don't want to see through the water if looking at leaves, for example.
 		_gl.glActiveTexture(GL20.GL_TEXTURE0);
 		_gl.glBindTexture(GL20.GL_TEXTURE_2D, _resources._blockTextures.getAtlasTexture());
