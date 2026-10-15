@@ -3,6 +3,8 @@ package com.jeffdisher.october.peaks.graphics;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.badlogic.gdx.graphics.GL20;
 import com.jeffdisher.october.utils.Assert;
@@ -25,62 +27,64 @@ public class Program
 	 */
 	public static Program fullyLinkedProgram(GL20 gl, String vertexSource, String fragmentSource, SourceAttribute[] attributesInOrder)
 	{
-		int program = gl.glCreateProgram();
-		_compileAndAttachShader(gl, program, GL20.GL_VERTEX_SHADER, vertexSource);
-		_compileAndAttachShader(gl, program, GL20.GL_FRAGMENT_SHADER, fragmentSource);
-		// Note:  We used to use glBindAttribLocation here, which did cause the attributes to end up at their requested
-		// indices, but only if they weren't entirely removed (despite binding the location, they can still end up with
-		// -1).  As a result, we just link and then look up by SourceAttribute.
-		gl.glLinkProgram(program);
-		
-		// We now want to extract the attribute data.
-		// Note that glGetActiveAttrib takes "attribute index" while glGetAttribLocation takes "attribute location" (set
-		// by glBindAttribLocation).
-		// However, this is further complicated by some attributes still not being present in the linked program despite
-		// glBindAttribLocation being called.  This means we will need to use the name to find the type information and
-		// its location (if it has one).
+		// Allocate our out-params.
+		// NOTE:  These IntBuffer out-params are directly written so we don't clear/flip like a normal Buffer type.
 		IntBuffer outSize = _allocOutParam();
 		IntBuffer outType = _allocOutParam();
 		
-		// The output Attribute objects are kept in the same order, since that is how the source applies them, but we
-		// will keep their indices internal, knowing that some may even be missing.
-		Attribute[] attributes = new Attribute[attributesInOrder.length];
-		for (int index = 0; index < attributesInOrder.length; ++index)
+		int program = gl.glCreateProgram();
+		_compileAndAttachShader(gl, program, GL20.GL_VERTEX_SHADER, vertexSource);
+		_compileAndAttachShader(gl, program, GL20.GL_FRAGMENT_SHADER, fragmentSource);
+		gl.glLinkProgram(program);
+		
+		// Notes about how attribs are set up:
+		// -there is substantial confusion in the GL documentation related to an attribute "location" or "index"
+		// -the attribute "index" is used for getting information about the attribute
+		// -the attribute "location" is what is required when calling glEnableVertexAttribArray or glVertexAttribPointer
+		// -using "glBindAttribLocation" doesn't even always provide a result in "glGetAttribLocation", so these are useless
+		// -instead, we will need to check all "active attributes" and compare them to our source array in order to create the expected output array
+		gl.glGetProgramiv(program, GL20.GL_ACTIVE_ATTRIBUTES, outSize);
+		int activeAtributeCount = outSize.get(0);
+		
+		Map<String, Integer> nameToAttributeArrayIndex = new HashMap<>();
+		for (int i = 0; i < attributesInOrder.length; ++i)
 		{
-			SourceAttribute source = attributesInOrder[index];
-			int location = gl.glGetAttribLocation(program, source.name());
-			
-			// Only get information if there is a location.
-			if (location >= 0)
-			{
-				String name = gl.glGetActiveAttrib(program, location, outSize, outType);
-				Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
-				Assert.assertTrue(source.name().equals(name));
-				
-				// NOTE:  These IntBuffer out-params are directly written so we don't clear/flip like a normal Buffer type.
-				int floatsInType;
-				switch (outType.get(0))
-				{
-				case GL20.GL_FLOAT:
-					floatsInType = 1;
-					break;
-				case GL20.GL_FLOAT_VEC2:
-					floatsInType = 2;
-					break;
-				case GL20.GL_FLOAT_VEC3:
-					floatsInType = 3;
-					break;
-					default:
-						// We need to add handling for this.
-						throw Assert.unreachable();
-				}
-				int floatsInAttribute = outSize.get(0) * floatsInType;
-				Assert.assertTrue(source.floats() == floatsInAttribute);
-			}
-			
-			attributes[index] = new Attribute(source.name(), location, source.floats());
+			Object out = nameToAttributeArrayIndex.put(attributesInOrder[i].name(), i);
+			Assert.assertTrue(null == out);
 		}
-		Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
+		
+		Attribute[] attributes = new Attribute[attributesInOrder.length];
+		for (int i = 0; i < activeAtributeCount; ++i)
+		{
+			String name = gl.glGetActiveAttrib(program, i, outSize, outType);
+			Assert.assertTrue(GL20.GL_NO_ERROR == gl.glGetError());
+			
+			int arrayIndex = nameToAttributeArrayIndex.get(name);
+			SourceAttribute source = attributesInOrder[arrayIndex];
+			Assert.assertTrue(source.name().equals(name));
+			int location = gl.glGetAttribLocation(program, name);
+			
+			// NOTE:  These IntBuffer out-params are directly written so we don't clear/flip like a normal Buffer type.
+			int floatsInType;
+			switch (outType.get(0))
+			{
+			case GL20.GL_FLOAT:
+				floatsInType = 1;
+				break;
+			case GL20.GL_FLOAT_VEC2:
+				floatsInType = 2;
+				break;
+			case GL20.GL_FLOAT_VEC3:
+				floatsInType = 3;
+				break;
+				default:
+					// We need to add handling for this.
+					throw Assert.unreachable();
+			}
+			int floatsInAttribute = outSize.get(0) * floatsInType;
+			Assert.assertTrue(source.floats() == floatsInAttribute);
+			attributes[arrayIndex] = new Attribute(source.name(), location, source.floats());
+		}
 		return new Program(gl, program, attributes);
 	}
 
