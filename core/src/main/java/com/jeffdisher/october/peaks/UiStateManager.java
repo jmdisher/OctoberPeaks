@@ -362,28 +362,28 @@ public class UiStateManager implements GameSession.ICallouts
 		{
 			if (null != _modeContainer.keyBindings.currentGameSession)
 			{
-				_modeContainer.keyBindings.currentGameSession.scene.shutdown();
+				_modeContainer.keyBindings.currentGameSession.shutdown();
 			}
 		}
 		else if (_modeContainer.play == _modeContainer.currentMode)
 		{
-			_modeContainer.play.currentGameSession.scene.shutdown();
+			_modeContainer.play.currentGameSession.shutdown();
 		}
 		else if (_modeContainer.inventory == _modeContainer.currentMode)
 		{
-			_modeContainer.inventory.currentGameSession.scene.shutdown();
+			_modeContainer.inventory.currentGameSession.shutdown();
 		}
 		else if (_modeContainer.pause == _modeContainer.currentMode)
 		{
-			_modeContainer.pause.currentGameSession.scene.shutdown();
+			_modeContainer.pause.currentGameSession.shutdown();
 		}
 		else if (_modeContainer.profile == _modeContainer.currentMode)
 		{
-			_modeContainer.profile.profilingSession.scene.shutdown();
+			_modeContainer.profile.profilingSession.shutdown();
 		}
 		else if (_modeContainer.trading == _modeContainer.currentMode)
 		{
-			_modeContainer.trading.currentGameSession.scene.shutdown();
+			_modeContainer.trading.currentGameSession.shutdown();
 		}
 		_uiData.serverList.shutdown();
 	}

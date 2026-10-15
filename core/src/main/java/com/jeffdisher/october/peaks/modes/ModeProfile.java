@@ -42,8 +42,9 @@ public class ModeProfile implements IGameMode
 	{
 		// We just want to exit, in this case.
 		System.out.println("Ending Profile Run");
-		this.profilingSession.shutdown();
 		Gdx.app.exit();
+		
+		// Note that we do NOT shutdown the profliningSession since some frames may still run before the program exits.
 	}
 
 	@Override
