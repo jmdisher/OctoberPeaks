@@ -30,12 +30,14 @@ public class VertexArray
 	{
 		_setupBuffer(gl);
 		gl.glDrawArrays(GL20.GL_TRIANGLES, 0, this.totalVertices);
+		_disableBuffer(gl);
 	}
 
 	public void drawAllLines(GL20 gl)
 	{
 		_setupBuffer(gl);
 		gl.glDrawArrays(GL20.GL_LINES, 0, this.totalVertices);
+		_disableBuffer(gl);
 	}
 
 	public void delete(GL20 gl)
@@ -54,6 +56,18 @@ public class VertexArray
 			gl.glEnableVertexAttribArray(attribute.location());
 			gl.glVertexAttribPointer(attribute.location(), attribute.floats(), GL20.GL_FLOAT, false, _totalFloats * Float.BYTES, floatOffset * Float.BYTES);
 			floatOffset += attribute.floats();
+		}
+	}
+
+	private void _disableBuffer(GL20 gl)
+	{
+		// We need to disable the vertex attributes or a later draw might still try to access this offset into a buffer, which will be out of bounds.
+		// TODO:  Can we setup and teardown buffer state once per frame per "class" of buffer, instead of doing this for every array?
+		gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, _buffer);
+		for (int i = 0; i < _attributes.length; ++i)
+		{
+			Attribute attribute = _attributes[i];
+			gl.glDisableVertexAttribArray(attribute.location());
 		}
 	}
 }
